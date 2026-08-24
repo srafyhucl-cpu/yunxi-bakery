@@ -1,4 +1,15 @@
-﻿## [2026-08-17] - fix(accounting): D1-A.2.1 嵌套 UoW 计划变更整改（P1 剩余路径，有界修复）
+﻿## [2026-08-17] - chore(monorepo): Monorepo 整合（架构评审修正版）+ MVP 分支策略落地
+
+- 操作者: AI (OpenCode)
+- trace_id: `20260817-monorepo-merge-review-fixed`
+- parent_trace_id: `20260817-accounting-d1a21-nested-uow`
+- 来源: 项目负责人完成架构评审（《ARCHITECTURE-REVIEW-20260817.md》，结论"有条件通过"），要求落实 4 项修正后放行：R1 分支策略、A1 隐私排除、R2 钩子保留 7 个、B1 技术债第五条。
+- 范围: Monorepo 整合重做 + 文档/脚本级修正；不改动 YunxiBakeBot 审阅分支现场，不改写已归档提交。
+- 实现: **R1**——`mvp-2027-june` 分支从 master `b30b2066` 拉出（D1 从未合入 master，零删除成本）；新仓 backend/ 与 docs/ 用 git worktree 导出的 master 基线重建（v0.132.9），审阅分支的 D1 spec/有赞导出 CSV 不带入。**A1**——monorepo-merge.ps1 增加排除清单（data/、*.db、ngrok.exe、各类 cache、node_modules、.codex-tmp、reports）+ 提交前隐私硬门禁断言；工作区残留的 bot.db 副本（17.8MB，24,726 条客户主档）与全部运行时产物已清除。**R2**——计划书 6.3 节改为保留 7 个钩子（secrets baseline、SQL 参数化、SELECT *、分层检查 + ruff format、mypy、核心测试）。**B1**——技术债追加第五条不允许项（客户隐私数据明文暴露）及三项开发期检查点。MVP-DEVELOPMENT-GUIDE.md 任务 1.1 与 AI-EMPLOYEE-INSTRUCTIONS.md 同步改为"验证 master 基线能力"。评审报告归档入新仓根目录。
+- 验证: 新仓 git ls-files 共 1379 个文件，无 *.db/*.sqlite/*.csv/ngrok.exe；GitHub 远端 HEAD=`1c2a3ea`（force push 替换旧 `d9b1de4`，远端树经 ls-tree 复核无违禁文件）；worktree VERSION=0.132.9 确认为 B3.5 基线；git log 仅 1 个 commit；YunxiBakeBot 审阅分支现场未受影响（worktree 已清理）。
+- residual_risks: 初次整合曾将 bot.db 副本复制到新仓工作目录——因 .gitignore 的 `*.db` 规则未被 Git 跟踪，GitHub 未泄露（ls-tree 复核确认），但该事件验证了 A1 的必要性，脚本已加硬门禁防复发；生产库落后本地 10 个 schema 版本（R1-b），MVP 首次部署推荐全新数据库实例，待 P1 Week 7 前落实；pre-commit 7 钩子的实际配置文件尚未在 MVP 开发中落地，Week 1 执行时建立。
+
+## [2026-08-17] - fix(accounting): D1-A.2.1 嵌套 UoW 计划变更整改（P1 剩余路径，有界修复）
 
 - 操作者: AI (Codex)
 - trace_id: `20260817-accounting-d1a21-nested-uow`
