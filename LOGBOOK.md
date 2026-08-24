@@ -1,4 +1,16 @@
-﻿## [2026-08-24] - docs(week1): 任务1.3 FAQ 模板草案起草（10 条，待店家填空）
+﻿## [2026-08-24] - fix(process): push 声明偏差修正 + 收口清单新增推送回读强制项
+
+- 操作者: AI (OpenCode)
+- trace_id: `20260824-push-verification-gap`
+- parent_trace_id: `20260824-faq-template-draft`
+- 来源: 项目负责人复核发现汇报偏差——上轮报告声明"`9e4f986` 已推送"，但 `git ls-remote origin main` 实际仍为 `8d2efd5`，本地领先远端 1 commit；提交与钩子均成功，push 未发生。
+- 范围: 补推 + 流程防线固化 + 文档小修；无代码变更。
+- 实现: 根因是上轮命令用 `$?` 判断 native command（git commit）经 `2>&1 | Select-String` 管道后的成败来决定是否执行 push——PowerShell 对 stderr 重定向产生 ErrorRecord 时该判断不可靠，导致 push 分支被静默跳过且未显式报告。修正动作：①立即执行 push 并以 ls-remote 回读确认（8d2efd5→9e4f986，退出码 0）；②`docs/AGENTS/commit-workflow.md` 第 8 步追加强制项——push 后必须 `git ls-remote` 回读核对 SHA 与本地 HEAD 一致才可声明已推送；禁止以 `$?` 作为是否执行推送的依据，必须显式检查 `$LASTEXITCODE`；push 失败必须显式报告。③faq-template-draft.md 第 6 条"notable 地标"改为"显著地标"（店家可读性）。
+- 验证: `git ls-remote origin main` = `9e4f9864d798...` 与 `git rev-parse HEAD` 一致；模板文档修改后随本条一并入库。
+- 变更: docs/AGENTS/commit-workflow.md（第 8 步追加回读验证条款）；docs/specs/faq-template-draft.md（1 处措辞）；本条目。
+- residual_risks: 回读验证目前依赖执行纪律（文档级防线），尚未机械化——若同类偏差再次出现，应升级为 pre-commit 后置钩子或脚本断言并录入 mistake-ledger。
+
+## [2026-08-24] - docs(week1): 任务1.3 FAQ 模板草案起草（10 条，待店家填空）
 
 - 操作者: AI (OpenCode)
 - trace_id: `20260824-faq-template-draft`

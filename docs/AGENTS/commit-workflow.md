@@ -18,6 +18,7 @@ ______________________________________________________________________
    - **文档同步检查**：校验 LOGBOOK.md 和项目进度与配置清单.md 已暂存
    - **质量门禁**：密钥扫描 + 文件体量 + 红线规则自测 + 全套测试
 8. **推送代码到版本远端**：`git push origin master && git push server master`。这一步只同步 Git，不代表生产发布完成。
+   - **推送后必须回读验证（强制，2026-08-24 起生效）**：push 后执行 `git ls-remote origin <branch>` 并核对返回 SHA 与本地 `git rev-parse HEAD` 一致，才能在汇报中声明"已推送"。禁止用 `$?` 判断 native command 管道成败作为是否执行推送的依据——必须显式检查 `$LASTEXITCODE`；push 失败或被跳过时必须在汇报中显式报告，不允许静默。未推送 = 未备份，本地工作区不是可靠副本。
 9. **如本轮涉及生产同步**，执行 `bash scripts/deploy.sh`。该脚本通过 SSH Git Bundle 发布到 `/opt/apps/yunxibakebot`，由服务器端脚本执行安全预检、服务重启和 loopback 健康检查；完成后再验证 `https://yunxifood.cn/health`。
 
 ---
