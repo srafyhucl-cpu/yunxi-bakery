@@ -1,4 +1,16 @@
-﻿## [2026-08-17] - chore(monorepo): Monorepo 整合（架构评审修正版）+ MVP 分支策略落地
+﻿## [2026-08-24] - chore(week1): 任务1.1 基线能力冒烟 + 7 钩子 pre-commit 落地
+
+- 操作者: AI (OpenCode)
+- trace_id: `20260824-week1-task11-smoke-and-hooks`
+- parent_trace_id: `20260817-monorepo-merge-review-fixed`
+- 来源: 项目负责人复审放行 Week 1，要求基线冒烟给出实际命令输出、7 钩子落地后跑真实提交验证 Windows 不卡死。
+- 范围: 新仓 backend 环境搭建 + 四项冒烟 + 根级 .pre-commit-config.yaml（7 钩子）；不改 app/ 代码。
+- 实现: venv 安装 requirements.txt（补 tzdata/pytest/pytest-cov/mypy/pre-commit/detect-secrets/ruff 开发依赖）；apply_migrations --allow-create 建全新空库（R1-b 策略，835KB schema-only）；seed_baseline_knowledge 写入 7 条兜底话术；rebuild_embeddings 用 YUNXI_USE_FAKE_EMBEDDING=1 构建缓存；.env 补生成 ADMIN_SESSION_SECRET 与 STOREFRONT_AUTH_SECRET（开发值，不入库）；单进程内嵌 uvicorn 冒烟脚本四项探测；7 钩子 = detect-secrets / verify-secrets-baseline / check-project(--skip-tests) / check-redline-selftest / ruff-format-check / mypy(非阻断) / core-tests(health_ready+config)。
+- 验证: **冒烟①** `/health` → HTTP 200 `{"status":"ok","version":"0.132.9"}`（B3.5 基线确认）；**冒烟③** `GET /api/v1/miniapp/products` → HTTP 200 `{"code":0,"data":[]}`（空库空列表符合预期）；**冒烟②** `POST /api/v1/miniapp/chat/messages`（Bearer token 由 StorefrontAuthService.issue_access_token 服务端签发）→ HTTP 200，意图识别 `DELIVERY_SCHEDULE intent_ms=1`，DeepSeek 真实调用约 33s，回复为"知识库暂无营业时间信息，建议转人工"——与种子第 7 条兜底口径一致，检索→LLM→诚实兜底链路完整；**冒烟④** `GET /api/v1/wecom/callback`（无效签名）→ HTTP 403 "签名验证失败"，验签 fail-closed 正确加载。启动安全防线两次生效拦截缺配置启动（ADMIN_SESSION_SECRET），证明 M-20260712-007 防线在 MVP 分支仍然有效。
+- 变更: 新增根 `.pre-commit-config.yaml`（7 钩子版，替代 backend 内 13 钩子 master 版）；backend/data/bot.db（全新空库+7条兜底知识，本地运行时产物，已被 .gitignore 排除）。
+- residual_risks: **真实 BGE 模型（BAAI/bge-small-zh-v1.5）本机无 HuggingFace 缓存且网络不可达**，当前以 YUNXI_USE_FAKE_EMBEDDING=1 字符哈希编码器运行——语义检索质量受限，试运行部署前必须解决模型离线分发；企微回调仅验证了验签拒绝路径，真实回调互通需企微后台配置（blocked，待 Week 3 企微接入阶段用真实配置验证）；商品查询为空库空列表，真实商品数据同步待有赞对接验证；pre-commit 运行需 venv Scripts 在 PATH（detect-secrets-hook/ruff 为 language: system）。
+
+## [2026-08-17] - chore(monorepo): Monorepo 整合（架构评审修正版）+ MVP 分支策略落地
 
 - 操作者: AI (OpenCode)
 - trace_id: `20260817-monorepo-merge-review-fixed`

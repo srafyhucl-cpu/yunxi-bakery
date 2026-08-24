@@ -1,0 +1,55 @@
+# 芸熙烘焙 Monorepo - pre-commit 门禁（MVP 7 钩子版）
+# 依据架构评审 R2 修正：17 钩子 → 7 钩子（安全类不可砍，治理类移出门禁）
+# 安全：密钥扫描/基线防改写/红线扫描（SQL参数化+SELECT*+分层）/红线自测
+# 基础：ruff format / mypy（非阻断）/ 核心测试快速集
+# 砍掉（改每周手动跑）：sync-version、check-logbook、check-file-sizes、
+#   check-mistake-ledger、check-evidence-index、check-text-encoding、ruff-check
+repos:
+  - repo: local
+    hooks:
+      - id: detect-secrets
+        name: 密钥硬编码扫描（安全）
+        entry: detect-secrets-hook
+        args: [--baseline, backend/.secrets.baseline]
+        language: system
+
+      - id: verify-secrets-baseline
+        name: 密钥基线防改写校验（安全）
+        entry: python backend/scripts/verify_secrets_baseline.py
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: check-project
+        name: 项目红线门禁：SQL参数化+SELECT*+架构分层（安全）
+        entry: python backend/scripts/check_project.py
+        args: [--skip-tests]
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: check-redline-selftest
+        name: 红线规则自测验证（安全自检）
+        entry: python -m pytest backend/tests/test_red_line_rules.py -q --tb=short --no-cov
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: ruff-format-check
+        name: Ruff Format Check（基础）
+        entry: ruff format --check
+        language: system
+        types: [python]
+
+      - id: mypy
+        name: MyPy Type Check（基础，非阻断）
+        entry: python backend/scripts/mypy_nonblocking.py
+        language: system
+        pass_filenames: false
+
+      - id: core-tests
+        name: 核心测试快速集（健康检查+配置合同）
+        entry: python -m pytest backend/tests/test_health_ready.py backend/tests/test_config.py -q --tb=short --no-cov
+        language: system
+        pass_filenames: false
+        always_run: true
