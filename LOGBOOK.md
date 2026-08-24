@@ -1,4 +1,16 @@
-﻿## [2026-08-24] - feat(retrieval): MVP 关键词检索模式落地（战略禁用向量路径）+ LLM 延迟测量
+﻿## [2026-08-24] - docs(week1): 任务1.3 FAQ 模板草案起草（10 条，待店家填空）
+
+- 操作者: AI (OpenCode)
+- trace_id: `20260824-faq-template-draft`
+- parent_trace_id: `20260824-mvp-keyword-retrieval-and-latency`
+- 来源: 项目负责人确定任务 1.3 执行路径为"先起草模板"——填空题比开放问题对店家响应快，起草过程同时生成店家对齐谈话材料。
+- 范围: 纯文档新增 docs/specs/faq-template-draft.md；不改代码与知识库数据。
+- 实现: 10 条主题按负责人指定清单；每条含标准问题、2-3 个问法变体、BM25/LIKE 命中关键词、答案正文。第 10 条（转人工）直接写死"正在为您转接人工客服"并标注命中即走既有 TRANSFER_REQUIRED_INTENTS 短路流程；其余 9 条答案全部以【待店家确认：XXX】占位，未编造任何具体数字/时间/金额/半径。第 2 条（配送范围运费）与第 8 条（定制预订）按负责人提醒附加客诉高发警示：要求精确到可执行判断规则（XX路以内/小时级时限），禁止模糊表述。
+- 验证: 文档结构完整（10 条×4 要素齐全）；全文检索确认无遗漏的编造数字（所有具体值均为待填标记）；关键词覆盖各主题同义口语表达供 BM25 分词与 SQL LIKE 子串匹配。
+- 变更: 新增 docs/specs/faq-template-draft.md。
+- residual_risks: 店家返回口径前知识库仅有 7 条兜底话术，真实 FAQ 命中能力为零——试运行开始前必须完成填空落库；落库后需跑 rebuild_embeddings.py 刷新检索缓存（当前关键词路径秒级完成）；第 9 条优惠活动具有时效性，试运行期间活动变更需人工同步更新知识库。
+
+## [2026-08-24] - feat(retrieval): MVP 关键词检索模式落地（战略禁用向量路径）+ LLM 延迟测量
 
 - 操作者: AI (OpenCode)
 - trace_id: `20260824-mvp-keyword-retrieval-and-latency`
