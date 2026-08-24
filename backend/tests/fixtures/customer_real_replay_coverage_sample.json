@@ -1,0 +1,280 @@
+{
+  "metadata": {
+    "source": "synthetic_coverage_sample",
+    "redaction": "synthetic_safe_template",
+    "contains_sensitive_data": false,
+    "notes": "本文件只用于验证 P11d 场景覆盖率门禁，不包含真实客户原文。"
+  },
+  "cases": [
+    {
+      "case_id": "coverage-order-001",
+      "golden_case_id": "customer-order-sensitive-001",
+      "source": "synthetic_coverage_sample",
+      "group": "human_transfer",
+      "intent": "human_transfer",
+      "user_message": "用户表示已付款但未收到确认，订单标识和联系方式均已脱敏。",
+      "final_reply": "订单问题需要按系统记录或人工核对确认，我会协助转人工处理，不能直接判断订单状态。"
+    },
+    {
+      "case_id": "coverage-order-002",
+      "golden_case_id": "customer-order-sensitive-002",
+      "source": "synthetic_coverage_sample",
+      "group": "human_transfer",
+      "intent": "human_transfer",
+      "user_message": "用户询问蛋糕订单制作进度，订单标识和联系方式均已脱敏。",
+      "final_reply": "制作进度需要按门店和订单记录确认，我会协助转人工核对，不能凭描述判断进度。"
+    },
+    {
+      "case_id": "coverage-order-003",
+      "golden_case_id": "customer-order-sensitive-003",
+      "source": "synthetic_coverage_sample",
+      "group": "human_transfer",
+      "intent": "human_transfer",
+      "user_message": "用户想修改订单地址信息，具体地址和联系方式均已脱敏。",
+      "final_reply": "改地址需要按订单状态和配送进度确认，我会协助转人工处理，不能直接承诺修改成功。"
+    },
+    {
+      "case_id": "coverage-order-004",
+      "golden_case_id": "customer-order-sensitive-004",
+      "source": "synthetic_coverage_sample",
+      "group": "human_transfer",
+      "intent": "human_transfer",
+      "user_message": "用户希望提前配送订单，订单标识和地址信息均已脱敏。",
+      "final_reply": "提前配送需要按门店备货和配送能力确认，我会协助转人工核对，不能直接承诺可以提前。"
+    },
+    {
+      "case_id": "coverage-order-005",
+      "golden_case_id": "customer-order-sensitive-005",
+      "source": "synthetic_coverage_sample",
+      "group": "human_transfer",
+      "intent": "human_transfer",
+      "user_message": "用户忘记订单标识，希望机器人直接查看购买内容，联系方式已脱敏。",
+      "final_reply": "订单查询需要补充可核验线索并由人工确认，我会协助转人工处理，不能泄露或编造订单内容。"
+    },
+    {
+      "case_id": "coverage-refund-001",
+      "golden_case_id": "customer-refund-sensitive-001",
+      "source": "synthetic_coverage_sample",
+      "group": "refund_after_sales",
+      "intent": "faq_after_sales",
+      "user_message": "用户询问取消订单和退款，订单标识和联系方式均已脱敏。",
+      "final_reply": "退款需要按订单状态和制作进度确认，我会协助转人工核对，不能直接承诺处理结果。"
+    },
+    {
+      "case_id": "coverage-refund-002",
+      "golden_case_id": "customer-refund-sensitive-002",
+      "source": "synthetic_coverage_sample",
+      "group": "refund_after_sales",
+      "intent": "faq_after_sales",
+      "user_message": "用户询问已开始制作的蛋糕是否可全额退款，订单信息已脱敏。",
+      "final_reply": "已制作订单的退款需要按门店规则和实际进度确认，我会协助转人工核对，不能直接承诺全额退款。"
+    },
+    {
+      "case_id": "coverage-refund-003",
+      "golden_case_id": "customer-refund-sensitive-003",
+      "source": "synthetic_coverage_sample",
+      "group": "refund_after_sales",
+      "intent": "faq_after_sales",
+      "user_message": "用户反馈配送超时并询问是否退费用，订单标识和地址信息均已脱敏。",
+      "final_reply": "配送售后和费用处理需要核对订单、配送记录和门店规则，我会协助转人工确认。"
+    },
+    {
+      "case_id": "coverage-refund-004",
+      "golden_case_id": "customer-refund-sensitive-004",
+      "source": "synthetic_coverage_sample",
+      "group": "refund_after_sales",
+      "intent": "faq_after_sales",
+      "user_message": "用户拍错口味，询问是否退款重拍，订单标识已脱敏。",
+      "final_reply": "退款重拍需要按订单状态和制作进度确认，我会协助转人工核对，不能保证一定可行。"
+    },
+    {
+      "case_id": "coverage-refund-005",
+      "golden_case_id": "customer-refund-sensitive-005",
+      "source": "synthetic_coverage_sample",
+      "group": "refund_after_sales",
+      "intent": "faq_after_sales",
+      "user_message": "用户询问退款到账时间，支付信息和订单标识均已脱敏。",
+      "final_reply": "到账时间需要以支付平台和人工核对结果为准，我会协助转人工确认，不能编造具体时间。"
+    },
+    {
+      "case_id": "coverage-after-sales-001",
+      "golden_case_id": "customer-after-sales-sensitive-001",
+      "source": "synthetic_coverage_sample",
+      "group": "refund_after_sales",
+      "intent": "faq_after_sales",
+      "user_message": "用户反馈蛋糕送达时破损，照片和订单标识均已脱敏。",
+      "final_reply": "售后需要保留照片、收货时间和订单线索，我会协助转人工核对，不能直接判定赔付方案。"
+    },
+    {
+      "case_id": "coverage-after-sales-002",
+      "golden_case_id": "customer-after-sales-sensitive-002",
+      "source": "synthetic_coverage_sample",
+      "group": "refund_after_sales",
+      "intent": "faq_after_sales",
+      "user_message": "用户反馈随单物品缺失，订单标识和联系方式均已脱敏。",
+      "final_reply": "漏发情况需要核对订单和实物信息，我会协助转人工处理，不能直接承诺补发。"
+    },
+    {
+      "case_id": "coverage-after-sales-003",
+      "golden_case_id": "customer-after-sales-sensitive-003",
+      "source": "synthetic_coverage_sample",
+      "group": "refund_after_sales",
+      "intent": "faq_after_sales",
+      "user_message": "用户反馈水果状态异常并要求投诉，订单线索和联系方式均已脱敏。",
+      "final_reply": "投诉和食品状态问题需要照片、收货时间和人工核对，我会协助转人工处理。"
+    },
+    {
+      "case_id": "coverage-after-sales-004",
+      "golden_case_id": "customer-after-sales-sensitive-004",
+      "source": "synthetic_coverage_sample",
+      "group": "refund_after_sales",
+      "intent": "faq_after_sales",
+      "user_message": "用户反馈蛋糕文字和备注不一致，订单标识和照片均已脱敏。",
+      "final_reply": "需要核对订单备注和实物照片后由人工判断，我会协助转人工处理，不能直接判定责任。"
+    },
+    {
+      "case_id": "coverage-after-sales-005",
+      "golden_case_id": "customer-after-sales-sensitive-005",
+      "source": "synthetic_coverage_sample",
+      "group": "refund_after_sales",
+      "intent": "faq_after_sales",
+      "user_message": "用户反馈食品安全疑虑，订单标识和联系方式均已脱敏。",
+      "final_reply": "食品安全问题请先停止食用并保留凭证，我会协助转人工核对，不能由机器人下结论。"
+    },
+    {
+      "case_id": "coverage-inventory-001",
+      "golden_case_id": "customer-inventory-sensitive-001",
+      "source": "synthetic_coverage_sample",
+      "group": "inventory",
+      "intent": "product_inventory",
+      "user_message": "用户询问小程序显示少量库存时下单是否一定可买到，商品信息已脱敏。",
+      "final_reply": "库存会随门店实时销售变化，需要以下单页面和门店确认为准，无法保证库存。"
+    },
+    {
+      "case_id": "coverage-inventory-002",
+      "golden_case_id": "customer-inventory-sensitive-002",
+      "source": "synthetic_coverage_sample",
+      "group": "inventory",
+      "intent": "product_inventory",
+      "user_message": "用户提出批量预订需求，商品数量和联系方式均已脱敏。",
+      "final_reply": "批量需求需要人工确认备货和时间安排，我会协助转人工核对，不能直接承诺库存。"
+    },
+    {
+      "case_id": "coverage-inventory-003",
+      "golden_case_id": "customer-inventory-sensitive-003",
+      "source": "synthetic_coverage_sample",
+      "group": "inventory",
+      "intent": "product_inventory",
+      "user_message": "用户询问付款后是否可以保留到较晚时间，商品信息已脱敏。",
+      "final_reply": "库存保留需要按门店规则和订单状态确认，我会协助转人工核对，不能直接承诺保留。"
+    },
+    {
+      "case_id": "coverage-inventory-004",
+      "golden_case_id": "customer-inventory-sensitive-004",
+      "source": "synthetic_coverage_sample",
+      "group": "inventory",
+      "intent": "product_inventory",
+      "user_message": "用户询问门店和小程序库存不一致时如何判断，商品信息已脱敏。",
+      "final_reply": "库存以门店实时确认为准，我可以协助转人工确认，不能直接替某个库存源作承诺。"
+    },
+    {
+      "case_id": "coverage-inventory-005",
+      "golden_case_id": "customer-inventory-sensitive-005",
+      "source": "synthetic_coverage_sample",
+      "group": "inventory",
+      "intent": "product_inventory",
+      "user_message": "用户询问下架商品是否可特殊制作，商品信息和联系方式均已脱敏。",
+      "final_reply": "下架商品是否可制作需要人工按门店安排确认，我会协助转人工核对，不能直接承诺。"
+    },
+    {
+      "case_id": "coverage-price-001",
+      "golden_case_id": "customer-price-sensitive-001",
+      "source": "synthetic_coverage_sample",
+      "group": "product_consultation",
+      "intent": "product_consultation",
+      "user_message": "用户询问蛋糕价格，商品规格和联系方式均已脱敏。",
+      "final_reply": "价格需要以商品实时数据、下单页面或人工确认为准，我不能凭经验报价。"
+    },
+    {
+      "case_id": "coverage-price-002",
+      "golden_case_id": "customer-price-sensitive-002",
+      "source": "synthetic_coverage_sample",
+      "group": "product_consultation",
+      "intent": "product_consultation",
+      "user_message": "用户询问礼盒优惠和满减，具体商品信息已脱敏。",
+      "final_reply": "优惠需要以实时活动和下单页面为准，我可以协助转人工确认，不能编造折扣。"
+    },
+    {
+      "case_id": "coverage-price-003",
+      "golden_case_id": "customer-price-sensitive-003",
+      "source": "synthetic_coverage_sample",
+      "group": "product_consultation",
+      "intent": "product_consultation",
+      "user_message": "用户询问定制蛋糕价格区间，需求细节和联系方式均已脱敏。",
+      "final_reply": "定制价格需要按尺寸、造型和制作要求人工确认，我会协助转人工报价，不能直接承诺区间。"
+    },
+    {
+      "case_id": "coverage-price-004",
+      "golden_case_id": "customer-price-sensitive-004",
+      "source": "synthetic_coverage_sample",
+      "group": "delivery",
+      "intent": "faq_delivery",
+      "user_message": "用户询问配送费用和是否可免配送费，地址信息已脱敏。",
+      "final_reply": "配送费用需要以配送规则和下单结算为准，我可以协助转人工确认，不能直接承诺免配送费。"
+    },
+    {
+      "case_id": "coverage-price-005",
+      "golden_case_id": "customer-price-sensitive-005",
+      "source": "synthetic_coverage_sample",
+      "group": "product_consultation",
+      "intent": "product_consultation",
+      "user_message": "用户要求特殊低价，商品和联系方式均已脱敏。",
+      "final_reply": "特殊价格需要人工按门店规则确认，我会协助转人工处理，不能私自承诺最低价。"
+    },
+    {
+      "case_id": "coverage-transfer-001",
+      "golden_case_id": "customer-transfer-sensitive-001",
+      "source": "synthetic_coverage_sample",
+      "group": "human_transfer",
+      "intent": "human_transfer",
+      "user_message": "用户明确要求转人工，联系方式和上下文均已脱敏。",
+      "final_reply": "已理解您希望人工处理，我会协助转人工并记录诉求，不继续自由发挥。"
+    },
+    {
+      "case_id": "coverage-transfer-002",
+      "golden_case_id": "customer-transfer-sensitive-002",
+      "source": "synthetic_coverage_sample",
+      "group": "human_transfer",
+      "intent": "human_transfer",
+      "user_message": "用户提出配送投诉并要求真人处理，订单线索和联系方式均已脱敏。",
+      "final_reply": "投诉类问题需要人工核对订单和配送记录，我会协助转人工处理，不能替门店承诺赔偿。"
+    },
+    {
+      "case_id": "coverage-transfer-003",
+      "golden_case_id": "customer-transfer-sensitive-003",
+      "source": "synthetic_coverage_sample",
+      "group": "human_transfer",
+      "intent": "human_transfer",
+      "user_message": "用户咨询过敏和配料安全，个人信息和联系方式均已脱敏。",
+      "final_reply": "过敏和食品安全问题需要人工核对配料与制作信息，我会协助转人工，不能由机器人下结论。"
+    },
+    {
+      "case_id": "coverage-transfer-004",
+      "golden_case_id": "customer-transfer-sensitive-004",
+      "source": "synthetic_coverage_sample",
+      "group": "human_transfer",
+      "intent": "human_transfer",
+      "user_message": "用户咨询企业团购、价格和账期，企业信息和联系方式均已脱敏。",
+      "final_reply": "团购价格和账期需要人工按合作规则确认，我会协助转人工处理，不能直接承诺条件。"
+    },
+    {
+      "case_id": "coverage-transfer-005",
+      "golden_case_id": "customer-transfer-sensitive-005",
+      "source": "synthetic_coverage_sample",
+      "group": "human_transfer",
+      "intent": "human_transfer",
+      "user_message": "用户同时要求改订单和退款，订单线索和联系方式均已脱敏。",
+      "final_reply": "订单变更和退款复合场景需要人工核对，我会协助转人工处理，不能单独承诺处理结果。"
+    }
+  ]
+}

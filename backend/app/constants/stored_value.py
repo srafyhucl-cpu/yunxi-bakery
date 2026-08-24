@@ -1,0 +1,8 @@
+"""会员储值余额业务常量。"""
+
+# 单笔充值金额上下限（分）
+MIN_RECHARGE_FEN = 100
+MAX_RECHARGE_FEN = 50_000
+# 列表分页大小
+RECHARGE_LIST_PAGE_SIZE = 50
+BALANCE_LEDGER_PAGE_SIZE = 50

@@ -1,0 +1,233 @@
+name: R4-C Container Evidence
+
+on:
+  push:
+    branches:
+      - "codex/r4c-ci-evidence"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: r4c-container-evidence-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  r4c:
+    name: R4-C Build Smoke Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      PYTHONUTF8: "1"
+      DOCKER_BUILDKIT: "1"
+      COMPOSE_PROJECT_NAME: yunxi-r4c-ci
+      YUNXI_USE_FAKE_EMBEDDING: "1"
+
+    steps:
+      - name: Checkout exact source
+        uses: actions/checkout@v4
+
+      - name: Record exact source
+        run: |
+          set -euo pipefail
+          mkdir -p reports/r4c
+          git rev-parse HEAD > reports/r4c/commit.txt
+          cat VERSION > reports/r4c/version.txt
+          echo "${{ github.sha }}" > reports/r4c/github_sha.txt
+          echo "IMAGE_TAG=yunxi-bakebot:$(cat VERSION)-${GITHUB_SHA}" >> "$GITHUB_ENV"
+          if [ "$(cat reports/r4c/commit.txt)" != "${{ github.sha }}" ]; then
+            echo "::error::github.sha does not match checkout HEAD"
+            exit 1
+          fi
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: web/admin/package-lock.json
+
+      - name: Build admin dist
+        working-directory: web/admin
+        run: |
+          set -euo pipefail
+          npm ci
+          npm run build:production
+
+      - name: Assert admin dist
+        run: |
+          test -f web/admin/dist/index.html
+          test -d web/admin/dist/assets
+
+      - name: Build exact image with Compose
+        run: |
+          set -euo pipefail
+          cat > r4c.override.yml <<EOF
+          services:
+            app:
+              image: ${IMAGE_TAG}
+              container_name: yunxi-r4c-ci-app
+              ports:
+                - "127.0.0.1:17001:7001"
+          EOF
+          start=$(date +%s)
+          docker compose -f docker-compose.yml -f r4c.override.yml \
+            -p "$COMPOSE_PROJECT_NAME" build app
+          end=$(date +%s)
+          echo "$((end - start))" > reports/r4c/build_duration_seconds.txt
+          docker image inspect "$IMAGE_TAG" --format '{{.Id}}' > reports/r4c/image_id.txt
+          docker image inspect "$IMAGE_TAG" --format '{{.Size}}' > reports/r4c/image_size_bytes.txt
+
+      - name: Prepare isolated synthetic data
+        run: |
+          set -euo pipefail
+          mkdir -p data
+          chmod 0777 data
+          docker run --rm \
+            -e DB_PATH=/app/data/bot.db \
+            -e EMBEDDING_INDEX_DIR=/app/data/embeddings \
+            -e YUNXI_USE_FAKE_EMBEDDING=1 \
+            -v "$PWD/data:/app/data" \
+            "$IMAGE_TAG" python scripts/apply_migrations.py \
+              --db-path /app/data/bot.db --apply --allow-create
+          docker run --rm \
+            -e DB_PATH=/app/data/bot.db \
+            -e EMBEDDING_INDEX_DIR=/app/data/embeddings \
+            -e YUNXI_USE_FAKE_EMBEDDING=1 \
+            -v "$PWD/data:/app/data" \
+            "$IMAGE_TAG" python scripts/seed_baseline_knowledge.py \
+              --db-path /app/data/bot.db --apply
+          docker run --rm \
+            -e DB_PATH=/app/data/bot.db \
+            -e EMBEDDING_INDEX_DIR=/app/data/embeddings \
+            -e YUNXI_USE_FAKE_EMBEDDING=1 \
+            -v "$PWD/data:/app/data" \
+            "$IMAGE_TAG" python scripts/rebuild_embeddings.py \
+              --db-path /app/data/bot.db \
+              --index-path /app/data/embeddings --apply
+
+      - name: Create CI env
+        run: |
+          set -euo pipefail
+          printf '%s\n' "${{ vars.R4C_CI_DUMMY_ENV }}" > .env
+
+      - name: Start isolated Compose smoke
+        run: |
+          set -euo pipefail
+          docker compose -f docker-compose.yml -f r4c.override.yml \
+            -p "$COMPOSE_PROJECT_NAME" up -d --no-build --wait
+          docker compose -f docker-compose.yml -f r4c.override.yml \
+            -p "$COMPOSE_PROJECT_NAME" ps > reports/r4c/compose-ps.txt
+
+      - name: Run isolated smoke assertions
+        run: |
+          set -euo pipefail
+          curl -sS -o reports/r4c/health.json -w "%{http_code}" \
+            http://127.0.0.1:17001/health > reports/r4c/health-http-code.txt
+          curl -sS -o reports/r4c/ready.json -w "%{http_code}" \
+            http://127.0.0.1:17001/ready > reports/r4c/ready-http-code.txt
+          test "$(cat reports/r4c/health-http-code.txt)" = "200"
+          test "$(cat reports/r4c/ready-http-code.txt)" = "200"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          version = Path("VERSION").read_text(encoding="utf-8").strip()
+          health = json.loads(Path("reports/r4c/health.json").read_text(encoding="utf-8"))
+          ready = json.loads(Path("reports/r4c/ready.json").read_text(encoding="utf-8"))
+          assert health["status"] == "ok"
+          assert health["version"] == version
+          assert ready["status"] == "ready"
+          assert ready["version"] == version
+          print("health_ready_version=" + version)
+          PY
+          docker compose -f docker-compose.yml -f r4c.override.yml \
+            -p "$COMPOSE_PROJECT_NAME" exec -T app python -c "import os; print('uid=' + str(os.geteuid())); print('db_path=' + os.getenv('DB_PATH', '')); print('embedding_index_dir=' + os.getenv('EMBEDDING_INDEX_DIR', '')); assert os.geteuid() == 10001; assert os.getenv('DB_PATH') == '/app/data/bot.db'; assert os.getenv('EMBEDDING_INDEX_DIR') == '/app/data/embeddings'"
+          docker compose -f docker-compose.yml -f r4c.override.yml \
+            -p "$COMPOSE_PROJECT_NAME" exec -T app python -c "from pathlib import Path; assert Path('/app/web/admin/dist/index.html').exists(); assert Path('/app/web/admin/dist/assets').is_dir(); print('admin_dist=present')"
+
+      - name: Run Trivy image scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.IMAGE_TAG }}
+          format: json
+          output: reports/r4c/trivy.json
+          severity: HIGH,CRITICAL
+          scanners: vuln
+          vuln-type: os,library
+          ignore-unfixed: "false"
+          exit-code: "1"
+          version: v0.73.0
+          timeout: 10m
+
+      - name: Write R4-C summary
+        if: always()
+        run: |
+          set -euo pipefail
+          if command -v trivy >/dev/null 2>&1; then
+            trivy --version > reports/r4c/trivy-version.txt
+          else
+            echo "trivy_unavailable" > reports/r4c/trivy-version.txt
+          fi
+          python - <<'PY'
+          import hashlib
+          import json
+          from collections import Counter
+          from pathlib import Path
+
+          reports = Path("reports/r4c")
+          reports.mkdir(parents=True, exist_ok=True)
+          trivy_path = reports / "trivy.json"
+
+          def read_text(name):
+              path = reports / name
+              return path.read_text(encoding="utf-8").strip() if path.exists() else ""
+
+          summary = {
+              "commit": read_text("commit.txt"),
+              "github_sha": read_text("github_sha.txt"),
+              "version": read_text("version.txt"),
+              "image_id": read_text("image_id.txt"),
+              "image_size_bytes": read_text("image_size_bytes.txt"),
+              "build_duration_seconds": read_text("build_duration_seconds.txt"),
+              "health_http_code": read_text("health-http-code.txt"),
+              "ready_http_code": read_text("ready-http-code.txt"),
+          }
+          trivy_version_file = reports / "trivy-version.txt"
+          if trivy_version_file.exists():
+              summary["trivy_cli"] = trivy_version_file.read_text(encoding="utf-8").strip()
+          if trivy_path.exists():
+              trivy = json.loads(trivy_path.read_text(encoding="utf-8"))
+              counts = Counter()
+              for result in trivy.get("Results", []):
+                  for vuln in result.get("Vulnerabilities", []):
+                      counts[vuln.get("Severity", "UNKNOWN")] += 1
+              summary["trivy_version"] = trivy.get("SchemaVersion")
+              summary["trivy_high_critical_counts"] = dict(counts)
+              summary["trivy_high_critical_total"] = counts.get("HIGH", 0) + counts.get("CRITICAL", 0)
+              summary["trivy_report_sha256"] = hashlib.sha256(
+                  trivy_path.read_bytes()
+              ).hexdigest()
+          (reports / "r4c-summary.json").write_text(
+              json.dumps(summary, ensure_ascii=False, indent=2),
+              encoding="utf-8",
+          )
+          print(json.dumps(summary, ensure_ascii=False, indent=2))
+          PY
+
+      - name: Upload R4-C evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r4c-evidence-${{ github.sha }}
+          path: reports/r4c/
+          retention-days: 30
+
+      - name: Stop isolated Compose smoke
+        if: always()
+        run: |
+          if [ -f r4c.override.yml ]; then
+            docker compose -f docker-compose.yml -f r4c.override.yml \
+              -p "$COMPOSE_PROJECT_NAME" down --remove-orphans
+          fi

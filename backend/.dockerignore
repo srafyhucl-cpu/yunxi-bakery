@@ -1,0 +1,61 @@
+# Python 编译产物与虚拟环境
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+*.egg
+
+# 测试与覆盖率
+.coverage
+htmlcov/
+.pytest_cache/
+coverage.xml
+reports/
+
+# Git 与 IDE
+.git/
+.gitignore
+.gitattributes
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 文档与设计（构建时不需打包）
+docs/
+*.md
+!README.md
+
+# 临时文件
+*.log
+*.tmp
+.tmp-*
+*.pid
+
+# 数据目录（运行时挂载，不打包进镜像）
+data/
+
+# 敏感文件
+.env
+.env.*
+*.pem
+*.key
+
+# 前端依赖不进入镜像；已编译 dist 必须进入生产镜像
+web/admin/node_modules/
+
+# 测试与脚本
+tests/
+scripts/*.sh
+
+# 操作系统杂文件
+.DS_Store
+Thumbs.db
+
+# 大文件
+*.pkl
+*.db

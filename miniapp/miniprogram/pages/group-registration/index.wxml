@@ -1,0 +1,114 @@
+<view class="page-shell" style="{{layoutStyle}}">
+  <view class="page-fixed-safe has-custom-title">
+    <button class="page-nav-back" bindtap="goBack" disabled="{{submitting}}" aria-label="返回">
+      <text class="page-nav-back__icon">‹</text>
+    </button>
+    <view class="page-fixed-safe__title">群内登记</view>
+  </view>
+  <view class="page-pinned page-pinned--empty"></view>
+  <scroll-view class="page-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="page group-registration-page">
+      <view class="registration-hero bakery-panel">
+        <text class="registration-kicker">{{groupName || '芸熙烘焙客户群'}}</text>
+        <text class="registration-title">{{campaignTitle}}</text>
+        <text class="registration-copy">填写后由门店客服确认，取货/配送安排以确认结果为准。</text>
+      </view>
+
+      <session-notice
+        wx:if="{{loginStateText}}"
+        status-text="{{sessionView.statusText}}"
+        badge-text="{{sessionView.badgeText}}"
+        description="{{loginStateText}}"
+        action-text="{{loginActionText}}"
+        icon-text="登"
+        bind:action="goProfile"
+      ></session-notice>
+
+      <view wx:if="{{errorMessage}}" class="registration-error">{{errorMessage}}</view>
+
+      <view wx:if="{{!submitted}}" class="form bakery-panel">
+        <input placeholder="联系人" value="{{customerName}}" data-field="customerName" bindinput="updateField" />
+        <input placeholder="手机号，例：18800000000" type="number" maxlength="11" value="{{customerPhone}}" data-field="customerPhone" bindinput="updateField" />
+        <input placeholder="登记商品，例：草莓奶油蛋糕" value="{{productName}}" data-field="productName" bindinput="updateField" />
+        <input placeholder="数量" type="number" value="{{quantityText}}" data-field="quantityText" bindinput="updateField" />
+
+        <view class="fulfillment-tabs">
+          <button
+            class="fulfillment-tab {{fulfillmentMethod === 'pickup' ? 'is-active' : ''}}"
+            data-method="pickup"
+            bindtap="selectFulfillmentMethod"
+          >
+            到店自提
+          </button>
+          <button
+            class="fulfillment-tab {{fulfillmentMethod === 'delivery' ? 'is-active' : ''}}"
+            data-method="delivery"
+            bindtap="selectFulfillmentMethod"
+          >
+            门店配送
+          </button>
+        </view>
+
+        <view class="time-grid">
+          <picker
+            mode="date"
+            value="{{selectedDateValue}}"
+            start="{{dateStartValue}}"
+            end="{{dateEndValue}}"
+            bindchange="selectDesiredDate"
+          >
+            <view class="time-picker">日期：{{selectedDateValue || '请选择'}}</view>
+          </picker>
+          <picker mode="selector" value="{{selectedHourIndex}}" range="{{hourOptions}}" bindchange="selectDesiredHour">
+            <view class="time-picker">小时：{{hourOptions[selectedHourIndex] || '18'}}</view>
+          </picker>
+          <picker mode="selector" value="{{selectedMinuteIndex}}" range="{{minuteOptions}}" bindchange="selectDesiredMinute">
+            <view class="time-picker">分钟：{{minuteOptions[selectedMinuteIndex] || '00'}}</view>
+          </picker>
+        </view>
+        <view class="time-preview">期望时间：{{desiredTime || '未选择'}}</view>
+
+        <input
+          wx:if="{{fulfillmentMethod === 'delivery'}}"
+          placeholder="配送地址"
+          value="{{address}}"
+          data-field="address"
+          bindinput="updateField"
+        />
+        <textarea placeholder="备注，如生日牌文字、忌口、口味偏好等" value="{{remark}}" data-field="remark" bindinput="updateField" />
+      </view>
+
+      <view wx:if="{{submitted}}" class="success-panel bakery-panel">
+        <text class="success-title">登记已提交</text>
+        <view class="success-row">
+          <text>商品</text>
+          <text>{{submittedRegistration.productName}}</text>
+        </view>
+        <view class="success-row">
+          <text>数量</text>
+          <text>{{submittedRegistration.quantity}}</text>
+        </view>
+        <view class="success-row">
+          <text>期望时间</text>
+          <text>{{submittedRegistration.desiredTime}}</text>
+        </view>
+        <view class="success-row">
+          <text>状态</text>
+          <text>待客服确认</text>
+        </view>
+      </view>
+
+      <button
+        wx:if="{{!submitted}}"
+        class="primary-button submit-button"
+        loading="{{submitting}}"
+        disabled="{{submitting || !canSubmitRegistration}}"
+        bindtap="submitRegistration"
+      >提交登记</button>
+      <view wx:else class="success-actions">
+        <button class="primary-button" bindtap="goChat" disabled="{{submitting}}">联系客服</button>
+        <button class="ghost-button" bindtap="goHome" disabled="{{submitting}}">返回首页</button>
+      </view>
+    </view>
+  </scroll-view>
+</view>

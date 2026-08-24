@@ -1,0 +1,23 @@
+{
+  "skill_name": "yunxi-miniapp-engineering",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "给芸熙自研小程序接商品列表接口，先看看应该改哪些文件和怎么收口",
+      "expected_output": "Reads project Harness entry points, checks api-contract, proposes or implements changes in miniprogram/services and pages, records verification and LOGBOOK needs.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "我们要把下单支付从有赞迁到自研小程序，先补一下设计和规则",
+      "expected_output": "Treats checkout/pay as high-risk, updates or proposes API contract/design/ADR, keeps backend work in YunxiBakeBot, and asks for or records verification evidence requirements.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "现在这个小程序任务做到一半，帮我写个 handoff",
+      "expected_output": "Uses the handoff template with trace_id, workspace state, completed work, unverified items, risks, API contract status, and next steps.",
+      "files": []
+    }
+  ]
+}

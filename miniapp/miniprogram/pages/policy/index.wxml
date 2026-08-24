@@ -1,0 +1,23 @@
+<view class="page-shell" style="{{layoutStyle}}">
+  <view class="page-fixed-safe has-custom-title">
+    <button class="page-nav-back" bindtap="goBack" aria-label="返回">
+      <text class="page-nav-back__icon">‹</text>
+    </button>
+    <view class="page-fixed-safe__title">{{policyTitle}}</view>
+  </view>
+  <view class="page-pinned page-pinned--empty"></view>
+  <scroll-view class="page-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="page policy-page">
+      <view class="policy-header bakery-panel">
+        <text class="policy-title">{{policyTitle}}</text>
+        <text class="policy-subtitle">芸熙烘焙小程序服务说明</text>
+      </view>
+      <view wx:if="{{loading}}" class="policy-card bakery-panel">
+        <text class="policy-content">加载中...</text>
+      </view>
+      <view wx:else class="policy-card bakery-panel">
+        <text class="policy-content">{{policyContent}}</text>
+      </view>
+    </view>
+  </scroll-view>
+</view>

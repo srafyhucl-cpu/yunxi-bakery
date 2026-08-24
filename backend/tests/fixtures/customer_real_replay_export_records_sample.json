@@ -1,0 +1,26 @@
+{
+  "metadata": {
+    "source": "synthetic_export_records_sample",
+    "notes": "本文件只用于测试导出器输入格式，不包含真实客户原文。"
+  },
+  "records": [
+    {
+      "case_id": "support-refund-sample-001",
+      "golden_case_id": "customer-refund-sensitive-001",
+      "source": "synthetic_export_records_sample",
+      "group": "refund_after_sales",
+      "intent": "faq_after_sales",
+      "user_message": "用户询问退款进度，联系方式、订单标识和地址信息均为合成样例。",
+      "final_reply": "退款需要按订单状态和制作进度确认，我先帮您记录诉求并转人工核对，不能直接给出到账承诺。"
+    },
+    {
+      "case_id": "support-inventory-sample-001",
+      "golden_case_id": "customer-inventory-sensitive-001",
+      "source": "synthetic_export_records_sample",
+      "group": "inventory",
+      "intent": "product_inventory",
+      "user_message": "用户询问库存是否一定可买到，商品名和联系方式均为合成样例。",
+      "final_reply": "小程序库存会随门店实时销售变化，建议以下单页面和门店确认为准；如数量紧张我可以协助转人工确认。"
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+# 芸熙烘焙 AI 客服 — 本地开发与生产部署编排
+# 启动：docker-compose up -d
+# 查看日志：docker-compose logs -f
+# 停止：docker-compose down
+
+version: "3.9"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: yunxi-bakebot
+    restart: unless-stopped
+    ports:
+      - "7001:7001"
+    user: "10001:10001"
+    env_file:
+      - .env
+    volumes:
+      # 数据持久化（SQLite 数据库 + 向量索引 + 日志）
+      - ./data:/app/data
+      # 开发模式：挂载代码目录实现热重载
+      # - ./app:/app/app:ro
+    environment:
+      - TZ=Asia/Shanghai
+      # 数据库路径（映射到持久化卷）
+      - DB_PATH=/app/data/bot.db
+      - EMBEDDING_INDEX_DIR=/app/data/embeddings
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://127.0.0.1:7001/ready').raise_for_status()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: "2"
+        reservations:
+          memory: 2G
+          cpus: "1"

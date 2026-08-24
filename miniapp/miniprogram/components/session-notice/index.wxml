@@ -1,0 +1,8 @@
+<view class="session-notice">
+  <view class="session-notice__icon">{{iconText}}</view>
+  <view class="session-notice__copy">
+    <text class="session-notice__title">{{statusText}} · {{badgeText}}</text>
+    <text class="session-notice__desc">{{description}}</text>
+  </view>
+  <button wx:if="{{actionText}}" class="session-notice__button" bindtap="handleAction">{{actionText}}</button>
+</view>

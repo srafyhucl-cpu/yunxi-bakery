@@ -1,0 +1,28 @@
+{
+  "metadata": {
+    "source": "schema_sample",
+    "redaction": "synthetic_safe_template",
+    "contains_sensitive_data": false,
+    "notes": "本文件只用于定义脱敏真实会话 replay 格式，不包含真实客户原文。"
+  },
+  "cases": [
+    {
+      "case_id": "real-sample-refund-001",
+      "golden_case_id": "customer-refund-sensitive-001",
+      "source": "schema_sample",
+      "group": "refund_after_sales",
+      "intent": "faq_after_sales",
+      "user_message": "用户询问订单取消和退款，订单标识、联系信息和位置细节均已脱敏。",
+      "final_reply": "退款需要按订单状态和制作进度确认，我先帮您记录诉求并转人工核对，不能直接给出到账承诺。"
+    },
+    {
+      "case_id": "real-sample-inventory-001",
+      "golden_case_id": "customer-inventory-sensitive-001",
+      "source": "schema_sample",
+      "group": "inventory",
+      "intent": "product_inventory",
+      "user_message": "用户询问小程序库存是否一定可买到，具体商品和联系方式均已脱敏。",
+      "final_reply": "小程序库存会随门店实时销售变化，建议以下单页面和门店确认为准；如数量紧张我可以协助转人工确认。"
+    }
+  ]
+}

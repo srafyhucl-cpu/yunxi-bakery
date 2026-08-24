@@ -1,0 +1,65 @@
+﻿# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+env/
+
+# 测试和覆盖率
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+*.cover
+
+# 数据库
+*.db
+*.sqlite
+*.sqlite3
+
+# 日志
+*.log
+logs/
+
+# 环境变量
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Node.js（小程序）
+node_modules/
+npm-debug.log*
+
+# 微信小程序
+miniapp/miniprogram/node_modules/
+miniapp/miniprogram/.tea/
+
+# 构建产物
+dist/
+build/
+*.egg-info/
+
+# 备份和临时文件
+*.bak
+*.tmp
+_archive*/
+reports/harness/*.md
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# Ruff cache
+.ruff_cache/
+
+# Coverage
+.coverage.*

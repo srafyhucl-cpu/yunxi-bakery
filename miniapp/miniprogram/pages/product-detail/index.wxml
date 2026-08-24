@@ -1,0 +1,76 @@
+<view class="page-shell" style="{{layoutStyle}}">
+  <view class="page-fixed-safe has-custom-title detail-nav glass-panel">
+    <button class="detail-back" bindtap="goBack" aria-label="返回">
+      <text class="detail-back__icon">‹</text>
+    </button>
+    <view class="page-fixed-safe__title">商品详情</view>
+  </view>
+  <view class="page-pinned page-pinned--empty"></view>
+  <scroll-view class="page-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="page detail-page">
+      <view wx:if="{{product}}" class="detail-content fade-in">
+        <view class="detail-hero">
+          <view class="detail-image immersive-image">
+            <image wx:if="{{product.imageUrl}}" class="detail-cover" src="{{product.imageUrl}}" mode="aspectFill" />
+            <text wx:elif="{{product.tags.length > 0}}" class="detail-tag">{{product.tags[0]}}</text>
+          </view>
+          <view wx:if="{{product.tags.length > 0}}" class="detail-tags">
+            <text wx:for="{{product.tags}}" wx:key="*this" wx:for-item="tag" class="detail-chip">{{tag}}</text>
+          </view>
+        </view>
+
+        <view class="detail-main glass-panel">
+          <view class="detail-title-row">
+            <text class="detail-title">{{product.title}}</text>
+            <text class="detail-status">{{product.isActive ? "在售" : "暂不可售"}}</text>
+          </view>
+          <text class="detail-subtitle">{{product.subtitle}}</text>
+          <view class="detail-meta">
+            <text class="detail-price">{{product.priceText}}</text>
+            <text class="detail-sold">{{product.soldText}}</text>
+          </view>
+        </view>
+
+        <view class="detail-card glass-panel">
+          <text class="detail-card-title">商品说明</text>
+          <text class="detail-description">{{product.description}}</text>
+          <view wx:if="{{product.specs.length > 0}}" class="detail-specs">
+            <view wx:for="{{product.specs}}" wx:key="*this" wx:for-item="spec" class="detail-spec">
+              <text class="detail-spec__label">规格</text>
+              <text class="detail-spec__value">{{spec}}</text>
+            </view>
+          </view>
+        </view>
+
+        <view class="detail-card glass-panel">
+          <text class="detail-card-title">购买须知</text>
+          <view class="notice-list">
+            <text wx:for="{{product.notices}}" wx:key="*this" wx:for-item="notice" class="notice-item">{{notice}}</text>
+          </view>
+        </view>
+      </view>
+      <view wx:else class="empty">
+        <text>商品不存在</text>
+      </view>
+    </view>
+  </scroll-view>
+
+  <view class="detail-actions glass-panel">
+    <button
+      class="ghost-button"
+      bindtap="addToCart"
+      loading="{{addingToCart}}"
+      disabled="{{loading || !canPurchase || addingToCart || buyingNow}}"
+    >
+      {{canPurchase ? '加入购物车' : unavailableText}}
+    </button>
+    <button
+      class="primary-button hover-scale"
+      bindtap="buyNow"
+      loading="{{buyingNow}}"
+      disabled="{{loading || !canPurchase || addingToCart || buyingNow}}"
+    >
+      {{canPurchase ? '立即购买' : unavailableText}}
+    </button>
+  </view>
+</view>

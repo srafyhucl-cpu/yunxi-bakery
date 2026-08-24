@@ -1,0 +1,67 @@
+{
+  "pages": [
+    "pages/home/index",
+    "pages/products/index",
+    "pages/product-detail/index",
+    "pages/cart/index",
+    "pages/checkout/index",
+    "pages/policy/index",
+    "pages/address/index",
+    "pages/orders/index",
+    "pages/order-detail/index",
+    "pages/group-registration/index",
+    "pages/chat/index",
+    "pages/profile/index",
+    "pages/points/index",
+    "pages/coupons/index",
+    "pages/recharge/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "芸熙烘焙",
+    "navigationBarBackgroundColor": "#FAF8F5",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#FAF8F5",
+    "backgroundTextStyle": "dark",
+    "navigationStyle": "custom"
+  },
+  "permission": {
+    "scope.userLocation": {
+      "desc": "用于计算到门店距离"
+    }
+  },
+  "requiredPrivateInfos": [
+    "getLocation"
+  ],
+  "tabBar": {
+    "custom": true,
+    "color": "#756D66",
+    "selectedColor": "#6C9A63",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/home/index",
+        "text": "首页"
+      },
+      {
+        "pagePath": "pages/products/index",
+        "text": "全部分类"
+      },
+      {
+        "pagePath": "pages/cart/index",
+        "text": "购物车"
+      },
+      {
+        "pagePath": "pages/chat/index",
+        "text": "客服"
+      },
+      {
+        "pagePath": "pages/profile/index",
+        "text": "会员中心"
+      }
+    ]
+  },
+  "lazyCodeLoading": "requiredComponents",
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

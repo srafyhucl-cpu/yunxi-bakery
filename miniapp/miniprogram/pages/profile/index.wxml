@@ -1,0 +1,144 @@
+<view class="page-shell" style="{{layoutStyle}}">
+  <view class="page-fixed-safe"></view>
+  <view class="page-pinned page-pinned--empty"></view>
+
+  <scroll-view class="page-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="page profile-page">
+      <!-- Session Login Notice (if not logged in) -->
+      <session-notice
+        wx:if="{{loginStateText && !sessionView.loggedIn}}"
+        status-text="{{sessionView.statusText}}"
+        badge-text="{{sessionView.badgeText}}"
+        description="{{loginStateText}}"
+        action-text="{{sessionView.actionText}}"
+        icon-text="我"
+        bind:action="refreshSession"
+      ></session-notice>
+
+      <!-- Premium Profile Header -->
+      <view class="profile-header">
+        <view class="profile-user-info">
+          <!-- Avatar Frame -->
+          <view class="profile-avatar-frame">
+            <view class="profile-avatar">
+              {{sessionView.loggedIn ? (sessionView.name ? sessionView.name[0] : '林') : '👤'}}
+            </view>
+          </view>
+          <!-- Text details -->
+          <view class="profile-meta">
+            <view class="profile-name-row">
+              <text class="profile-name">{{sessionView.loggedIn ? (sessionView.name || '微信用户') : '未登录用户'}}</text>
+              <text wx:if="{{sessionView.loggedIn}}" class="profile-level-badge">VIP 会员</text>
+            </view>
+            <text class="profile-subtext">{{sessionView.loggedIn ? sessionView.statusText : '登录解锁更多会员权益'}}</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- Asset Metrics Bar (芸熙资产) -->
+      <view wx:if="{{sessionView.loggedIn}}" class="metrics-panel glass-panel fade-in">
+        <view class="metrics-header">
+          <text class="metrics-title">芸熙资产</text>
+        </view>
+        <view class="metrics-grid">
+          <view class="metric-col" bindtap="openRecharge">
+            <text class="metric-val">{{assetsLoaded ? (assetBalanceFen != null ? balanceText : '--') : '--'}}</text>
+            <text class="metric-lbl">账户余额</text>
+            <text wx:if="{{rechargeReady}}" class="metric-entry">去充值 ›</text>
+          </view>
+          <view class="metric-col" bindtap="openPoints">
+            <text class="metric-val">{{assetsLoaded ? (assetPoints != null ? assetPoints : '--') : '--'}}</text>
+            <text class="metric-lbl">累积积分</text>
+            <text class="metric-entry">明细 ›</text>
+          </view>
+          <view class="metric-col" bindtap="openCoupons">
+            <text class="metric-val">{{assetsLoaded ? (assetCouponCount != null ? assetCouponCount : '--') : '--'}}<text class="metric-unit">张</text></text>
+            <text class="metric-lbl">可用优惠券</text>
+            <text class="metric-entry">查看 ›</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- Luxury Gold-Green Member Card -->
+      <view wx:if="{{sessionView.loggedIn}}" class="member-card-wrapper fade-in">
+        <view class="luxury-member-card shimmer-sweep">
+          <view class="card-logo-row">
+            <text class="card-brand">YUNXI BAKERY</text>
+            <text class="card-type">PREMIUM CARD</text>
+          </view>
+          <view class="card-main-row">
+            <view class="card-holder-info">
+              <text class="card-holder-level">{{memberProps.levelText || '黄金会员'}}</text>
+              <text class="card-holder-subtitle">{{memberProps.cardSubtitle || '单笔充值 1000 元升级'}}</text>
+            </view>
+            <button
+              class="card-action-btn"
+              bindtap="refreshSession"
+              loading="{{refreshingSession}}"
+              disabled="{{refreshingSession}}"
+            >
+              {{sessionView.actionText}}
+            </button>
+          </view>
+          <view class="card-footer-row">
+            <text class="card-validity">有效期: {{memberProps.cardValidity || '永久有效'}}</text>
+            <text class="card-number">NO. 8888 6666</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- Order Management Panel -->
+      <view class="panel-card glass-panel fade-in">
+        <view class="panel-card__header">
+          <text class="panel-card__title">我的订单</text>
+          <text class="panel-card__all" bindtap="openOrders">查看全部订单 ›</text>
+        </view>
+        <view class="order-navigation-row">
+          <view
+            wx:for="{{orderEntries}}"
+            wx:key="id"
+            wx:for-item="order"
+            class="order-nav-item hover-scale"
+            data-link-type="{{order.linkType}}"
+            data-link-target="{{order.linkTarget}}"
+            bindtap="handleOrderTap"
+          >
+            <!-- Badge Icon -->
+            <view class="order-nav-icon-wrapper">
+              <text class="order-nav-emoji">{{order.emoji}}</text>
+            </view>
+            <text class="order-nav-title">{{order.title}}</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- Service Cell List (我的服务) -->
+      <view class="panel-card glass-panel fade-in">
+        <view class="panel-card__header">
+          <text class="panel-card__title">特色服务</text>
+        </view>
+        <view class="service-list">
+          <view
+            wx:for="{{serviceItems}}"
+            wx:key="id"
+            wx:for-item="service"
+            class="service-cell hover-scale"
+            data-link-type="{{service.linkType}}"
+            data-link-target="{{service.linkTarget}}"
+            bindtap="handleServiceTap"
+          >
+            <view class="service-cell__left">
+              <text class="service-cell__emoji">{{service.emoji}}</text>
+              <text class="service-cell__title">{{service.title}}</text>
+            </view>
+            <view class="service-cell__right">
+              <text wx:if="{{service.subtitle}}" class="service-cell__subtitle">{{service.subtitle}}</text>
+              <text class="service-cell__arrow">›</text>
+            </view>
+          </view>
+        </view>
+      </view>
+
+    </view>
+  </scroll-view>
+</view>

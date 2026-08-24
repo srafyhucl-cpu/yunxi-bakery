@@ -1,0 +1,58 @@
+<view class="page-shell" style="{{layoutStyle}}">
+  <view class="page-fixed-safe has-custom-title">
+    <button class="page-nav-back" bindtap="goBack" aria-label="返回">
+      <text class="page-nav-back__icon">‹</text>
+    </button>
+    <view class="page-fixed-safe__title">我的优惠券</view>
+  </view>
+  <view class="page-pinned page-pinned--empty"></view>
+  <scroll-view class="page-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="page coupons-page">
+      <view wx:if="{{!loggedIn}}" class="empty-panel glass-panel">
+        <text class="empty-title">请先登录</text>
+        <text class="empty-subtitle">登录后查看您的优惠券</text>
+        <button class="primary-btn" bindtap="goLogin">去登录</button>
+      </view>
+      <block wx:else>
+        <view class="coupon-tabs">
+          <view
+            wx:for="{{tabs}}"
+            wx:key="key"
+            class="coupon-tab {{activeTab === item.key ? 'active' : ''}}"
+            data-tab="{{item.key}}"
+            bindtap="switchTab"
+          >
+            <text>{{item.title}}</text>
+            <text class="coupon-tab-count">{{groups[item.key].length}}</text>
+          </view>
+        </view>
+        <view wx:if="{{loading}}" class="empty-panel glass-panel">
+          <text class="empty-title">加载中...</text>
+        </view>
+        <view wx:elif="{{loadFailed}}" class="empty-panel glass-panel">
+          <text class="empty-title">加载失败，请稍后重试</text>
+        </view>
+        <view wx:elif="{{groups[activeTab].length === 0}}" class="empty-panel glass-panel">
+          <text class="empty-title">暂无{{activeTab === 'available' ? '可用' : '相关'}}优惠券</text>
+        </view>
+        <view wx:else class="coupon-list">
+          <view wx:for="{{groups[activeTab]}}" wx:key="couponId" class="coupon-card">
+            <view class="coupon-value">
+              <text class="coupon-value-num">{{item.valueFen / 100}}</text>
+              <text class="coupon-value-unit">元</text>
+            </view>
+            <view class="coupon-info">
+              <text class="coupon-title">{{item.title}}</text>
+              <text wx:if="{{item.thresholdFen > 0}}" class="coupon-threshold">满{{item.thresholdFen / 100}}元可用</text>
+              <text wx:else class="coupon-threshold">无门槛</text>
+              <text class="coupon-valid">{{item.validText}}</text>
+              <text wx:if="{{item.note === '已使用' && item.orderNo}}" class="coupon-order">订单号 {{item.orderNo}}</text>
+              <text wx:if="{{item.note === '已使用' && item.deductedFen > 0}}" class="coupon-order">已抵扣 {{item.deductedText}}</text>
+            </view>
+            <view class="coupon-note">{{item.note}}</view>
+          </view>
+        </view>
+      </block>
+    </view>
+  </scroll-view>
+</view>

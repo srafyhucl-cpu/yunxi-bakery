@@ -1,0 +1,1394 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>芸熙烘焙 Tab 重构原型</title>
+  <style>
+    :root {
+      --bg: #efe5d9;
+      --bg-soft: #f7f0e8;
+      --paper: #fffdf9;
+      --paper-strong: #ffffff;
+      --line: rgba(183, 140, 84, 0.14);
+      --text: #6f4d2f;
+      --text-soft: #9d8468;
+      --gold: #c8a468;
+      --gold-deep: #a97a41;
+      --shadow: 0 24px 60px rgba(127, 89, 44, 0.12);
+      --radius-phone: 34px;
+      --radius-card: 22px;
+      --radius-soft: 18px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at left top, rgba(255, 255, 255, 0.78), transparent 32%),
+        radial-gradient(circle at right bottom, rgba(255, 255, 255, 0.4), transparent 30%),
+        linear-gradient(180deg, #f2e8dc 0%, #ebdfd1 100%);
+    }
+
+    .page {
+      width: min(1760px, calc(100vw - 48px));
+      margin: 0 auto;
+      padding: 40px 0 60px;
+    }
+
+    .hero {
+      margin-bottom: 26px;
+      padding: 0 6px;
+    }
+
+    .eyebrow {
+      color: var(--gold-deep);
+      letter-spacing: 0.24em;
+      font-size: 12px;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 34px;
+      line-height: 1.2;
+      font-weight: 700;
+    }
+
+    .intro {
+      margin: 12px 0 0;
+      max-width: 860px;
+      color: var(--text-soft);
+      line-height: 1.8;
+      font-size: 15px;
+    }
+
+    .section {
+      margin-top: 30px;
+      padding: 26px;
+      border-radius: 30px;
+      background: rgba(255, 253, 249, 0.46);
+      backdrop-filter: blur(4px);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .section h2 {
+      margin: 0;
+      font-size: 24px;
+    }
+
+    .section p {
+      margin: 0;
+      color: var(--text-soft);
+      font-size: 14px;
+    }
+
+    .phones {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 18px;
+      align-items: start;
+    }
+
+    .phone-block {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .phone-label {
+      text-align: center;
+      font-size: 13px;
+      color: var(--text-soft);
+      letter-spacing: 0.1em;
+    }
+
+    .phone {
+      position: relative;
+      min-height: 780px;
+      padding: 18px 14px 16px;
+      border-radius: var(--radius-phone);
+      background: linear-gradient(180deg, #ffffff 0%, #fdf8f1 100%);
+      box-shadow: 0 26px 50px rgba(93, 66, 36, 0.18);
+      overflow: hidden;
+    }
+
+    .notch {
+      width: 132px;
+      height: 28px;
+      margin: -4px auto 12px;
+      border-radius: 0 0 18px 18px;
+      background: #111;
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+
+    .nav-title {
+      font-size: 16px;
+    }
+
+    .nav-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .nav-dot,
+    .nav-ring {
+      width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.72);
+    }
+
+    .wireframe {
+      background: linear-gradient(180deg, #fefbf7 0%, #fbf4ec 100%);
+    }
+
+    .wf-zone {
+      border: 1.5px dashed rgba(160, 128, 88, 0.45);
+      border-radius: 20px;
+      background: rgba(235, 220, 203, 0.24);
+    }
+
+    .wf-chip-row,
+    .wf-tab-row,
+    .wf-card-row,
+    .wf-grid-4,
+    .wf-grid-2,
+    .wf-grid-menu {
+      display: grid;
+      gap: 10px;
+    }
+
+    .wf-chip-row {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      margin-bottom: 14px;
+    }
+
+    .wf-chip,
+    .wf-tab,
+    .wf-box,
+    .wf-card,
+    .wf-line {
+      border-radius: 14px;
+      background: rgba(205, 183, 150, 0.45);
+    }
+
+    .wf-chip {
+      height: 42px;
+    }
+
+    .wf-banner {
+      height: 168px;
+      margin-bottom: 14px;
+    }
+
+    .wf-grid-4 {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      margin-bottom: 14px;
+    }
+
+    .wf-grid-2 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      margin-bottom: 14px;
+    }
+
+    .wf-grid-menu {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      margin-bottom: 14px;
+    }
+
+    .wf-box {
+      height: 82px;
+    }
+
+    .wf-tall {
+      height: 196px;
+    }
+
+    .wf-mid {
+      height: 126px;
+    }
+
+    .wf-card-row {
+      grid-template-columns: 1fr;
+      margin-bottom: 14px;
+    }
+
+    .wf-card {
+      height: 114px;
+    }
+
+    .wf-line {
+      height: 54px;
+      margin-bottom: 10px;
+    }
+
+    .wf-footer {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      padding: 10px 16px 12px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.4), #fff);
+    }
+
+    .wf-tab-row {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+
+    .wf-tab {
+      height: 38px;
+    }
+
+    .hi-fi {
+      background:
+        radial-gradient(circle at 50% -20%, rgba(255,255,255,0.95), transparent 38%),
+        linear-gradient(180deg, #fffdf9 0%, #fbf4ec 100%);
+    }
+
+    .hero-card {
+      position: relative;
+      height: 168px;
+      margin-bottom: 14px;
+      border-radius: var(--radius-card);
+      overflow: hidden;
+      background:
+        linear-gradient(90deg, rgba(88, 56, 36, 0.92) 0%, rgba(125, 91, 65, 0.62) 45%, rgba(241, 225, 210, 0.18) 100%),
+        linear-gradient(135deg, #6f4d2f 0%, #ddc1a4 100%);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-copy {
+      position: absolute;
+      left: 18px;
+      top: 18px;
+      right: 126px;
+      color: #fff6ee;
+    }
+
+    .hero-copy .mini {
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      opacity: 0.9;
+    }
+
+    .hero-copy h3 {
+      margin: 10px 0 8px;
+      font-size: 22px;
+      line-height: 1.1;
+      font-family: Georgia, "Times New Roman", serif;
+      font-weight: 500;
+    }
+
+    .hero-copy p {
+      margin: 0;
+      color: rgba(255, 246, 238, 0.84);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .cake-scene,
+    .baker-scene,
+    .avatar-scene {
+      position: absolute;
+      border-radius: 50%;
+      filter: drop-shadow(0 14px 18px rgba(73, 44, 24, 0.18));
+    }
+
+    .cake-scene {
+      right: 22px;
+      bottom: 16px;
+      width: 110px;
+      height: 110px;
+      background:
+        radial-gradient(circle at 50% 18%, #ffe9ea 0 18%, transparent 19%),
+        radial-gradient(circle at 38% 24%, #fff7f2 0 9%, transparent 10%),
+        radial-gradient(circle at 62% 24%, #f8dada 0 8%, transparent 9%),
+        radial-gradient(circle at 50% 58%, #f7d7db 0 48%, #eec7cd 49% 60%, transparent 61%),
+        linear-gradient(180deg, transparent 0 66%, #ece4df 66% 73%, transparent 74%),
+        radial-gradient(circle at 50% 82%, #fbf5f1 0 60%, #d9cec6 61% 67%, transparent 68%);
+    }
+
+    .baker-hero {
+      position: relative;
+      height: 168px;
+      margin-bottom: 14px;
+      border-radius: var(--radius-card);
+      overflow: hidden;
+      background:
+        linear-gradient(135deg, #c7a17a 0%, #f3e2d0 45%, #8f6346 100%);
+      box-shadow: var(--shadow);
+    }
+
+    .baker-scene {
+      right: 20px;
+      bottom: 10px;
+      width: 182px;
+      height: 128px;
+      border-radius: 26px;
+      background:
+        radial-gradient(circle at 62% 24%, #f7dcc6 0 12%, transparent 13%),
+        radial-gradient(circle at 56% 46%, #f0ceb6 0 17%, transparent 18%),
+        radial-gradient(circle at 54% 90%, #cfab86 0 26%, transparent 27%),
+        linear-gradient(120deg, #fffdf8 0 18%, transparent 19%),
+        linear-gradient(180deg, rgba(255,255,255,0.8) 0 54%, rgba(147,102,73,0.55) 55% 100%);
+    }
+
+    .baker-copy {
+      position: absolute;
+      left: 18px;
+      top: 20px;
+      color: #fffaf6;
+      max-width: 116px;
+    }
+
+    .baker-copy h3 {
+      margin: 0 0 8px;
+      font-size: 18px;
+      line-height: 1.25;
+    }
+
+    .baker-copy p {
+      margin: 0;
+      font-size: 12px;
+      line-height: 1.6;
+      color: rgba(255,250,246,0.84);
+    }
+
+    .icon-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .icon-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 6px 10px;
+      border-radius: 18px;
+      background: var(--paper);
+      box-shadow: 0 12px 24px rgba(128, 90, 46, 0.08);
+      text-align: center;
+    }
+
+    .icon-mark {
+      width: 44px;
+      height: 44px;
+      border-radius: 16px;
+      background: radial-gradient(circle at 30% 25%, #f8e8c6, #c7a168 74%);
+      position: relative;
+    }
+
+    .icon-mark::after {
+      content: "";
+      position: absolute;
+      inset: 12px;
+      border-radius: 10px;
+      border: 2px solid rgba(255, 255, 255, 0.8);
+    }
+
+    .icon-item span {
+      font-size: 12px;
+      line-height: 1.35;
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin: 14px 0 14px;
+      color: var(--gold-deep);
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+    }
+
+    .section-title::before,
+    .section-title::after {
+      content: "";
+      width: 24px;
+      height: 1px;
+      background: rgba(201,165,106,0.65);
+    }
+
+    .masonry,
+    .product-grid,
+    .menu-grid,
+    .order-grid {
+      display: grid;
+      gap: 10px;
+    }
+
+    .masonry,
+    .product-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      margin-bottom: 12px;
+    }
+
+    .product-grid {
+      gap: 12px;
+    }
+
+    .cake-card,
+    .cart-card,
+    .service-card,
+    .menu-card,
+    .status-card {
+      border-radius: 20px;
+      background: var(--paper);
+      box-shadow: 0 16px 30px rgba(128, 90, 46, 0.09);
+      overflow: hidden;
+    }
+
+    .cake-card.tall .photo {
+      height: 154px;
+    }
+
+    .cake-card.short .photo {
+      height: 102px;
+    }
+
+    .product-grid .cake-card .photo {
+      height: 120px;
+    }
+
+    .photo {
+      position: relative;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.76), rgba(255,255,255,0) 28%),
+        linear-gradient(135deg, #f4ddcf 0%, #f9f3ec 58%, #e8dccf 100%);
+    }
+
+    .photo::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      bottom: 16px;
+      width: 74%;
+      height: 18px;
+      transform: translateX(-50%);
+      border-radius: 999px;
+      background: radial-gradient(circle, rgba(154, 116, 76, 0.24), transparent 70%);
+    }
+
+    .photo.cake-pink::after,
+    .photo.cake-cream::after,
+    .photo.cake-choco::after,
+    .photo.cake-yellow::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      bottom: 24px;
+      width: 88px;
+      height: 88px;
+      transform: translateX(-50%);
+      border-radius: 50%;
+    }
+
+    .photo.cake-pink::after {
+      background:
+        radial-gradient(circle at 48% 18%, #fff1ef 0 14%, transparent 15%),
+        radial-gradient(circle at 38% 26%, #f8d9dc 0 10%, transparent 11%),
+        radial-gradient(circle at 62% 25%, #f2c7d1 0 10%, transparent 11%),
+        radial-gradient(circle at 50% 62%, #f4d7dd 0 52%, #ecc6ce 53% 61%, transparent 62%);
+    }
+
+    .photo.cake-cream::after {
+      background:
+        radial-gradient(circle at 38% 26%, #fff8eb 0 12%, transparent 13%),
+        radial-gradient(circle at 60% 24%, #f1dcc0 0 11%, transparent 12%),
+        radial-gradient(circle at 50% 62%, #fff5e4 0 52%, #ecdabc 53% 61%, transparent 62%);
+    }
+
+    .photo.cake-choco::after {
+      background:
+        radial-gradient(circle at 40% 24%, #f5d6c1 0 9%, transparent 10%),
+        radial-gradient(circle at 58% 22%, #d4a382 0 10%, transparent 11%),
+        radial-gradient(circle at 50% 62%, #6e402e 0 52%, #573222 53% 61%, transparent 62%);
+    }
+
+    .photo.cake-yellow::after {
+      background:
+        radial-gradient(circle at 50% 16%, #fffdf5 0 12%, transparent 13%),
+        radial-gradient(circle at 50% 62%, #f1ce76 0 52%, #deb555 53% 61%, transparent 62%);
+    }
+
+    .card-body {
+      padding: 10px 12px 12px;
+    }
+
+    .card-title {
+      font-size: 13px;
+      line-height: 1.45;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .card-sub {
+      font-size: 11px;
+      color: var(--text-soft);
+      line-height: 1.5;
+      margin-bottom: 6px;
+    }
+
+    .price-row,
+    .cart-row,
+    .service-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .price {
+      color: #8a5d30;
+      font-size: 15px;
+      font-weight: 800;
+    }
+
+    .bag-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      background: linear-gradient(180deg, #d9bc89, #bf9759);
+      position: relative;
+      flex: 0 0 auto;
+    }
+
+    .bag-btn::before {
+      content: "";
+      position: absolute;
+      inset: 8px 7px 7px;
+      border: 1.8px solid rgba(255,255,255,0.88);
+      border-top-width: 2px;
+      border-radius: 2px 2px 7px 7px;
+    }
+
+    .bag-btn::after {
+      content: "";
+      position: absolute;
+      left: 9px;
+      right: 9px;
+      top: 6px;
+      height: 5px;
+      border: 1.8px solid rgba(255,255,255,0.88);
+      border-bottom: none;
+      border-radius: 8px 8px 0 0;
+    }
+
+    .chip-row {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .chip {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    .chip .icon-mark {
+      width: 38px;
+      height: 38px;
+      border-radius: 14px;
+    }
+
+    .cart-list {
+      display: grid;
+      gap: 12px;
+      margin-bottom: 84px;
+    }
+
+    .cart-card {
+      display: grid;
+      grid-template-columns: 18px 86px 1fr;
+      gap: 12px;
+      align-items: center;
+      padding: 12px;
+    }
+
+    .check-dot {
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      background: linear-gradient(180deg, #ddc088, #b99154);
+      position: relative;
+    }
+
+    .check-dot::after {
+      content: "";
+      position: absolute;
+      left: 5px;
+      top: 4px;
+      width: 6px;
+      height: 3px;
+      border-left: 2px solid #fff;
+      border-bottom: 2px solid #fff;
+      transform: rotate(-45deg);
+    }
+
+    .cart-thumb {
+      position: relative;
+      height: 86px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, #f3ddd0 0%, #f9f1e7 60%, #eadfd5 100%);
+      overflow: hidden;
+    }
+
+    .cart-thumb::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      bottom: 16px;
+      width: 60px;
+      height: 60px;
+      transform: translateX(-50%);
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 50% 16%, #fff6f0 0 12%, transparent 13%),
+        radial-gradient(circle at 50% 62%, #f2d7db 0 52%, #e7bfc6 53% 61%, transparent 62%);
+    }
+
+    .cart-name {
+      font-size: 13px;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(201,165,106,0.16);
+      color: var(--gold-deep);
+      font-size: 10px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .muted {
+      color: var(--text-soft);
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    .stepper {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      padding: 6px 10px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .cart-footer {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px 16px 14px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.28), #fffdf9 42%);
+      box-shadow: 0 -10px 20px rgba(116, 81, 43, 0.06);
+    }
+
+    .submit-btn {
+      min-width: 104px;
+      padding: 12px 18px;
+      border-radius: 999px;
+      background: linear-gradient(180deg, #d8bb87, #bf9558);
+      color: #fff;
+      text-align: center;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .service-card {
+      display: grid;
+      grid-template-columns: 52px 1fr 18px;
+      gap: 12px;
+      align-items: center;
+      padding: 16px 14px;
+      margin-bottom: 12px;
+    }
+
+    .service-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 18px;
+      background: radial-gradient(circle at 30% 25%, #f9e8c7, #c6a168 74%);
+      position: relative;
+    }
+
+    .service-icon::after {
+      content: "";
+      position: absolute;
+      inset: 14px;
+      border-radius: 8px;
+      border: 2px solid rgba(255,255,255,0.86);
+    }
+
+    .service-name {
+      font-size: 13px;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+
+    .arrow {
+      width: 10px;
+      height: 10px;
+      border-top: 1.8px solid #b9945f;
+      border-right: 1.8px solid #b9945f;
+      transform: rotate(45deg);
+      justify-self: end;
+    }
+
+    .avatar-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      margin: 22px 0 16px;
+    }
+
+    .avatar-scene {
+      position: relative;
+      width: 82px;
+      height: 82px;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 50% 38%, #f5d6c7 0 22%, transparent 23%),
+        radial-gradient(circle at 50% 34%, #3d302a 0 30%, transparent 31%),
+        radial-gradient(circle at 50% 74%, #e2c1a9 0 26%, transparent 27%),
+        linear-gradient(180deg, #d8bb8d 0, #b58f5e 100%);
+      box-shadow: 0 10px 22px rgba(126, 90, 47, 0.18);
+    }
+
+    .user-name {
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .status-panel,
+    .menu-panel {
+      padding: 14px;
+      border-radius: 22px;
+      background: var(--paper);
+      box-shadow: 0 16px 32px rgba(128, 90, 46, 0.1);
+      margin-bottom: 14px;
+    }
+
+    .panel-title {
+      font-size: 14px;
+      font-weight: 800;
+      margin-bottom: 14px;
+    }
+
+    .order-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .status-card {
+      padding: 8px 4px;
+      background: transparent;
+      box-shadow: none;
+      text-align: center;
+    }
+
+    .status-ico {
+      width: 44px;
+      height: 44px;
+      margin: 0 auto 8px;
+      border-radius: 16px;
+      background: radial-gradient(circle at 30% 25%, #f8e7c8, #c8a46a 74%);
+      position: relative;
+    }
+
+    .status-ico::after {
+      content: "";
+      position: absolute;
+      inset: 12px;
+      border-radius: 8px;
+      border: 2px solid rgba(255,255,255,0.86);
+    }
+
+    .status-name {
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .menu-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .menu-card {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 12px;
+      min-height: 54px;
+    }
+
+    .menu-card .icon-mark {
+      width: 34px;
+      height: 34px;
+      border-radius: 12px;
+      flex: 0 0 auto;
+    }
+
+    .menu-card .icon-mark::after {
+      inset: 9px;
+      border-radius: 7px;
+    }
+
+    .menu-name {
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .tabbar {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      padding: 10px 10px 12px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.35), #ffffff 44%);
+      border-top: 1px solid rgba(212, 193, 167, 0.36);
+    }
+
+    .tab-row {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 6px;
+      text-align: center;
+      font-size: 10px;
+      color: #8e7a67;
+    }
+
+    .tab-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      font-weight: 600;
+    }
+
+    .tab-ico {
+      width: 20px;
+      height: 20px;
+      border-radius: 7px;
+      border: 1.6px solid currentColor;
+      opacity: 0.84;
+    }
+
+    .tab-item.active {
+      color: var(--gold);
+    }
+
+    @media (max-width: 1560px) {
+      .phones {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 980px) {
+      .page {
+        width: calc(100vw - 24px);
+        padding: 24px 0 40px;
+      }
+
+      .section {
+        padding: 18px;
+      }
+
+      .phones {
+        grid-template-columns: repeat(1, minmax(0, 1fr));
+      }
+
+      .phone {
+        min-height: 740px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <div class="eyebrow">YUNXI BAKE MINIAPP REDESIGN</div>
+      <h1>芸熙烘焙五大 Tab 页面重构原型</h1>
+      <p class="intro">
+        这份静态原型以参考图 2 为主视觉母版，吸收参考图 1 的柔和留白和阴影细节。
+        上半部分是模块骨架版宫格布局图，下半部分是真实排版图，方便先确认结构，再确认高保真方向。
+      </p>
+    </section>
+
+    <section class="section">
+      <div class="section-header">
+        <div>
+          <h2>宫格布局图</h2>
+          <p>只看模块比例、主次关系和页面结构，不强调真实视觉素材。</p>
+        </div>
+      </div>
+
+      <div class="phones">
+        <div class="phone-block">
+          <div class="phone-label">首页 Home</div>
+          <div class="phone wireframe">
+            <div class="notch"></div>
+            <div class="nav">
+              <div></div>
+              <div class="nav-actions"><div class="nav-dot"></div><div class="nav-ring"></div></div>
+            </div>
+            <div class="wf-zone wf-banner"></div>
+            <div class="wf-grid-4">
+              <div class="wf-box"></div><div class="wf-box"></div><div class="wf-box"></div><div class="wf-box"></div>
+            </div>
+            <div class="wf-line"></div>
+            <div class="wf-grid-2">
+              <div class="wf-box wf-tall"></div>
+              <div>
+                <div class="wf-box wf-mid" style="margin-bottom:10px;"></div>
+                <div class="wf-box wf-mid"></div>
+              </div>
+            </div>
+            <div class="wf-grid-2">
+              <div class="wf-box wf-mid"></div>
+              <div class="wf-box wf-tall"></div>
+            </div>
+            <div class="wf-footer"><div class="wf-tab-row"><div class="wf-tab"></div><div class="wf-tab"></div><div class="wf-tab"></div><div class="wf-tab"></div><div class="wf-tab"></div></div></div>
+          </div>
+        </div>
+
+        <div class="phone-block">
+          <div class="phone-label">商品 Products</div>
+          <div class="phone wireframe">
+            <div class="notch"></div>
+            <div class="nav">
+              <div></div>
+              <div class="nav-actions"><div class="nav-dot"></div><div class="nav-ring"></div></div>
+            </div>
+            <div class="wf-chip-row">
+              <div class="wf-chip"></div><div class="wf-chip"></div><div class="wf-chip"></div><div class="wf-chip"></div><div class="wf-chip"></div>
+            </div>
+            <div class="wf-grid-2">
+              <div class="wf-box wf-tall"></div><div class="wf-box wf-tall"></div>
+            </div>
+            <div class="wf-grid-2">
+              <div class="wf-box wf-tall"></div><div class="wf-box wf-tall"></div>
+            </div>
+            <div class="wf-grid-2">
+              <div class="wf-box wf-tall"></div><div class="wf-box wf-tall"></div>
+            </div>
+            <div class="wf-footer"><div class="wf-tab-row"><div class="wf-tab"></div><div class="wf-tab"></div><div class="wf-tab"></div><div class="wf-tab"></div><div class="wf-tab"></div></div></div>
+          </div>
+        </div>
+
+        <div class="phone-block">
+          <div class="phone-label">购物车 Cart</div>
+          <div class="phone wireframe">
+            <div class="notch"></div>
+            <div class="nav">
+              <div></div>
+              <div class="nav-actions"><div class="nav-dot"></div><div class="nav-ring"></div></div>
+            </div>
+            <div class="wf-card-row">
+              <div class="wf-card"></div><div class="wf-card"></div><div class="wf-card"></div>
+            </div>
+            <div class="wf-footer" style="padding-top:14px;">
+              <div class="wf-line" style="height:62px; margin:0;"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="phone-block">
+          <div class="phone-label">客服 Service</div>
+          <div class="phone wireframe">
+            <div class="notch"></div>
+            <div class="nav">
+              <div></div>
+              <div class="nav-actions"><div class="nav-dot"></div><div class="nav-ring"></div></div>
+            </div>
+            <div class="wf-zone wf-banner"></div>
+            <div class="wf-line" style="height:40px;"></div>
+            <div class="wf-card-row">
+              <div class="wf-card"></div><div class="wf-card"></div><div class="wf-card"></div>
+            </div>
+            <div class="wf-footer"><div class="wf-tab-row"><div class="wf-tab"></div><div class="wf-tab"></div><div class="wf-tab"></div><div class="wf-tab"></div><div class="wf-tab"></div></div></div>
+          </div>
+        </div>
+
+        <div class="phone-block">
+          <div class="phone-label">我的 Profile</div>
+          <div class="phone wireframe">
+            <div class="notch"></div>
+            <div class="nav">
+              <div></div>
+              <div class="nav-actions"><div class="nav-dot"></div><div class="nav-ring"></div></div>
+            </div>
+            <div class="wf-zone" style="height:120px; margin-bottom:14px;"></div>
+            <div class="wf-zone" style="height:132px; margin-bottom:14px;"></div>
+            <div class="wf-grid-menu">
+              <div class="wf-box"></div><div class="wf-box"></div>
+              <div class="wf-box"></div><div class="wf-box"></div>
+              <div class="wf-box"></div><div class="wf-box"></div>
+            </div>
+            <div class="wf-footer"><div class="wf-tab-row"><div class="wf-tab"></div><div class="wf-tab"></div><div class="wf-tab"></div><div class="wf-tab"></div><div class="wf-tab"></div></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-header">
+        <div>
+          <h2>真实排版图</h2>
+          <p>使用静态烘焙风格视觉卡片模拟真实上屏效果，统一五个 Tab 页面的品牌感。</p>
+        </div>
+      </div>
+
+      <div class="phones">
+        <div class="phone-block">
+          <div class="phone-label">首页 Home</div>
+          <div class="phone hi-fi">
+            <div class="notch"></div>
+
+            <div class="hero-card">
+              <div class="hero-copy">
+                <div class="mini">ARTISAN GIFT</div>
+                <h3>匠心与艺术的结晶</h3>
+                <p>每日现制 / 手作奶油 / 柔和甜感 / 礼赠场景</p>
+              </div>
+              <div class="cake-scene"></div>
+            </div>
+
+            <div class="icon-grid">
+              <div class="icon-item"><div class="icon-mark"></div><span>蛋糕礼盒</span></div>
+              <div class="icon-item"><div class="icon-mark"></div><span>下午茶甜点</span></div>
+              <div class="icon-item"><div class="icon-mark"></div><span>每日欧包</span></div>
+              <div class="icon-item"><div class="icon-mark"></div><span>企业订制</span></div>
+            </div>
+
+            <div class="section-title">精选品推荐</div>
+
+            <div class="masonry">
+              <div class="cake-card tall">
+                <div class="photo cake-pink"></div>
+                <div class="card-body">
+                  <div class="card-title">玫瑰荔枝慕斯立方</div>
+                  <div class="price-row"><div class="price">¥138</div></div>
+                </div>
+              </div>
+              <div>
+                <div class="cake-card short" style="margin-bottom:10px;">
+                  <div class="photo cake-choco"></div>
+                  <div class="card-body">
+                    <div class="card-title">巧克力熔岩蛋糕</div>
+                  </div>
+                </div>
+                <div class="cake-card short">
+                  <div class="photo cake-yellow"></div>
+                  <div class="card-body">
+                    <div class="card-title">法式柠檬芝塔</div>
+                  </div>
+                </div>
+              </div>
+              <div class="cake-card short">
+                <div class="photo cake-cream"></div>
+                <div class="card-body">
+                  <div class="card-title">云朵奶霜小蛋糕</div>
+                </div>
+              </div>
+              <div class="cake-card tall">
+                <div class="photo cake-choco"></div>
+                <div class="card-body">
+                  <div class="card-title">生日巧克力礼赞</div>
+                  <div class="price-row"><div class="price">¥168</div></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="tabbar">
+              <div class="tab-row">
+                <div class="tab-item active"><div class="tab-ico"></div><div>首页</div></div>
+                <div class="tab-item"><div class="tab-ico"></div><div>商品</div></div>
+                <div class="tab-item"><div class="tab-ico"></div><div>购物车</div></div>
+                <div class="tab-item"><div class="tab-ico"></div><div>服务</div></div>
+                <div class="tab-item"><div class="tab-ico"></div><div>我的</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="phone-block">
+          <div class="phone-label">商品 Products</div>
+          <div class="phone hi-fi">
+            <div class="notch"></div>
+
+            <div class="chip-row">
+              <div class="chip"><div class="icon-mark"></div><div>蛋糕</div></div>
+              <div class="chip"><div class="icon-mark"></div><div>商品</div></div>
+              <div class="chip"><div class="icon-mark"></div><div>下午茶</div></div>
+              <div class="chip"><div class="icon-mark"></div><div>每日欧包</div></div>
+              <div class="chip"><div class="icon-mark"></div><div>企业订制</div></div>
+            </div>
+
+            <div class="product-grid">
+              <div class="cake-card">
+                <div class="photo cake-pink"></div>
+                <div class="card-body">
+                  <div class="card-title">覆盆子慕斯蛋糕</div>
+                  <div class="price-row"><div class="price">¥138</div><div class="bag-btn"></div></div>
+                </div>
+              </div>
+              <div class="cake-card">
+                <div class="photo cake-cream"></div>
+                <div class="card-body">
+                  <div class="card-title">薰衣草蜂蜜芝士</div>
+                  <div class="price-row"><div class="price">¥145</div><div class="bag-btn"></div></div>
+                </div>
+              </div>
+              <div class="cake-card">
+                <div class="photo cake-pink"></div>
+                <div class="card-body">
+                  <div class="card-title">荔枝玫瑰慕斯</div>
+                  <div class="price-row"><div class="price">¥145</div><div class="bag-btn"></div></div>
+                </div>
+              </div>
+              <div class="cake-card">
+                <div class="photo cake-yellow"></div>
+                <div class="card-body">
+                  <div class="card-title">晨光香草芝心</div>
+                  <div class="price-row"><div class="price">¥145</div><div class="bag-btn"></div></div>
+                </div>
+              </div>
+              <div class="cake-card">
+                <div class="photo cake-choco"></div>
+                <div class="card-body">
+                  <div class="card-title">巧克力歌剧院</div>
+                  <div class="price-row"><div class="price">¥158</div><div class="bag-btn"></div></div>
+                </div>
+              </div>
+              <div class="cake-card">
+                <div class="photo cake-cream"></div>
+                <div class="card-body">
+                  <div class="card-title">奶香云顶小圆塔</div>
+                  <div class="price-row"><div class="price">¥128</div><div class="bag-btn"></div></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="tabbar">
+              <div class="tab-row">
+                <div class="tab-item"><div class="tab-ico"></div><div>首页</div></div>
+                <div class="tab-item active"><div class="tab-ico"></div><div>商品</div></div>
+                <div class="tab-item"><div class="tab-ico"></div><div>购物车</div></div>
+                <div class="tab-item"><div class="tab-ico"></div><div>服务</div></div>
+                <div class="tab-item"><div class="tab-ico"></div><div>我的</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="phone-block">
+          <div class="phone-label">购物车 Cart</div>
+          <div class="phone hi-fi">
+            <div class="notch"></div>
+
+            <div class="cart-list">
+              <div class="cart-card">
+                <div class="check-dot"></div>
+                <div class="cart-thumb"></div>
+                <div>
+                  <div class="cart-name">荔枝玫瑰慕斯</div>
+                  <div class="muted">荔枝玫瑰慕斯</div>
+                  <div class="tag">早餐档</div>
+                  <div class="cart-row">
+                    <div class="price">¥120</div>
+                    <div class="stepper"><span>−</span><span>1</span><span>＋</span></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="cart-card">
+                <div class="check-dot"></div>
+                <div class="cart-thumb" style="background: linear-gradient(135deg, #f7eee1 0%, #faf6ef 60%, #ece2d4 100%);"></div>
+                <div>
+                  <div class="cart-name">薰衣玫瑰慕斯</div>
+                  <div class="muted">荔枝玫瑰慕斯</div>
+                  <div class="tag">单支窗</div>
+                  <div class="cart-row">
+                    <div class="price">¥120</div>
+                    <div class="stepper"><span>−</span><span>1</span><span>＋</span></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="cart-card">
+                <div class="check-dot"></div>
+                <div class="cart-thumb" style="background: linear-gradient(135deg, #6f4d2f 0%, #ecd7c6 100%);"></div>
+                <div>
+                  <div class="cart-name">庄园玫瑰熟慕斯</div>
+                  <div class="muted">蛋糕玫瑰熟慕斯</div>
+                  <div class="tag">拿金帽</div>
+                  <div class="cart-row">
+                    <div class="price">¥130</div>
+                    <div class="stepper"><span>−</span><span>1</span><span>＋</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="cart-footer">
+              <div>
+                <div class="muted">总计金额</div>
+                <div class="price">¥283.00</div>
+              </div>
+              <div class="submit-btn">去结算</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="phone-block">
+          <div class="phone-label">客服 Service</div>
+          <div class="phone hi-fi">
+            <div class="notch"></div>
+
+            <div class="baker-hero">
+              <div class="baker-copy">
+                <h3>手作烘焙顾问</h3>
+                <p>配送、订购、售后都能在这里快速找到答案。</p>
+              </div>
+              <div class="baker-scene"></div>
+            </div>
+
+            <div class="section-title">欢迎询问</div>
+
+            <div class="service-card">
+              <div class="service-icon"></div>
+              <div>
+                <div class="service-name">配送政策</div>
+                <div class="muted">提前询问配送范围、时间与预留空间</div>
+              </div>
+              <div class="arrow"></div>
+            </div>
+
+            <div class="service-card">
+              <div class="service-icon"></div>
+              <div>
+                <div class="service-name">订购流程</div>
+                <div class="muted">在线上联系我们，确认档期与蛋糕细节</div>
+              </div>
+              <div class="arrow"></div>
+            </div>
+
+            <div class="service-card">
+              <div class="service-icon"></div>
+              <div>
+                <div class="service-name">售后服务</div>
+                <div class="muted">商品问题、临时调整与售后建议统一入口</div>
+              </div>
+              <div class="arrow"></div>
+            </div>
+
+            <div class="tabbar">
+              <div class="tab-row">
+                <div class="tab-item"><div class="tab-ico"></div><div>首页</div></div>
+                <div class="tab-item"><div class="tab-ico"></div><div>商品</div></div>
+                <div class="tab-item"><div class="tab-ico"></div><div>购物车</div></div>
+                <div class="tab-item active"><div class="tab-ico"></div><div>服务</div></div>
+                <div class="tab-item"><div class="tab-ico"></div><div>我的</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="phone-block">
+          <div class="phone-label">我的 Profile</div>
+          <div class="phone hi-fi">
+            <div class="notch"></div>
+
+            <div class="avatar-wrap">
+              <div class="avatar-scene"></div>
+              <div class="user-name">林夏</div>
+            </div>
+
+            <div class="status-panel">
+              <div class="panel-title">订单管理</div>
+              <div class="order-grid">
+                <div class="status-card"><div class="status-ico"></div><div class="status-name">待支付</div></div>
+                <div class="status-card"><div class="status-ico"></div><div class="status-name">制作中</div></div>
+                <div class="status-card"><div class="status-ico"></div><div class="status-name">待配送</div></div>
+                <div class="status-card"><div class="status-ico"></div><div class="status-name">售后/退款</div></div>
+              </div>
+            </div>
+
+            <div class="menu-panel">
+              <div class="menu-grid">
+                <div class="menu-card"><div class="icon-mark"></div><div class="menu-name">收货地址</div></div>
+                <div class="menu-card"><div class="icon-mark"></div><div class="menu-name">我的优惠券</div></div>
+                <div class="menu-card"><div class="icon-mark"></div><div class="menu-name">礼品卡管理</div></div>
+                <div class="menu-card"><div class="icon-mark"></div><div class="menu-name">礼品卡管理</div></div>
+                <div class="menu-card"><div class="icon-mark"></div><div class="menu-name">我的收藏</div></div>
+                <div class="menu-card"><div class="icon-mark"></div><div class="menu-name">我的收藏</div></div>
+                <div class="menu-card"><div class="icon-mark"></div><div class="menu-name">账号设置</div></div>
+                <div class="menu-card"><div class="icon-mark"></div><div class="menu-name">联系我们</div></div>
+              </div>
+            </div>
+
+            <div class="tabbar">
+              <div class="tab-row">
+                <div class="tab-item"><div class="tab-ico"></div><div>首页</div></div>
+                <div class="tab-item"><div class="tab-ico"></div><div>商品</div></div>
+                <div class="tab-item"><div class="tab-ico"></div><div>购物车</div></div>
+                <div class="tab-item"><div class="tab-ico"></div><div>服务</div></div>
+                <div class="tab-item active"><div class="tab-ico"></div><div>我的</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

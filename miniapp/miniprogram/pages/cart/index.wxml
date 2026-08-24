@@ -1,0 +1,69 @@
+<view class="page-shell" style="{{layoutStyle}}">
+  <view class="page-fixed-safe"></view>
+  <view class="page-pinned page-pinned--empty"></view>
+  <scroll-view class="page-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="page cart-page">
+      <view wx:if="{{items.length === 0}}" class="empty">
+        <view class="empty-icon">🛒</view>
+        <text class="empty-title">购物车空空的</text>
+        <text class="muted">还没有选购商品哦，快去挑挑吧</text>
+        <button class="primary-button empty-action" bindtap="goShopping">去选购</button>
+      </view>
+      
+      <view wx:else class="cart-list">
+        <view wx:for="{{items}}" wx:key="productId" class="cart-item glass-panel hover-scale stagger-fade-in" style="animation-delay: {{index * 0.05}}s">
+          <view class="cart-check">✓</view>
+          <view class="cart-image bakery-photo {{item.imageClass}}">
+            <image wx:if="{{item.imageUrl}}" class="cart-cover" src="{{item.imageUrl}}" mode="aspectFill" />
+          </view>
+          <view class="cart-info">
+            <view class="cart-info__header">
+              <text class="cart-title">{{item.title}}</text>
+              <text class="tag">现做</text>
+            </view>
+            <view class="cart-info__footer">
+              <text class="cart-price">{{item.priceText}}</text>
+              <view class="cart-stepper">
+                <view class="stepper-btn stepper-btn--minus" data-id="{{item.productId}}" bindtap="decreaseQty">
+                  {{item.quantity === 1 ? '✕' : '-'}}
+                </view>
+                <text class="stepper-val">{{item.quantity}}</text>
+                <view class="stepper-btn stepper-btn--plus" data-id="{{item.productId}}" bindtap="increaseQty">+</view>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <view class="bakery-section-heading">推荐商品</view>
+      <view class="recommend-grid">
+        <view
+          wx:for="{{recommendedProducts}}"
+          wx:key="id"
+          class="recommend-card glass-panel hover-scale stagger-fade-in"
+          style="animation-delay: {{(index + items.length) * 0.05}}s"
+          data-id="{{item.id}}"
+          bindtap="openProduct"
+        >
+          <view class="recommend-image bakery-photo {{item.imageClass}}">
+            <image wx:if="{{item.imageUrl}}" class="cart-cover" src="{{item.imageUrl}}" mode="aspectFill" />
+          </view>
+          <text class="recommend-name">{{item.title}}</text>
+          <text class="recommend-sold">{{item.soldText}}</text>
+          <view class="recommend-bag"></view>
+          <text class="cart-price">{{item.priceText}}</text>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+  
+  <view class="cart-footer">
+    <view>
+      <text class="muted">合计金额</text>
+      <text class="cart-total">{{totalText}}</text>
+    </view>
+    <button class="primary-button" bindtap="checkout">
+      {{hasItems ? '去结算' : '先去选购'}}
+    </button>
+  </view>
+</view>

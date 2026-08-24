@@ -1,0 +1,16 @@
+export const BAKERY_THEME = {
+  pageBackground: "#f6efe7",
+  pageSurface: "#fffdf9",
+  pageSurfaceAlt: "#fbf5ee",
+  textPrimary: "#6f4d2f",
+  textSecondary: "#a08973",
+  textMuted: "#b8a28c",
+  accent: "#c9a56a",
+  accentDeep: "#a97a41",
+  accentSoft: "rgba(201,165,106,0.16)",
+  border: "rgba(183,140,84,0.14)",
+  shadow: "0 20rpx 60rpx rgba(133, 96, 57, 0.10)",
+  radiusLg: "28rpx",
+  radiusMd: "22rpx",
+  radiusSm: "18rpx",
+} as const;

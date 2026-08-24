@@ -1,0 +1,106 @@
+<view class="page-shell chat-page" style="{{layoutStyle}}">
+  <view class="page-fixed-safe"></view>
+  <view class="page-pinned page-pinned--empty"></view>
+
+  <scroll-view class="message-list" scroll-y enhanced show-scrollbar="{{false}}" scroll-into-view="{{lastMessageId}}" scroll-with-animation="{{true}}">
+    <view class="message-body">
+      <!-- Loading & Error states -->
+      <view wx:if="{{loading}}" class="loading-text">{{copy.loading}}</view>
+      <view wx:if="{{errorMessage}}" class="error-text">{{errorMessage}}</view>
+
+      <view wx:if="{{!canUseChat}}" class="empty-login">
+        <view class="empty-login__icon">💬</view>
+        <text class="empty-login__title">客服连接已断开</text>
+        <text class="muted">请在个人中心登录后与客服通话</text>
+        <button class="primary-button empty-login__action" bindtap="goProfile">去登录</button>
+      </view>
+
+      <!-- Chat Messages with Avatar & Bubble -->
+      <block wx:else>
+        <view
+          wx:for="{{messages}}"
+          wx:key="id"
+          id="msg-{{item.id}}"
+          class="message-row {{item.role}}"
+        >
+          <!-- Assistant Avatar (Left side) -->
+          <view wx:if="{{item.role === 'assistant'}}" class="message-avatar assistant-avatar">👩‍🍳</view>
+
+          <!-- Message Bubble -->
+          <view class="message-bubble {{item.role}}">
+            <text class="message-content">{{item.content}}</text>
+            <text wx:if="{{item.timeText}}" class="message-time">{{item.timeText}}</text>
+          </view>
+
+          <!-- User Avatar (Right side) -->
+          <view wx:if="{{item.role === 'user'}}" class="message-avatar user-avatar">
+            {{sessionView.loggedIn ? (sessionView.name ? sessionView.name[0] : '林') : '我'}}
+          </view>
+        </view>
+
+        <!-- Dynamic Typing/Thinking Indicator (WeChat style) -->
+        <view
+          wx:if="{{isAssistantTyping}}"
+          id="typing"
+          class="message-row assistant typing-row"
+        >
+          <view class="message-avatar assistant-avatar">👩‍🍳</view>
+          <view class="message-bubble assistant typing-bubble">
+            <view class="typing-indicator">
+              <view class="typing-dot"></view>
+              <view class="typing-dot"></view>
+              <view class="typing-dot"></view>
+            </view>
+          </view>
+        </view>
+      </block>
+    </view>
+  </scroll-view>
+
+  <!-- Composer & Quick Questions panel at bottom -->
+  <view wx:if="{{canUseChat}}" class="chat-bottom-bar">
+    <!-- Quick Questions Horizontal Scroll -->
+    <scroll-view class="quick-questions-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+      <view class="quick-questions-wrapper">
+        <view
+          class="quick-question-pill"
+          data-content="想了解配送范围、配送费用和可配送时间"
+          bindtap="sendQuickQuestion"
+        >配送政策 🚚</view>
+        <view
+          class="quick-question-pill"
+          data-content="想了解蛋糕订购流程和需要提前多久预订"
+          bindtap="sendQuickQuestion"
+        >订购流程 🎂</view>
+        <view
+          class="quick-question-pill"
+          data-content="想咨询售后服务、临时调整或订单问题"
+          bindtap="sendQuickQuestion"
+        >售后服务 ☎️</view>
+        <view
+          class="quick-question-pill"
+          data-content="门店的营业时间和具体地址在哪里"
+          bindtap="sendQuickQuestion"
+        >营业地址 📍</view>
+      </view>
+    </scroll-view>
+
+    <!-- Chat input area -->
+    <view class="composer">
+      <input
+        placeholder="{{copy.inputPlaceholder}}"
+        value="{{inputValue}}"
+        bindinput="updateInput"
+        confirm-type="send"
+        bindconfirm="sendMessage"
+        placeholder-class="composer-placeholder"
+      />
+      <button
+        class="send-btn {{canSendMessage && !sending ? 'is-active' : ''}}"
+        loading="{{sending}}"
+        disabled="{{sending || !canSendMessage}}"
+        bindtap="sendMessage"
+      >发送</button>
+    </view>
+  </view>
+</view>

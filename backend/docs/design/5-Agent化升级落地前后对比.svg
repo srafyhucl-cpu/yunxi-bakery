@@ -1,0 +1,174 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1160" viewBox="0 0 1800 1160">
+  <defs>
+    <style>
+      .bg { fill: #f7f8fb; }
+      .panel { fill: #ffffff; stroke: #d6dbe6; stroke-width: 2; rx: 18; }
+      .before { stroke: #c95d4c; }
+      .after { stroke: #2c7a62; }
+      .title { font: 700 34px "Microsoft YaHei", "PingFang SC", Arial, sans-serif; fill: #172033; }
+      .subtitle { font: 500 18px "Microsoft YaHei", "PingFang SC", Arial, sans-serif; fill: #5a6375; }
+      .section { font: 700 22px "Microsoft YaHei", "PingFang SC", Arial, sans-serif; fill: #172033; }
+      .text { font: 500 18px "Microsoft YaHei", "PingFang SC", Arial, sans-serif; fill: #233047; }
+      .small { font: 500 15px "Microsoft YaHei", "PingFang SC", Arial, sans-serif; fill: #5a6375; }
+      .tiny { font: 500 13px "Microsoft YaHei", "PingFang SC", Arial, sans-serif; fill: #667085; }
+      .box { fill: #f9fbff; stroke: #cbd5e1; stroke-width: 1.5; rx: 12; }
+      .hot { fill: #fff7ed; stroke: #f59e0b; }
+      .cold { fill: #edf7ff; stroke: #4f8fcf; }
+      .green { fill: #edf8f3; stroke: #2c7a62; }
+      .red { fill: #fff1ee; stroke: #c95d4c; }
+      .gray { fill: #f2f4f7; stroke: #b8c0cc; }
+      .badge-before { fill: #c95d4c; }
+      .badge-after { fill: #2c7a62; }
+      .badge-a { fill: #2563eb; }
+      .badge-b { fill: #7c3aed; }
+      .badge-text { font: 700 14px "Microsoft YaHei", "PingFang SC", Arial, sans-serif; fill: #fff; }
+      .arrow { stroke: #7a8496; stroke-width: 2.5; fill: none; marker-end: url(#arrow); }
+      .arrow-hot { stroke: #e58a00; stroke-width: 2.5; fill: none; marker-end: url(#arrowHot); }
+      .arrow-cold { stroke: #3578b8; stroke-width: 2.5; fill: none; marker-end: url(#arrowCold); }
+      .divider { stroke: #c8d0dd; stroke-width: 2; stroke-dasharray: 8 8; }
+    </style>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#7a8496"/>
+    </marker>
+    <marker id="arrowHot" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#e58a00"/>
+    </marker>
+    <marker id="arrowCold" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#3578b8"/>
+    </marker>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1800" height="1160"/>
+
+  <text class="title" x="90" y="66">Bakery Commerce Platform：Agent 化升级落地前 / 落地后流程差异</text>
+  <text class="subtitle" x="90" y="100">核心变化：热路径只加确定性低成本能力；昂贵、多 Agent、非确定性步骤全部下沉到离线冷路径。</text>
+
+  <rect class="panel before" x="70" y="135" width="805" height="970"/>
+  <rect class="panel after" x="925" y="135" width="805" height="970"/>
+
+  <circle class="badge-before" cx="118" cy="180" r="24"/>
+  <text class="badge-text" x="104" y="185">前</text>
+  <text class="title" x="155" y="190">落地前：实时链路单线运行</text>
+  <text class="subtitle" x="155" y="222">检索半成品混合；无长期记忆；无规则校验门；无离线多 Agent。</text>
+
+  <circle class="badge-after" cx="973" cy="180" r="24"/>
+  <text class="badge-text" x="959" y="185">后</text>
+  <text class="title" x="1010" y="190">落地后：热 / 冷路径分离</text>
+  <text class="subtitle" x="1010" y="222">A0/A1/P0/P1/P2/P3 已形成可灰度、可回滚的工程闭环。</text>
+
+  <!-- Before hot path -->
+  <text class="section" x="105" y="285">实时热路径</text>
+  <rect class="box hot" x="105" y="310" width="690" height="72"/>
+  <text class="text" x="130" y="341">Webhook / 企微 / 有赞消息</text>
+  <text class="small" x="130" y="365">进入队列后由 ChatService 处理</text>
+
+  <path class="arrow-hot" d="M450 382 V415"/>
+  <rect class="box hot" x="105" y="415" width="690" height="72"/>
+  <text class="text" x="130" y="446">去重、建会话、落库用户消息</text>
+  <text class="small" x="130" y="470">只维护当前会话，不读取跨会话顾客画像</text>
+
+  <path class="arrow-hot" d="M450 487 V520"/>
+  <rect class="box hot" x="105" y="520" width="690" height="120"/>
+  <text class="text" x="130" y="552">RAG 检索：向量 + LIKE 兜底</text>
+  <text class="small" x="130" y="580">LIKE 用整句 query 匹配，长尾和专有名词召回弱</text>
+  <text class="small" x="130" y="606">融合方式是“向量结果在前 + 关键词结果垫后”</text>
+  <text class="small" x="130" y="632">没有 BM25、没有 RRF、没有可量化评测闭环</text>
+
+  <path class="arrow-hot" d="M450 640 V673"/>
+  <rect class="box hot" x="105" y="673" width="690" height="92"/>
+  <text class="text" x="130" y="706">单 Agent + 有界 tool loop</text>
+  <text class="small" x="130" y="732">依赖 System Prompt 和工具返回控制幻觉</text>
+  <text class="small" x="130" y="754">无回复投递前确定性校验门</text>
+
+  <path class="arrow-hot" d="M450 765 V798"/>
+  <rect class="box red" x="105" y="798" width="690" height="105"/>
+  <text class="text" x="130" y="832">回复投递与落库</text>
+  <text class="small" x="130" y="858">价格、商品名、配送承诺、食品安全风险主要靠模型自觉</text>
+  <text class="small" x="130" y="884">会话质量与知识缺口缺少自动复盘</text>
+
+  <text class="section" x="105" y="960">落地前的缺口</text>
+  <rect class="box gray" x="105" y="980" width="690" height="70"/>
+  <text class="small" x="130" y="1010">没有 customer_profiles / conversation_reviews / knowledge_gaps 冷路径资产</text>
+  <text class="small" x="130" y="1036">问题靠人工事后发现，无法自动沉淀为记忆或知识补全建议</text>
+
+  <!-- After hot path -->
+  <text class="section" x="960" y="285">实时热路径：增强但不新增 LLM 往返</text>
+  <rect class="box hot" x="960" y="310" width="690" height="64"/>
+  <text class="text" x="985" y="340">Webhook → 队列 → ChatService.handle_message</text>
+  <text class="small" x="985" y="362">幂等、会话、消息落库保持原有实时边界</text>
+
+  <path class="arrow-hot" d="M1305 374 V404"/>
+  <rect class="box green" x="960" y="404" width="690" height="86"/>
+  <circle class="badge-b" cx="984" cy="432" r="16"/><text class="badge-text" x="973" y="437">P1</text>
+  <text class="text" x="1010" y="432">只读顾客画像注入</text>
+  <text class="small" x="1010" y="458">按 (channel, user_id) 读取 customer_profiles</text>
+  <text class="small" x="1010" y="480">失败时空档案降级，不阻断回复</text>
+
+  <path class="arrow-hot" d="M1305 490 V520"/>
+  <rect class="box green" x="960" y="520" width="690" height="118"/>
+  <circle class="badge-a" cx="984" cy="548" r="16"/><text class="badge-text" x="973" y="553">A1</text>
+  <text class="text" x="1010" y="548">混合检索升级：向量 + BM25 + RRF</text>
+  <text class="small" x="1010" y="576">jieba 分词 + BM25 补关键词/长尾召回</text>
+  <text class="small" x="1010" y="602">RRF 用排名融合两路结果，替代纯拼接去重</text>
+  <text class="small" x="1010" y="628">A0 评测脚本用 Recall@K / MRR 量化收益</text>
+
+  <path class="arrow-hot" d="M1305 638 V668"/>
+  <rect class="box hot" x="960" y="668" width="690" height="74"/>
+  <text class="text" x="985" y="700">单 Agent + 有界 tool loop 保持不变</text>
+  <text class="small" x="985" y="724">没有把 planner / 多 Agent 放进顾客等待链路</text>
+
+  <path class="arrow-hot" d="M1305 742 V772"/>
+  <rect class="box green" x="960" y="772" width="690" height="98"/>
+  <circle class="badge-b" cx="984" cy="800" r="16"/><text class="badge-text" x="973" y="805">P1</text>
+  <text class="text" x="1010" y="800">确定性回复校验门</text>
+  <text class="small" x="1010" y="826">商品白名单、价格来源、配送承诺、食品安全规则</text>
+  <text class="small" x="1010" y="852">命中后改写 / 转人工 / 埋点，不调用 LLM</text>
+
+  <!-- After cold path -->
+  <text class="section" x="960" y="927">离线冷路径：多 Agent 合法区</text>
+  <rect class="box cold" x="960" y="950" width="690" height="66"/>
+  <circle class="badge-b" cx="984" cy="978" r="16"/><text class="badge-text" x="973" y="983">P2</text>
+  <text class="text" x="1010" y="978">OfflineReviewScheduler</text>
+  <text class="small" x="1010" y="1000">固定间隔触发；失败隔离；默认开关关闭</text>
+
+  <path class="arrow-cold" d="M1305 1016 V1040"/>
+  <rect class="box cold" x="960" y="1040" width="200" height="70"/>
+  <text class="text" x="985" y="1068">Agent① 质检</text>
+  <text class="tiny" x="985" y="1092">→ conversation_reviews</text>
+
+  <rect class="box cold" x="1205" y="1040" width="205" height="70"/>
+  <circle class="badge-b" cx="1228" cy="1062" r="14"/><text class="badge-text" x="1218" y="1067">P3</text>
+  <text class="text" x="1250" y="1068">Agent② 缺口</text>
+  <text class="tiny" x="1250" y="1092">→ knowledge_gaps</text>
+
+  <rect class="box cold" x="1455" y="1040" width="195" height="70"/>
+  <circle class="badge-b" cx="1478" cy="1062" r="14"/><text class="badge-text" x="1468" y="1067">P3</text>
+  <text class="text" x="1500" y="1068">Agent③ 记忆</text>
+  <text class="tiny" x="1500" y="1092">→ customer_profiles</text>
+
+  <path class="arrow-cold" d="M1160 1075 H1200"/>
+  <path class="arrow-cold" d="M1410 1075 H1450"/>
+
+  <!-- Center comparison bullets -->
+  <line class="divider" x1="900" y1="145" x2="900" y2="1105"/>
+  <rect class="box gray" x="690" y="250" width="220" height="112"/>
+  <text class="section" x="715" y="282">关键差异</text>
+  <text class="tiny" x="715" y="312">热路径：不加 LLM 往返</text>
+  <text class="tiny" x="715" y="336">冷路径：允许慢和多 Agent</text>
+
+  <rect class="box gray" x="690" y="430" width="220" height="156"/>
+  <text class="section" x="715" y="462">数据资产</text>
+  <text class="tiny" x="715" y="492">P0 新增三表</text>
+  <text class="tiny" x="715" y="516">customer_profiles</text>
+  <text class="tiny" x="715" y="540">conversation_reviews</text>
+  <text class="tiny" x="715" y="564">knowledge_gaps</text>
+
+  <rect class="box gray" x="690" y="650" width="220" height="160"/>
+  <text class="section" x="715" y="682">治理边界</text>
+  <text class="tiny" x="715" y="712">知识缺口不自动进知识库</text>
+  <text class="tiny" x="715" y="736">过敏只提醒核对</text>
+  <text class="tiny" x="715" y="760">失败不影响实时回复</text>
+  <text class="tiny" x="715" y="784">所有能力可开关灰度</text>
+
+  <text class="subtitle" x="90" y="1132">产物说明：本图概括 docs/design/5-Agent化升级架构设计.md 从设计到 A0/A1/P0/P1/P2/P3 落地后的架构差异。</text>
+</svg>

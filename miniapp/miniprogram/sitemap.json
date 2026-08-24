@@ -1,0 +1,10 @@
+{
+  "desc": "Yunxi Bake MiniApp sitemap",
+  "rules": [
+    {
+      "action": "allow",
+      "page": "*"
+    }
+  ]
+}
+

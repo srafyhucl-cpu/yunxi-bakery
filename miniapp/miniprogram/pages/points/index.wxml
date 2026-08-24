@@ -1,0 +1,45 @@
+<view class="page-shell" style="{{layoutStyle}}">
+  <view class="page-fixed-safe has-custom-title">
+    <button class="page-nav-back" bindtap="goBack" aria-label="返回">
+      <text class="page-nav-back__icon">‹</text>
+    </button>
+    <view class="page-fixed-safe__title">积分明细</view>
+  </view>
+  <view class="page-pinned page-pinned--empty"></view>
+  <scroll-view class="page-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="page points-page">
+      <view wx:if="{{!loggedIn}}" class="empty-panel glass-panel">
+        <text class="empty-title">请先登录</text>
+        <button class="primary-btn" bindtap="goLogin">去登录</button>
+      </view>
+      <block wx:else>
+        <view class="balance-panel glass-panel fade-in">
+          <text class="balance-label">当前积分</text>
+          <text class="balance-value">{{pointsBalance != null ? pointsBalance : '--'}}</text>
+        </view>
+        <view wx:if="{{loading}}" class="empty-panel glass-panel">
+          <text class="empty-title">加载中...</text>
+        </view>
+        <view wx:elif="{{loadFailed}}" class="empty-panel glass-panel">
+          <text class="empty-title">加载失败，请稍后重试</text>
+        </view>
+        <view wx:elif="{{rows.length === 0}}" class="empty-panel glass-panel">
+          <text class="empty-title">暂无积分记录</text>
+          <text class="empty-subtitle">下单消费可获得积分奖励</text>
+        </view>
+        <view wx:else class="ledger-list">
+          <view wx:for="{{rows}}" wx:key="index" class="ledger-row">
+            <view class="ledger-main">
+              <text class="ledger-label">{{item.label}}</text>
+              <text class="ledger-time">{{item.displayTime}}</text>
+            </view>
+            <view class="ledger-amount {{item.amount >= 0 ? 'positive' : 'negative'}}">
+              {{item.amount >= 0 ? '+' : ''}}{{item.amount}}
+            </view>
+            <view class="ledger-total">余额 {{item.total}}</view>
+          </view>
+        </view>
+      </block>
+    </view>
+  </scroll-view>
+</view>

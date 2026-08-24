@@ -1,0 +1,328 @@
+.chat-page {
+  background: #f5f6f4;
+}
+
+.message-list {
+  position: fixed;
+  top: var(--yunxi-custom-nav-space);
+  left: 0;
+  right: 0;
+  bottom: calc(var(--yunxi-tabbar-occupied-height) + 174rpx);
+  padding: 0;
+  overflow: hidden;
+}
+
+.message-body {
+  display: flex;
+  flex-direction: column;
+  padding: 32rpx 28rpx 240rpx;
+  box-sizing: border-box;
+}
+
+.empty-login {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 700rpx;
+  color: #728073;
+  gap: 16rpx;
+  padding: 40rpx;
+}
+
+.empty-login__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 160rpx;
+  height: 160rpx;
+  font-size: 72rpx;
+  background: #ffffff;
+  border-radius: 48rpx;
+  box-shadow: 0 12rpx 32rpx rgba(74, 122, 65, 0.04);
+  border: 1rpx solid rgba(74, 122, 65, 0.06);
+  margin-bottom: 24rpx;
+}
+
+.empty-login__title {
+  color: #243a28;
+  font-size: 32rpx;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.empty-login__action {
+  min-width: 240rpx;
+  margin-top: 24rpx;
+  box-shadow: 0 8rpx 20rpx rgba(74, 122, 65, 0.15);
+}
+
+.message-row {
+  display: flex;
+  margin-bottom: 32rpx;
+  align-items: flex-start;
+  width: 100%;
+  animation: fadeIn 0.30s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10rpx); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.message-row.assistant {
+  flex-direction: row;
+}
+
+.message-row.user {
+  flex-direction: row;
+  justify-content: flex-end;
+}
+
+.message-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 76rpx;
+  height: 76rpx;
+  border-radius: 99rpx;
+  font-size: 26rpx;
+  font-weight: 700;
+  flex-shrink: 0;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.03);
+}
+
+.assistant-avatar {
+  background: #ffffff;
+  border: 1rpx solid rgba(74, 122, 65, 0.08);
+  font-size: 36rpx;
+  margin-right: 18rpx;
+}
+
+.user-avatar {
+  background: linear-gradient(135deg, #eaf7e3, #cce8bf);
+  color: #4a7a41;
+  border: 1rpx solid rgba(74, 122, 65, 0.08);
+  margin-left: 18rpx;
+  box-shadow: 0 4rpx 12rpx rgba(74, 122, 65, 0.06);
+}
+
+.message-bubble {
+  max-width: 68%;
+  padding: 20rpx 28rpx;
+  font-size: 28rpx;
+  line-height: 1.6;
+  overflow-wrap: break-word;
+  word-break: break-all;
+}
+
+.message-bubble.assistant {
+  border-radius: 4rpx 24rpx 24rpx 24rpx;
+  background: #ffffff;
+  color: #243a28;
+  border: 1rpx solid rgba(74, 122, 65, 0.04);
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.01);
+}
+
+.message-bubble.user {
+  border-radius: 24rpx 4rpx 24rpx 24rpx;
+  background: linear-gradient(135deg, #6c9a63, #4a7a41);
+  color: #ffffff;
+  box-shadow: 0 6rpx 18rpx rgba(74, 122, 65, 0.14);
+}
+
+.message-content {
+  display: block;
+}
+
+.message-time {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 20rpx;
+  opacity: 0.55;
+  line-height: 1;
+}
+
+.message-bubble.user .message-time {
+  text-align: right;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.message-bubble.assistant .message-time {
+  text-align: left;
+  color: #9cb09e;
+}
+
+.loading-text {
+  margin-bottom: 24rpx;
+  color: #9cb09e;
+  font-size: 24rpx;
+  text-align: center;
+}
+
+.error-text {
+  margin-bottom: 24rpx;
+  padding: 18rpx 24rpx;
+  color: #9a3f22;
+  font-size: 24rpx;
+  line-height: 1.5;
+  background: #fff1e8;
+  border: 1rpx solid rgba(154, 63, 34, 0.1);
+  border-radius: 20rpx;
+  text-align: center;
+}
+
+.chat-bottom-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: var(--yunxi-tabbar-occupied-height);
+  background: #ffffff;
+  z-index: 100;
+  border-top: 1rpx solid rgba(74, 122, 65, 0.06);
+  box-shadow: 0 -6rpx 24rpx rgba(74, 122, 65, 0.02);
+}
+
+.quick-questions-scroll {
+  width: 100%;
+  height: 84rpx;
+  background: #ffffff;
+  white-space: nowrap;
+}
+
+.quick-questions-wrapper {
+  display: inline-flex;
+  padding: 16rpx 28rpx 0rpx;
+  gap: 8rpx;
+}
+
+.quick-question-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 88rpx;
+  box-sizing: border-box;
+  padding: 10rpx 18rpx;
+  color: #4a7a41;
+  font-size: 22rpx;
+  font-weight: 700;
+  background: #f8f6f2;
+  border: 1rpx solid rgba(74, 122, 65, 0.08);
+  border-radius: 99rpx;
+  transition: all 0.2s ease;
+}
+
+.quick-question-pill:active {
+  background: rgba(74, 122, 65, 0.08);
+  transform: scale(0.96);
+}
+
+.composer {
+  display: flex;
+  gap: 18rpx;
+  padding: 16rpx 28rpx 20rpx;
+  background: #ffffff;
+  align-items: center;
+}
+
+.composer input {
+  flex: 1;
+  min-width: 0;
+  height: 76rpx;
+  padding: 0 28rpx;
+  background: #f5f7f4;
+  border-radius: 20rpx;
+  font-size: 26rpx;
+  border: 1rpx solid rgba(74, 122, 65, 0.04);
+}
+
+.composer-placeholder {
+  color: #9cb09e;
+}
+
+.send-btn {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+  width: 130rpx !important;
+  min-width: 130rpx !important;
+  max-width: 130rpx !important;
+  height: 88rpx !important;
+  min-height: 88rpx !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+  color: #ffffff;
+  font-size: 26rpx;
+  font-weight: 700;
+  background: #cce0c9;
+  border-radius: 18rpx;
+  transition: all 0.25s cubic-bezier(0.25, 1, 0.5, 1);
+  margin: 0;
+  line-height: 1;
+}
+
+.send-btn[disabled] {
+  background: #cce0c9 !important;
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.send-btn.is-active {
+  background: linear-gradient(135deg, #6c9a63, #4a7a41);
+  box-shadow: 0 6rpx 14rpx rgba(74, 122, 65, 0.18);
+}
+
+.send-btn:active:not([disabled]) {
+  transform: scale(0.95);
+}
+
+/* Typing / Thinking Indicator Styles (WeChat style) */
+.typing-bubble {
+  border-radius: 4rpx 24rpx 24rpx 24rpx;
+  background: #ffffff;
+  border: 1rpx solid rgba(74, 122, 65, 0.04);
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.01);
+  padding: 24rpx 36rpx;
+  display: inline-flex;
+  align-items: center;
+}
+
+.typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  height: 24rpx;
+}
+
+.typing-dot {
+  width: 10rpx;
+  height: 10rpx;
+  background-color: #8bbf74;
+  border-radius: 50%;
+  animation: typingBlink 1.4s infinite both;
+}
+
+.typing-dot:nth-child(2) {
+  animation-delay: 0.2s;
+  background-color: #6c9a63;
+}
+
+.typing-dot:nth-child(3) {
+  animation-delay: 0.4s;
+  background-color: #4a7a41;
+}
+
+@keyframes typingBlink {
+  0% {
+    opacity: .2;
+    transform: scale(0.8);
+  }
+  20% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: .2;
+    transform: scale(0.8);
+  }
+}

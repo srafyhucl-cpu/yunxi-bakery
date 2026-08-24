@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系统初始化 - Bakery Commerce Platform</title>
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --secondary: #8b5cf6;
+            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: var(--bg-gradient);
+            color: var(--text);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        .container {
+            width: 100%;
+            max-width: 480px;
+            padding: 24px;
+        }
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 40px 32px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, transparent 60%);
+            pointer-events: none;
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 24px;
+            background: linear-gradient(to right, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: 1px;
+        }
+        .title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .subtitle {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 32px;
+            line-height: 1.5;
+        }
+        .progress-container {
+            margin-bottom: 24px;
+        }
+        .progress-bar {
+            height: 10px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 999px;
+            overflow: hidden;
+            position: relative;
+            margin-bottom: 12px;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            border-radius: 999px;
+            width: 0%;
+            transition: width 0.4s ease-out;
+            box-shadow: 0 0 12px rgba(139, 92, 246, 0.5);
+        }
+        .progress-stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 6px 12px;
+            background: rgba(59, 130, 246, 0.15);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 99px;
+            color: #60a5fa;
+            font-size: 12px;
+            font-weight: 500;
+            margin-top: 16px;
+        }
+        .time-info {
+            margin-top: 24px;
+            font-size: 12px;
+            color: var(--text-muted);
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding-top: 16px;
+        }
+        .pulse {
+            animation: pulse 2s infinite ease-in-out;
+        }
+        .retry-btn {
+            display: none;
+            margin-top: 16px;
+            padding: 8px 20px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .retry-btn:hover {
+            opacity: 0.9;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="logo">YUNXI BAKEBOT</div>
+            <div class="title" id="status-title">向量知识库就绪中</div>
+            <div class="subtitle pulse" id="status-desc">正在进行语义向量自愈重构，请稍后...</div>
+            
+            <div class="progress-container">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+                <div class="progress-stats">
+                    <span id="progress-text">已加载 0%</span>
+                    <span id="progress-count">- / -</span>
+                </div>
+            </div>
+            
+            <div id="badge-container">
+                <span class="status-badge" id="status-badge">初始化中</span>
+            </div>
+            
+            <button class="retry-btn" id="retry-btn" onclick="triggerRetry()">重新初始化</button>
+            
+            <div class="time-info" id="time-info">
+                已耗时: <span id="time-elapsed">0</span> 秒 | 预计总耗时: <span id="time-estimated">-</span> 秒
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let interval = 1500;
+        let timer = null;
+        
+        async function triggerRetry() {
+            const btn = document.getElementById('retry-btn');
+            btn.disabled = true;
+            btn.innerText = '正在重试...';
+            try {
+                const response = await fetch('/api/admin/vector-build-retry', { method: 'POST' });
+                const result = await response.json();
+                if (result.code === 200) {
+                    document.getElementById('status-title').innerText = '向量知识库就绪中';
+                    document.getElementById('status-desc').classList.add('pulse');
+                    btn.style.display = 'none';
+                    interval = 1000;
+                    clearTimeout(timer);
+                    checkProgress();
+                } else {
+                    alert('重试失败: ' + result.message);
+                    btn.disabled = false;
+                    btn.innerText = '重新初始化';
+                }
+            } catch (e) {
+                alert('网络异常');
+                btn.disabled = false;
+                btn.innerText = '重新初始化';
+            }
+        }
+        
+        async function checkProgress() {
+            try {
+                const response = await fetch('/api/admin/vector-build-status');
+                const result = await response.json();
+                
+                if (result.code === 200) {
+                    const data = result.data;
+                    const status = data.status;
+                    const percent = data.percent;
+                    const current = data.current;
+                    const total = data.total;
+                    const elapsed = data.elapsed;
+                    const lastDuration = data.last_build_duration;
+                    const detail = data.detail;
+                    
+                    document.getElementById('progress-fill').style.width = percent + '%';
+                    document.getElementById('progress-text').innerText = '已加载 ' + percent + '%';
+                    document.getElementById('progress-count').innerText = current + ' / ' + total;
+                    document.getElementById('status-desc').innerText = detail;
+                    document.getElementById('time-elapsed').innerText = elapsed;
+                    
+                    if (lastDuration > 0) {
+                        document.getElementById('time-estimated').innerText = lastDuration;
+                    } else {
+                        document.getElementById('time-estimated').innerText = '-';
+                    }
+                    
+                    const badge = document.getElementById('status-badge');
+                    const btn = document.getElementById('retry-btn');
+                    
+                    if (status === 'loading') {
+                        badge.innerText = '加载缓存';
+                        badge.style.color = '#60a5fa';
+                        badge.style.borderColor = 'rgba(59, 130, 246, 0.3)';
+                        badge.style.background = 'rgba(59, 130, 246, 0.15)';
+                        btn.style.display = 'none';
+                    } else if (status === 'building') {
+                        badge.innerText = '生成向量';
+                        badge.style.color = '#fbbf24';
+                        badge.style.borderColor = 'rgba(251, 191, 36, 0.3)';
+                        badge.style.background = 'rgba(251, 191, 36, 0.15)';
+                        btn.style.display = 'none';
+                    } else if (status === 'failed') {
+                        badge.innerText = '初始化失败';
+                        badge.style.color = '#ef4444';
+                        badge.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+                        badge.style.background = 'rgba(239, 68, 68, 0.15)';
+                        document.getElementById('status-title').innerText = '系统初始化异常';
+                        document.getElementById('status-desc').classList.remove('pulse');
+                        btn.style.display = 'inline-block';
+                        btn.disabled = false;
+                        btn.innerText = '重新初始化';
+                        return; // 失败状态停止常规轮询
+                    } else if (status === 'ready') {
+                        badge.innerText = '已就绪';
+                        badge.style.color = '#10b981';
+                        badge.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+                        badge.style.background = 'rgba(16, 185, 129, 0.15)';
+                        btn.style.display = 'none';
+                        
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 500);
+                        return;
+                    }
+                    
+                    if (percent < 50) interval = 1500;
+                    else if (percent < 90) interval = 800;
+                    else interval = 400;
+                }
+            } catch (error) {
+                console.error('获取进度失败:', error);
+                interval = 3000;
+            }
+            
+            timer = setTimeout(checkProgress, interval);
+        }
+        
+        checkProgress();
+    </script>
+</body>
+</html>

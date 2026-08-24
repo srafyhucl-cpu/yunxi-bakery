@@ -1,0 +1,1668 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI对话测试 - 企业微信风格原型</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            background: #f0f2f5;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* 主容器 - 企业微信双栏布局 */
+        .chat-container {
+            display: flex;
+            height: 100vh;
+            max-width: 1400px;
+            margin: 0 auto;
+            background: #fff;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+        }
+
+        /* ========== 左侧会话列表栏 ========== */
+        .sidebar {
+            width: 280px;
+            min-width: 280px;
+            display: flex;
+            flex-direction: column;
+            background: #f7f8fa;
+            border-right: 1px solid #e5e6eb;
+        }
+
+        .sidebar-header {
+            padding: 16px 20px;
+            background: #fff;
+            border-bottom: 1px solid #e5e6eb;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .sidebar-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .new-chat-btn {
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #07c160 0%, #06ad56 100%);
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(7, 193, 96, 0.25);
+        }
+
+        .new-chat-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(7, 193, 96, 0.35);
+        }
+
+        /* 会话列表 */
+        .session-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 8px;
+        }
+
+        .session-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .session-list::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.15);
+            border-radius: 3px;
+        }
+
+        /* 会话项 - 卡片式设计 */
+        .session-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 12px;
+            margin-bottom: 4px;
+            border-radius: 10px;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+        }
+
+        .session-item:hover {
+            background: #fff;
+            border-color: #e5e6eb;
+            transform: translateX(2px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        }
+
+        .session-item.active {
+            background: #fff;
+            border-color: #07c160;
+            box-shadow: 0 2px 12px rgba(7, 193, 96, 0.15);
+        }
+
+        .session-item.pinned::before {
+            content: '📌';
+            position: absolute;
+            top: 6px;
+            left: 8px;
+            font-size: 11px;
+        }
+
+        /* 方形头像（企业微信风格） */
+        .session-avatar {
+            width: 46px;
+            height: 46px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 17px;
+            font-weight: 600;
+            color: #fff;
+            flex-shrink: 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .session-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .session-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .session-name {
+            font-size: 15px;
+            font-weight: 500;
+            color: #1f2937;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .session-time {
+            font-size: 12px;
+            color: #9ca3af;
+            flex-shrink: 0;
+        }
+
+        .session-preview {
+            font-size: 13px;
+            color: #9ca3af;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* ========== 右侧聊天区 ========== */
+        .chat-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #f5f7fa;
+            position: relative;
+        }
+
+        /* 聊天顶栏 */
+        .chat-header {
+            height: 64px;
+            padding: 0 24px;
+            background: #fff;
+            border-bottom: 1px solid #e5e6eb;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+        }
+
+        .chat-header-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .chat-header-avatar {
+            width: 38px;
+            height: 38px;
+            border-radius: 4px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-weight: 600;
+            font-size: 15px;
+        }
+
+        .chat-header-text h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1f2937;
+            margin: 0;
+        }
+
+        .intent-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            background: rgba(7, 193, 96, 0.08);
+            color: #07c160;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-top: 2px;
+        }
+
+        /* 消息流区域 */
+        .message-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px 32px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .message-container::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .message-container::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.15);
+            border-radius: 3px;
+        }
+
+        /* 日期分隔线 */
+        .date-separator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 16px 0;
+        }
+
+        .date-separator-line {
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(to right, transparent, #e5e6eb, transparent);
+        }
+
+        .date-separator-text {
+            padding: 6px 16px;
+            background: #fff;
+            color: #9ca3af;
+            font-size: 12px;
+            border-radius: 12px;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+            margin: 0 16px;
+        }
+
+        /* 消息项 */
+        .message-row {
+            display: flex;
+            gap: 12px;
+            animation: messageIn 0.3s ease-out;
+        }
+
+        @keyframes messageIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message-row.user {
+            flex-direction: row-reverse;
+        }
+
+        .msg-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 600;
+            color: #fff;
+            flex-shrink: 0;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .msg-avatar.user {
+            background: linear-gradient(135deg, #576b95 0%, #4a5a7a 100%);
+        }
+
+        .msg-avatar.ai {
+            background: linear-gradient(135deg, #07c160 0%, #06ad56 100%);
+        }
+
+        .message-content {
+            max-width: 65%;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .message-row.user .message-content {
+            align-items: flex-end;
+        }
+
+        /* 气泡样式 */
+        .bubble {
+            position: relative;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 14px;
+            line-height: 1.65;
+            word-break: break-word;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            transition: all 0.2s ease;
+        }
+
+        .message-row.ai .bubble {
+            background: #fff;
+            color: #1f2937;
+            border-top-left-radius: 4px;
+        }
+
+        .message-row.user .bubble {
+            background: linear-gradient(135deg, #95ec69 0%, #89df5d 100%);
+            color: #1a1a1a;
+            border-top-right-radius: 4px;
+        }
+
+        .bubble:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 消息时间戳 */
+        .msg-time {
+            font-size: 11px;
+            color: #9ca3af;
+            padding: 0 4px;
+        }
+
+        /* 商品卡片 - 升级版 */
+        .product-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 10px;
+            padding: 12px;
+            background: #fafbfc;
+            border: 1px solid #e5e6eb;
+            border-radius: 10px;
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            max-width: 260px;
+        }
+
+        .product-card:hover {
+            border-color: #07c160;
+            background: #fff;
+            box-shadow: 0 4px 12px rgba(7, 193, 96, 0.12);
+            transform: translateY(-2px);
+        }
+
+        .product-img {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 8px;
+            flex-shrink: 0;
+        }
+
+        .product-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 0;
+        }
+
+        .product-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #1f2937;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+
+        .product-price {
+            font-size: 15px;
+            font-weight: 700;
+            color: #ec6f5e;
+        }
+
+        /* AI正在输入指示器 */
+        .typing-indicator {
+            display: inline-flex;
+            gap: 5px;
+            padding: 14px 18px;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #07c160;
+            animation: typingBounce 1.4s infinite ease-in-out;
+        }
+
+        .typing-dot:nth-child(1) { animation-delay: 0s; }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typingBounce {
+            0%, 80%, 100% {
+                transform: translateY(0);
+                opacity: 0.4;
+            }
+            40% {
+                transform: translateY(-8px);
+                opacity: 1;
+            }
+        }
+
+        /* ========== 输入 Composer 区域 - 升级版 ========== */
+        .composer {
+            padding: 12px 20px 16px;
+            background: #fff;
+            border-top: 1px solid #ebecef;
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+            box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.04);
+            position: relative;
+            z-index: 3;
+        }
+
+        .composer-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding-bottom: 6px;
+        }
+
+        .composer-tool-btn {
+            width: 36px;
+            height: 36px;
+            border: none;
+            background: transparent;
+            color: #8e929a;
+            font-size: 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .composer-tool-btn:hover {
+            background: #f0f2f5;
+            color: #07c160;
+        }
+
+        .composer-input-wrapper {
+            flex: 1;
+            position: relative;
+        }
+
+        .composer-textarea {
+            width: 100%;
+            padding: 10px 16px;
+            border: 1.5px solid #e5e6eb;
+            border-radius: 10px;
+            font-size: 14px;
+            font-family: inherit;
+            resize: none;
+            outline: none;
+            transition: all 0.25s ease;
+            background: #fafbfc;
+            line-height: 1.55;
+            min-height: 44px;
+            max-height: 120px;
+            color: #1f2937;
+        }
+
+        .composer-textarea:focus {
+            border-color: #07c160;
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(7, 193, 96, 0.08);
+        }
+
+        .composer-textarea::placeholder {
+            color: #9ca3af;
+            font-size: 13px;
+        }
+
+        .send-btn {
+            width: 44px;
+            height: 44px;
+            padding: 0;
+            background: linear-gradient(135deg, #07c160 0%, #06ad56 100%);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            box-shadow: 0 3px 10px rgba(7, 193, 96, 0.2);
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .send-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 5px 16px rgba(7, 193, 96, 0.35);
+            background: linear-gradient(135deg, #08d46a 0%, #07c160 100%);
+        }
+
+        .send-btn:active {
+            transform: scale(0.94);
+            transition: all 0.1s ease;
+        }
+
+        /* 发送按钮禁用态 */
+        .send-btn:disabled {
+            background: #d0d5dd;
+            box-shadow: none;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .send-btn:disabled:hover {
+            background: #d0d5dd;
+            box-shadow: none;
+            transform: none;
+        }
+
+        /* ========== 表情选择面板 ========== */
+        .emoji-panel {
+            position: absolute;
+            left: 0;
+            bottom: 100%;
+            margin-bottom: 8px;
+            width: 290px;
+            background: #fff;
+            border: 1px solid #e5e6eb;
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+            display: none;
+            z-index: 10;
+            animation: slideUpSmall 0.2s ease;
+        }
+
+        .emoji-panel.show {
+            display: block;
+        }
+
+        @keyframes slideUpSmall {
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .emoji-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 6px;
+        }
+
+        .emoji-item {
+            width: 30px;
+            height: 30px;
+            border: none;
+            background: transparent;
+            font-size: 20px;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .emoji-item:hover {
+            background: #f0f2f5;
+            transform: scale(1.2);
+        }
+
+        .emoji-item:active {
+            transform: scale(0.9);
+        }
+
+        /* ========== 空状态视图 ========== */
+        .empty-state {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            padding: 40px;
+        }
+
+        .empty-icon {
+            width: 160px;
+            height: 160px;
+            background: linear-gradient(135deg, rgba(7, 193, 96, 0.08) 0%, rgba(7, 193, 96, 0.03) 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 72px;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .empty-text h2 {
+            font-size: 22px;
+            font-weight: 600;
+            color: #1f2937;
+            margin: 0 0 8px 0;
+        }
+
+        .empty-text p {
+            font-size: 14px;
+            color: #9ca3af;
+            margin: 0;
+        }
+
+        .empty-action-btn {
+            padding: 12px 32px;
+            background: linear-gradient(135deg, #07c160 0%, #06ad56 100%);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 16px rgba(7, 193, 96, 0.3);
+            margin-top: 12px;
+        }
+
+        .empty-action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(7, 193, 96, 0.4);
+        }
+
+        /* ========== 角色选择弹窗 ========== */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.45);
+            backdrop-filter: blur(4px);
+            display: none;  /* 默认隐藏，可改为flex显示 */
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-dialog {
+            background: #fff;
+            border-radius: 20px;
+            padding: 32px;
+            width: 90%;
+            max-width: 520px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+            animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .modal-header {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+
+        .modal-header h2 {
+            font-size: 22px;
+            font-weight: 700;
+            color: #1f2937;
+            margin: 0 0 8px 0;
+        }
+
+        .modal-header p {
+            font-size: 14px;
+            color: #9ca3af;
+            margin: 0;
+        }
+
+        .role-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .role-card {
+            padding: 16px;
+            border: 2px solid #e5e6eb;
+            border-radius: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #fafbfc;
+        }
+
+        .role-card:hover {
+            border-color: #07c160;
+            background: #fff;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(7, 193, 96, 0.15);
+        }
+
+        .role-card.selected {
+            border-color: #07c160;
+            background: rgba(7, 193, 96, 0.05);
+            box-shadow: 0 4px 12px rgba(7, 193, 96, 0.2);
+        }
+
+        .role-card-icon {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .role-card-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .custom-divider {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 24px 0 16px;
+            color: #9ca3af;
+            font-size: 13px;
+        }
+
+        .custom-divider::before,
+        .custom-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #e5e6eb;
+        }
+
+        .custom-input {
+            width: 100%;
+            padding: 14px 18px;
+            border: 2px solid #e5e6eb;
+            border-radius: 10px;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.3s ease;
+            background: #fafbfc;
+        }
+
+        .custom-input:focus {
+            border-color: #07c160;
+            background: #fff;
+            box-shadow: 0 0 0 4px rgba(7, 193, 96, 0.1);
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: 12px;
+            margin-top: 28px;
+        }
+
+        .btn-cancel {
+            flex: 1;
+            padding: 14px;
+            border: 2px solid #e5e6eb;
+            border-radius: 10px;
+            background: #fff;
+            color: #667085;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-cancel:hover {
+            background: #f5f7fa;
+            border-color: #d0d5dd;
+        }
+
+        .btn-confirm {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #07c160 0%, #06ad56 100%);
+            color: #fff;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(7, 193, 96, 0.3);
+        }
+
+        .btn-confirm:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(7, 193, 96, 0.4);
+        }
+
+        /* 滚动到底部按钮 */
+        .scroll-to-bottom {
+            position: absolute;
+            bottom: 100px;
+            right: 32px;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: #fff;
+            border: 1px solid #e5e6eb;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 20px;
+            color: #667085;
+        }
+
+        .scroll-to-bottom:hover {
+            background: #07c160;
+            color: #fff;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(7, 193, 96, 0.35);
+        }
+
+        /* ========== 移动端导航 ========== */
+        /* 移动端返回按钮 - 精致化 */
+        .mobile-back-btn {
+            display: none;
+            width: 34px;
+            height: 34px;
+            border: none;
+            background: #f7f8fa;
+            font-size: 20px;
+            color: #1f2937;
+            cursor: pointer;
+            border-radius: 10px;
+            transition: all 0.2s ease;
+            margin-right: 12px;
+            flex-shrink: 0;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+
+        .mobile-back-btn:hover {
+            background: #e8f5ec;
+            color: #07c160;
+            transform: translateX(-2px);
+        }
+
+        .mobile-back-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* 响应式：全屏导航模式 */
+        @media (max-width: 900px) {
+            .mobile-back-btn {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .chat-container {
+                position: relative;
+                overflow: hidden;
+            }
+            
+            .sidebar {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                z-index: 1;
+                transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+                border-right: none;
+            }
+            
+            .sidebar.hidden {
+                transform: translateX(-100%);
+            }
+            
+            .chat-main {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                z-index: 2;
+                transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+
+            /* 未进入聊天时，聊天页隐藏在右侧 */
+            .chat-main.inactive {
+                transform: translateX(100%);
+            }
+            
+            .message-content {
+                max-width: 85%;
+            }
+
+            /* 移动端消息容器内边距收紧 */
+            .message-container {
+                padding: 16px;
+            }
+
+            /* 移动端输入区域 */
+            .composer {
+                padding: 12px 16px;
+            }
+
+            /* 移动端弹窗 */
+            .modal-dialog {
+                width: 94%;
+                padding: 24px;
+            }
+        }
+
+        /* 移动端会话项触摸反馈 */
+        @media (max-width: 900px) {
+            .session-item:active {
+                background: #e8f5ec;
+                transform: scale(0.98);
+            }
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="chat-container">
+        
+        <!-- 左侧：会话列表 -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <span class="sidebar-title">💬 AI 对话</span>
+                <button class="new-chat-btn">＋ 新建</button>
+            </div>
+            
+            <div class="session-list">
+                
+                <!-- 置顶会话 -->
+                <div class="session-item pinned active">
+                    <div class="session-avatar" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)">难</div>
+                    <div class="session-info">
+                        <div class="session-top">
+                            <span class="session-name">难缠的老太太</span>
+                            <span class="session-time">14:23</span>
+                        </div>
+                        <div class="session-preview">你们这款面包为什么这么贵？隔壁才卖...</div>
+                    </div>
+                </div>
+
+                <!-- 普通会话 -->
+                <div class="session-item">
+                    <div class="session-avatar" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%)">价</div>
+                    <div class="session-info">
+                        <div class="session-top">
+                            <span class="session-name">价格敏感型顾客</span>
+                            <span class="session-time">昨天</span>
+                        </div>
+                        <div class="session-preview">有没有优惠活动？满减或者折扣？</div>
+                    </div>
+                </div>
+
+                <div class="session-item">
+                    <div class="session-avatar" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)">催</div>
+                    <div class="session-info">
+                        <div class="session-top">
+                            <span class="session-name">催单狂人</span>
+                            <span class="session-time">周三</span>
+                        </div>
+                        <div class="session-preview">订单什么时候发货？已经等了两天了</div>
+                    </div>
+                </div>
+
+                <div class="session-item">
+                    <div class="session-avatar" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)">正</div>
+                    <div class="session-info">
+                        <div class="session-top">
+                            <span class="session-name">正常顾客</span>
+                            <span class="session-time">周一</span>
+                        </div>
+                        <div class="session-preview">请问这款蛋糕需要提前预定吗？</div>
+                    </div>
+                </div>
+
+                <div class="session-item">
+                    <div class="session-avatar" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%)">售</div>
+                    <div class="session-info">
+                        <div class="session-top">
+                            <span class="session-name">售后维权</span>
+                            <span class="session-time">6/1</span>
+                        </div>
+                        <div class="session-preview">收到的蛋糕有损坏，怎么处理？</div>
+                    </div>
+                </div>
+
+                <div class="session-item">
+                    <div class="session-avatar" style="background: linear-gradient(135deg, #30cfd0 0%, #330867 100%)">初</div>
+                    <div class="session-info">
+                        <div class="session-top">
+                            <span class="session-name">初次购买</span>
+                            <span class="session-time">5/28</span>
+                        </div>
+                        <div class="session-preview">第一次购买，推荐几款招牌产品</div>
+                    </div>
+                </div>
+
+            </div>
+        </aside>
+
+        <!-- 右侧：聊天区域 -->
+        <main class="chat-main">
+
+            <!-- 聊天顶栏 -->
+            <header class="chat-header">
+                <button class="mobile-back-btn" id="mobileBackBtn" title="返回列表">←</button>
+                <div class="chat-header-info" id="chatHeaderInfo">
+                    <div class="chat-header-avatar" id="chatHeaderAvatar">选</div>
+                    <div class="chat-header-text">
+                        <h3 id="chatHeaderName">选择角色开始对话</h3>
+                        <span class="intent-badge" id="chatHeaderIntent">🎯 等待选择</span>
+                    </div>
+                </div>
+                <div style="width: 40px;"></div>
+            </header>
+
+            <!-- 消息流（含空状态） -->
+            <div class="message-container" id="messageContainer">
+
+                <!-- 空状态 -->
+                <div class="empty-state" id="emptyState">
+                    <div class="empty-icon">💬</div>
+                    <div class="empty-text">
+                        <h2>AI 对话测试</h2>
+                        <p>点击「新建」选择角色，模拟顾客与 AI 客服对话</p>
+                    </div>
+                    <button class="empty-action-btn" id="emptyNewChatBtn">选择角色开始 ✨</button>
+                </div>
+
+                <!-- 日期分隔线（初始隐藏） -->
+                <div class="date-separator" id="dateSeparator" style="display:none;">
+                    <div class="date-separator-line"></div>
+                    <span class="date-separator-text">今天</span>
+                    <div class="date-separator-line"></div>
+                </div>
+
+                <!-- AI 正在输入（初始隐藏） -->
+                <div class="message-row ai" id="typingRow" style="display:none;">
+                    <div class="msg-avatar ai">芸</div>
+                    <div class="message-content">
+                        <div class="bubble">
+                            <div class="typing-indicator">
+                                <div class="typing-dot"></div>
+                                <div class="typing-dot"></div>
+                                <div class="typing-dot"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- 滚动到底部按钮 -->
+            <button class="scroll-to-bottom" id="scrollToBottomBtn" title="回到底部" style="display:none;">↓</button>
+
+            <!-- 输入区域 -->
+            <div class="composer">
+                <div class="composer-toolbar">
+                    <button class="composer-tool-btn" id="emojiBtn" title="表情">😊</button>
+                </div>
+                <div class="composer-input-wrapper">
+                    <!-- 表情面板 -->
+                    <div class="emoji-panel" id="emojiPanel">
+                        <div class="emoji-grid" id="emojiGrid"></div>
+                    </div>
+                    <textarea 
+                        id="composerInput"
+                        class="composer-textarea" 
+                        placeholder=""
+                        rows="1"
+                    ></textarea>
+                </div>
+                <button class="send-btn" id="sendBtn" disabled>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                </button>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- 角色选择弹窗 (默认隐藏) -->
+    <div class="modal-overlay show" id="roleModal">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h2>👤 选择用户角色</h2>
+                <p>模拟不同类型顾客发起测试对话，验证AI客服表现</p>
+            </div>
+
+            <div class="role-grid">
+                <div class="role-card selected">
+                    <div class="role-card-icon">👵</div>
+                    <div class="role-card-name">难缠的老太太</div>
+                </div>
+                <div class="role-card">
+                    <div class="role-card-icon">😊</div>
+                    <div class="role-card-name">正常的顾客</div>
+                </div>
+                <div class="role-card">
+                    <div class="role-card-icon">💰</div>
+                    <div class="role-card-name">价格敏感型</div>
+                </div>
+                <div class="role-card">
+                    <div class="role-card-icon">⏰</div>
+                    <div class="role-card-name">催单狂人</div>
+                </div>
+                <div class="role-card">
+                    <div class="role-card-icon">😤</div>
+                    <div class="role-card-name">售后维权</div>
+                </div>
+                <div class="role-card">
+                    <div class="role-card-icon">🆕</div>
+                    <div class="role-card-name">初次购买</div>
+                </div>
+            </div>
+
+            <div class="custom-divider">或自定义角色</div>
+
+            <input 
+                type="text" 
+                class="custom-input" 
+                placeholder="输入自定义角色名称…"
+            >
+
+            <div class="modal-footer">
+                <button class="btn-cancel">退出</button>
+                <button class="btn-confirm">开始对话 ✨</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* =================================================================
+         *  企业微信风格 AI 对话原型 — 完整交互逻辑
+         * ================================================================= */
+
+        // ---- DOM 引用 ----
+        const sidebar         = document.querySelector('.sidebar');
+        const chatMain        = document.querySelector('.chat-main');
+        const mobileBackBtn   = document.getElementById('mobileBackBtn');
+        const messageContainer = document.getElementById('messageContainer');
+        const emptyState      = document.getElementById('emptyState');
+        const dateSeparator   = document.getElementById('dateSeparator');
+        const typingRow       = document.getElementById('typingRow');
+        const scrollToBottomBtn = document.getElementById('scrollToBottomBtn');
+        const composerInput   = document.getElementById('composerInput');
+        const sendBtn         = document.getElementById('sendBtn');
+        const roleModal       = document.getElementById('roleModal');
+        const modalOverlay    = document.getElementById('roleModal');
+        const chatHeaderName  = document.getElementById('chatHeaderName');
+        const chatHeaderAvatar= document.getElementById('chatHeaderAvatar');
+        const chatHeaderIntent= document.getElementById('chatHeaderIntent');
+        const customRoleInput = document.querySelector('.custom-input');
+
+        // ---- 状态 ----
+        let currentRole = { name: '难缠的老太太', icon: '👵', intent: '商品咨询' };
+        let hasMessages = false;
+        let isTyping = false;
+
+        // ---- 工具函数 ----
+        const isMobile = () => window.innerWidth <= 900;
+
+        /* 获取当前时间字符串 */
+        function nowTime() {
+            const d = new Date();
+            return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+        }
+
+        /* 滚动到底部 */
+        function scrollToBottom(smooth) {
+            requestAnimationFrame(function() {
+                messageContainer.scrollTo({
+                    top: messageContainer.scrollHeight,
+                    behavior: smooth ? 'smooth' : 'auto'
+                });
+            });
+        }
+
+        /* 检查是否在底部附近 */
+        function isNearBottom() {
+            var h = messageContainer;
+            return h.scrollHeight - h.scrollTop - h.clientHeight < 80;
+        }
+
+        /* 更新 UI：空状态 vs 消息列表 */
+        function updateContentState() {
+            if (hasMessages) {
+                emptyState.style.display = 'none';
+                dateSeparator.style.display = 'flex';
+                scrollToBottomBtn.style.display = isNearBottom() ? 'none' : 'flex';
+            } else {
+                emptyState.style.display = 'flex';
+                dateSeparator.style.display = 'none';
+                scrollToBottomBtn.style.display = 'none';
+                typingRow.style.display = 'none';
+            }
+        }
+
+        /* 创建一条消息 DOM */
+        function createMessageRow(type, text) {
+            var row = document.createElement('div');
+            row.className = 'message-row ' + type;
+
+            var avatar = document.createElement('div');
+            avatar.className = 'msg-avatar ' + type;
+            avatar.textContent = type === 'user' ? '你' : '芸';
+
+            var content = document.createElement('div');
+            content.className = 'message-content';
+
+            var bubble = document.createElement('div');
+            bubble.className = 'bubble';
+            bubble.innerHTML = text.replace(/\n/g, '<br>');
+
+            var time = document.createElement('span');
+            time.className = 'msg-time';
+            time.textContent = nowTime();
+
+            content.appendChild(bubble);
+            content.appendChild(time);
+            row.appendChild(avatar);
+            row.appendChild(content);
+            return row;
+        }
+
+        /* 添加用户消息 */
+        function addUserMessage(text) {
+            if (!text.trim()) return;
+            hasMessages = true;
+            updateContentState();
+
+            // 隐藏之前的 typing
+            typingRow.style.display = 'none';
+
+            var msg = createMessageRow('user', text);
+            // 插在 typingRow 之前
+            messageContainer.insertBefore(msg, typingRow);
+            scrollToBottom(true);
+        }
+
+        /* 显示 AI 正在输入 */
+        function showTyping() {
+            typingRow.style.display = 'flex';
+            isTyping = true;
+            scrollToBottom(true);
+        }
+
+        /* 隐藏 AI 正在输入 */
+        function hideTyping() {
+            typingRow.style.display = 'none';
+            isTyping = false;
+        }
+
+        /* 添加 AI 回复 */
+        function addAiReply(text) {
+            hideTyping();
+            var msg = createMessageRow('ai', text);
+            messageContainer.insertBefore(msg, typingRow);
+            scrollToBottom(true);
+        }
+
+        /* AI 模拟回复池 */
+        var aiReplyIndex = 0;
+        function getAiReply(userText) {
+            var replies = [
+                '我理解您的疑问~<br><br>让我帮您详细解答一下。我们的产品全部采用优质原材料，经过严格品控，您可以放心购买哦！🌸<br><br>还有其他问题需要了解吗？',
+                '您好呀~感谢您的关注！<br><br>这款产品是我们店里的招牌，回头客特别多。入口绵软，香气浓郁，很多顾客吃一次就爱上呢~<br><br>要不要帮您介绍一下更多口味？',
+                '这个问题很关键！<br><br>您提到的情况我已经记录下来啦。我们会在24小时内给您一个满意的答复，请您耐心等待哦~ 💝',
+                '好的呢~<br><br>我查了一下库存，目前还有现货哦。最近还有满减活动，满99减15，非常划算！<br><br>需要帮您下单吗？',
+                '感谢您的反馈！<br><br>我们一直非常重视顾客的体验。如果您有任何不满意的地方，随时告诉我们，我们会第一时间处理~<br><br>您的支持是我们最大的动力！🌟'
+            ];
+            var r = replies[aiReplyIndex % replies.length];
+            aiReplyIndex++;
+            return r;
+        }
+
+        /* 发送消息主流程 */
+        function sendMessage() {
+            var text = composerInput.value.trim();
+            if (!text || isTyping) return;
+
+            addUserMessage(text);
+            composerInput.value = '';
+            composerInput.style.height = 'auto';
+            sendBtn.disabled = true;
+
+            // 模拟 AI 打字延迟
+            showTyping();
+            setTimeout(function() {
+                addAiReply(getAiReply(text));
+                sendBtn.disabled = false;
+            }, 1500 + Math.random() * 1000);
+        }
+
+        /* 更新聊天顶栏 */
+        function updateChatHeader(name, icon, intent) {
+            chatHeaderName.textContent = name;
+            chatHeaderAvatar.textContent = name.charAt(0);
+            chatHeaderIntent.textContent = '🎯 ' + intent;
+        }
+
+        /* 清空聊天区域（保留 typingRow + dateSeparator + emptyState） */
+        function clearMessages() {
+            var children = messageContainer.children;
+            var toRemove = [];
+            for (var i = 0; i < children.length; i++) {
+                var c = children[i];
+                if (c.classList.contains('message-row') && c !== typingRow) {
+                    toRemove.push(c);
+                }
+            }
+            toRemove.forEach(function(el) { el.remove(); });
+            hasMessages = false;
+            hideTyping();
+            updateContentState();
+        }
+
+        /* 开始新对话 */
+        function startNewChat(role) {
+            clearMessages();
+            currentRole = role;
+            updateChatHeader(role.name, role.icon, role.intent);
+            hasMessages = false;
+            updateContentState();
+            composerInput.focus();
+        }
+
+        /* ---- 移动端导航 ---- */
+        function initMobileState() {
+            if (isMobile()) {
+                sidebar.classList.remove('hidden');
+                chatMain.classList.add('inactive');
+            } else {
+                sidebar.classList.remove('hidden');
+                chatMain.classList.remove('inactive');
+            }
+        }
+
+        function enterChat() {
+            if (isMobile()) {
+                sidebar.classList.add('hidden');
+                chatMain.classList.remove('inactive');
+            }
+        }
+
+        function backToList() {
+            if (isMobile()) {
+                chatMain.classList.add('inactive');
+                sidebar.classList.remove('hidden');
+            }
+        }
+
+        window.addEventListener('resize', function() {
+            if (!isMobile()) {
+                sidebar.classList.remove('hidden');
+                chatMain.classList.remove('inactive');
+            }
+            updateContentState();
+        });
+
+        initMobileState();
+
+        /* ---- 事件绑定 ---- */
+
+        // 返回按钮
+        mobileBackBtn.addEventListener('click', backToList);
+
+        // 发送按钮
+        sendBtn.addEventListener('click', sendMessage);
+
+        // 输入框：Enter 发送，Shift+Enter 换行
+        composerInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        // 输入框自动撑高 + 发送按钮状态
+        composerInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+            sendBtn.disabled = (this.value.trim().length === 0 || isTyping);
+        });
+
+        // 工具栏按钮（表情面板） 
+        var emojiBtn = document.getElementById('emojiBtn');
+        var emojiPanel = document.getElementById('emojiPanel');
+        var emojiGrid = document.getElementById('emojiGrid');
+
+        // 表情列表
+        var emojis = [
+            '😀','😃','😄','😁','😆','😅','🤣','😂',
+            '🙂','😊','😇','🥰','😍','🤩','😘','😗',
+            '😚','😋','😛','😜','🤪','😝','🤑','🤗',
+            '🤭','🤫','🤔','🤐','🤨','😐','😑','😶',
+            '😏','😒','🙄','😬','😮','🤯','😴','😪',
+            '🌸','🌺','🌻','🌹','💐','🎂','🍰','🧁',
+            '🍞','🥖','🥐','🥨','🍪','🍩','🍫','💝',
+            '👍','👎','👏','🙌','🤝','💪','❤️','🔥',
+            '⭐','✨','💯','✅','❌','🎉','🎊','🎈',
+            '🐱','🐶','🐰','🦊','🐼','🐨','🐣','🦋',
+            '☕','🍵','🥛','🧋','🍺','🍷','🥂','🍾',
+            '🌞','🌙','⭐','☁️','🌈','⛈','❄️','💧'
+        ];
+
+        // 渲染表情
+        emojis.forEach(function(emoji) {
+            var btn = document.createElement('button');
+            btn.className = 'emoji-item';
+            btn.textContent = emoji;
+            btn.addEventListener('click', function() {
+                insertEmoji(emoji);
+                emojiPanel.classList.remove('show');
+                composerInput.focus();
+            });
+            emojiGrid.appendChild(btn);
+        });
+
+        /* 在光标处插入表情 */
+        function insertEmoji(emoji) {
+            var el = composerInput;
+            var start = el.selectionStart;
+            var end = el.selectionEnd;
+            var before = el.value.substring(0, start);
+            var after = el.value.substring(end);
+            el.value = before + emoji + after;
+            el.selectionStart = el.selectionEnd = start + emoji.length;
+            // 触发 input 事件以更新发送按钮状态
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+
+        // 表情按钮点击切换面板
+        emojiBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var isOpen = emojiPanel.classList.contains('show');
+            emojiPanel.classList.toggle('show');
+            if (!isOpen) {
+                composerInput.focus();
+            }
+        });
+
+        // 点击面板以外关闭
+        document.addEventListener('click', function(e) {
+            if (!emojiPanel.contains(e.target) && e.target !== emojiBtn) {
+                emojiPanel.classList.remove('show');
+            }
+        });
+
+        // 滚动到底部按钮
+        scrollToBottomBtn.addEventListener('click', function() {
+            scrollToBottom(true);
+        });
+
+        // 滚动监听：控制「回到底部」按钮显隐
+        messageContainer.addEventListener('scroll', function() {
+            if (hasMessages) {
+                scrollToBottomBtn.style.display = isNearBottom() ? 'none' : 'flex';
+            }
+        });
+
+        // 空状态中的「选择角色开始」按钮
+        document.getElementById('emptyNewChatBtn').addEventListener('click', function() {
+            roleModal.classList.add('show');
+        });
+
+        // ---- 弹窗交互 ----
+
+        // 退出 / 取消
+        document.querySelector('.btn-cancel').addEventListener('click', function() {
+            roleModal.classList.remove('show');
+        });
+
+        // 点击遮罩关闭
+        roleModal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                this.classList.remove('show');
+            }
+        });
+
+        // ESC 关闭弹窗
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && roleModal.classList.contains('show')) {
+                roleModal.classList.remove('show');
+            }
+        });
+
+        // 角色卡片选择
+        document.querySelectorAll('.role-card').forEach(function(card) {
+            card.addEventListener('click', function() {
+                document.querySelectorAll('.role-card').forEach(function(c) {
+                    c.classList.remove('selected');
+                });
+                this.classList.add('selected');
+                // 清空自定义输入
+                customRoleInput.value = '';
+            });
+        });
+
+        // 自定义输入框聚焦时取消角色卡片选中
+        customRoleInput.addEventListener('focus', function() {
+            document.querySelectorAll('.role-card').forEach(function(c) {
+                c.classList.remove('selected');
+            });
+        });
+
+        // 「开始对话」按钮
+        document.querySelector('.btn-confirm').addEventListener('click', function() {
+            var customName = customRoleInput.value.trim();
+            var selectedCard = document.querySelector('.role-card.selected');
+
+            var role;
+            if (customName) {
+                role = { name: customName, icon: '✨', intent: '自定义角色' };
+            } else if (selectedCard) {
+                role = {
+                    name: selectedCard.querySelector('.role-card-name').textContent,
+                    icon: selectedCard.querySelector('.role-card-icon').textContent,
+                    intent: '商品咨询'
+                };
+            } else {
+                // 默认选第一个
+                var firstCard = document.querySelector('.role-card');
+                role = {
+                    name: firstCard.querySelector('.role-card-name').textContent,
+                    icon: firstCard.querySelector('.role-card-icon').textContent,
+                    intent: '商品咨询'
+                };
+            }
+
+            roleModal.classList.remove('show');
+            startNewChat(role);
+            enterChat();
+        });
+
+        // ---- 会话列表项点击 ----
+        var sessionData = [
+            { name: '难缠的老太太', icon: '👵', preview: '你们这款面包为什么这么贵？...' },
+            { name: '价格敏感型顾客', icon: '💰', preview: '有没有优惠活动？...' },
+            { name: '催单狂人', icon: '⏰', preview: '订单什么时候发货？...' },
+            { name: '正常顾客', icon: '😊', preview: '请问这款蛋糕需要提前预定吗？' },
+            { name: '售后维权', icon: '😤', preview: '收到的蛋糕有损坏，怎么处理？' },
+            { name: '初次购买', icon: '🆕', preview: '第一次购买，推荐几款招牌产品' }
+        ];
+
+        document.querySelectorAll('.session-item').forEach(function(item, idx) {
+            item.addEventListener('click', function() {
+                document.querySelectorAll('.session-item').forEach(function(i) {
+                    i.classList.remove('active');
+                });
+                this.classList.add('active');
+
+                var data = sessionData[idx] || sessionData[0];
+                clearMessages();
+                hasMessages = true;
+                updateContentState();
+
+                // 更新顶栏
+                updateChatHeader(data.name, data.icon, '商品咨询');
+                currentRole = { name: data.name, icon: data.icon, intent: '商品咨询' };
+
+                // 加载示例消息
+                addUserMessage(data.preview);
+                showTyping();
+                sendBtn.disabled = true;
+                setTimeout(function() {
+                    addAiReply(getAiReply(data.preview));
+                    sendBtn.disabled = false;
+                }, 1200);
+
+                enterChat();
+            });
+        });
+
+        // ---- 「新建」按钮（直接打开弹窗） ----
+        document.querySelector('.new-chat-btn').addEventListener('click', function() {
+            roleModal.classList.add('show');
+        });
+
+        // ---- 初始状态 ----
+        updateContentState();
+    </script>
+
+</body>
+</html>

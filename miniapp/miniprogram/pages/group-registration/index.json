@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "群内登记",
+  "usingComponents": {
+    "session-notice": "/components/session-notice/index"
+  }
+}

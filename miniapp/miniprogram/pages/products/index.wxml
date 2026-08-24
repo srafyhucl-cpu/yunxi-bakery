@@ -1,0 +1,146 @@
+<view class="page-shell" style="{{layoutStyle}}">
+  <view class="page-fixed-safe has-custom-title">
+    <view class="page-fixed-safe__home" bindtap="goHome" aria-label="返回首页"></view>
+    <view class="page-fixed-safe__title">{{storeName}}</view>
+  </view>
+  <view class="page-pinned products-pinned">
+    <view class="products-store">
+      <view class="products-store__copy">
+        <text class="products-store__branch">📍 {{branchName}}</text>
+        <text class="products-store__meta">{{storeDistance}} · 营业中 {{businessHours}}</text>
+      </view>
+      <view class="products-toggle">
+        <view class="products-toggle__item" bindtap="setDeliveryMode" data-mode="pickup" data-active="{{deliveryMode === 'pickup'}}">外带</view>
+        <view class="products-toggle__item" bindtap="setDeliveryMode" data-mode="delivery" data-active="{{deliveryMode === 'delivery'}}">配送</view>
+      </view>
+    </view>
+    <view class="products-search">
+      <text class="products-search__icon">⌕</text>
+      <input
+        class="products-search__input"
+        value="{{searchText}}"
+        placeholder="在芸熙烘焙中搜索"
+        placeholder-class="products-search__placeholder"
+        confirm-type="search"
+        bindinput="onSearchInput"
+      />
+      <text wx:if="{{searchText}}" class="products-search__clear" bindtap="clearSearch">×</text>
+    </view>
+  </view>
+
+  <view class="page-scroll products-scroll-region">
+    <!-- Global Search Results List -->
+    <scroll-view 
+      class="products-global-search" 
+      scroll-y 
+      enhanced 
+      show-scrollbar="{{false}}"
+      hidden="{{!searchText}}"
+    >
+      <view class="products-global-search__inner">
+        <view class="products-grid">
+          <view
+            wx:for="{{globalSearchResults}}"
+            wx:key="id"
+            wx:for-item="product"
+            class="product-card glass-panel hover-scale stagger-fade-in"
+            data-id="{{product.id}}"
+            bindtap="openProduct"
+          >
+            <view class="product-image bakery-photo {{product.imageClass}}">
+              <text class="product-tag">{{product.badgeText}}</text>
+              <image
+                wx:if="{{product.imageUrl}}"
+                class="product-cover"
+                src="{{product.imageUrl}}"
+                mode="aspectFill"
+                webp="{{true}}"
+              />
+            </view>
+            <view class="product-info">
+              <text class="product-title">{{product.title}}</text>
+              <view class="product-info__bottom">
+                <text class="product-price">{{product.priceText}}<text class="product-price__unit">起</text></text>
+                <view class="product-action-btn hover-scale">+</view>
+              </view>
+            </view>
+          </view>
+        </view>
+
+        <view wx:if="{{globalSearchResults.length === 0}}" class="products-empty">
+          <text class="products-empty__title">暂时没有匹配商品</text>
+          <text class="products-empty__hint">请尝试输入其他关键词进行全局检索</text>
+        </view>
+      </view>
+    </scroll-view>
+
+    <!-- Normal Category Sidebar + Content Layout (Keep-Alive Cache) -->
+    <view class="products-layout" hidden="{{!!searchText}}">
+      <scroll-view class="products-sidebar" scroll-y enhanced show-scrollbar="{{false}}">
+        <view
+          wx:for="{{categorySections}}"
+          wx:key="id"
+          wx:for-item="section"
+          class="products-sidebar__item {{section.id === activeCategoryId ? 'is-active' : ''}}"
+          data-category-id="{{section.id}}"
+          bindtap="switchCategory"
+        >
+          <text class="products-sidebar__title">{{section.title}}</text>
+          <text class="products-sidebar__subtitle">{{section.subtitle}}</text>
+        </view>
+      </scroll-view>
+
+      <view class="products-content-wrapper">
+        <scroll-view
+          wx:for="{{categorySections}}"
+          wx:key="id"
+          wx:for-item="section"
+          class="products-content"
+          scroll-y
+          enhanced
+          show-scrollbar="{{false}}"
+          hidden="{{activeCategoryId !== section.id}}"
+        >
+          <view class="products-content__inner">
+            <view class="products-grid">
+              <view
+                wx:for="{{section.products}}"
+                wx:key="id"
+                wx:for-item="product"
+                class="product-card glass-panel hover-scale stagger-fade-in"
+                style="animation-delay: {{index * 0.03}}s"
+                data-id="{{product.id}}"
+                bindtap="openProduct"
+              >
+                <view class="product-image bakery-photo {{product.imageClass}}">
+                  <text class="product-tag">{{product.badgeText}}</text>
+                  <image
+                    wx:if="{{product.imageUrl}}"
+                    class="product-cover"
+                    src="{{product.imageUrl}}"
+                    mode="aspectFill"
+                    webp="{{true}}"
+                  />
+                </view>
+                <view class="product-info">
+                  <text class="product-title">{{product.title}}</text>
+                  <view class="product-info__bottom">
+                    <text class="product-price">{{product.priceText}}<text class="product-price__unit">起</text></text>
+                    <view class="product-action-btn hover-scale">+</view>
+                  </view>
+                </view>
+              </view>
+            </view>
+
+            <view wx:if="{{section.hasMatches === false}}" class="products-empty">
+              <text class="products-empty__title">暂时没有匹配商品</text>
+              <text class="products-empty__hint">请尝试输入其他关键词进行筛选</text>
+            </view>
+          </view>
+        </scroll-view>
+      </view>
+
+      <!-- Removed FABs for layout purity -->
+    </view>
+  </view>
+</view>

@@ -1,0 +1,90 @@
+<view class="page-shell" style="{{layoutStyle}}">
+  <view class="page-fixed-safe has-custom-title">
+    <button
+      class="page-nav-back"
+      bindtap="goBack"
+      disabled="{{payingOrderId || cancellingOrderId}}"
+      aria-label="返回"
+    >
+      <text class="page-nav-back__icon">‹</text>
+    </button>
+    <view class="page-fixed-safe__title">我的订单</view>
+  </view>
+  <view class="page-pinned page-pinned--empty"></view>
+  <scroll-view class="page-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="page">
+      <view class="section-title">我的订单</view>
+      <session-notice
+        wx:if="{{loginStateText}}"
+        status-text="{{sessionView.statusText}}"
+        badge-text="{{sessionView.badgeText}}"
+        description="{{loginStateText}}"
+        action-text="返回"
+        icon-text="订"
+        bind:action="goBack"
+      ></session-notice>
+      <scroll-view class="filter-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+        <view class="filter-tabs">
+          <button
+            wx:for="{{filterTabs}}"
+            wx:key="key"
+            class="filter-tab {{item.selected ? 'filter-tab-active' : ''}}"
+            data-key="{{item.key}}"
+            bindtap="selectFilter"
+          >
+            <text>{{item.label}}</text>
+            <text class="filter-count">{{item.count}}</text>
+          </button>
+        </view>
+      </scroll-view>
+      <view wx:if="{{filteredOrders.length === 0}}" class="empty">
+        <text>{{loading ? '订单加载中...' : emptyText}}</text>
+      </view>
+      <view wx:else class="order-list">
+        <view wx:for="{{filteredOrders}}" wx:key="id" class="order-card bakery-panel" data-id="{{item.id}}" bindtap="openOrder">
+          <view class="order-header">
+            <text class="order-id">{{item.id}}</text>
+            <view class="order-status-group">
+              <text class="payment-status">{{item.paymentStatusText}}</text>
+              <text class="order-status">{{item.statusText}}</text>
+            </view>
+          </view>
+          <text class="order-title">{{item.itemTitle || '未命名商品'}} x {{item.itemCount || 1}}</text>
+          <view class="order-meta">
+            <text>{{item.receiverName}} {{item.receiverPhone}}</text>
+            <text>{{item.expectTime || '时间待确认'}}</text>
+          </view>
+          <view class="order-footer">
+            <text>{{item.createdAt}}</text>
+            <view class="order-footer-right">
+              <text class="order-total">{{item.totalText}}</text>
+              <text class="order-link">详情</text>
+            </view>
+          </view>
+          <view wx:if="{{item.canPay || item.canCancel}}" class="order-actions">
+            <button
+              wx:if="{{item.canCancel}}"
+              class="order-action-button order-action-secondary"
+              data-id="{{item.id}}"
+              catchtap="cancelOrder"
+              loading="{{cancellingOrderId === item.id}}"
+              disabled="{{payingOrderId || cancellingOrderId}}"
+            >
+              取消订单
+            </button>
+            <button
+              wx:if="{{item.canPay}}"
+              class="order-action-button order-action-primary"
+              data-id="{{item.id}}"
+              catchtap="payOrder"
+              loading="{{payingOrderId === item.id}}"
+              disabled="{{payingOrderId || cancellingOrderId}}"
+            >
+              立即支付
+            </button>
+          </view>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+</view>

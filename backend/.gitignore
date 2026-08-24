@@ -1,0 +1,62 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+node_modules/
+
+# Environment
+.env
+data/
+!data/.gitkeep
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+.claude/settings.json
+.claude/settings.local.json
+
+# Project
+server.bundle
+ngrok.exe
+middle_region.png
+task.md
+.codex-server*.log
+.tmp-*.log
+.superpowers/
+scripts/_*
+资料.md
+
+# 临时输出文件
+output.txt
+test_output.txt
+coverage_report.txt
+frontend_api_calls.txt
+frontend_auth.txt
+dist.tar.gz
+
+# 旧导出/临时脚本
+exported_knowledge*.json
+fetch_knowledge.py
+docs/有赞导出/*.csv
+
+# 覆盖率报告
+.coverage
+htmlcov/
+coverage.xml
+.pytest_cache/
+
+# 报告文件（可重新生成，默认不入库；仅保留 Harness 证据目录入口）
+reports/*
+!reports/harness/
+reports/harness/*
+!reports/harness/.gitkeep
+
+# Codebuddy
+.codebuddy/

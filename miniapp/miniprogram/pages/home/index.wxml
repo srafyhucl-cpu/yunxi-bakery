@@ -1,0 +1,127 @@
+<view class="page-shell" style="{{layoutStyle}}">
+  <view class="page-fixed-safe"></view>
+  <view class="page-pinned page-pinned--empty"></view>
+  <scroll-view class="page-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="page home-page">
+
+      <block wx:for="{{blocks}}" wx:key="id">
+        <view wx:if="{{item.type === 'noticeBar'}}" class="notice-bar glass-panel hover-scale">
+          <text class="notice-icon">✦</text>
+          <text class="notice-text">{{item.props.text}}</text>
+        </view>
+
+        <view wx:elif="{{item.type === 'heroCarousel'}}" class="home-hero fade-in hover-scale">
+          <swiper
+            class="home-hero__swiper"
+            circular
+            autoplay="{{item.heroAutoplay}}"
+            interval="{{item.heroIntervalMs}}"
+            indicator-dots="{{item.heroItems.length > 1}}"
+            indicator-active-color="#c9a56a"
+            indicator-color="rgba(111, 77, 47, 0.22)"
+          >
+            <swiper-item wx:for="{{item.heroItems}}" wx:key="id" wx:for-item="slide">
+              <view class="home-hero__slide" data-link-type="{{slide.linkType}}" data-link-target="{{slide.linkTarget}}" bindtap="handleHeroTap">
+                <image wx:if="{{slide.imageUrl}}" class="home-hero__image" src="{{slide.imageUrl}}" mode="aspectFill" lazy-load="{{true}}" />
+                <view wx:else class="home-hero__fallback image-placeholder skeleton-shimmer"></view>
+                <view class="home-hero__copy">
+                  <text class="home-hero__eyebrow">{{slide.eyebrow}}</text>
+                  <text class="home-hero__title">{{slide.title}}</text>
+                  <text class="home-hero__desc">{{slide.subtitle}}</text>
+                  <view wx:if="{{slide.badges.length}}" class="home-hero__badges">
+                    <text wx:for="{{slide.badges}}" wx:key="*this" wx:for-item="badge" class="home-hero__badge">{{badge}}</text>
+                  </view>
+                  <text wx:if="{{slide.linkType !== 'none'}}" class="home-hero__tap">去看看</text>
+                </view>
+              </view>
+            </swiper-item>
+          </swiper>
+        </view>
+
+        <view wx:elif="{{item.type === 'quickLinks'}}" class="quick-link-grid">
+          <view
+            wx:for="{{item.quickLinkItems}}"
+            wx:key="id"
+            wx:for-item="link"
+            class="quick-link-card glass-panel hover-scale"
+            data-link-type="{{link.linkType}}"
+            data-link-target="{{link.linkTarget}}"
+            bindtap="handleBlockAction"
+          >
+            <view class="quick-link-card__icon bakery-action-icon">{{link.iconText}}</view>
+            <view class="quick-link-card__copy">
+              <text class="quick-link-card__title">{{link.title}}</text>
+              <text class="quick-link-card__subtitle">{{link.subtitle}}</text>
+            </view>
+            <text class="quick-link-card__arrow">›</text>
+          </view>
+        </view>
+
+        <view
+          wx:elif="{{item.type === 'membershipBanner'}}"
+          class="member-promo hover-scale fade-in shimmer-sweep"
+          bindtap="navigateToProfile"
+        >
+          <view class="member-promo__mark">
+            <text>Y</text>
+          </view>
+          <view class="member-promo__copy">
+            <text class="member-promo__kicker">YUNXI MEMBER</text>
+            <text class="member-promo__title">{{item.props.title}}</text>
+            <text class="member-promo__subtitle">{{item.props.subtitle}}</text>
+          </view>
+          <view class="member-promo__action">{{item.props.actionText}}</view>
+        </view>
+
+        <view wx:elif="{{item.type === 'noticeList'}}" class="service-notices glass-panel fade-in">
+          <view
+            wx:for="{{item.noticeItems}}"
+            wx:key="id"
+            wx:for-item="notice"
+            class="service-notice"
+            data-link-type="{{notice.linkType}}"
+            data-link-target="{{notice.linkTarget}}"
+            bindtap="handleBlockAction"
+          >
+            <text class="service-notice__dot"></text>
+            <text class="service-notice__title">{{notice.title}}</text>
+            <text class="service-notice__action">{{notice.actionText}}</text>
+          </view>
+        </view>
+
+        <view wx:elif="{{item.type === 'productShelf'}}" class="shelf">
+          <view class="shelf-head">
+            <view>
+              <text class="shelf-head__eyebrow">FRESH TODAY</text>
+              <text class="shelf-head__title">{{item.props.title}}</text>
+              <text wx:if="{{item.props.subtitle}}" class="shelf-head__subtitle">{{item.props.subtitle}}</text>
+            </view>
+            <text class="shelf-head__link" bindtap="navigateToProducts">查看更多</text>
+          </view>
+          <view class="product-grid">
+            <view
+              wx:for="{{item.products}}"
+              wx:key="id"
+              class="product-card glass-panel hover-scale stagger-fade-in"
+              style="animation-delay: {{index * 0.05}}s"
+              data-id="{{product.id}}"
+              bindtap="openProduct"
+            >
+              <view class="product-image bakery-photo {{product.imageClass}}">
+                <view class="product-badge">{{product.badgeText}}</view>
+                <image wx:if="{{product.imageUrl}}" class="product-cover" src="{{product.imageUrl}}" mode="aspectFill" lazy-load="{{true}}" />
+              </view>
+              <view class="product-info">
+                <text class="product-title">{{product.title}}</text>
+                <text class="product-sold">{{product.soldText}}</text>
+                <text class="product-price">{{product.priceText}}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+
+      </block>
+
+    </view>
+  </scroll-view>
+</view>

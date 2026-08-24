@@ -1,0 +1,47 @@
+{
+  "name": "yunxi-admin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "build:staging": "vue-tsc --noEmit && vite build --mode staging",
+    "build:production": "vue-tsc --noEmit && vite build --mode production",
+    "e2e": "playwright test",
+    "preview": "vite preview",
+    "check:decoration": "node scripts/check-decoration-editor.mjs",
+    "check:addresses": "node scripts/check-addresses-page.mjs",
+    "check:orders": "node scripts/check-orders-page.mjs",
+    "check:products": "node scripts/check-products-page.mjs",
+    "check:shop-settings": "node scripts/check-shop-settings-page.mjs",
+    "check:mobile-ops": "node scripts/check-mobile-operations.mjs",
+    "smoke:decoration-product-picker": "python scripts/smoke_decoration_product_picker.py",
+    "smoke:orders-confirmation": "python scripts/smoke_orders_confirmation.py",
+    "smoke:orders-summary": "python scripts/smoke_orders_summary.py",
+    "smoke:transfers-queue": "python scripts/smoke_transfers_queue.py",
+    "smoke:mobile-ops": "python scripts/smoke_mobile_operations.py",
+    "smoke:addresses-editing": "python scripts/smoke_addresses_editing.py",
+    "smoke:products-active-toggle": "python scripts/smoke_products_active_toggle.py",
+    "smoke:shop-settings": "python scripts/smoke_shop_settings.py",
+    "smoke:production-navigation": "python scripts/smoke_production_navigation.py",
+    "typecheck": "vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "@element-plus/icons-vue": "^2.3.1",
+    "axios": "^1.11.0",
+    "element-plus": "^2.11.4",
+    "pinia": "^2.3.1",
+    "vue": "^3.5.20",
+    "vue-router": "^4.5.1",
+    "zod": "^4.1.5"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.52.0",
+    "@types/node": "^24.3.0",
+    "@vitejs/plugin-vue": "^5.2.4",
+    "typescript": "^5.9.2",
+    "vite": "^5.4.19",
+    "vue-tsc": "^2.2.12"
+  }
+}

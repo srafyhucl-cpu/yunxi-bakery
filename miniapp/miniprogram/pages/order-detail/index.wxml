@@ -1,0 +1,155 @@
+<view class="page-shell" style="{{layoutStyle}}">
+  <view class="page-fixed-safe has-custom-title">
+    <button
+      class="page-nav-back"
+      bindtap="goBack"
+      disabled="{{loading || paying || cancelling}}"
+      aria-label="返回"
+    >
+      <text class="page-nav-back__icon">‹</text>
+    </button>
+    <view class="page-fixed-safe__title">订单详情</view>
+  </view>
+  <view class="page-pinned page-pinned--empty"></view>
+  <scroll-view class="page-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="page order-detail-page">
+      <view wx:if="{{!canLoadOrder}}" class="empty">
+        <session-notice
+          status-text="{{sessionView.statusText}}"
+          badge-text="{{sessionView.badgeText}}"
+          description="{{loginStateText}}"
+          action-text="订单列表"
+          icon-text="详"
+          bind:action="goOrders"
+        ></session-notice>
+      </view>
+      <view wx:elif="{{loading && !order}}" class="empty">订单加载中...</view>
+
+      <block wx:elif="{{order}}">
+        <view class="order-card order-card--status bakery-panel">
+          <view>
+            <text class="order-label">订单状态</text>
+            <text class="order-status">{{order.statusText}}</text>
+            <text class="payment-status">{{order.paymentStatusText}}</text>
+          </view>
+          <button
+            class="ghost-button compact-button"
+            bindtap="refreshOrder"
+            loading="{{loading}}"
+            disabled="{{loading || paying || cancelling}}"
+          >刷新</button>
+        </view>
+
+        <view class="order-card bakery-panel">
+          <text class="section-title">订单进度</text>
+          <text class="progress-hint">{{order.progressText}}</text>
+          <view class="progress-list">
+            <view
+              wx:for="{{order.progressSteps}}"
+              wx:key="status"
+              class="progress-step progress-step--{{item.state}}"
+            >
+              <view class="progress-marker">{{item.state === 'done' ? '✓' : ''}}</view>
+              <view class="progress-body">
+                <text class="progress-title">{{item.title}}</text>
+                <text class="progress-desc">{{item.description}}</text>
+                <text wx:if="{{item.timeText}}" class="progress-time">{{item.timeText}}</text>
+                <text wx:if="{{item.note}}" class="progress-note">{{item.note}}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+
+        <view class="order-card bakery-panel">
+          <view class="order-row">
+            <text class="order-label">订单号</text>
+            <text>{{order.id}}</text>
+          </view>
+          <view class="order-row">
+            <text class="order-label">创建时间</text>
+            <text>{{order.createdAt}}</text>
+          </view>
+          <view class="order-row">
+            <text class="order-label">更新时间</text>
+            <text>{{order.updatedAt || '未记录'}}</text>
+          </view>
+          <view class="order-row">
+            <text class="order-label">支付方式</text>
+            <text>{{order.paymentMethodText}}</text>
+          </view>
+          <view wx:if="{{order.paymentPaidAt}}" class="order-row">
+            <text class="order-label">支付时间</text>
+            <text>{{order.paymentPaidAt}}</text>
+          </view>
+          <view wx:if="{{order.paymentExpiredAt}}" class="order-row">
+            <text class="order-label">关闭时间</text>
+            <text>{{order.paymentExpiredAt}}</text>
+          </view>
+        </view>
+
+        <view class="order-card bakery-panel">
+          <text class="section-title">商品明细</text>
+          <view wx:for="{{order.itemsView}}" wx:key="productId" class="product-row">
+            <view>
+              <text class="product-title">{{item.title}}</text>
+              <text class="product-meta">{{item.priceText}} x {{item.quantity}}</text>
+            </view>
+            <text class="product-subtotal">{{item.subtotalText}}</text>
+          </view>
+          <view class="order-total-row">
+            <text>订单合计</text>
+            <text>{{order.totalText}}</text>
+          </view>
+        </view>
+
+        <view class="order-card bakery-panel">
+          <text class="section-title">履约信息</text>
+          <view class="order-row">
+            <text class="order-label">方式</text>
+            <text>{{order.deliveryTypeText}}</text>
+          </view>
+          <view class="order-row">
+            <text class="order-label">联系人</text>
+            <text>{{order.receiverName || '未填写'}} {{order.receiverPhone || ''}}</text>
+          </view>
+          <view class="order-row">
+            <text class="order-label">期望时间</text>
+            <text>{{order.expectTime || '时间待确认'}}</text>
+          </view>
+          <view wx:if="{{order.deliveryAddress}}" class="order-row">
+            <text class="order-label">地址/备注</text>
+            <text>{{order.deliveryAddress}}</text>
+          </view>
+          <view wx:if="{{order.remark}}" class="order-row">
+            <text class="order-label">订单备注</text>
+            <text>{{order.remark}}</text>
+          </view>
+        </view>
+
+        <view class="order-actions">
+          <button class="ghost-button" bindtap="goOrders" disabled="{{loading || paying || cancelling}}">订单列表</button>
+          <button
+            wx:if="{{order.canPay}}"
+            class="primary-button"
+            bindtap="payOrder"
+            loading="{{paying}}"
+            disabled="{{loading || paying || cancelling}}"
+          >立即支付</button>
+          <button
+            wx:if="{{order.canCancel}}"
+            class="danger-button"
+            bindtap="cancelOrder"
+            loading="{{cancelling}}"
+            disabled="{{loading || paying || cancelling}}"
+          >取消订单</button>
+          <button class="primary-button" bindtap="goChat" disabled="{{loading || paying || cancelling}}">联系客服</button>
+        </view>
+      </block>
+
+      <view wx:else class="empty">
+        <text>未找到订单</text>
+        <button class="ghost-button" bindtap="goOrders">返回订单列表</button>
+      </view>
+    </view>
+  </scroll-view>
+</view>

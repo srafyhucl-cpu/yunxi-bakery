@@ -1,0 +1,1054 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bakery Commerce Platform 生产级补强对比流程图</title>
+  <style>
+    :root {
+      --cream: #fff7e9;
+      --flour: #fffdf7;
+      --cocoa: #3c2418;
+      --caramel: #c46f2d;
+      --honey: #f5b94f;
+      --mint: #6ea786;
+      --sage: #dbe9d8;
+      --berry: #b7474f;
+      --ink: #2a2520;
+      --muted: #776a5f;
+      --line: rgba(60, 36, 24, 0.18);
+      --shadow: 0 24px 70px rgba(58, 35, 20, 0.18);
+      --radius-xl: 32px;
+      --radius-lg: 24px;
+      --radius-md: 18px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+      background:
+        radial-gradient(circle at 12% 10%, rgba(245, 185, 79, 0.42), transparent 28%),
+        radial-gradient(circle at 86% 8%, rgba(110, 167, 134, 0.35), transparent 30%),
+        linear-gradient(135deg, #fff7e9 0%, #f9ead2 45%, #eef5df 100%);
+      min-height: 100vh;
+    }
+
+    .page {
+      position: relative;
+      overflow: hidden;
+      padding: 48px clamp(18px, 4vw, 64px) 72px;
+    }
+
+    .page::before,
+    .page::after {
+      position: absolute;
+      z-index: 0;
+      width: 360px;
+      height: 360px;
+      border-radius: 50%;
+      content: "";
+      filter: blur(8px);
+      opacity: 0.35;
+    }
+
+    .page::before {
+      top: -170px;
+      right: -90px;
+      background: repeating-linear-gradient(45deg, #f7c36f 0 16px, #fff6de 16px 32px);
+    }
+
+    .page::after {
+      bottom: -180px;
+      left: -120px;
+      background: repeating-linear-gradient(-35deg, #cce3d0 0 18px, #fff8e8 18px 36px);
+    }
+
+    .hero,
+    .board,
+    .detail-grid,
+    .swimlane,
+    .gap-panel,
+    .timeline,
+    .footer-card {
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+      gap: 28px;
+      align-items: stretch;
+      max-width: 1440px;
+      margin: 0 auto 28px;
+    }
+
+    .hero-title {
+      padding: clamp(28px, 4vw, 48px);
+      border: 1px solid rgba(255, 255, 255, 0.7);
+      border-radius: var(--radius-xl);
+      background: rgba(255, 253, 247, 0.72);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 20px;
+      padding: 8px 14px;
+      border: 1px solid rgba(196, 111, 45, 0.25);
+      border-radius: 999px;
+      color: var(--caramel);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      background: rgba(255, 246, 226, 0.82);
+    }
+
+    .eyebrow::before {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--honey);
+      box-shadow: 0 0 0 6px rgba(245, 185, 79, 0.18);
+      content: "";
+    }
+
+    h1 {
+      max-width: 840px;
+      margin: 0;
+      color: var(--cocoa);
+      font-size: clamp(34px, 6vw, 76px);
+      line-height: 0.98;
+      letter-spacing: -0.06em;
+    }
+
+    .hero-copy {
+      max-width: 780px;
+      margin: 22px 0 0;
+      color: var(--muted);
+      font-size: clamp(16px, 1.6vw, 20px);
+      line-height: 1.8;
+    }
+
+    .score-card {
+      position: relative;
+      display: grid;
+      align-content: space-between;
+      min-height: 340px;
+      padding: 30px;
+      border-radius: var(--radius-xl);
+      color: #fff9ed;
+      background:
+        linear-gradient(145deg, rgba(60, 36, 24, 0.94), rgba(93, 49, 27, 0.92)),
+        radial-gradient(circle at top right, rgba(245, 185, 79, 0.4), transparent 40%);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .score-card::after {
+      position: absolute;
+      right: -34px;
+      bottom: -42px;
+      width: 180px;
+      height: 180px;
+      border: 24px solid rgba(245, 185, 79, 0.18);
+      border-radius: 50%;
+      content: "";
+    }
+
+    .score-label {
+      position: relative;
+      z-index: 1;
+      color: rgba(255, 249, 237, 0.72);
+      font-size: 14px;
+      letter-spacing: 0.12em;
+    }
+
+    .score {
+      position: relative;
+      z-index: 1;
+      margin: 16px 0;
+      font-size: clamp(56px, 9vw, 104px);
+      font-weight: 900;
+      line-height: 0.9;
+      letter-spacing: -0.08em;
+    }
+
+    .score span {
+      color: var(--honey);
+      font-size: 0.34em;
+      letter-spacing: 0;
+    }
+
+    .score-note {
+      position: relative;
+      z-index: 1;
+      max-width: 360px;
+      color: rgba(255, 249, 237, 0.76);
+      line-height: 1.7;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 26px;
+      max-width: 1440px;
+      margin: 0 auto;
+    }
+
+    .lane {
+      position: relative;
+      padding: clamp(22px, 3vw, 34px);
+      border: 1px solid rgba(255, 255, 255, 0.76);
+      border-radius: var(--radius-xl);
+      background: rgba(255, 253, 247, 0.76);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(20px);
+    }
+
+    .lane.before {
+      background:
+        linear-gradient(180deg, rgba(255, 253, 247, 0.82), rgba(255, 240, 231, 0.86)),
+        radial-gradient(circle at top left, rgba(183, 71, 79, 0.16), transparent 36%);
+    }
+
+    .lane.after {
+      background:
+        linear-gradient(180deg, rgba(255, 253, 247, 0.86), rgba(237, 248, 232, 0.88)),
+        radial-gradient(circle at top right, rgba(110, 167, 134, 0.22), transparent 38%);
+    }
+
+    .lane-head {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 26px;
+    }
+
+    .lane h2 {
+      margin: 0;
+      color: var(--cocoa);
+      font-size: clamp(25px, 3vw, 38px);
+      line-height: 1.1;
+      letter-spacing: -0.04em;
+    }
+
+    .pill {
+      flex: 0 0 auto;
+      padding: 8px 13px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .before .pill {
+      color: #8f2c33;
+      background: rgba(183, 71, 79, 0.12);
+    }
+
+    .after .pill {
+      color: #356d50;
+      background: rgba(110, 167, 134, 0.16);
+    }
+
+    .flow {
+      position: relative;
+      display: grid;
+      gap: 16px;
+    }
+
+    .flow::before {
+      position: absolute;
+      top: 18px;
+      bottom: 18px;
+      left: 22px;
+      width: 2px;
+      background: linear-gradient(180deg, transparent, var(--line), transparent);
+      content: "";
+    }
+
+    .step {
+      position: relative;
+      display: grid;
+      grid-template-columns: 46px minmax(0, 1fr);
+      gap: 14px;
+      align-items: stretch;
+    }
+
+    .dot {
+      z-index: 1;
+      display: grid;
+      place-items: center;
+      width: 46px;
+      height: 46px;
+      border-radius: 16px;
+      color: var(--flour);
+      font-weight: 900;
+      box-shadow: 0 10px 28px rgba(60, 36, 24, 0.18);
+    }
+
+    .before .dot {
+      background: linear-gradient(145deg, #b7474f, #d7785d);
+    }
+
+    .after .dot {
+      background: linear-gradient(145deg, #4d8b68, #88bd73);
+    }
+
+    .step-card {
+      min-height: 92px;
+      padding: 18px 18px 17px;
+      border: 1px solid rgba(60, 36, 24, 0.08);
+      border-radius: var(--radius-md);
+      background: rgba(255, 255, 255, 0.62);
+    }
+
+    .step-card h3 {
+      margin: 0 0 8px;
+      color: var(--cocoa);
+      font-size: 18px;
+      line-height: 1.25;
+    }
+
+    .step-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.65;
+    }
+
+    .risk {
+      display: inline-block;
+      margin-top: 12px;
+      padding: 5px 9px;
+      border-radius: 10px;
+      color: #8f2c33;
+      font-size: 12px;
+      font-weight: 800;
+      background: rgba(183, 71, 79, 0.1);
+    }
+
+    .gain {
+      display: inline-block;
+      margin-top: 12px;
+      padding: 5px 9px;
+      border-radius: 10px;
+      color: #356d50;
+      font-size: 12px;
+      font-weight: 800;
+      background: rgba(110, 167, 134, 0.13);
+    }
+
+    .timeline {
+      max-width: 1440px;
+      margin: 26px auto 0;
+      padding: clamp(22px, 3vw, 34px);
+      border: 1px solid rgba(255, 255, 255, 0.75);
+      border-radius: var(--radius-xl);
+      background: rgba(60, 36, 24, 0.9);
+      box-shadow: var(--shadow);
+    }
+
+    .timeline h2 {
+      margin: 0 0 20px;
+      color: #fff9ed;
+      font-size: clamp(24px, 3vw, 38px);
+      letter-spacing: -0.04em;
+    }
+
+    .command-chain {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .command {
+      position: relative;
+      min-height: 138px;
+      padding: 18px;
+      border: 1px solid rgba(255, 249, 237, 0.13);
+      border-radius: var(--radius-lg);
+      color: #fff9ed;
+      background: rgba(255, 249, 237, 0.08);
+    }
+
+    .command:not(:last-child)::after {
+      position: absolute;
+      top: 50%;
+      right: -15px;
+      width: 18px;
+      height: 2px;
+      background: var(--honey);
+      content: "";
+    }
+
+    .command strong {
+      display: block;
+      margin-bottom: 10px;
+      color: var(--honey);
+      font-size: 14px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .command code {
+      color: #fff1bf;
+      font-family: "Cascadia Code", Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.55;
+      word-break: break-word;
+    }
+
+    .section-title {
+      max-width: 1440px;
+      margin: 34px auto 16px;
+    }
+
+    .section-title h2 {
+      margin: 0;
+      color: var(--cocoa);
+      font-size: clamp(26px, 3.8vw, 46px);
+      line-height: 1.08;
+      letter-spacing: -0.05em;
+    }
+
+    .section-title p {
+      max-width: 920px;
+      margin: 12px 0 0;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.8;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+      max-width: 1440px;
+      margin: 0 auto;
+    }
+
+    .detail-card {
+      display: grid;
+      gap: 14px;
+      min-height: 330px;
+      padding: 22px;
+      border: 1px solid rgba(255, 255, 255, 0.72);
+      border-radius: var(--radius-lg);
+      background: rgba(255, 253, 247, 0.76);
+      box-shadow: 0 18px 44px rgba(58, 35, 20, 0.12);
+    }
+
+    .detail-card h3 {
+      margin: 0;
+      color: var(--cocoa);
+      font-size: 22px;
+      letter-spacing: -0.03em;
+    }
+
+    .compare-row {
+      display: grid;
+      gap: 8px;
+      padding: 13px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.58);
+    }
+
+    .compare-row strong {
+      color: var(--cocoa);
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .compare-row p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .compare-row.before-row strong {
+      color: var(--berry);
+    }
+
+    .compare-row.after-row strong {
+      color: var(--mint);
+    }
+
+    .tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: auto;
+    }
+
+    .tag-list span {
+      padding: 6px 9px;
+      border-radius: 999px;
+      color: var(--cocoa);
+      font-size: 12px;
+      font-weight: 800;
+      background: rgba(245, 185, 79, 0.16);
+    }
+
+    .swimlane {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.76);
+      border-radius: var(--radius-xl);
+      background: rgba(255, 253, 247, 0.78);
+      box-shadow: var(--shadow);
+    }
+
+    .lane-row {
+      display: grid;
+      grid-template-columns: 180px repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      align-items: stretch;
+    }
+
+    .lane-row + .lane-row {
+      margin-top: 10px;
+    }
+
+    .lane-label,
+    .lane-cell {
+      min-height: 94px;
+      padding: 14px;
+      border-radius: 16px;
+    }
+
+    .lane-label {
+      display: grid;
+      align-content: center;
+      color: #fff9ed;
+      font-weight: 900;
+      background: linear-gradient(145deg, var(--cocoa), #6d3d24);
+    }
+
+    .lane-cell {
+      border: 1px solid rgba(60, 36, 24, 0.08);
+      background: rgba(255, 255, 255, 0.62);
+    }
+
+    .lane-cell b {
+      display: block;
+      margin-bottom: 7px;
+      color: var(--cocoa);
+      font-size: 14px;
+    }
+
+    .lane-cell span {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .lane-cell.good {
+      background: rgba(219, 233, 216, 0.7);
+    }
+
+    .lane-cell.warn {
+      background: rgba(255, 237, 205, 0.72);
+    }
+
+    .gap-panel {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      max-width: 1440px;
+      margin: 26px auto 0;
+    }
+
+    .gap-card {
+      padding: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.72);
+      border-radius: var(--radius-xl);
+      background: rgba(255, 253, 247, 0.78);
+      box-shadow: 0 18px 44px rgba(58, 35, 20, 0.12);
+    }
+
+    .gap-card h3 {
+      margin: 0 0 14px;
+      color: var(--cocoa);
+      font-size: 24px;
+      letter-spacing: -0.03em;
+    }
+
+    .check-list {
+      display: grid;
+      gap: 10px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .check-list li {
+      display: grid;
+      grid-template-columns: 28px minmax(0, 1fr);
+      gap: 10px;
+      align-items: start;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .check-list li::before {
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 10px;
+      color: var(--flour);
+      font-size: 13px;
+      font-weight: 900;
+      background: var(--mint);
+      content: "✓";
+    }
+
+    .check-list.pending li::before {
+      background: var(--berry);
+      content: "!";
+    }
+
+    .footer-card {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      max-width: 1440px;
+      margin: 26px auto 0;
+    }
+
+    .metric {
+      padding: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.72);
+      border-radius: var(--radius-lg);
+      background: rgba(255, 253, 247, 0.72);
+      box-shadow: 0 18px 40px rgba(58, 35, 20, 0.11);
+    }
+
+    .metric b {
+      display: block;
+      color: var(--cocoa);
+      font-size: 28px;
+      letter-spacing: -0.04em;
+    }
+
+    .metric span {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 1080px) {
+      .hero,
+      .board,
+      .gap-panel {
+        grid-template-columns: 1fr;
+      }
+
+      .command-chain,
+      .footer-card,
+      .detail-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .lane-row {
+        grid-template-columns: 1fr;
+      }
+
+      .command:not(:last-child)::after {
+        display: none;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .page {
+        padding: 22px 14px 44px;
+      }
+
+      .lane-head {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .command-chain,
+      .footer-card,
+      .detail-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .score-card {
+        min-height: 280px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero" aria-labelledby="page-title">
+      <div class="hero-title">
+        <div class="eyebrow">Production Readiness · 2026-06-11</div>
+        <h1 id="page-title">从“凭经验上线”到“可预检、可修复、可留档”的智能客服生产闭环</h1>
+        <p class="hero-copy">
+          这张图概括了 Bakery Commerce Platform 当前 `Platform` 仓本轮本地补强前后的差异：修改前依赖人工逐项判断和零散脚本；
+          修改后由就绪门禁、预检报告、恢复计划、显式迁移、知识种子、向量重建和冒烟留档串成一条可执行生产线。
+        </p>
+      </div>
+
+      <aside class="score-card" aria-label="生产化结果摘要">
+        <div>
+          <div class="score-label">QUALITY GATE</div>
+          <div class="score">70.45<span>%</span></div>
+          <div class="score-note">
+            全量质量门禁通过；剩余缺口已被归类为运行时待补项，而不是代码回归。
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <section class="board" aria-label="修改前后流程对比">
+      <article class="lane before">
+        <div class="lane-head">
+          <h2>修改前：上线靠人工拼图</h2>
+          <span class="pill">风险分散</span>
+        </div>
+
+        <div class="flow">
+          <div class="step">
+            <div class="dot">1</div>
+            <div class="step-card">
+              <h3>检查项散落</h3>
+              <p>数据库、知识库、向量缓存、后台 dist、企微/有赞配置分别靠人工记忆确认。</p>
+              <span class="risk">容易漏项</span>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="dot">2</div>
+            <div class="step-card">
+              <h3>失败原因难归并</h3>
+              <p>服务不可达、HTTP 接口失败、知识库为空等问题容易被当成多条独立故障。</p>
+              <span class="risk">排障成本高</span>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="dot">3</div>
+            <div class="step-card">
+              <h3>写入动作不够显式</h3>
+              <p>迁移、知识导入、向量重建缺少统一 dry-run 与 apply 边界。</p>
+              <span class="risk">误写风险</span>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="dot">4</div>
+            <div class="step-card">
+              <h3>报告不可稳定归档</h3>
+              <p>终端文本难被部署脚本消费，也不方便上线前后对比复盘。</p>
+              <span class="risk">追溯弱</span>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="dot">5</div>
+            <div class="step-card">
+              <h3>AI 失败后体验断点</h3>
+              <p>LLM 异常、工具轮次耗尽、图片理解不足时，客户可能停在兜底话术。</p>
+              <span class="risk">接待不连续</span>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="lane after">
+        <div class="lane-head">
+          <h2>修改后：上线像一条烘焙生产线</h2>
+          <span class="pill">闭环可执行</span>
+        </div>
+
+        <div class="flow">
+          <div class="step">
+            <div class="dot">1</div>
+            <div class="step-card">
+              <h3>/ready 就绪门禁</h3>
+              <p>统一暴露关键配置、数据库结构、向量缓存、后台产物和生产通道状态。</p>
+              <span class="gain">先判定能否接客</span>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="dot">2</div>
+            <div class="step-card">
+              <h3>preflight 生成恢复计划</h3>
+              <p>失败项归并为 recovery_plan，带 key、severity、apply_mutates_state。</p>
+              <span class="gain">知道先修哪一步</span>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="dot">3</div>
+            <div class="step-card">
+              <h3>显式 dry-run / apply</h3>
+              <p>迁移、基础知识种子、向量重建默认只读，确认路径后才显式写入。</p>
+              <span class="gain">降低误操作</span>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="dot">4</div>
+            <div class="step-card">
+              <h3>JSON 留档全链路</h3>
+              <p>preflight、migration、seed、smoke 支持 --json --output，BOM、时间戳、拒绝覆盖。</p>
+              <span class="gain">可审计可复盘</span>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="dot">5</div>
+            <div class="step-card">
+              <h3>客服体验兜底</h3>
+              <p>AI 失败自动转人工，接手摘要走 LLM 推理，图片输入追加观察任务。</p>
+              <span class="gain">客户不掉线</span>
+            </div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="section-title" aria-labelledby="detail-title">
+      <h2 id="detail-title">更细的改造拆解：每一块补强到底解决什么</h2>
+      <p>
+        下面把本轮改造拆成六个可解释模块。每个模块都对应一个上线前常见风险、一个本地已落地的补强点，以及明天同步生产时可以观察到的验收信号。
+      </p>
+    </section>
+
+    <section class="detail-grid" aria-label="生产级补强细节矩阵">
+      <article class="detail-card">
+        <h3>客户体验兜底</h3>
+        <div class="compare-row before-row">
+          <strong>修改前</strong>
+          <p>LLM API 异常、响应解析失败或工具轮次耗尽时，容易退化成“系统忙”类话术，人工侧不一定及时接住。</p>
+        </div>
+        <div class="compare-row after-row">
+          <strong>修改后</strong>
+          <p>AI 失败原因结构化记录，并触发自动转人工；接手提示优先由 LLM 总结“客户诉求 / 当前卡点 / 建议接手”。</p>
+        </div>
+        <div class="tag-list">
+          <span>ai_failure_auto_transfer</span>
+          <span>handoff summary</span>
+          <span>客户不掉线</span>
+        </div>
+      </article>
+
+      <article class="detail-card">
+        <h3>图片理解与多模态</h3>
+        <div class="compare-row before-row">
+          <strong>修改前</strong>
+          <p>图片进入模型时缺少明确观察任务，复杂蛋糕参考图、文字、数量、颜色和异常点可能提取不足。</p>
+        </div>
+        <div class="compare-row after-row">
+          <strong>修改后</strong>
+          <p>图片消息追加观察指令，要求提取款式、文字、数量、颜色、尺寸线索、异常与待确认项。</p>
+        </div>
+        <div class="tag-list">
+          <span>multimodal prompt</span>
+          <span>定制蛋糕</span>
+          <span>减少追问遗漏</span>
+        </div>
+      </article>
+
+      <article class="detail-card">
+        <h3>运行就绪门禁</h3>
+        <div class="compare-row before-row">
+          <strong>修改前</strong>
+          <p>上线前需要人工分别确认配置、数据库、向量、后台产物和通道开关，漏一个就可能生产降级。</p>
+        </div>
+        <div class="compare-row after-row">
+          <strong>修改后</strong>
+          <p>`/ready`、preflight 和 smoke 统一检查关键配置、15 张关键表、知识行、向量缓存、后台 dist、企微/有赞状态。</p>
+        </div>
+        <div class="tag-list">
+          <span>/ready</span>
+          <span>22 checks</span>
+          <span>非敏感布尔门禁</span>
+        </div>
+      </article>
+
+      <article class="detail-card">
+        <h3>数据库结构修复</h3>
+        <div class="compare-row before-row">
+          <strong>修改前</strong>
+          <p>生产库缺表时需要人工判断迁移范围，坏数据库文件也可能被误当成普通缺表处理。</p>
+        </div>
+        <div class="compare-row after-row">
+          <strong>修改后</strong>
+          <p>`apply_migrations.py` 默认 dry-run，只列缺失表；写库必须显式 `--apply`，坏 SQLite 文件会被拒绝继续修。</p>
+        </div>
+        <div class="tag-list">
+          <span>dry-run first</span>
+          <span>--allow-create 防误建库</span>
+          <span>missing tables</span>
+        </div>
+      </article>
+
+      <article class="detail-card">
+        <h3>知识与向量闭环</h3>
+        <div class="compare-row before-row">
+          <strong>修改前</strong>
+          <p>知识库为空或向量缓存缺失时，AI 检索增强不可用，但修复顺序和风险边界不够清晰。</p>
+        </div>
+        <div class="compare-row after-row">
+          <strong>修改后</strong>
+          <p>先导入最低可服务知识，再重建 `embeddings.npy/json`；两个脚本都先 dry-run，确认目标库/路径后才 apply。</p>
+        </div>
+        <div class="tag-list">
+          <span>baseline seed</span>
+          <span>embedding rebuild</span>
+          <span>RAG 可用性</span>
+        </div>
+      </article>
+
+      <article class="detail-card">
+        <h3>留档审计与复盘</h3>
+        <div class="compare-row before-row">
+          <strong>修改前</strong>
+          <p>上线过程主要依赖终端文本和人工复制，难被脚本消费，也难保证上线前后报告不互相覆盖。</p>
+        </div>
+        <div class="compare-row after-row">
+          <strong>修改后</strong>
+          <p>preflight、migration、baseline seed、smoke 都支持 JSON 输出、UTF-8 BOM、`{timestamp}` 展开和拒绝覆盖。</p>
+        </div>
+        <div class="tag-list">
+          <span>metadata</span>
+          <span>reports/*-{timestamp}.json</span>
+          <span>可审计</span>
+        </div>
+      </article>
+    </section>
+
+    <section class="section-title" aria-labelledby="swimlane-title">
+      <h2 id="swimlane-title">明天同步生产的执行泳道：谁先、谁后、看什么结果</h2>
+      <p>
+        这不是单纯“跑脚本列表”，而是一条有前置条件、写入边界和验收信号的生产同步泳道。默认先 dry-run，只有确认目标库、目标路径和生产域名无误后才进入显式 apply。
+      </p>
+    </section>
+
+    <section class="swimlane" aria-label="明日生产同步执行泳道">
+      <div class="lane-row">
+        <div class="lane-label">操作阶段</div>
+        <div class="lane-cell"><b>1. 预检</b><span>确认配置、数据库、知识、向量、后台和通道是否 ready。</span></div>
+        <div class="lane-cell"><b>2. 迁移</b><span>补齐关键表，尤其是画像、质检、知识缺口和企微同步账本。</span></div>
+        <div class="lane-cell"><b>3. 知识</b><span>优先同步真实有赞商品；必要时导入最低可服务知识兜底。</span></div>
+        <div class="lane-cell"><b>4. 向量</b><span>知识有效行存在后再重建向量缓存，避免空库生成假 ready。</span></div>
+        <div class="lane-cell"><b>5. 冒烟</b><span>对同一目标库、向量路径和服务根地址做最终验证。</span></div>
+      </div>
+      <div class="lane-row">
+        <div class="lane-label">只读命令</div>
+        <div class="lane-cell good"><b>preflight JSON</b><span>`--json --output reports/preflight-before-{timestamp}.json`</span></div>
+        <div class="lane-cell good"><b>migration dry-run</b><span>`python scripts/apply_migrations.py --db-path &lt;目标库&gt;`</span></div>
+        <div class="lane-cell good"><b>seed dry-run</b><span>`python scripts/seed_baseline_knowledge.py --db-path &lt;目标库&gt;`</span></div>
+        <div class="lane-cell good"><b>embedding dry-run</b><span>`python scripts/rebuild_embeddings.py --db-path &lt;目标库&gt;`</span></div>
+        <div class="lane-cell good"><b>smoke JSON</b><span>`--json --base-url &lt;服务根地址&gt; --output reports/smoke-after-{timestamp}.json`</span></div>
+      </div>
+      <div class="lane-row">
+        <div class="lane-label">写入边界</div>
+        <div class="lane-cell warn"><b>不写状态</b><span>preflight 本身只读，只输出 recovery_plan。</span></div>
+        <div class="lane-cell warn"><b>显式 --apply</b><span>默认拒绝创建新库；需要新库时才加 `--allow-create`。</span></div>
+        <div class="lane-cell warn"><b>显式 --apply</b><span>只插入缺失的 7 条基础知识，已有 seed ref 会跳过。</span></div>
+        <div class="lane-cell warn"><b>显式 --apply</b><span>只有 active_docs&gt;0 时才应该生成或刷新向量缓存。</span></div>
+        <div class="lane-cell warn"><b>不写状态</b><span>冒烟只验证，不修复；失败回到 recovery_hints。</span></div>
+      </div>
+      <div class="lane-row">
+        <div class="lane-label">验收信号</div>
+        <div class="lane-cell good"><b>failed=0</b><span>`/ready` 相关门禁全部 ready。</span></div>
+        <div class="lane-cell good"><b>schema ready</b><span>关键表不再缺失，坏库不会被误修。</span></div>
+        <div class="lane-cell good"><b>active_rows&gt;0</b><span>知识库至少具备最低可服务内容。</span></div>
+        <div class="lane-cell good"><b>cache ready</b><span>`embeddings.npy` 与 `embeddings.json` 同时存在且可读。</span></div>
+        <div class="lane-cell good"><b>status=ready</b><span>最终 smoke 与 `/ready` 均无失败项。</span></div>
+      </div>
+    </section>
+
+    <section class="gap-panel" aria-label="当前本地状态和生产目标">
+      <article class="gap-card">
+        <h3>当前本地仍故意不处理的运行时缺口</h3>
+        <ul class="check-list pending">
+          <li>数据库仍缺 `conversation_reviews`、`customer_profiles`、`knowledge_gaps`、`wecom_kf_message_ledger`、`wecom_kf_sync_states`。</li>
+          <li>`knowledge.active_rows=0`，本地没有写入基础知识，也没有同步真实商品知识。</li>
+          <li>`data/embeddings.npy` 与 `data/embeddings.json` 缺失，向量检索缓存尚未生成。</li>
+          <li>缺少 `WECOM_STAFF_ID` 或 `WECOM_KF_SERVICER_USERID`，企微人工接手人未配置。</li>
+          <li>本地 `127.0.0.1:7001` 服务未启动，所以 smoke 的 HTTP 接口检查会因同一根因失败。</li>
+        </ul>
+      </article>
+      <article class="gap-card">
+        <h3>这次已经补齐的生产级能力</h3>
+        <ul class="check-list">
+          <li>把“上线前靠人想”变成 `preflight` 自动检查和 `recovery_plan` 顺序修复。</li>
+          <li>把“可能误写”变成 dry-run 默认只读、`--apply` 显式写入、`apply_mutates_state` 标记风险。</li>
+          <li>把“终端结果难复盘”变成带 metadata 的 JSON 留档，支持时间戳和拒绝覆盖。</li>
+          <li>把“AI 失败客户卡住”变成结构化失败原因、自动转人工和客服接手摘要。</li>
+          <li>把“后台是否新版本难确认”变成 dist 内容标记和观察台值守摘要检查。</li>
+        </ul>
+      </article>
+    </section>
+
+    <section class="timeline" aria-labelledby="command-title">
+      <h2 id="command-title">修改后的生产同步主线</h2>
+      <div class="command-chain">
+        <div class="command">
+          <strong>01 Preflight</strong>
+          <code>python scripts/preflight_production.py --json --output reports/preflight-before-{timestamp}.json</code>
+        </div>
+        <div class="command">
+          <strong>02 Migration</strong>
+          <code>python scripts/apply_migrations.py --db-path &lt;目标库&gt; --apply</code>
+        </div>
+        <div class="command">
+          <strong>03 Knowledge</strong>
+          <code>python scripts/seed_baseline_knowledge.py --json --output reports/baseline-seed-after-{timestamp}.json --apply</code>
+        </div>
+        <div class="command">
+          <strong>04 Embedding</strong>
+          <code>python scripts/rebuild_embeddings.py --db-path &lt;目标库&gt; --index-path &lt;向量路径&gt; --apply</code>
+        </div>
+        <div class="command">
+          <strong>05 Smoke</strong>
+          <code>python scripts/smoke_test.py --json --base-url &lt;服务根地址&gt; --output reports/smoke-after-{timestamp}.json</code>
+        </div>
+      </div>
+    </section>
+
+    <section class="footer-card" aria-label="关键收益">
+      <div class="metric">
+        <b>22</b>
+        <span>preflight 生产关键检查项，覆盖配置、数据、向量、后台与通道。</span>
+      </div>
+      <div class="metric">
+        <b>5</b>
+        <span>recovery_plan 修复步骤：配置、迁移、知识、向量、最终验证。</span>
+      </div>
+      <div class="metric">
+        <b>4</b>
+        <span>可归档 JSON 报告链路：预检、迁移、知识种子、冒烟。</span>
+      </div>
+      <div class="metric">
+        <b>0</b>
+        <span>本轮未提交、未推送、未对本地或生产执行写入型 apply。</span>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

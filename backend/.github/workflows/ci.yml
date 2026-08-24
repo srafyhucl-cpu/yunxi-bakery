@@ -1,0 +1,135 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+    branches: ["main", "master"]
+
+jobs:
+  lint:
+    name: Lint & Style
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Run pre-commit hooks
+        run: |
+          pre-commit run --all-files
+        env:
+          PYTHONUTF8: "1"
+
+      - name: Run ruff check
+        run: ruff check app/ scripts/
+
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Run Quality Gate (Red Lines & Pytest)
+        run: python scripts/check_project.py
+        env:
+          PYTHONUTF8: "1"
+
+      - name: Archive Coverage Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: htmlcov/
+          retention-days: 7
+
+  smoke:
+    name: Smoke Test
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Prepare Environment for Smoke Test
+        run: |
+          cp .env.example .env
+          mkdir -p data
+
+      - name: Seed Knowledge Database
+        run: python scripts/seed_baseline_knowledge.py --db-path data/bot.db --apply
+
+      - name: Start FastAPI Server
+        run: |
+          uvicorn app.main:app --host 127.0.0.1 --port 7001 &
+          echo "等待服务就绪..."
+          for i in $(seq 1 30); do
+            if curl -s http://127.0.0.1:7001/health 2>/dev/null | grep -q '"ok"'; then
+              echo "服务已就绪 (耗时 ${i}s)"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "错误：服务启动超时（30秒）"
+          exit 1
+
+      - name: Run Smoke Test
+        run: python scripts/smoke_test.py --http-only
+
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [smoke]
+    # R4-B 发布恢复门禁完成前，CI 不得自动触达生产。
+    if: false
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ssh-server.hclstudio.cn
+          username: root
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 2222
+          script: |
+            cd /opt/apps/yunxibakebot
+            git pull server main
+            systemctl restart yunxibakebot
+            sleep 2
+            systemctl is-active yunxibakebot || { echo "服务启动失败"; exit 1; }
+            echo "部署成功"

@@ -1,0 +1,76 @@
+<view class="page-shell" style="{{layoutStyle}}">
+  <view class="page-fixed-safe has-custom-title">
+    <button class="page-nav-back" bindtap="goBack" aria-label="返回">
+      <text class="page-nav-back__icon">‹</text>
+    </button>
+    <view class="page-fixed-safe__title">余额充值</view>
+  </view>
+  <view class="page-pinned page-pinned--empty"></view>
+  <scroll-view class="page-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="page recharge-page">
+      <view wx:if="{{!loggedIn}}" class="empty-panel glass-panel">
+        <text class="empty-title">请先登录</text>
+        <text class="empty-subtitle">登录后使用余额充值</text>
+      </view>
+      <block wx:elif="{{!ready}}">
+        <view class="empty-panel glass-panel">
+          <text class="empty-title">充值功能即将上线</text>
+          <text class="empty-subtitle">微信支付接入后开放</text>
+        </view>
+      </block>
+      <block wx:else>
+        <view class="balance-panel glass-panel fade-in">
+          <text class="balance-label">当前余额</text>
+          <text class="balance-value">{{balanceFen != null ? balanceText : '--'}}</text>
+        </view>
+        <view class="tier-panel glass-panel">
+          <view class="section-title">选择充值金额</view>
+          <view class="tier-grid">
+            <view
+              wx:for="{{tiers}}"
+              wx:key="amountFen"
+              class="tier-cell {{selectedTierFen === item.amountFen && !customFen ? 'active' : ''}}"
+              data-fen="{{item.amountFen}}"
+              bindtap="selectTier"
+            >
+              <text class="tier-amount">{{item.amountFen / 100}}元</text>
+              <text wx:if="{{showBonus && item.bonusFen > 0}}" class="tier-bonus">送{{item.bonusFen / 100}}元</text>
+            </view>
+          </view>
+          <view class="custom-row">
+            <text class="custom-label">自定义金额</text>
+            <input
+              class="custom-input"
+              type="digit"
+              placeholder="1~500"
+              value="{{customFen}}"
+              bindinput="onCustomInput"
+            />
+            <text class="custom-unit">元</text>
+          </view>
+          <button class="primary-btn" loading="{{submitting}}" disabled="{{submitting}}" bindtap="submitRecharge">
+            确认充值
+          </button>
+          <text wx:if="{{showBonus}}" class="bonus-note">充值赠送以活动规则为准，实际到账金额以支付确认页为准</text>
+        </view>
+        <view class="records-panel glass-panel">
+          <view class="section-title">充值记录</view>
+          <view wx:if="{{records.length === 0}}" class="records-empty">暂无充值记录</view>
+          <view wx:for="{{records}}" wx:key="rechargeId" class="record-row">
+            <view class="record-main">
+              <text class="record-amount">{{item.amountFen / 100}}元</text>
+              <text class="record-time">{{item.createdAt}}</text>
+            </view>
+            <view class="record-status">{{statusTextMap[item.status] || item.status}}</view>
+            <text
+              wx:if="{{item.status === 'unpaid'}}"
+              class="record-cancel"
+              data-id="{{item.rechargeId}}"
+              bindtap="cancelRecord"
+            >取消</text>
+          </view>
+        </view>
+      </block>
+    </view>
+  </scroll-view>
+</view>

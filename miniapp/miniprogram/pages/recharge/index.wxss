@@ -1,0 +1,137 @@
+.recharge-page {
+  padding: 24rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+.balance-panel {
+  padding: 40rpx 32rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.balance-label {
+  font-size: 26rpx;
+  color: #756d66;
+}
+.balance-value {
+  margin-top: 12rpx;
+  font-size: 64rpx;
+  font-weight: 700;
+  color: #2d2a26;
+}
+.tier-panel,
+.records-panel {
+  padding: 28rpx 24rpx;
+}
+.section-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #2d2a26;
+  margin-bottom: 20rpx;
+}
+.tier-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16rpx;
+}
+.tier-cell {
+  padding: 24rpx 0;
+  text-align: center;
+  border-radius: 12rpx;
+  border: 2rpx solid #e5ddd2;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6rpx;
+}
+.tier-cell.active {
+  border-color: #6c9a63;
+  background: #f0f7ee;
+}
+.tier-amount {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #2d2a26;
+}
+.tier-bonus {
+  font-size: 22rpx;
+  color: #c25b4e;
+}
+.custom-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-top: 24rpx;
+}
+.custom-label {
+  font-size: 28rpx;
+  color: #2d2a26;
+}
+.custom-input {
+  flex: 1;
+  border-bottom: 2rpx solid #e5ddd2;
+  padding: 12rpx 8rpx;
+  font-size: 30rpx;
+}
+.custom-unit {
+  font-size: 26rpx;
+  color: #756d66;
+}
+.bonus-note {
+  margin-top: 16rpx;
+  font-size: 22rpx;
+  color: #a29a90;
+}
+.records-empty {
+  padding: 40rpx 0;
+  text-align: center;
+  color: #a29a90;
+  font-size: 26rpx;
+}
+.record-row {
+  display: flex;
+  align-items: center;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #f0ece6;
+}
+.record-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.record-amount {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #2d2a26;
+}
+.record-time {
+  margin-top: 4rpx;
+  font-size: 22rpx;
+  color: #a29a90;
+}
+.record-status {
+  font-size: 26rpx;
+  color: #756d66;
+}
+.record-cancel {
+  margin-left: 24rpx;
+  font-size: 24rpx;
+  color: #c25b4e;
+}
+.empty-panel {
+  padding: 80rpx 32rpx;
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+}
+.empty-title {
+  font-size: 30rpx;
+  color: #756d66;
+}
+.empty-subtitle {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: #a29a90;
+}

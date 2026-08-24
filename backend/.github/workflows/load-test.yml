@@ -1,0 +1,107 @@
+name: Load Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      phase_a_count:
+        description: "订单查询聊天并发路数"
+        required: true
+        default: "10"
+      phase_c_count:
+        description: "商品实时刷新聊天并发路数"
+        required: true
+        default: "10"
+      post_run_wait_seconds:
+        description: "发射完成后等待 DB/LLM 沉降秒数"
+        required: true
+        default: "30"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: load-test-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  concurrent-webhook-load-test:
+    name: Concurrent Webhook Load Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PYTHONUTF8: "1"
+      SERVER_HOST: "127.0.0.1"
+      SERVER_PORT: "7001"
+      DB_PATH: "data/load-test-ci.db"
+      EMBEDDING_INDEX_DIR: "data/embeddings"
+      YOUZAN_MOCK_MODE: "true"
+      YOUZAN_CLIENT_ID: "ci-load-test-client"
+      YOUZAN_CLIENT_SECRET: "ci-load-test-secret"
+      YOUZAN_KDT_ID: "ci-load-test-kdt"
+      ADMIN_API_TOKEN: "ci-load-test-admin-token"
+      MIMO_API_KEY: ${{ secrets.MIMO_API_KEY }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Validate external LLM secret
+        run: |
+          if [ -z "$MIMO_API_KEY" ]; then
+            echo "::error::Missing MIMO_API_KEY repository secret. Load test uses the real LLM loop and is workflow_dispatch only."
+            exit 1
+          fi
+
+      - name: Prepare load-test fixture
+        run: |
+          mkdir -p data reports/load-test
+          python scripts/prepare_load_test_fixture.py \
+            --db-path "$DB_PATH" \
+            --orders "${{ inputs.phase_a_count }}" \
+            --products "${{ inputs.phase_c_count }}"
+
+      - name: Start FastAPI server
+        run: |
+          uvicorn app.main:app --host 127.0.0.1 --port "$SERVER_PORT" \
+            > reports/load-test/server.log 2>&1 &
+          echo $! > reports/load-test/server.pid
+          echo "Waiting for service readiness..."
+          for i in $(seq 1 60); do
+            if curl -s "http://127.0.0.1:${SERVER_PORT}/health" | grep -q '"ok"'; then
+              echo "Service is ready after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::FastAPI service did not become ready within 60s"
+          tail -n 200 reports/load-test/server.log || true
+          exit 1
+
+      - name: Run concurrent load test
+        run: |
+          set -o pipefail
+          python scripts/test_concurrent_100.py \
+            --phase-a-count "${{ inputs.phase_a_count }}" \
+            --phase-c-count "${{ inputs.phase_c_count }}" \
+            --post-run-wait-seconds "${{ inputs.post_run_wait_seconds }}" \
+            2>&1 | tee reports/load-test/concurrent-webhook.log
+
+      - name: Upload load-test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: load-test-evidence
+          path: reports/load-test/
+          retention-days: 14

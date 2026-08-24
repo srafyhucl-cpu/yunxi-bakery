@@ -1,0 +1,16 @@
+<view class="tabbar-shell">
+  <view class="tabbar-island">
+    <view
+      wx:for="{{items}}"
+      wx:key="key"
+      wx:for-item="item"
+      wx:for-index="index"
+      class="tabbar-item {{selected === index ? 'is-active' : ''}}"
+      data-index="{{index}}"
+      bindtap="switchTab"
+    >
+      <view class="tabbar-icon icon-{{item.key}}"></view>
+      <view class="tabbar-label">{{item.text}}</view>
+    </view>
+  </view>
+</view>

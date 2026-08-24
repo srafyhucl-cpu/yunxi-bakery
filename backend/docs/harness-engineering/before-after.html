@@ -1,0 +1,693 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Harness Engineering 调整前后对比</title>
+  <style>
+    :root {
+      --paper: #f8f1e7;
+      --paper-2: #fffaf2;
+      --ink: #22201d;
+      --muted: #6f665d;
+      --line: rgba(58, 44, 31, 0.18);
+      --cocoa: #3a2518;
+      --rust: #b85c38;
+      --gold: #e3a539;
+      --olive: #7f9564;
+      --moss: #dbe6cb;
+      --blue: #416a7d;
+      --mist: #e8f0ef;
+      --rose: #ead4ca;
+      --shadow: 0 24px 70px rgba(60, 38, 20, 0.16);
+      --radius-xl: 34px;
+      --radius-lg: 24px;
+      --radius-md: 16px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+      background:
+        radial-gradient(circle at 8% 10%, rgba(227, 165, 57, 0.34), transparent 28%),
+        radial-gradient(circle at 92% 4%, rgba(65, 106, 125, 0.26), transparent 28%),
+        linear-gradient(135deg, #f8f1e7 0%, #f6e6d1 48%, #e7efdf 100%);
+      min-height: 100vh;
+    }
+
+    .page {
+      position: relative;
+      overflow: hidden;
+      padding: 46px clamp(18px, 4vw, 64px) 70px;
+    }
+
+    .page::before,
+    .page::after {
+      position: absolute;
+      z-index: 0;
+      width: 380px;
+      height: 380px;
+      border-radius: 999px;
+      content: "";
+      opacity: 0.24;
+      filter: blur(2px);
+    }
+
+    .page::before {
+      top: -150px;
+      right: -120px;
+      background: repeating-linear-gradient(45deg, #d98b48 0 18px, #fff3db 18px 36px);
+    }
+
+    .page::after {
+      bottom: -190px;
+      left: -140px;
+      background: repeating-linear-gradient(-35deg, #a7bf8a 0 18px, #fff9ed 18px 36px);
+    }
+
+    .hero,
+    .comparison,
+    .control-map,
+    .flow,
+    .rules,
+    .footer {
+      position: relative;
+      z-index: 1;
+      max-width: 1440px;
+      margin-right: auto;
+      margin-left: auto;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(300px, 0.8fr);
+      gap: 26px;
+      align-items: stretch;
+      margin-bottom: 26px;
+    }
+
+    .hero-main,
+    .one-link {
+      border: 1px solid rgba(255, 255, 255, 0.7);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+    }
+
+    .hero-main {
+      padding: clamp(28px, 4vw, 52px);
+      background: rgba(255, 250, 242, 0.74);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 18px;
+      padding: 8px 14px;
+      border: 1px solid rgba(184, 92, 56, 0.24);
+      border-radius: 999px;
+      color: var(--rust);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      background: rgba(255, 246, 229, 0.8);
+    }
+
+    .eyebrow::before {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--gold);
+      box-shadow: 0 0 0 6px rgba(227, 165, 57, 0.18);
+      content: "";
+    }
+
+    h1 {
+      max-width: 900px;
+      margin: 0;
+      color: var(--cocoa);
+      font-size: clamp(34px, 6vw, 76px);
+      line-height: 0.98;
+      letter-spacing: -0.06em;
+    }
+
+    .hero-copy {
+      max-width: 800px;
+      margin: 22px 0 0;
+      color: var(--muted);
+      font-size: clamp(16px, 1.5vw, 20px);
+      line-height: 1.8;
+    }
+
+    .one-link {
+      display: grid;
+      align-content: space-between;
+      min-height: 330px;
+      padding: 30px;
+      color: #fff8ea;
+      background:
+        radial-gradient(circle at 90% 12%, rgba(227, 165, 57, 0.32), transparent 36%),
+        linear-gradient(145deg, #2f2119, #51311f);
+      overflow: hidden;
+    }
+
+    .one-link::after {
+      position: absolute;
+      right: -44px;
+      bottom: -44px;
+      width: 190px;
+      height: 190px;
+      border: 26px solid rgba(227, 165, 57, 0.18);
+      border-radius: 50%;
+      content: "";
+    }
+
+    .one-link small {
+      position: relative;
+      z-index: 1;
+      color: rgba(255, 248, 234, 0.7);
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .path {
+      position: relative;
+      z-index: 1;
+      margin: 22px 0;
+      padding: 18px;
+      border-radius: 20px;
+      color: #ffe4a9;
+      font-family: "Cascadia Mono", Consolas, monospace;
+      font-size: clamp(15px, 1.5vw, 20px);
+      line-height: 1.55;
+      word-break: break-all;
+      background: rgba(0, 0, 0, 0.28);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .one-link p {
+      position: relative;
+      z-index: 1;
+      margin: 0;
+      color: rgba(255, 248, 234, 0.78);
+      line-height: 1.7;
+    }
+
+    .comparison {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 26px;
+      margin-bottom: 26px;
+    }
+
+    .lane {
+      padding: clamp(24px, 3vw, 36px);
+      border: 1px solid rgba(255, 255, 255, 0.72);
+      border-radius: var(--radius-xl);
+      background: rgba(255, 250, 242, 0.76);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+    }
+
+    .lane.before {
+      background:
+        linear-gradient(180deg, rgba(255, 250, 242, 0.82), rgba(250, 224, 213, 0.84)),
+        radial-gradient(circle at 12% 12%, rgba(184, 92, 56, 0.15), transparent 30%);
+    }
+
+    .lane.after {
+      background:
+        linear-gradient(180deg, rgba(255, 250, 242, 0.86), rgba(230, 240, 221, 0.88)),
+        radial-gradient(circle at 92% 8%, rgba(127, 149, 100, 0.18), transparent 32%);
+    }
+
+    .lane-head {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      margin-bottom: 22px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 56px;
+      height: 56px;
+      border-radius: 18px;
+      color: #fff;
+      font-weight: 900;
+      box-shadow: 0 16px 34px rgba(40, 28, 18, 0.18);
+    }
+
+    .before .badge {
+      background: linear-gradient(135deg, #9f3e33, #d98255);
+    }
+
+    .after .badge {
+      background: linear-gradient(135deg, #55764c, #90a96c);
+    }
+
+    h2 {
+      margin: 0;
+      color: var(--cocoa);
+      font-size: clamp(24px, 3vw, 40px);
+      letter-spacing: -0.04em;
+    }
+
+    .subtitle {
+      margin: 6px 0 0;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .nodes {
+      display: grid;
+      gap: 14px;
+      margin-top: 22px;
+    }
+
+    .node {
+      padding: 16px 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      background: rgba(255, 255, 255, 0.55);
+    }
+
+    .node strong {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--cocoa);
+      font-size: 16px;
+    }
+
+    .node span {
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .control-map {
+      margin-bottom: 26px;
+      padding: clamp(24px, 3vw, 38px);
+      border: 1px solid rgba(255, 255, 255, 0.72);
+      border-radius: var(--radius-xl);
+      background: rgba(255, 250, 242, 0.78);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+    }
+
+    .section-head {
+      display: flex;
+      gap: 18px;
+      align-items: flex-end;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+
+    .section-head p {
+      max-width: 700px;
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .folder-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .folder {
+      position: relative;
+      min-height: 220px;
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-radius: 26px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.66), rgba(255, 250, 242, 0.72));
+      overflow: hidden;
+    }
+
+    .folder::before {
+      display: inline-block;
+      margin-bottom: 16px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      content: attr(data-label);
+      background: var(--blue);
+    }
+
+    .folder:nth-child(2)::before {
+      background: var(--olive);
+    }
+
+    .folder:nth-child(3)::before {
+      background: var(--rust);
+    }
+
+    .folder h3 {
+      margin: 0 0 12px;
+      color: var(--cocoa);
+      font-size: 25px;
+      letter-spacing: -0.04em;
+    }
+
+    .folder ul {
+      display: grid;
+      gap: 8px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .folder li::before {
+      color: var(--gold);
+      font-weight: 900;
+      content: "• ";
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 14px;
+      margin-bottom: 26px;
+    }
+
+    .step {
+      min-height: 170px;
+      padding: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.7);
+      border-radius: 24px;
+      background: rgba(255, 250, 242, 0.78);
+      box-shadow: 0 16px 40px rgba(60, 38, 20, 0.1);
+    }
+
+    .step-number {
+      display: inline-grid;
+      place-items: center;
+      width: 38px;
+      height: 38px;
+      margin-bottom: 14px;
+      border-radius: 14px;
+      color: #fff;
+      font-weight: 900;
+      background: var(--cocoa);
+    }
+
+    .step h3 {
+      margin: 0 0 8px;
+      color: var(--cocoa);
+      font-size: 19px;
+    }
+
+    .step p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .rules {
+      display: grid;
+      grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+      gap: 22px;
+      margin-bottom: 26px;
+    }
+
+    .panel {
+      padding: clamp(22px, 3vw, 34px);
+      border: 1px solid rgba(255, 255, 255, 0.74);
+      border-radius: var(--radius-xl);
+      background: rgba(255, 250, 242, 0.78);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+    }
+
+    .panel.dark {
+      color: #fff7e8;
+      background:
+        radial-gradient(circle at top right, rgba(227, 165, 57, 0.24), transparent 36%),
+        linear-gradient(145deg, #273321, #445334);
+    }
+
+    .panel.dark h2,
+    .panel.dark strong {
+      color: #fff7e8;
+    }
+
+    .panel.dark p,
+    .panel.dark li {
+      color: rgba(255, 247, 232, 0.78);
+    }
+
+    .panel ul {
+      display: grid;
+      gap: 12px;
+      margin: 18px 0 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .panel li {
+      padding: 14px 16px;
+      border-radius: 16px;
+      color: var(--muted);
+      line-height: 1.58;
+      background: rgba(255, 255, 255, 0.46);
+    }
+
+    .panel.dark li {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .footer {
+      padding: 26px;
+      border: 1px solid rgba(255, 255, 255, 0.72);
+      border-radius: var(--radius-xl);
+      color: var(--muted);
+      line-height: 1.7;
+      background: rgba(255, 250, 242, 0.74);
+      box-shadow: var(--shadow);
+    }
+
+    .footer strong {
+      color: var(--cocoa);
+    }
+
+    code {
+      padding: 2px 7px;
+      border-radius: 8px;
+      color: #73401f;
+      background: rgba(227, 165, 57, 0.16);
+      font-family: "Cascadia Mono", Consolas, monospace;
+      font-size: 0.94em;
+    }
+
+    @media (max-width: 980px) {
+      .hero,
+      .comparison,
+      .rules {
+        grid-template-columns: 1fr;
+      }
+
+      .folder-grid,
+      .flow {
+        grid-template-columns: 1fr;
+      }
+
+      .section-head {
+        display: block;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <div class="hero-main">
+        <div class="eyebrow">Harness Engineering · Before / After</div>
+        <h1>不是合并文档，而是给 Harness 一个清楚的家</h1>
+        <p class="hero-copy">
+          这一波调整的核心，是把原本散落在多个位置的 Harness 文档，收进同一个父目录。
+          内容仍然分工明确，但入口统一、命名统一、路径统一，后续 AI 和人都不用在文档树里猜路。
+        </p>
+      </div>
+      <aside class="one-link">
+        <small>只需要记住这一个入口</small>
+        <div class="path">docs/harness-engineering/README.md</div>
+        <p>
+          从这里进入，再按场景跳到 core、adr、specs。脚本仍在 scripts，证据仍在 reports/harness。
+        </p>
+      </aside>
+    </section>
+
+    <section class="comparison">
+      <article class="lane before">
+        <div class="lane-head">
+          <div class="badge">前</div>
+          <div>
+            <h2>散点式入口</h2>
+            <p class="subtitle">每份文档都有价值，但路径像散开的面粉袋。</p>
+          </div>
+        </div>
+        <div class="nodes">
+          <div class="node">
+            <strong>核心规则在 docs/harness/</strong>
+            <span>追溯、验证、防重犯、交接、证据索引都在这里，但不是唯一父入口。</span>
+          </div>
+          <div class="node">
+            <strong>决策记录在 docs/adr/</strong>
+            <span>ADR 是独立目录，逻辑上属于 Harness，但视觉上像另一个系统。</span>
+          </div>
+          <div class="node">
+            <strong>设计规格在 docs/superpowers/specs/</strong>
+            <span>生产级设计和其他 superpowers spec 混在一起，查找成本偏高。</span>
+          </div>
+          <div class="node">
+            <strong>根 README 列出很多细链接</strong>
+            <span>入口信息过多，读者会先看到文件清单，而不是文档结构。</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="lane after">
+        <div class="lane-head">
+          <div class="badge">后</div>
+          <div>
+            <h2>父目录统一管理</h2>
+            <p class="subtitle">保留分工，但把所有 Harness 文档收进一个清楚的柜子。</p>
+          </div>
+        </div>
+        <div class="nodes">
+          <div class="node">
+            <strong>统一父入口：docs/harness-engineering/</strong>
+            <span>从 README 进入，先看目录地图，再按场景选择子文档。</span>
+          </div>
+          <div class="node">
+            <strong>core/ 放日常规则</strong>
+            <span>traceability、verification、mistake ledger、handoff、evidence index 全在 core。</span>
+          </div>
+          <div class="node">
+            <strong>adr/ 放长期决策</strong>
+            <span>为什么采用 Traceable Memory Harness，不再散落在聊天或临时文档里。</span>
+          </div>
+          <div class="node">
+            <strong>specs/ 放大图和路线</strong>
+            <span>生产级设计文档收回 Harness 父目录，不再混在别的 spec 体系里。</span>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="control-map">
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">New Folder Map</div>
+          <h2>现在的目录心智模型</h2>
+        </div>
+        <p>这不是把所有东西塞进一个大文件，而是像大厂工程文档那样：一个父目录，一个 README 导航，三个稳定分区。</p>
+      </div>
+
+      <div class="folder-grid">
+        <article class="folder" data-label="CORE">
+          <h3>日常操作规则</h3>
+          <ul>
+            <li>traceability-model.md</li>
+            <li>verification-matrix.md</li>
+            <li>mistake-ledger.md</li>
+            <li>agent-handoff-template.md</li>
+            <li>evidence-index.md</li>
+          </ul>
+        </article>
+
+        <article class="folder" data-label="ADR">
+          <h3>长期决策记录</h3>
+          <ul>
+            <li>README.md：ADR 模板和触发条件</li>
+            <li>0001-traceable-memory-harness.md</li>
+            <li>后续关键架构决策继续编号</li>
+          </ul>
+        </article>
+
+        <article class="folder" data-label="SPECS">
+          <h3>设计规格和路线图</h3>
+          <ul>
+            <li>生产级 Harness 设计</li>
+            <li>P0 / P1 / P2 / P3 路线</li>
+            <li>适合回看大图，不做日常入口</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section class="flow">
+      <article class="step">
+        <div class="step-number">1</div>
+        <h3>开始任务</h3>
+        <p>读 <code>docs/harness-engineering/README.md</code>，确认场景入口。</p>
+      </article>
+      <article class="step">
+        <div class="step-number">2</div>
+        <h3>留追溯</h3>
+        <p>按 core/traceability-model 分配 trace_id，记录来源、决策、验证。</p>
+      </article>
+      <article class="step">
+        <div class="step-number">3</div>
+        <h3>做验证</h3>
+        <p>按 core/verification-matrix 选择最小验证和加强验证。</p>
+      </article>
+      <article class="step">
+        <div class="step-number">4</div>
+        <h3>沉淀错误</h3>
+        <p>可复用教训写入 mistake ledger，并由 pre-commit 检查结构。</p>
+      </article>
+      <article class="step">
+        <div class="step-number">5</div>
+        <h3>归档证据</h3>
+        <p>报告文件放 reports/harness，索引登记到 core/evidence-index。</p>
+      </article>
+    </section>
+
+    <section class="rules">
+      <article class="panel dark">
+        <h2>这次调整解决的“混乱感”</h2>
+        <ul>
+          <li><strong>入口过多</strong> → 根 README 只保留一个 Harness 链接。</li>
+          <li><strong>目录分散</strong> → 文档统一进入 docs/harness-engineering。</li>
+          <li><strong>职责不清</strong> → core、adr、specs 三个分区各司其职。</li>
+          <li><strong>不知道先读谁</strong> → 父 README 按使用场景给入口。</li>
+        </ul>
+      </article>
+
+      <article class="panel">
+        <h2>保留但不打扰你的东西</h2>
+        <ul>
+          <li><strong>脚本仍在 scripts/</strong>：因为它们是可执行工具，不混进文档目录。</li>
+          <li><strong>证据仍在 reports/harness/</strong>：报告可能有敏感信息，默认不入库，只保留 .gitkeep。</li>
+          <li><strong>LOGBOOK 仍是编年史</strong>：记录发生过什么，不作为日常阅读入口。</li>
+          <li><strong>项目 README 只放门牌号</strong>：详细地图全部交给 Harness 父目录。</li>
+        </ul>
+      </article>
+    </section>
+
+    <section class="footer">
+      <strong>一句话总结：</strong>
+      调整前是“几份文档散在不同抽屉”；调整后是“一个 Harness Engineering 文件柜，里面分 core、adr、specs 三层”。你日常只需要记住
+      <code>docs/harness-engineering/README.md</code>，剩下都由它导航。
+    </section>
+  </main>
+</body>
+</html>

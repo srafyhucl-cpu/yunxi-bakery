@@ -1,0 +1,18 @@
+{
+  "metadata": {
+    "source": "synthetic_pool_manifest_sample",
+    "contains_real_customer_data": false,
+    "notes": "本文件只用于验证 P12 样本池 manifest 门禁，不包含真实客户原文。"
+  },
+  "entries": [
+    {
+      "name": "synthetic_coverage_sample",
+      "fixture": "tests/fixtures/customer_real_replay_coverage_sample.json",
+      "enabled": true,
+      "is_real_customer_data": false,
+      "purpose": "contract_shape_only",
+      "min_per_scenario": 5,
+      "evidence_id": "synthetic-only"
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+# 芸熙烘焙反向代理安全合同示例
+# 复制到实际 Nginx 配置后，按域名和证书路径替换占位值，再执行 nginx -t。
+
+limit_req_zone $binary_remote_addr zone=yunxi_api:10m rate=10r/s;
+limit_conn_zone $binary_remote_addr zone=yunxi_conn:10m;
+
+server {
+    listen 443 ssl http2;
+    server_name admin.example.invalid;
+
+    # 证书路径必须由部署系统注入，不进入仓库。
+    ssl_certificate /etc/ssl/example/fullchain.pem;
+    ssl_certificate_key /etc/ssl/example/privkey.pem;
+
+    client_max_body_size 1m;
+    limit_conn yunxi_conn 40;
+
+    location = /docs {
+        return 404;
+    }
+
+    location = /openapi.json {
+        return 404;
+    }
+
+    location / {
+        limit_req zone=yunxi_api burst=20 nodelay;
+        proxy_pass http://127.0.0.1:7001;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 45s;
+        proxy_send_timeout 45s;
+        proxy_request_buffering on;
+        add_header X-Content-Type-Options nosniff always;
+        add_header X-Frame-Options DENY always;
+        add_header Referrer-Policy no-referrer always;
+    }
+}

@@ -1,0 +1,222 @@
+{
+  "meta": {
+    "name": "芸熙烘焙 检索评测 — 金标准标注集",
+    "purpose": "离线评测知识检索召回质量（Recall@K / MRR）；用于线 A（BM25+RRF 混合检索）改造前后对比。",
+    "version": "1",
+    "updated": "2026-06-09",
+    "match_rule": "每条用例的 relevant 是一组『匹配器』，匹配器为关键词列表。某召回文档的 (title + content) 若包含某个匹配器中的全部关键词，即视为命中该用例的目标文档。文档命中任一匹配器即算相关。此设计使标注集不绑定精确标题，可对真实库做语义对齐。",
+    "design_note": "用例覆盖三类难度：①短词/专有名词（BM25 应占优）②口语化长句（向量应占优）③同义改写。改造前后跑同一集对比，验证混合检索是否在不伤①的前提下补强②③。"
+  },
+  "cases": [
+    {
+      "id": "prod-001",
+      "query": "提拉米苏多少钱",
+      "intent": "product_price",
+      "relevant": [["提拉米苏"]],
+      "note": "专有名词精确匹配，BM25 强项"
+    },
+    {
+      "id": "prod-002",
+      "query": "有没有草莓味的蛋糕",
+      "intent": "product_query",
+      "relevant": [["草莓"]],
+      "note": "口语化，向量语义"
+    },
+    {
+      "id": "prod-003",
+      "query": "想订个生日蛋糕",
+      "intent": "product_query",
+      "relevant": [["生日蛋糕"], ["生日"]],
+      "note": "高频意图"
+    },
+    {
+      "id": "prod-004",
+      "query": "芝士蛋糕",
+      "intent": "product_query",
+      "relevant": [["芝士"], ["乳酪"]],
+      "note": "短词，含同义（芝士/乳酪）"
+    },
+    {
+      "id": "prod-005",
+      "query": "巧克力的有哪些款",
+      "intent": "product_query",
+      "relevant": [["巧克力"]],
+      "note": "专有名词"
+    },
+    {
+      "id": "prod-006",
+      "query": "慕斯蛋糕推荐一下",
+      "intent": "product_query",
+      "relevant": [["慕斯"]],
+      "note": "专有名词"
+    },
+    {
+      "id": "prod-007",
+      "query": "你们家面包都有什么",
+      "intent": "product_query",
+      "relevant": [["面包"], ["吐司"], ["欧包"]],
+      "note": "品类宽查询，多个匹配器任一命中"
+    },
+    {
+      "id": "prod-008",
+      "query": "想买个吐司",
+      "intent": "product_query",
+      "relevant": [["吐司"]],
+      "note": "短词"
+    },
+    {
+      "id": "prod-009",
+      "query": "牛角包",
+      "intent": "product_query",
+      "relevant": [["可颂"], ["牛角"]],
+      "note": "口语别名（牛角包=可颂），考验同义召回"
+    },
+    {
+      "id": "prod-010",
+      "query": "蛋挞还有吗",
+      "intent": "product_query",
+      "relevant": [["蛋挞"]],
+      "note": "短词 + 库存口吻"
+    },
+    {
+      "id": "prod-011",
+      "query": "六寸的奶油蛋糕大概什么价位",
+      "intent": "product_price",
+      "relevant": [["奶油"], ["蛋糕", "6"], ["蛋糕", "六"]],
+      "note": "长句含尺寸约束，向量语义"
+    },
+    {
+      "id": "prod-012",
+      "query": "瑞士卷",
+      "intent": "product_query",
+      "relevant": [["瑞士卷"], ["蛋糕卷"]],
+      "note": "专有名词"
+    },
+    {
+      "id": "prod-013",
+      "query": "有适合送人的伴手礼吗",
+      "intent": "product_query",
+      "relevant": [["伴手礼"], ["礼盒"], ["礼盒装"]],
+      "note": "口语化场景词，向量语义"
+    },
+    {
+      "id": "prod-014",
+      "query": "马卡龙多少一个",
+      "intent": "product_price",
+      "relevant": [["马卡龙"]],
+      "note": "专有名词 + 价格"
+    },
+    {
+      "id": "prod-015",
+      "query": "泡芙",
+      "intent": "product_query",
+      "relevant": [["泡芙"]],
+      "note": "单词查询，BM25 强项"
+    },
+    {
+      "id": "faq-001",
+      "query": "你们送货吗",
+      "intent": "faq_delivery",
+      "relevant": [["配送"], ["送货"], ["同城"]],
+      "note": "配送 FAQ，口语化"
+    },
+    {
+      "id": "faq-002",
+      "query": "能寄到外地吗",
+      "intent": "faq_delivery",
+      "relevant": [["外地"], ["快递"], ["跨城"]],
+      "note": "外地配送，向量语义"
+    },
+    {
+      "id": "faq-003",
+      "query": "运费怎么算",
+      "intent": "faq_delivery",
+      "relevant": [["运费"], ["配送费"]],
+      "note": "短词精确"
+    },
+    {
+      "id": "faq-004",
+      "query": "可以到店自提吗",
+      "intent": "faq_delivery",
+      "relevant": [["自提"], ["到店"]],
+      "note": "自提"
+    },
+    {
+      "id": "faq-005",
+      "query": "蛋糕能放几天",
+      "intent": "faq_shelf_life",
+      "relevant": [["保质期"], ["保存"], ["冷藏"]],
+      "note": "保质期，口语化（放几天=保质期）"
+    },
+    {
+      "id": "faq-006",
+      "query": "六寸够几个人吃",
+      "intent": "faq_size",
+      "relevant": [["尺寸"], ["几人"], ["人份"], ["食用人数"]],
+      "note": "尺寸人数，高频且易幻觉"
+    },
+    {
+      "id": "faq-007",
+      "query": "甜度可以调吗",
+      "intent": "faq_sweetness",
+      "relevant": [["甜度"], ["少糖"], ["减糖"]],
+      "note": "甜度定制"
+    },
+    {
+      "id": "faq-008",
+      "query": "夹心有哪些口味",
+      "intent": "faq_filling",
+      "relevant": [["夹心"], ["内馅"]],
+      "note": "夹心"
+    },
+    {
+      "id": "faq-009",
+      "query": "几点开门",
+      "intent": "faq_hours",
+      "relevant": [["营业时间"], ["营业"]],
+      "note": "营业时间，口语化"
+    },
+    {
+      "id": "faq-010",
+      "query": "今天还能下单吗",
+      "intent": "faq_cutoff",
+      "relevant": [["截单"], ["截止"], ["当日"]],
+      "note": "截单时间，向量语义"
+    },
+    {
+      "id": "faq-011",
+      "query": "可以退吗",
+      "intent": "faq_aftersale",
+      "relevant": [["退款"], ["退货"], ["售后"]],
+      "note": "售后政策"
+    },
+    {
+      "id": "faq-012",
+      "query": "下错单了怎么取消",
+      "intent": "faq_aftersale",
+      "relevant": [["取消"], ["退款"], ["改单"]],
+      "note": "口语化售后场景"
+    },
+    {
+      "id": "faq-013",
+      "query": "节日有什么推荐",
+      "intent": "faq_festival",
+      "relevant": [["节日"], ["推荐"], ["主推"]],
+      "note": "节日推荐"
+    },
+    {
+      "id": "faq-014",
+      "query": "可以定制吗",
+      "intent": "faq_custom",
+      "relevant": [["定制"], ["预定"], ["预约"]],
+      "note": "定制/预定"
+    },
+    {
+      "id": "faq-015",
+      "query": "开发票吗",
+      "intent": "faq_invoice",
+      "relevant": [["发票"]],
+      "note": "短词精确，BM25 强项"
+    }
+  ]
+}

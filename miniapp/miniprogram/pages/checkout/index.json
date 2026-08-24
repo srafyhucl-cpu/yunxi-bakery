@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "结算",
+  "usingComponents": {
+    "session-notice": "/components/session-notice/index"
+  }
+}

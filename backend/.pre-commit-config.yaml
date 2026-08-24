@@ -1,0 +1,109 @@
+repos:
+  - repo: local
+    hooks:
+      - id: detect-secrets
+        name: 密钥硬编码扫描
+        entry: detect-secrets-hook
+        args: [--baseline, .secrets.baseline]
+        language: system
+
+      - id: verify-secrets-baseline
+        name: 密钥基线防改写校验
+        entry: python scripts/verify_secrets_baseline.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        description: |
+          在 detect-secrets 之后校验 .secrets.baseline 未被意外改写（worktree 与 index 一致）；
+          基线更新必须走受控流程（候选副本 -> diff/哈希校验 -> 人工批准 -> 单文件替换）。
+
+      - id: sync-version
+        name: 版本号自动递增与文档同步
+        entry: python scripts/sync_version.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        description: |
+          根据提交类型自动递增 VERSION 文件，校验文档同步。
+          递增规则: feat!/BREAKING→major, feat/perf/refactor→minor, 其余→patch。
+          可用 SKIP_VERSION_BUMP=1 临时跳过，VERSION_BUMP=patch 强制指定。
+
+      - id: check-logbook
+        name: LOGBOOK.md 更新检查
+        entry: python scripts/check_logbook.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        description: 有代码变更时要求同步更新 LOGBOOK.md；可用 SKIP_LOGBOOK_CHECK=1 临时跳过
+
+      - id: check-file-sizes
+        name: 文件体量职责评审门禁
+        entry: python scripts/check_file_sizes.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        description: 体量超过阻断线且缺少职责评审时阻断；职责混杂才拆，高度内聚可记录理由保留
+
+      - id: check-project
+        name: YunxiBakeBot Quality Gate
+        entry: python scripts/check_project.py
+        args: [--skip-tests]
+        language: system
+        pass_filenames: false
+        always_run: true
+        description: 运行项目红线门禁（测试由 CI 独立执行）
+
+      - id: check-redline-selftest
+        name: 红线规则自测验证
+        entry: python -m pytest tests/test_red_line_rules.py -q --tb=short --no-cov
+        language: system
+        pass_filenames: false
+        always_run: true
+        description: |
+          在每次 commit 前用违规/合规双样本验证全部 11 条红线规则的检测逻辑。
+          确保 check_project.py 的扫描规则不会因代码重构或正则漂移而失效。
+
+      - id: check-mistake-ledger
+        name: Harness 防重犯账本结构检查
+        entry: python scripts/check_mistake_ledger.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        description: 检查 docs/harness-engineering/core/mistake-ledger.md 的空账本标记、必填字段和枚举值，避免防重犯记忆失效
+
+      - id: check-evidence-index
+        name: Harness 证据索引结构检查
+        entry: python scripts/check_evidence_index.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        description: 检查 docs/harness-engineering/core/evidence-index.md 的证据条目必填字段、结果枚举、敏感标记、重复 ID 和预检业务合约证据引用
+
+      - id: check-text-encoding
+        name: 中文文本编码健康检查
+        entry: python scripts/check_text_encoding.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        description: 检查 AGENTS、docs、LOGBOOK、README 和项目 Skill 是否出现 UTF-8 解码失败、替换字符或典型中文 mojibake
+
+      - id: ruff-check
+        name: Ruff Lint Check
+        entry: ruff check --exit-zero
+        language: system
+        types: [python]
+        description: 快速 Python 语法与风格检查（不阻断提交，仅提示）
+
+      - id: ruff-format-check
+        name: Ruff Format Check
+        entry: ruff format --check
+        language: system
+        types: [python]
+        description: 检查 Python 文件格式是否符合 ruff 规范
+
+      - id: mypy
+        name: MyPy Type Check
+        entry: python scripts/mypy_nonblocking.py
+        language: system
+        pass_filenames: false
+        description: 渐进式类型检查（非严格模式，不阻断提交）

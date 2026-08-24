@@ -1,0 +1,151 @@
+<view class="page-shell" style="{{layoutStyle}}">
+  <view class="page-fixed-safe has-custom-title">
+    <button class="page-nav-back" bindtap="goBack" disabled="{{submitting}}" aria-label="返回">
+      <text class="page-nav-back__icon">‹</text>
+    </button>
+    <view class="page-fixed-safe__title">确认订单</view>
+  </view>
+  <view class="page-pinned page-pinned--empty"></view>
+  <scroll-view class="page-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="page checkout-page">
+      <view class="section-title">收货信息</view>
+      <session-notice
+        wx:if="{{loginStateText}}"
+        status-text="{{sessionView.statusText}}"
+        badge-text="{{sessionView.badgeText}}"
+        description="{{loginStateText}}"
+        action-text="返回"
+        icon-text="结"
+        bind:action="goBack"
+      ></session-notice>
+      <view class="checkout-summary glass-panel hover-scale fade-in">
+        <text>订单合计</text>
+        <text class="checkout-total">{{totalText}}</text>
+      </view>
+      <view class="delivery-tabs">
+        <button
+          class="delivery-tab {{deliveryType === 'pickup' ? 'is-active' : ''}}"
+          data-type="pickup"
+          bindtap="selectDeliveryType"
+        >
+          到店自提
+        </button>
+        <button
+          class="delivery-tab {{deliveryType === 'delivery' ? 'is-active' : ''}}"
+          data-type="delivery"
+          bindtap="selectDeliveryType"
+        >
+          门店配送
+        </button>
+      </view>
+      <view class="checkout-notice glass-panel fade-in">
+        <text wx:if="{{deliveryType === 'pickup'}}">{{pickupNotice}}</text>
+        <text wx:else>{{deliveryNotice}}</text>
+        <text wx:if="{{deliveryType === 'pickup'}}">{{pickupAddress}}</text>
+      </view>
+      <view wx:if="{{errorMessage}}" class="checkout-error">{{errorMessage}}</view>
+      <view class="address-picker glass-panel hover-scale fade-in" bindtap="openAddressBook">
+        <view>
+          <text class="address-picker-label">常用地址</text>
+          <text class="address-picker-value">{{selectedAddressText}}</text>
+        </view>
+        <text class="address-picker-action">选择</text>
+      </view>
+      <view class="form glass-panel fade-in">
+        <input placeholder="联系人" value="{{receiverName}}" data-field="receiverName" bindinput="updateField" />
+        <input placeholder="手机号，例：18800000000" type="number" maxlength="11" value="{{receiverPhone}}" data-field="receiverPhone" bindinput="updateField" />
+        <input
+          placeholder="{{deliveryType === 'delivery' ? '配送地址' : '自提备注，可填写门店/取货说明'}}"
+          value="{{deliveryAddress}}"
+          data-field="deliveryAddress"
+          bindinput="updateField"
+        />
+        <view class="time-grid">
+          <picker
+            mode="date"
+            value="{{selectedDateValue}}"
+            start="{{dateStartValue}}"
+            end="{{dateEndValue}}"
+            bindchange="selectExpectDate"
+          >
+            <view class="time-picker">日期：{{selectedDateValue || '请选择'}}</view>
+          </picker>
+          <picker mode="selector" value="{{selectedHourIndex}}" range="{{hourOptions}}" bindchange="selectExpectHour">
+            <view class="time-picker">小时：{{hourOptions[selectedHourIndex] || '18'}}</view>
+          </picker>
+          <picker mode="selector" value="{{selectedMinuteIndex}}" range="{{minuteOptions}}" bindchange="selectExpectMinute">
+            <view class="time-picker">分钟：{{minuteOptions[selectedMinuteIndex] || '00'}}</view>
+          </picker>
+        </view>
+        <view class="time-preview">期望时间：{{expectTime || '未选择'}}</view>
+        <textarea placeholder="备注，如生日牌文字、忌口等" value="{{remark}}" data-field="remark" bindinput="updateField" />
+      </view>
+      <view class="benefit-panel glass-panel">
+        <view class="benefit-row" bindtap="toggleCouponPanel">
+          <text class="benefit-label">优惠券</text>
+          <text class="benefit-value">
+            {{selectedCouponId ? '已选 1 张' : (availableCoupons.length ? availableCoupons.length + ' 张可用' : '暂无可用')}}
+          </text>
+          <text class="benefit-arrow">{{showCouponPanel ? '▲' : '▼'}}</text>
+        </view>
+        <view wx:if="{{showCouponPanel}}" class="coupon-panel">
+          <view
+            wx:for="{{availableCoupons}}"
+            wx:key="couponId"
+            class="coupon-option {{item.disabled ? 'disabled' : ''}} {{selectedCouponId === item.couponId ? 'selected' : ''}}"
+            data-id="{{item.couponId}}"
+            bindtap="selectCoupon"
+          >
+            <text class="coupon-option-value">-{{item.valueFen / 100}}元</text>
+            <text class="coupon-option-title">{{item.title}}（{{item.thresholdFen > 0 ? '满' + item.thresholdFen / 100 + '元可用' : '无门槛'}}）</text>
+            <text wx:if="{{orderLocked && selectedCouponId === item.couponId}}" class="coupon-applied">已应用</text>
+          </view>
+          <view wx:if="{{availableCoupons.length === 0}}" class="coupon-empty">暂无可用优惠券</view>
+        </view>
+        <view class="benefit-row" bindtap="togglePointsRow">
+          <text class="benefit-label">积分抵扣</text>
+          <switch checked="{{pointsEnabled}}" disabled="{{orderLocked}}" color="#6c9a63" bindchange="onPointsSwitch" />
+          <text class="benefit-value">{{orderLocked ? '积分已应用' : '可用 ' + pointsBalance + ' 积分'}}</text>
+        </view>
+        <text wx:if="{{orderLocked}}" class="benefit-note">积分已应用，取消请先取消订单</text>
+        <view class="benefit-row" bindtap="toggleBalanceRow">
+          <text class="benefit-label">余额抵扣</text>
+          <switch checked="{{balanceEnabled}}" color="#6c9a63" bindchange="onBalanceSwitch" />
+          <text class="benefit-value">可用 {{balanceFen / 100}} 元</text>
+        </view>
+      </view>
+
+      <view class="amount-panel glass-panel">
+        <view class="amount-row"><text>商品金额</text><text>{{goodsFenText}}</text></view>
+        <view class="amount-row"><text>优惠券</text><text>{{estimateCouponFenText}}</text></view>
+        <view class="amount-row"><text>积分抵扣</text><text>{{pointsEnabled ? '提交后计算' : '-'}}</text></view>
+        <view class="amount-row"><text>余额抵扣</text><text>{{balanceEnabled ? balanceDeductText : '-'}}</text></view>
+        <view class="amount-row amount-total"><text>实付（估算）</text><text>{{estimateRemainFenText}}</text></view>
+        <text class="amount-note">最终金额以支付确认页为准</text>
+      </view>
+
+      <view wx:if="{{pendingBarVisible}}" class="pending-bar">
+        <text>您有一笔待支付订单</text>
+        <view class="pending-actions">
+          <text class="pending-action" bindtap="resumePendingOrder">继续支付</text>
+          <text class="pending-action danger" bindtap="cancelPendingOrder">取消订单</text>
+        </view>
+      </view>
+      <view class="agreement-row glass-panel hover-scale fade-in" bindtap="toggleAgreementAccepted">
+        <text class="agreement-check {{agreementAccepted ? 'is-checked' : ''}}">{{agreementAccepted ? '✓' : ''}}</text>
+        <view class="agreement-copy">
+          <text>我已阅读并同意</text>
+          <text class="agreement-link" data-type="agreement" catchtap="openPolicy">《用户协议》</text>
+          <text>和</text>
+          <text class="agreement-link" data-type="privacy" catchtap="openPolicy">《隐私政策》</text>
+        </view>
+      </view>
+      <button
+        class="primary-button submit-button hover-scale shimmer-sweep"
+        loading="{{submitting}}"
+        disabled="{{submitting}}"
+        bindtap="submitOrder"
+      >提交订单</button>
+    </view>
+  </scroll-view>
+</view>

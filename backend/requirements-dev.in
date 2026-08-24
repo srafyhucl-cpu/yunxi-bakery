@@ -1,0 +1,10 @@
+-r requirements.in
+
+pytest>=8.2
+pytest-asyncio>=0.23
+pytest-cov>=5.0
+ruff>=0.5
+pre-commit>=3.7
+detect-secrets>=1.5
+pip-tools>=7.4
+mypy>=1.11

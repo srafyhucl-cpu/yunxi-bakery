@@ -1,0 +1,36 @@
+{
+  "name": "yunxi-bake-miniapp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Yunxi Bake WeChat Mini Program",
+  "scripts": {
+    "check:miniapp": "node scripts/check-miniapp.mjs",
+    "check:observability-contract": "node scripts/check-observability-contract.mjs",
+    "check:page-api-coverage": "node scripts/check-page-api-coverage.mjs",
+    "check:production-admin": "node scripts/check-production-admin.mjs",
+    "check:production-admin-api": "node scripts/check-production-admin-api.mjs",
+    "check:production-admin-browser": "node scripts/run-production-admin-browser-smoke.mjs",
+    "check:production-domain": "node scripts/check-production-domain.mjs",
+    "check:production-miniapp-api": "node scripts/check-production-miniapp-api.mjs",
+    "check:miniprogram-ci-readiness": "node scripts/check-miniprogram-ci-readiness.mjs",
+    "check:local-miniapp-products": "node scripts/check-local-miniapp-products.mjs",
+    "check:secrets": "node scripts/check-secret-hygiene.mjs",
+    "audit:buttons": "node scripts/audit-miniapp-buttons.mjs",
+    "audit:button-styles": "node scripts/audit-miniapp-button-styles.mjs",
+    "scan:button-touch-targets": "node scripts/scan-miniapp-button-touch-targets.mjs",
+    "devtools:check": "node scripts/check-devtools-cli.mjs",
+    "devtools:open-check": "node scripts/check-devtools-open.mjs",
+    "devtools:preview-check": "node scripts/check-devtools-preview.mjs",
+    "devtools:cart-checkout-real-product": "node scripts/check-devtools-cart-checkout-real-product.mjs",
+    "devtools:product-buy-now": "node scripts/check-devtools-product-buy-now.mjs",
+    "devtools:real-order-open-detail": "node scripts/check-devtools-real-order-open-detail.mjs",
+    "devtools:service-smoke": "node scripts/check-devtools-service-smoke.mjs",
+    "release:readiness": "node scripts/release-readiness.mjs",
+    "test:member-assets": "node --test tests/utils/member-assets.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "miniprogram-api-typings": "^4.0.0",
+    "typescript": "^5.0.0"
+  }
+}

@@ -1,0 +1,2 @@
+*.sh text eol=lf
+.secrets.baseline text eol=lf

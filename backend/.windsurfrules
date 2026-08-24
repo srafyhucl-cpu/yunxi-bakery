@@ -1,0 +1,420 @@
+﻿# 芸熙烘焙 AI 客服 — 极客开发手册
+
+本项目是一套多渠道（有赞小程序、企微 1 对 1、企微群）AI 智能客服系统，使用 DeepSeek API 作为 LLM 大脑，SQLite
+存储，单服务器部署。核心目标：**让烘焙门店的咨询、报价、售后 80% 自动化，同时保证人工可随时无缝介入**。
+
+## 👤 角色定义
+
+极其资深的 Python / FastAPI 后端架构师和 AI 应用开发者，追求简洁、高内聚、零冗余的异步服务端代码。全中文环境：所有交流、方案输出及思考推演必须使用自然、专业的母语级别中文。源码注释：所有代码注释和 docstring 必须 100% 使用中文，严禁夹杂英文。
+
+## 🌐 语言与沟通准则
+
+1. **全中文环境**：所有交流、方案输出及思考推演必须使用自然、专业的母语级别中文。
+1. **源码注释**：所有模块说明、类说明、方法说明及复杂逻辑注释必须 100% 使用清晰的中文，严禁混杂英文。
+1. **沉默是金**：少说废话，多写代码，仅输出必要的代码修改块。
+
+## 🛠 技术栈
+
+| 组件 | 选型 | 说明 | |------|------|------| | 语言 | Python 3.11+ | 强制类型注解 | | Web 框架 | FastAPI + Uvicorn
+| 异步、Pydantic 校验、自动文档 | | 数据库 | SQLite (aiosqlite) | WAL 模式，零运维 | | LLM | DeepSeek（OpenAI 兼容协议） |
+| openai SDK 调用 | | HTTP 客户端 | httpx | 有赞 / 企微 API | | 配置 | pydantic-settings | `.env` + 环境变量 | | 模板 |
+| Jinja2 | 管理后台页面 | | 向量搜索 | 自研 TF-IDF n-gram | 零 API 成本 | | 反向代理 | Nginx + Let's Encrypt | HTTPS 终结 |
+
+## 🏗 架构规范（分层 Clean Architecture）
+
+```
+api/（HTTP 路由层）
+  ↓ 只做请求解析 + 响应序列化，不含业务逻辑
+service/（业务逻辑层）
+  ↓ 纯业务逻辑，不能直接调用 aiosqlite
+repository/（数据访问层）
+  ↓ 纯 SQL 操作，不含业务判断
+models/（数据模型层）
+  → 纯 Pydantic 结构，不引用其他模块
+```
+
+### 模块结构
+
+```
+app/
+├── main.py                  # FastAPI lifespan 初始化、依赖组装、路由注册
+├── config.py                # pydantic-settings 配置（.env 加载）
+├── database.py              # SQLite 建表 + WAL + PRAGMA
+├── exceptions.py            # 异常层级（AppError 基类）
+├── logger.py                # 结构化日志
+├── models/                  # Pydantic 数据模型（Session/Message/Knowledge/Transfer/Order）
+├── repository/              # 数据访问层（raw SQL，参数化绑定）
+│   ├── session_repo.py
+│   ├── message_repo.py
+│   ├── knowledge_repo.py
+│   ├── transfer_repo.py
+│   └── order_repo.py（预留）
+├── service/
+│   ├── chat.py              # 核心对话循环（意图识别 → 知识检索 → LLM → 工具调用）
+│   ├── session_manager.py   # 滑动窗口 16K tokens 上下文管理
+│   ├── transfer_manager.py  # 转人工生命周期
+│   ├── knowledge_retriever.py  # 向量 + 关键词混合检索
+│   ├── vector_search.py     # TF-IDF n-gram 向量引擎
+│   ├── llm/
+│   │   ├── client.py        # DeepSeek API 封装（AsyncOpenAI 单例）
+│   │   ├── functions.py     # Function Calling 定义 + dispatch
+│   │   ├── intent.py        # 5 类意图识别
+│   │   ├── prompt.py        # System Prompt 动态构建
+│   │   ├── query_rewriter.py  # 用户 Query 上下文改写
+│   │   └── soothe.py        # 安抚策略
+│   ├── wecom/               # 企微 API 客户端 + 加解密
+│   └── youzan/              # 有赞 Webhook 签名 + API
+├── api/
+│   ├── webhook.py           # 有赞消息回调
+│   ├── wecom.py             # 企微消息回调
+│   └── admin.py             # 管理后台（页面 + API）
+├── templates/admin/         # Jinja2 管理后台模板
+│   └── chat_test.html       # 微信高保真消息流网页端测试大看板
+└── static/admin/            # 静态资源
+```
+
+## 🚫 开发红线（Strict Anti-Patterns）
+
+1. **禁止 ORM**：不使用 SQLAlchemy / tortoise-orm，全部 raw SQL + aiosqlite。
+1. **禁止同步阻塞**：所有 I/O 必须 `async/await`，包括文件操作。
+1. **禁止 Optional/Union**：一律使用 `X | None` 和 `X | Y`。
+1. **禁止单引号字符串**：统一双引号 `"`（SQL 内部字符串 and f-string 内部闭环除外）。
+1. **禁止层级穿透**：`api/` 不得直接调用 `repository/`，必须经过 `service/`。
+1. **禁止 SQL 拼接**：全部使用 `?` 参数化绑定，禁止 f-string / `+` 拼 SQL 参数。
+1. **禁止硬编码秘密**：API Key、Secret、Token 必须走 `.env`，不进代码仓库。
+1. **禁止静默吞异常**：禁止 `except: pass`，所有异常必须记录日志或上抛。
+1. **禁止 `SELECT *`**：查询必须明确列出字段。
+1. **禁止 TODO 占位符**：代码中不允许残留 `# TODO` 或返回 `"待实现"` 的 stub 函数。
+1. **禁止魔法数字/字符串**：有业务含义的数字必须定义为命名常量；渠道名、状态值使用枚举。
+1. **禁止注释掉的代码**：不用的代码直接删除，版本历史由 Git 管理。
+1. **禁止上帝函数**：单个函数体 ≤ 50 行；单文件公开类 ≤ 3 个；参数超 5 个必须封装数据类。
+1. **禁止英文注释**：所有代码注释、函数说明、模块文档和类 docstring 必须 100% 使用清晰中文，严禁夹杂任何英文注释（专有名词、标准类型名及核心内置关键字除外）。
+
+## 📏 职责过载信号阈值表
+
+> 阈值是「职责可能过载」的早期信号，不是拆分目标。超线必须先评估职责是否真实混杂，再决定是否拆分。
+
+| 层级 | 警戒线（warning） | 硬上限（blocking） | |------|------------------|-------------------| |
+`app/api/*.py` 路由层 | 250 行 | 350 行 | | `app/service/*.py` 业务层 | 220 行 | 320 行 | |
+`app/service/llm/*.py` LLM 子模块 | 120 行 | 180 行 | | `app/service/wecom/*/youzan/*.py` | 150 行 | 250 行
+| | `app/repository/*.py` 数据层 | 150 行 | 250 行 | | `app/models/*.py` 模型层 | 80 行 | 120 行 |
+
+**附加硬约束：** 单文件公开类 ≤ 3，单类公开方法 ≤ 20，单函数体 ≤ 50 行。
+
+超警戒线时必须先走 `large-file-refactor-review` 工作流评估职责，不得盲目拆分也不得继续追加新职责。
+
+**当前存量警戒文件：**
+
+- `app/api/admin.py`（293行）— ⚠️ 超警戒线，不得继续追加职责
+- `app/service/chat.py`（232行）— ⚠️ 超警戒线，不得继续追加职责
+- `app/service/llm/functions.py`（128行）— ⚠️ 超警戒线，不得继续追加职责
+
+## 📏 代码风格
+
+### 命名规范
+
+| 类型 | 规范 | 示例 | |------|------|------| | 文件/模块 | 小写+下划线 | `session_manager.py` | | 类 | 大驼峰 |
+`SessionManager` | | 函数/方法 | 小写+下划线 | `get_or_create()` | | 变量 | 小写+下划线 | `session_id` | | 常量 |
+全大写+下划线 | `MAX_TOOL_ROUNDS` | | 私有方法 | 前导下划线 | `_verify_signature()` |
+
+### 类型注解
+
+强制使用，所有函数签名必须有参数类型和返回类型：
+
+```python
+async def handle_message(self, channel: str, user_id: str, content: str) -> str | None:
+```
+
+### 导入顺序
+
+```python
+# 1. 标准库
+import json
+from datetime import datetime, timezone
+
+# 2. 第三方
+from openai import AsyncOpenAI
+from pydantic import BaseModel
+
+# 3. 项目本地
+from app.models.session import Session
+from app.repository.session_repo import SessionRepo
+```
+
+### 格式
+
+- 单行 ≤ 100 字符
+- 类之间空 2 行，方法之间空 1 行
+- 永远不留注释掉的代码
+- docstring 只写**接口契约**（参数/返回值/异常），不写实现细节
+- 行内注释只解释 WHY，不解释 WHAT
+
+## 📡 核心设计决策
+
+### 1. 多渠道统一对话核心
+
+小程序(有赞) / 企微 1 对 1 / 企微群 → 统一汇入 `ChatService.handle_message()`，AI 对话逻辑只写一套。
+
+### 2. 对话处理流水线
+
+```
+用户消息 → 幂等去重 → 获取会话 → 保存消息 → 状态判断
+  → 运费关键词前置 → 意图识别(5类) → 售后自动转人工
+  → AI 循环(Query改写 → 知识检索 → DeepSeek → tool_calls ≤ 3轮)
+  → Markdown清理 + 安抚策略 → 保存回复 → 返回
+```
+
+### 3. 滑动窗口
+
+对话历史取最近消息，累计 ≤ 16K tokens，超出截断并插入截断提示。
+
+### 4. 意图识别
+
+5 类：1=商品查价 2=运费 3=配送时间 4=售后/转人工 5=闲聊。轻量 DeepSeek 调用（max_tokens=4）。
+
+### 5. 知识检索
+
+向量搜索（TF-IDF n-gram cosine）优先 → 不足时补关键词搜索。Query 改写补全指代。
+
+### 6. 人工介入
+
+- **小程序**：客服在管理后台网页回复
+- **企微 1 对 1**：员工在企微客户端直接回复（AI 自动让路）
+- **企微群**：店长群内直接回复
+
+### 7. 企微冲突处理
+
+AI 回复延迟 3-5 秒发送，检测员工是否已回复。已回复 → AI 取消，未回复 → AI 发送。
+
+## 🗄 数据库约束
+
+### 连接配置
+
+```sql
+PRAGMA journal_mode = WAL;
+PRAGMA busy_timeout = 5000;
+PRAGMA foreign_keys = ON;
+```
+
+- 全局维护 1 个连接实例
+- 所有查询使用 `?` 参数化绑定
+
+### 5 张核心表
+
+`sessions` / `messages` / `knowledge_base` / `human_transfers` / `orders`
+
+### 事务规则
+
+- 单行写入不需要显式事务
+- 多表写入必须用事务
+- repository 不管理事务边界，由 service 层决定
+
+## 📡 RAG 高可用与高并发核心红线
+
+### 1. 统一媒体协议 (UMP) 交互契约规范
+
+- **后端参数拼装强制约束**：凡是涉及多媒体资源投递（`type="image"`）或商品卡片（`type="card"`）在 RAG 动态注入、大模型上下文组装或渠道适配层（Channel Adapter）的参数拼装，**绝对禁止直接使用 f-string 或字符串手工拼装参数键值对**。必须强制、无条件统一调用标准库 `urllib.parse.urlencode(params, quote_via=urllib.parse.quote)` 进行高保真标准查询字符串编码，彻底死锁由于特殊品名、加料 SPU、空格及中文复杂 emoji 引发的前端分段截断 Bug。
+- **前端抗噪规范**：前端或控制台多媒体解析微内核在执行正则捕获提取后，读取任意参数必须强制执行 `.trim()` 首尾去空和短路安全兜底（如 `|| "0.00"`），彻底绝缘并抹除任何因大模型 Markdown 幻觉或冗余换行引发的组件卡片吞没崩溃。
+
+### 2. 高性能向量存储与冷启动自愈控制规范
+
+- **格式闭密隔离**：彻底清退并全面禁止引入任何具有 Python 版本强依赖和安全反序列化漏洞隐患的 `pickle` 二进制缓存。密集向量连续特征矩阵必须统一通过 NumPy 原生的 `np.save`（指定临时的 `.tmp.npy` 并通过系统级 `os.replace` 原子覆写）转化为 `vectors.npy` 保存，其余结构化元数据和数据特征哈希通过标准 JSON 文件物理隔离读写。
+- **冷启动特征版本锁**：服务 Lifespan 启动期初始化时，必须对数据库所有合法知识点的内容（content_md）进行全量串联计算 MD5 文本强特征版本锁 `current_db_md5`。启动对齐判定必须满足：`vs._ready and cached_keys == db_keys and vs._data_hash == current_db_md5` 双重特征完全一致。任何不一致（包含话术微调或本地改价）必须在云端精准触发全量无损重建自愈。
+- **节流刷盘守护**：禁止在任何业务消费层、API 视图层单条变更后手工、高频直调 `vs.save()` 覆写磁盘。所有增删改属性变动一律归集于内存层追加池（List Buffer），并统一交由常驻的 120 秒后台守护任务（`periodic_save_task`）执行批量合并异步无损落盘，极致减载服务器磁盘 I/O 锁空间。
+
+### 3. 高并发数仓事务隔离与索引红线规范
+
+- **强事务包裹契约**：在有赞 Webhook 回调高频打入且涉及多表联动级联写入时（如物理宽表同步 + RAG 知识表 Upsert + Analytics 审计埋点落库），必须在 service 层统一生命周期，**强制紧密包裹在同一个原生 SQL 事务（TRANSACTION）控制块中一次性全量落盘**，将 SQLite 排他性写锁持有耗时锁死在 2ms 以内。
+- **归因大查询底线**：所有针对高清分析埋点数据执行的长周期 lookback 滑动归因大查询或 Dashboard 看板多维多阶统计，必须严格且 100% 依赖高精度复合联合索引，绝对禁止引发任何导致发生排他锁挂起的全表线性扫描，誓死捍卫 Webhook 3 秒超时生死线。
+
+## 🌐 API 约束
+
+### 响应格式
+
+```python
+# 成功
+{"code": 0, "data": {...}}
+# 失败
+{"code": 40001, "message": "参数错误"}
+```
+
+### Webhook 约束
+
+- 收到请求后**立即返回 200**，处理放在后台协程
+- 必须有签名验证（有赞 HMAC-SHA256 / 企微 SHA1），失败返回 403
+- 必须有消息去重（通过 `channel_msg_id`）
+
+## ⚠️ 异常层级
+
+```
+AppError（基类）
+├── AuthError        # 认证/签名错误
+├── NotFoundError    # 资源不存在
+├── LLMError         # DeepSeek API 错误 → 兜底回复，不向上抛
+├── APIError         # 有赞/企微外部 API 错误
+└── ConfigError      # 配置错误
+```
+
+- 所有外部 API 调用必须 try/except 包裹，记录完整上下文
+- Webhook 处理中的异常只记录日志，不返回 500
+
+## 📝 日志规范
+
+| 级别 | 场景 | |------|------| | `DEBUG` | SQL 执行、API 请求/响应体 | | `INFO` | 服务启动、会话创建、消息收发 | | `WARNING`
+| API 重试、配置缺失但可降级 | | `ERROR` | 外部 API 失败、数据库错误 | | `CRITICAL` | 启动失败、致命错误 |
+
+- service 层日志必须带 `session_id`
+- API 调用日志必须带 `channel` 和 `user_id`
+
+## 🔒 安全约束
+
+- `.env` 和 `data/` 不进版本控制
+- HTTPS 在 Nginx 层终结，服务内部不处理 TLS
+- 管理后台 API 需要 Bearer Token 鉴权
+- JWT token 有效期 ≤ 24 小时
+
+### 管理后台认证红线（源自安全审计 C-01/02/03/05）
+
+1. **禁止登录页自动鉴权**：`login.html` 严禁含任何自动写 cookie 或 JS 跳转逻辑，必须是真实的密码表单。
+2. **Cookie 值必须等于真实 Token**：`login_submit()` 写入 cookie 的值必须是 `settings.ADMIN_API_TOKEN` 的实际值，禁止写死任何占位字符串（如 `"logged_in"`）。
+3. **鉴权函数不得豁免空 Token**：`verify_token()` 和 `check_login()` 禁止以 `if not settings.ADMIN_API_TOKEN: return` 等逻辑豁免空配置，空 Token 必须拒绝所有请求。
+4. **禁止在 HTML/JS 中硬编码任何 Token 值**：模板中的 Bearer Token 必须通过 `_getCookie('admin_token')` 动态读取，禁止出现任何具体 token 字面量。
+
+### 路径与模板安全红线（源自安全审计 C-04/C-07）
+
+1. **URL 参数构建文件路径必须清洗**：凡是将 URL path parameter 用于构造磁盘路径（如 `Path(...) / filename`），必须先执行 `filename = os.path.basename(filename)` 防止路径穿越。
+2. **Jinja2 模板引擎必须开启 autoescape**：所有 `jinja2.Environment(...)` 初始化必须携带 `autoescape=select_autoescape(["html"])` 参数，禁止使用无 autoescape 的裸 Environment 渲染用户相关数据。
+
+### 时间戳全局约束（源自安全审计 H-06）
+
+1. **所有 `datetime` 时间戳必须使用 UTC**：禁止在任何业务逻辑、数据库写入、埋点记录中调用 `datetime.datetime.now()`（本地时间），一律使用 `datetime.datetime.now(datetime.timezone.utc)`，消除北京时间与 SQLite `datetime("now")` 的 8 小时偏差。
+
+## 🔧 常用开发命令
+
+```bash
+# 启动服务（热重载）
+uvicorn app.main:app --host 127.0.0.1 --port 7001 --reload
+
+# 运行场景测试
+python scripts/test_scenarios.py
+
+# 运行意图分类测试
+python scripts/test_intents.py
+
+# 知识库种子数据导入
+python scripts/seed_knowledge.py
+
+# 商品数据校验
+python scripts/validate_products.py
+```
+
+## 🚀 部署
+
+### 服务器信息
+
+| 项目 | 值 | |------|-----| | IP | `47.94.102.250` | | 用户 | `root` | | 端口 | `22`（SSH 免密登录） | | 项目路径 |
+`/opt/yunxibakebot` | | 域名 | `hclstudio.cn`（已备案），管理后台 `yunxi.hclstudio.cn/admin` | | 进程管理 |
+systemd（`yunxibakebot.service`） | | 反向代理 | Nginx，443 (外部) → 7001 (内部 FastAPI) | | HTTPS | Let's
+Encrypt 通配符证书 |
+
+### 服务器同步流程（强制遵循）
+
+> ⚠️ 服务器无法直连 GitHub（防火墙拦截），禁止使用 `git pull`、`git fetch origin` 等需要外网的操作。
+
+**日常发布/发版日的"代码 + 物理双子星"极加固同步流程：**
+
+```bash
+# 1. 本地进行代码发版提交：
+# 代码改动 → 质量门禁自查 → 更新 LOGBOOK.md → git add/commit
+
+# 2. (选择性在发版日进行) 本地拉取有赞最新真实商品全量同步并本地解算 BGE 向量索引：
+python scripts/sync_real_products_from_youzan.py
+
+# 3. 创建代码增量 bundle
+git bundle create server.bundle <服务器当前commit>..master
+
+# 4. scp 一键安全飞载传输（将数据库上传至临时物理路径，安全解锁防悬挂）：
+scp server.bundle root@47.94.102.250:/opt/yunxibakebot/server.bundle
+scp data/bot.db root@47.94.102.250:/opt/yunxibakebot/data/bot.db.tmp
+scp data/embeddings.pkl root@47.94.102.250:/opt/yunxibakebot/data/embeddings.pkl.tmp
+
+# 5. 执行服务器部署脚本进行 Stop-MV-Start 原子级置换拉起：
+ssh root@47.94.102.250 "cd /opt/yunxibakebot && bash scripts/deploy.sh"
+
+# 6. 验证极速秒开日志（0.05秒瞬间启动通航）：
+ssh root@47.94.102.250 "sleep 3 && journalctl -u yunxibakebot --no-pager -n 15"
+```
+
+**关键约束与灾备机制（极其稳固）：**
+
+- `server.bundle` 已加入 `.gitignore`，禁止提交到仓库。
+- **免冷启动高可用**：FastAPI 启动时首选尝试 `vs.load`。如果本地上传的缓存向量指纹（`cached_keys == db_keys`）完全一致，**100% 豁免 CPU 慢速全量重算过程，瞬间在 0.05 秒内秒开通航**，冷启动 CPU 耗能降为 0！
+- **日常增量更新防线**：平时日常运营中，任何有赞端的价格、库存及上下架变动将由有赞 Webhook 回调瞬间（< 50ms）通过 NumPy 切片内存原子修改并安全写入 `embeddings.pkl`，**平时不需要在本地执行同步操作，0 本地负担**。
+- **SQLite 锁悬挂防护**：严禁直接覆写处于运行、活动状态的 `data/bot.db`。部署时必须通过脚本拉停服务 ──► 物理级移动 `bot.db.tmp` 覆盖 ──► 重启，安全规避 SQLite 的 5000ms 锁冲突（Database Locked）。
+
+### 服务管理命令
+
+```bash
+# 重启服务
+ssh root@47.94.102.250 "systemctl restart yunxibakebot"
+
+# 查看状态
+ssh root@47.94.102.250 "systemctl status yunxibakebot --no-pager"
+
+# 查看日志
+ssh root@47.94.102.250 "journalctl -u yunxibakebot --no-pager -n 30"
+
+# 健康检查
+ssh root@47.94.102.250 "curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:7001/health"
+```
+
+## 📋 行为提示
+
+- **更新日志**：每次任务完成后更新 `LOGBOOK.md`，追加本轮变更摘要。未更新则阻断提交。
+- **提交代码**：提交信息使用中文，格式：`type(scope): 中文描述`（如 `feat(chat): 新增运费关键词前置匹配`）。
+- **收口顺序**：代码改动 → LOGBOOK 更新 → 提交 → 推送，严格按此顺序执行。
+- **不破坏现有测试**：涉及核心逻辑的修改，提交前运行对应测试验证通过。
+
+### 提交类型
+
+| type | 说明 | |------|------| | `feat` | 新增功能 | | `fix` | 修复 bug | | `docs` | 文档更新 | | `refactor` |
+重构（不改行为） | | `perf` | 性能优化 | | `test` | 测试 | | `chore` | 构建/工具变动 |
+
+## 🔍 质量门禁（每次变更必须通过）
+
+### 预提交红线审查
+
+1. **单引号检查**：新增代码中禁止单引号（SQL 和 f-string 内部除外）
+1. **Optional/Union 检查**：禁止 `typing.Optional` 或 `typing.Union`
+1. **TODO 检查**：禁止残留 `# TODO` 或 stub 函数
+1. **LOGBOOK 同步**：本轮修改必须在 `LOGBOOK.md` 中记录
+1. **测试验证**：核心逻辑修改需运行对应测试
+
+### 审查命令
+
+```bash
+# 检查 Optional/Union
+git diff --cached -- "*.py" | grep -E "Optional\[|Union\[" && echo "BLOCKED" && exit 1
+
+# 检查 TODO
+git diff --cached -- "*.py" | grep "# TODO" && echo "BLOCKED" && exit 1
+
+# 检查 LOGBOOK 更新
+git diff --cached -- LOGBOOK.md | grep "+" || echo "WARNING: LOGBOOK.md 未更新"
+```
+
+## 📚 文档索引
+
+| 文档 | 用途 | |------|------| | `.windsurf/rules/AGENT.md`（本文件）| 唯一开发手册，所有规则汇总（Windsurf 原生 `trigger: always_on` 规则，自动注入上下文）| | `LOGBOOK.md` | 项目演进编年史，每次提交必更新 | | `CLAUDE.md` | 历史 stub，已迁移至本文件 |
+| `1-业务方案.md` | 业务需求与自动化分析 | | `2-工作流设计.md` | 用户视角的工作流程 | | `3-技术架构.md` | 系统架构与数据库设计 | |
+`4-上线检查清单.md` | 上线前检查项 | | `项目进度与配置清单.md` | 阶段进度与配置状态 |
+
+### Windsurf 工作流（`.windsurf/workflows/`）
+
+| 工作流 | 触发指令 | 用途 | |--------|----------|------| | `commit.md` | `/commit` | 任务收口：红线自查 → 测试 →
+LOGBOOK → 提交 | | `check.md` | `/check` | 规范化检查：语法红线 / 分层约束 / 安全审查 | | `review.md` | `/review` | 深度
+Code Review：bug / 安全 / 红线全面审查 |
+
+**查找规则时**：先看本文件（`.windsurf/rules/AGENT.md`），它是唯一的开发规范源，Windsurf 自动加载。业务细节不足时查阅对应文档。
+
+

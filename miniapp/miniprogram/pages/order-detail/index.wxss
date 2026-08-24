@@ -1,0 +1,201 @@
+.order-detail-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.order-card {
+  display: flex;
+  flex-direction: column;
+  gap: 18rpx;
+  padding: 24rpx;
+}
+
+.order-card--status {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.order-label,
+.product-meta {
+  color: var(--yunxi-text-secondary);
+  font-size: 24rpx;
+}
+
+.order-status {
+  display: block;
+  margin-top: 8rpx;
+  color: var(--yunxi-accent-deep);
+  font-size: 36rpx;
+  font-weight: 900;
+}
+
+.payment-status {
+  display: inline-flex;
+  margin-top: 10rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 999rpx;
+  background: rgba(139, 191, 116, 0.16);
+  color: var(--yunxi-text-secondary);
+  font-size: 22rpx;
+}
+
+.progress-hint {
+  color: var(--yunxi-text-secondary);
+  font-size: 24rpx;
+  line-height: 1.5;
+}
+
+.progress-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.progress-step {
+  position: relative;
+  display: flex;
+  gap: 18rpx;
+  padding-bottom: 28rpx;
+}
+
+.progress-step::after {
+  position: absolute;
+  top: 44rpx;
+  bottom: 0;
+  left: 21rpx;
+  width: 2rpx;
+  background: rgba(75, 129, 72, 0.14);
+  content: "";
+}
+
+.progress-step:last-child {
+  padding-bottom: 0;
+}
+
+.progress-step:last-child::after {
+  display: none;
+}
+
+.progress-marker {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44rpx;
+  height: 44rpx;
+  color: #ffffff;
+  background: rgba(75, 129, 72, 0.22);
+  border-radius: 50%;
+  font-size: 24rpx;
+  font-weight: 800;
+}
+
+.progress-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.progress-title {
+  color: var(--yunxi-text-primary);
+  font-size: 28rpx;
+  font-weight: 700;
+}
+
+.progress-desc {
+  color: var(--yunxi-text-secondary);
+  font-size: 24rpx;
+  line-height: 1.5;
+}
+
+.progress-time,
+.progress-note {
+  display: block;
+  color: var(--yunxi-text-muted);
+  font-size: 22rpx;
+  line-height: 1.45;
+}
+
+.progress-step--done .progress-marker,
+.progress-step--current .progress-marker {
+  background: var(--yunxi-accent-deep);
+}
+
+.progress-step--current .progress-title {
+  color: var(--yunxi-accent-deep);
+}
+
+.progress-step--todo .progress-marker {
+  background: rgba(75, 129, 72, 0.14);
+}
+
+.progress-step--cancelled .progress-marker {
+  background: #b9c4b5;
+}
+
+.progress-step--cancelled .progress-title,
+.progress-step--cancelled .progress-desc {
+  color: var(--yunxi-text-muted);
+}
+
+.order-row,
+.product-row,
+.order-total-row,
+.order-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.product-title,
+.product-subtotal,
+.order-total-row {
+  color: var(--yunxi-text-primary);
+  font-weight: 600;
+}
+
+.product-title,
+.product-meta {
+  display: block;
+}
+
+.product-meta {
+  margin-top: 8rpx;
+}
+
+.order-total-row {
+  padding-top: 18rpx;
+  border-top: 1rpx solid rgba(75, 129, 72, 0.1);
+  color: var(--yunxi-accent-deep);
+}
+
+.compact-button {
+  min-width: 120rpx;
+}
+
+.danger-button {
+  min-height: 88rpx;
+  padding: 0 24rpx;
+  color: #c0342b;
+  background: #fff4f0;
+  border-radius: 999rpx;
+}
+
+.danger-button[disabled] {
+  color: #d7a19a;
+  background: #fff7f4;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20rpx;
+  min-height: 420rpx;
+  color: var(--yunxi-text-secondary);
+}
