@@ -52,6 +52,9 @@ class Settings(BaseSettings):
     DB_PATH: str = "data/bot.db"
     EMBEDDING_INDEX_DIR: str = "data/embeddings"
     ENABLE_HYBRID_RETRIEVAL: bool = False
+    # MVP 关键词检索模式开关（架构决策 2026-08-24）：False 时不实例化向量引擎、
+    # 不构建索引，知识检索仅走 BM25/SQL LIKE 关键词路径；向量检索留给 v2.0
+    ENABLE_VECTOR_RETRIEVAL: bool = False
     RAG_RETRIEVAL_MODE: str = RAG_RETRIEVAL_MODE_HYBRID
     RRF_K: int = 60
     ENABLE_CUSTOMER_MEMORY: bool = True

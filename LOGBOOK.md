@@ -1,4 +1,16 @@
-﻿## [2026-08-24] - chore(week1): 任务1.1 基线能力冒烟 + 7 钩子 pre-commit 落地
+﻿## [2026-08-24] - feat(retrieval): MVP 关键词检索模式落地（战略禁用向量路径）+ LLM 延迟测量
+
+- 操作者: AI (OpenCode)
+- trace_id: `20260824-mvp-keyword-retrieval-and-latency`
+- parent_trace_id: `20260824-week1-task11-smoke-and-hooks`
+- 来源: 项目负责人技术评估两点指示——①33 秒延迟先测量不修；②建议战略放弃向量检索改用关键词（BM25），授权拍板后实施。
+- 范围: config.py 新增开关 + lifespan_vector.py 装配守卫 + .env 启用 BM25；不改检索器与仓储层。
+- 实现: **延迟测量**——同一问题重复调用 3 次（latency_probe 脚本，独立会话）：run_1=47.9s（冷启动，含模型加载与建连）、run_2=1.7s、run_3=1.5s；结论为仅首次慢，热态远低于 5s 阈值，按评估标准记录在案即可，不做流式输出或超时转人工改造；run_2/3 回复体为空疑似消息幂等去重直接返回（handle_chat_message 去重逻辑），行为符合设计。**BM25 决策落地**——采纳负责人方案：`ENABLE_VECTOR_RETRIEVAL: bool = False` 固化为代码默认值（config.py，MVP 关键词检索模式）；`init_vector_search` 在该开关关闭时不实例化 EmbeddingSearcher、跳过向量加载/自愈重建/定时刷盘（lifespan_vector.py 三处守卫），bm25 构建不受影响；`KnowledgeRetriever(vs=None)` 由既有守卫自动降级为 SQL LIKE；`.env` 启用 `ENABLE_HYBRID_RETRIEVAL=True` 激活基线自带 BM25Searcher（jieba + rank_bm25，纯 Python 无模型依赖）。
+- 验证: 不设 YUNXI_USE_FAKE_EMBEDDING 重启冒烟——启动日志出现"BM25 索引构建完成: 7 条"与"向量检索已按 MVP 配置禁用（关键词检索模式），跳过向量索引初始化"；/health 200 version=0.132.9；商品查询 200；FAQ 对话 200 且**真实触发转人工全链路**（LLM 判定知识缺口→转人工工单创建 594befbf→WeCom access_token 刷新成功 7200s→企微回调 IP 白名单外拒 60020 属预期环境限制→未配置 WECOM_STAFF_ID 时正确降级）；企微 callback 无效签名 403；check_project --skip-tests 通过；ruff format 两文件对齐。
+- 变更: app/config.py（+4 行含注释）；app/lifespan_vector.py（vs 可 None 守卫三处）；backend/.env（+1 行，不入库）。无 schema 变更，VERSION 不递增。
+- residual_risks: SQL LIKE 对中文长尾 query 召回弱于语义检索，试运行 FAQ 规模 10-50 条时 BM25+LIKE 足够，若后续召回不足优先调优关键词表而非恢复向量；readiness 的 embedding_index_path_exists 报告字段在禁用模式下仍检查旧索引文件存在性（报告性字段非阻断，data/embeddings 旧缓存保留不影响）；转人工企微通知依赖生产 IP 白名单，Week 3 企微接入时在企微后台配置本机出口 IP 或经服务器中转。
+
+## [2026-08-24] - chore(week1): 任务1.1 基线能力冒烟 + 7 钩子 pre-commit 落地
 
 - 操作者: AI (OpenCode)
 - trace_id: `20260824-week1-task11-smoke-and-hooks`

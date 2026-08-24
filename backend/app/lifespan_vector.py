@@ -22,9 +22,14 @@ async def init_vector_search(
 
         settings_obj = settings
 
-    vs = EmbeddingSearcher()
+    # MVP 关键词检索模式：禁用向量时不实例化 EmbeddingSearcher，
+    # 避免加载 sentence-transformers 模型与无意义的索引构建/刷盘
+    if settings_obj.ENABLE_VECTOR_RETRIEVAL:
+        vs: Any = EmbeddingSearcher()
+        app.state.vs = vs
+    else:
+        vs = None
     vs_path = settings_obj.EMBEDDING_INDEX_DIR
-    app.state.vs = vs
     bm25 = None
     if settings_obj.ENABLE_HYBRID_RETRIEVAL:
         from app.service.bm25_search import BM25Searcher
@@ -35,16 +40,23 @@ async def init_vector_search(
     # 异步初始化向量索引（优先加载缓存，必要时重建）
     async def async_init_vector_search() -> None:
         try:
-            vs._init_progress["status"] = "loading"
             from app.database import db_session_scope
 
             async with db_session_scope():
-                logger.info("正在异步初始化向量搜索：首选尝试极速载入本地预解算缓存...")
-                await vs.load(vs_path)
-
                 docs = await knowledge_repo.get_all_titles_with_keys()
                 if bm25 is not None:
                     await asyncio.to_thread(bm25.build, docs)
+
+                if vs is None:
+                    logger.info(
+                        "向量检索已按 MVP 配置禁用（关键词检索模式），跳过向量索引初始化"
+                    )
+                    return
+
+                vs._init_progress["status"] = "loading"
+                logger.info("正在异步初始化向量搜索：首选尝试极速载入本地预解算缓存...")
+                await vs.load(vs_path)
+
                 need_rebuild = True
 
                 import hashlib
@@ -92,6 +104,9 @@ async def init_vector_search(
 
     # 异步定时节流刷盘后台守护任务
     async def periodic_save_task() -> None:
+        if vs is None:
+            # 向量检索禁用模式下无索引可刷盘，守护任务直接结束
+            return
         try:
             while True:
                 try:
