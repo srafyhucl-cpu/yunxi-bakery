@@ -298,6 +298,21 @@ ______________________________________________________________________
 
 ## 当前条目
 
+## M-20260817-001：Monorepo 整合脚本全量复制把客户数据库带入新仓工作目录
+
+- status: guarded
+- first_seen: 2026-08-17
+- severity: critical
+- symptom: 执行 monorepo-merge.ps1 整合双仓时，`Copy-Item -Recurse -Force` 全量复制把 `backend\data\bot.db`（17.8MB，24,726 条真实客户主档 + openid 关联）连同 `.mypy_cache`、`htmlcov`、`ngrok.exe`、`node_modules` 等运行时产物一并复制进新仓 `D:\Project\YunxiBakery\backend\` 工作目录；架构评审 A1 事后核查发现。
+- root_cause: 整合脚本只排除了 `.git`，没有定义隐私数据与运行时产物排除清单；"复制什么"由文件系统默认行为决定，而不是由显式白名单决定。
+- impact: 本次因新仓 .gitignore 的 `*.db` 规则恰好生效，bot.db 未被 Git 跟踪、未推送 GitHub（`git ls-tree -r origin/main` 复核零命中），未构成实际泄露；若 .gitignore 规则缺失或被调整，2.4 万客户个人数据将随首次 push 进入远端仓库历史，且 force push 也无法从已克隆方撤回。
+- fix: 从新仓工作目录清除 bot.db 副本与全部运行时产物；monorepo-merge.ps1 增加排除清单（data/、*.db、*.sqlite*、ngrok.exe、各类 cache、node_modules、.codex-tmp、reports）并在 Step 3/4 复制后逐项删除；Step 8 提交前增加双重隐私断言（工作区 Get-ChildItem 检查 + git ls-files 跟踪清单检查），任一命中立即退出非零阻断提交。
+- new_guardrail: 脚本级——排除清单 + 提交前硬门禁断言（scripts/monorepo-merge.ps1 L31 排除定义、L450 断言逻辑）；流程级——架构评审将"迁移脚本必须含排除清单"列为执行前置条件（ARCHITECTURE-REVIEW-20260817.md 第五节通过条件 #1）；策略级——技术债不允许项新增第五条"客户隐私数据明文暴露"（计划书 B1）。
+- verification: 新仓 `git ls-files` 全量匹配 .db/.sqlite/.csv/ngrok.exe 零命中（1379 文件）；GitHub 远端 ls-tree 复核零命中；修正版整合以 master b30b2066 基线重做并 force push 为唯一初始 commit `1c2a3ea`。
+- linked_trace: `20260817-monorepo-merge-review-fixed`
+- linked_files: `scripts/monorepo-merge.ps1`; `ARCHITECTURE-REVIEW-20260817.md`; `项目重构与推进计划书.md`; `LOGBOOK.md`（2026-08-17 chore(monorepo) 条目）
+- next_time_signal: 任何跨仓库/跨目录的批量复制操作（Copy-Item -Recurse、rsync、robocopy）在提交或推送前，必须运行隐私断言（数据库/CSV/二进制工具零命中）；新增数据文件落盘路径时同步检查 .gitignore 是否覆盖。
+
 ## M-20260711-001：生产快照通过删除黑名单推断安全
 
 - status: guarded
