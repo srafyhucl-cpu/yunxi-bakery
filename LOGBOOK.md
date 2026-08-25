@@ -1,4 +1,17 @@
-﻿## [2026-08-25] - verify(p1): Phase C 实机走查启动——AppID 确认，CLI 会话需人工扫码重新登录（trace: 20260825-p1-phasec-devtools-walkthrough）
+﻿## [2026-08-25] - verify(p1): Phase C 第二步完成——15/15 页面实机走查，新登记 P2×2（trace: 20260825-p1-phasec-walkthrough-15pages）
+
+- 操作者: AI (OpenCode)
+- trace_id: `20260825-p1-phasec-walkthrough-15pages`
+- parent_trace_id: `20260825-p1-phasec-devtools-walkthrough`
+- 来源: 项目负责人扫码重登后 Phase C 第二步执行。
+- 环境就绪链: 扫码重登后 `cli open √` → `cli auto --auto-port 9420 √`（AppID wx4b59baadd9187a2e）→ miniprogram-automator 安装（77 包）→ 后端以 PowerShell Start-Job 方式在走查期间保持运行（突破沙箱子进程限制的可用方案）→ automator 连接 ws://127.0.0.1:9420 成功（首版脚本用 localhost 因 IPv6 解析挂起，改 127.0.0.1 解决）→ Storage 开关 yunxiUseLocalApi=true 指向本地 API。
+- 走查结果: **15/15 页面导航与渲染全部成功**（v2 脚本每操作独立超时防单页阻塞），每页采集 data 快照。关键确认：products 页真实商品展示（allProducts=39、店铺"芸熙烘焙（银河SOHO店）"、营业时间 09:00-20:00）；负责人真实微信身份登录态贯穿各页；product-detail/cart/orders 空态正确；checkout/group-registration 表单完整；chat 在线客服连接正常。
+- 新发现问题: **#9 P2**——chat 页 formatMsgTime 用 `new Date("yyyy-MM-dd HH:mm:ss")`，iOS 不支持该格式（console 100 条警告全为此类），iOS 真机消息时间将 Invalid Date，真机前必修；**#10 P2**——商品目录可见范围受限：库内 309 条在售但 products 页 allProducts 仅 39，根因 catalog 服务 DEFAULT_PRODUCT_LIMIT=50 叠加筛选，需产品决策分页/全量/分类导航；**#12 P3**——points/coupons 页对非会员身份显示 loadFailed=true（身份前置设计，真实客户不受影响，UX 待议）。另 #11 P3：automator screenshot 接口在本 IDE 版本不可用。
+- 说明: product-detail 无参数直达显示"商品不存在"空态属合理行为，带真实 id 的详情验证归入全链路步骤；首页 blocks 结构的商品采样字段为空需人工目验补充。
+- 变更: docs/specs/p1-module-acceptance-verify-plan.md（问题区 #9/#10/#11/#12 + Phase C 实测记录表）；miniapp/scripts/walkthrough-phase-c.mjs（automator 走查脚本，含超时保护）；reports/devtools/walkthrough-phase-c.json（原始数据，reports 已 gitignore 不入库）。
+- residual_risks: #10 商品可见范围需产品决策后修复；#9 iOS 兼容需真机复验；带参详情页与跨端闭环归 Phase C 第三步；首页商品区展示待人工目验。
+
+## [2026-08-25] - verify(p1): Phase C 实机走查启动——AppID 确认，CLI 会话需人工扫码重新登录（trace: 20260825-p1-phasec-devtools-walkthrough）
 
 - 操作者: AI (OpenCode)
 - trace_id: `20260825-p1-phasec-devtools-walkthrough`

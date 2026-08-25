@@ -135,7 +135,35 @@
 | 3 | P3 记录 | 环境 | YOUZAN_MOCK_MODE=False（.env 显式覆盖默认 True）：商品/订单域走真实有赞路径，本机 IP 未在白名单时相关调用将失败，属预期不修 | 已记录 |
 | 4 | P3 记录 | 环境 | ALLOW_MOCK_PAYMENT 默认 False（fail-closed 正确），本地验证储值链路需在 .env 开启；已开启并跑通 unpaid→paid→入账 | 已解决 |
 | 5 | P3 记录 | 环境 | ~~本机未安装微信开发者工具，Phase B 页面实机走查 BLOCKED~~ **已更正（#7）：工具已安装，详见 #7** | ⛔→✅ 误报更正 |
-| 6 | P3 记录 | 小程序 | product-detail 对后端 200+data:null 已有三层友好空态处理（services 转 null → 页面"商品不存在"）；本地模式下异常路径另有 mock-catalog 兜底。P2 #2 对小程序端无用户可见危害 | 已核查（支撑 P2 定级复议） |
+| 8 | **P1 严重** | 环境/走查 | devtools CLI 打开项目报 code 10 "需要重新登录"（islogin=true 与 open 行为矛盾，CLI 会话票据过期）；`cli login` 挂起等待人工扫码。AppID 配置已确认（wx4b59baadd9187a2e / YunxiBakeMiniApp / srcMiniprogramRoot=miniprogram/）| ✅ 已解决（项目负责人扫码重登后 `cli open √`、`cli auto --auto-port 9420 √`）|
+| 9 | **P2 一般** | 小程序/chat | chat 页 `formatMsgTime` 使用 `new Date("yyyy-MM-dd HH:mm:ss")` 格式，iOS 不支持（仅支持 yyyy/MM/dd）——开发者工具中为 warn，iOS 真机上消息时间将显示 Invalid Date | 待修（真机前必修） |
+| 10 | **P2 一般** | 商品目录 | 目录可见范围受限：库内 309 条在售商品（knowledge_base product is_active=1 共 309）但 products 页 allProducts 仅 **39**——catalog 服务 `DEFAULT_PRODUCT_LIMIT=50`（application.py:20）叠加筛选条件所致；需产品决策（分页加载/全量/分类导航）| 待产品决策 |
+| 11 | P3 记录 | 环境 | automator screenshot 接口在本 IDE 版本全部超时不可用，页面截图留档改由人工截图补充 | 已记录 |
+| 12 | P3 记录 | 会员资产 UX | points/coupons 页对非会员身份显示 loadFailed=true（400 "未识别为会员"属身份前置设计）——真实客户有档案不受影响，但新访客引导注册的 UX 表达待议 | 记录待议 |
+
+## Phase C 第二步：15 页面实机走查实测记录（2026-08-25，automator ws://127.0.0.1:9420）
+
+前置：项目负责人扫码重登开发者工具；`cli auto --auto-port 9420` 开启自动化；本地后端 Start-Job 方式运行；小程序 Storage 开关 yunxiUseLocalApi=true 指向本地 API；负责人真实微信身份已登录。
+
+| 页面 | 导航 | 渲染与数据要点 | 问题 |
+|------|------|---------------|------|
+| home | ✓ | blocks(3)、登录提示"已使用真实微信身份" | 首页商品采样字段空，blocks 结构待人工目验 |
+| products | ✓ | **allProducts=39**、categorySections=35、店铺"芸熙烘焙（银河SOHO店）"、营业时间 09:00-20:00 | #10 可见范围受限 |
+| product-detail | ✓ | 无参数直达 →"商品不存在"空态 ✓ | 带真实 id 详情验证归入全链路步骤 |
+| cart | ✓ | hasItems=false 空态 + 推荐商品 array(2) | — |
+| checkout | ✓ | 完整结算表单（自提/配送、日期窗、门店提示） | — |
+| policy | ✓ | 隐私政策正文渲染 | — |
+| address | ✓ | "已使用真实登录态加载地址"，空地址列表 | — |
+| orders | ✓ | allOrders=1（此前夹具订单）、5 个筛选 tab | — |
+| order-detail | ✓ | 无参数 canLoadOrder=false 合理提示 | 归入全链路带参验证 |
+| group-registration | ✓ | 群登记表单完整（日期/时段选项） | — |
+| chat | ✓ | 13 条历史消息、在线客服连接正常 | #9 iOS Date 警告 |
+| profile | ✓ | "已使用真实登录态进入个人中心"、服务入口 array(5) | — |
+| points | ✓ 渲染 | **loadFailed=true** | #12 身份前置（合成会员在 Phase A 为 200） |
+| coupons | ✓ 渲染 | **loadFailed=true** | #12 同上 |
+| recharge | ✓ | 充值档位 tiers(4)、余额 0 展示 | — |
+
+console 采集：100 条警告，全部为 chat 页 iOS Date 格式同类警告（#9）。screenshot 接口超时不可用（#11）。
 | 7 | P3 记录 | 环境 | ~~本机未安装微信开发者工具~~ 探测方法缺陷更正：工具实际安装于 `D:\微信web开发者工具\`（非 Program Files 标准路径），CLI（cli.bat）与 IDE server（127.0.0.1:54080）均在位 | ✅ 已更正 |
 | 8 | **P1 严重** | 环境/走查 | devtools CLI 打开项目报 code 10 "需要重新登录"（islogin=true 与 open 行为矛盾，CLI 会话票据过期）；`cli login` 挂起等待人工扫码。AppID 配置已确认（wx4b59baadd9187a2e / YunxiBakeMiniApp / srcMiniprogramRoot=miniprogram/）| ⏳ **待项目负责人在开发者工具界面重新登录**，登录完成后实机走查立即可续 |
 | 7 | P3 记录 | 流程 | Phase B 实机走查 BLOCKED 为**探测方法缺陷**：仅扫描 Program Files 下 Tencent 目录，未扫描其他盘符/自定义安装路径；实际微信开发者工具早已安装并登录。建议日后工具探测覆盖 `(Get-Command)` 与注册表/AppData 卸载列表 | ⛔→✅ 已核实更正（2026-08-25）：实机走查解除，并入 Phase C |
