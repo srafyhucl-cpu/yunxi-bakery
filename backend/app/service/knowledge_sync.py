@@ -55,7 +55,19 @@ class KnowledgeSyncService:
             retry_increment=retry_increment,
         )
         try:
-            if entry.is_active:
+            if self._embedding_searcher is None:
+                # MVP 关键词检索模式未装配向量引擎，向量同步不适用，直接标记成功
+                synced_at = now_str()
+                logger.info(
+                    "向量检索已禁用（关键词检索模式），跳过知识条目向量同步: id=%s",
+                    entry.id,
+                )
+                await self._knowledge_repo.mark_vector_sync_status(
+                    entry.id,
+                    status=VectorSyncStatus.SUCCESS,
+                    synced_at=synced_at,
+                )
+            elif entry.is_active:
                 model = self._embedding_searcher._get_model()
                 vector_data = (
                     await asyncio.to_thread(

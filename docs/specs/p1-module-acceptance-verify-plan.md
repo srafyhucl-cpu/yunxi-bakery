@@ -78,4 +78,41 @@
 
 | # | 级别 | 域 | 描述 | 状态 |
 |---|------|-----|------|------|
-| - | - | - | - | - |
+| 1 | P1 严重 | 知识同步 | BM25-only 模式下 KnowledgeSyncService 收到 vs=None，知识写入时后台向量同步全部报 `'NoneType' object has no attribute '_get_model'`（24 条迁移知识 vector_sync_status=FAILED） | ✅ 已修复（sync_admin_entry 增加 None 守卫，重试后 24/24 SUCCESS） |
+| 2 | P2 一般 | 商品 | GET /api/v1/miniapp/products/{不存在id} 返回 200 `{"code":0,"data":null}`，任务包预期 404；客户端需判 data null 才能感知缺失 | 待修 |
+| 3 | P3 记录 | 环境 | YOUZAN_MOCK_MODE=False（.env 显式覆盖默认 True）：商品/订单域走真实有赞路径，本机 IP 未在白名单时相关调用将失败，属预期不修 | 已记录 |
+| 4 | P3 记录 | 环境 | ALLOW_MOCK_PAYMENT 默认 False（fail-closed 正确），本地验证储值链路需在 .env 开启；已开启并跑通 unpaid→paid→入账 | 已解决 |
+
+## Phase A 冒烟实测记录（2026-08-25）
+
+前置：YOUZAN_MOCK_MODE=False（运行时实际值）；服务 v0.132.9；BM25 索引 31 条。
+
+| 域 | 端点 | 方法 | 实际状态码 | 判定 |
+|----|------|------|-----------|------|
+| 基线 | /health | GET | 200 version=0.132.9 | ✓ |
+| 登录 | /auth/login 空 code | POST | 400 明确报错 | ✓ |
+| 登录 | token 可用性 | - | 各受保护端点 200 隐证 | ✓ |
+| 商品 | /products | GET | 200 空列表 | ✓ |
+| 商品 | /product-categories | GET | 200 空列表 | ✓ |
+| 商品 | /products/{假id} | GET | **200 data:null** | ⚠️ 问题#2 |
+| 订单 | /orders 创建（无真实商品） | POST | 400 参数校验 | ✓ |
+| 订单 | /orders 列表含自有夹具单 | GET | 200 YES | ✓ |
+| 订单 | /orders/{id} 详情 | GET | 200 | ✓ |
+| 订单 | /orders/{id}/cancel | POST | 200 status→cancelled | ✓ |
+| 订单 | /orders/{不存在} | GET | 404 | ✓ |
+| **数据隔离** | B 查 A 的订单 | GET | **404** | ✓ 最高优先级通过 |
+| **数据隔离** | B 列表不含 A 单 | GET | CLEAN | ✓ |
+| **数据隔离** | B 取消 A 的订单 | POST | 404 | ✓ |
+| **数据隔离** | 无效 token | GET | 401 | ✓ |
+| 积分 | /points（合成会员） | GET | 200 pointsBalance=0 | ✓（未绑定 openid/非会员为 400 属身份前置设计） |
+| 积分 | /orders/{id}/points-preview | POST | 400 围栏拒绝属预期 | ✓ |
+| 券 | /coupons（合成会员） | GET | 200 coupons=[] | ✓ |
+| 储值 | /recharges 创建 amountFen=50000 | POST | 200 rechargeId status=unpaid | ✓ |
+| 储值 | /recharges/{id}/mock-pay | POST | 200 status→paid | ✓ |
+| 储值 | /balance 入账 | GET | 200 balanceFen=50000 + ledger 流水 | ✓ |
+| 储值 | /recharges 流水 | GET | 200 含记录 | ✓ |
+| 客服会话 | /chat/messages 发消息 | POST | 200 命中迁移知识 | ✓ |
+| 客服会话 | /chat/messages 会话列表 | GET | 200 | ✓ |
+| 企微 | /wecom/callback 无效签名 | GET | 403 保持 | ✓ |
+
+数据隔离说明：合成会员夹具（customer_master p1-test-customer-001 + identity_links miniapp_openid=p1probe001，手机号 19900000001 为明显合成号段）仅存在于本地开发库；旧库 2.4 万真实客户数据零触碰。

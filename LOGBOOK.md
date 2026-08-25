@@ -1,4 +1,18 @@
-﻿## [2026-08-24] - docs(p1): P1 全模块承接验证任务包入库，Phase A 启动（trace: 20260824-p1-verify-plan）
+﻿## [2026-08-25] - fix(p1): Phase A 后端全域 API 冒烟完成——数据隔离五项全过，修复知识同步 NoneType 缺陷（trace: 20260825-p1-verify-phase-a）
+
+- 操作者: AI (OpenCode)
+- trace_id: `20260825-p1-verify-phase-a`
+- parent_trace_id: `20260824-p1-verify-plan`
+- 来源: P1 任务包 Phase A 执行（后端全域 API 冒烟，逐端点记录实际状态码，数据隔离最高优先级）。
+- 前置确认: YOUZAN_MOCK_MODE=False（.env 显式覆盖默认 True）→ 商品/订单域走真实有赞路径，本机 IP 白名单外相关调用失败属预期不修；ALLOW_MOCK_PAYMENT 默认 False，本地验证储值链路已在 .env 开启（fail-closed 设计保持不变）。
+- 冒烟结果: 25 项实测全部有状态码留档（任务包"Phase A 冒烟实测记录"表）。**数据隔离五项全过**：用户B 查/取消 用户A 订单均 404、B 列表 CLEAN 无泄漏、无效 token 401。订单链路：创建(无商品 400)→列表→详情→取消 status=cancelled 状态流转正确。会员资产域经合成会员夹具验证全通（pointsBalance/coupons 空态/recharge unpaid→paid/balanceFen=50000 入账+ledger 流水）；points-preview 围栏拒绝属预期；客服会话命中迁移知识；企微回调 403 保持。
+- 发现与修复: **P1 级缺陷**——BM25-only 模式下 KnowledgeSyncService 收到 vs=None，知识写入时后台向量同步报 `'NoneType' object has no attribute '_get_model'`，24 条迁移知识 vector_sync_status 全部 FAILED。已修（`knowledge_sync.py` sync_admin_entry 增加嵌入器为 None 的守卫分支，标记 SUCCESS 并记 info 日志），重启后批量同步 24/24 SUCCESS。**P2 登记**——GET /products/{假id} 返回 200 data:null 而非任务包预期 404，待修。两处环境项登记 P3（YOUZAN_MOCK_MODE 取值、ALLOW_MOCK_PAYMENT 开启）。
+- 排障过程: 三处误判被逐一澄清——①积分/券/余额 400"未绑定微信 openid"/"未识别为会员"为两层身份前置设计（extract_openid 要求 wx_ 前缀 + customer_identity_links 会员档案），非 bug；②充值 400 根因是测试用错字段名（API 为驼峰 amountFen），MIN_RECHARGE_FEN=100 分；③mock-pay 400 真实消息为"生产环境已禁用 mock 支付"（GBK 乱码曾导致误读为其他文案）。
+- 验证: 合成会员夹具（手机号 19900000001 明显合成号段）仅入本地开发库，旧库 2.4 万真实客户零触碰；knowledge_sync 修复以启动批量同步 24/24 SUCCESS 实证；问题清单与实测表已写入任务包文件。
+- 变更: app/service/knowledge_sync.py（守卫分支）；docs/specs/p1-module-acceptance-verify-plan.md（问题登记区 + Phase A 实测表）；backend/.env（ALLOW_MOCK_PAYMENT=True，本地不入库）。
+- residual_risks: 商品详情 404 语义待修（P2）；订单创建链路的真实商品依赖 Week 5 有赞重同步后补验；会员资产域仅合成身份验证，真实客户主档关联路径待试运行环境受控账号验证；Phase B/C 未开始。
+
+## [2026-08-24] - docs(p1): P1 全模块承接验证任务包入库，Phase A 启动（trace: 20260824-p1-verify-plan）
 
 - 操作者: 架构师定稿任务包，AI (OpenCode) 收口并执行
 - trace_id: `20260824-p1-verify-plan`
