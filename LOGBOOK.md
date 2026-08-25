@@ -1,4 +1,15 @@
-﻿## [2026-08-25] - docs(p1): PROJECT-STATE 状态推进——商品 309 口径落地，下一步指向实机走查（trace: 20260825-p1-state-v14-sync-update）
+﻿## [2026-08-25] - verify(p1): Phase C 实机走查启动——AppID 确认，CLI 会话需人工扫码重新登录（trace: 20260825-p1-phasec-devtools-walkthrough）
+
+- 操作者: AI (OpenCode)
+- trace_id: `20260825-p1-phasec-devtools-walkthrough`
+- parent_trace_id: `20260825-p1-state-v14-sync-update`
+- 来源: PROJECT-STATE 收口后启动 Phase C 第二步 15 页面实机走查。
+- 已完成部分: ①开发者工具实际位置定位成功——`D:\微信web开发者工具\`（非 Program Files 标准路径，此前探测遗漏的根因），cli.bat 在位；②项目配置确认——project.config.json 位于 miniapp 根，appid=wx4b59baadd9187a2e / projectname=YunxiBakeMiniApp / srcMiniprogramRoot=miniprogram/；③CLI 连通 IDE server（127.0.0.1:54080）且 islogin 返回 {"login":true}。
+- 阻塞发现: `cli open --project` 报 code 10 "需要重新登录"（islogin 与 open 行为矛盾，属 CLI 会话票据过期类问题）；`cli login` 挂起 180s 等待人工扫码后超时。miniprogram-automator 直连方案（ws://127.0.0.1:9420）同样依赖 GUI 侧已登录并打开项目。判定为需项目负责人人工扫码的硬阻塞（工具安全设计，无法自动化代劳），登记任务包问题区 #8（P1 严重级，阻塞实机走查）。
+- 变更: docs/specs/p1-module-acceptance-verify-plan.md（问题区 #8）。
+- residual_risks: 负责人在开发者工具界面重新登录前实机走查不可继续；登录完成后走查链路已就绪——automator wsEndpoint 依赖 IDE 设置开启服务端口（4200/9420 需在工具安全设置中启用 CLI/HTTP 调用）；后端服务需在走查期间保持运行（沙箱环境进程生命周期限制，需以长驻方式部署本地服务）。
+
+## [2026-08-25] - docs(p1): PROJECT-STATE 状态推进——商品 309 口径落地，下一步指向实机走查（trace: 20260825-p1-state-v14-sync-update）
 
 - 操作者: AI (OpenCode)
 - trace_id: `20260825-p1-state-v14-sync-update`

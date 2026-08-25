@@ -136,6 +136,8 @@
 | 4 | P3 记录 | 环境 | ALLOW_MOCK_PAYMENT 默认 False（fail-closed 正确），本地验证储值链路需在 .env 开启；已开启并跑通 unpaid→paid→入账 | 已解决 |
 | 5 | P3 记录 | 环境 | ~~本机未安装微信开发者工具，Phase B 页面实机走查 BLOCKED~~ **已更正（#7）：工具已安装，详见 #7** | ⛔→✅ 误报更正 |
 | 6 | P3 记录 | 小程序 | product-detail 对后端 200+data:null 已有三层友好空态处理（services 转 null → 页面"商品不存在"）；本地模式下异常路径另有 mock-catalog 兜底。P2 #2 对小程序端无用户可见危害 | 已核查（支撑 P2 定级复议） |
+| 7 | P3 记录 | 环境 | ~~本机未安装微信开发者工具~~ 探测方法缺陷更正：工具实际安装于 `D:\微信web开发者工具\`（非 Program Files 标准路径），CLI（cli.bat）与 IDE server（127.0.0.1:54080）均在位 | ✅ 已更正 |
+| 8 | **P1 严重** | 环境/走查 | devtools CLI 打开项目报 code 10 "需要重新登录"（islogin=true 与 open 行为矛盾，CLI 会话票据过期）；`cli login` 挂起等待人工扫码。AppID 配置已确认（wx4b59baadd9187a2e / YunxiBakeMiniApp / srcMiniprogramRoot=miniprogram/）| ⏳ **待项目负责人在开发者工具界面重新登录**，登录完成后实机走查立即可续 |
 | 7 | P3 记录 | 流程 | Phase B 实机走查 BLOCKED 为**探测方法缺陷**：仅扫描 Program Files 下 Tencent 目录，未扫描其他盘符/自定义安装路径；实际微信开发者工具早已安装并登录。建议日后工具探测覆盖 `(Get-Command)` 与注册表/AppData 卸载列表 | ⛔→✅ 已核实更正（2026-08-25）：实机走查解除，并入 Phase C |
 
 ## Phase A 冒烟实测记录（2026-08-25）
