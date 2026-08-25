@@ -1,4 +1,16 @@
-﻿## [2026-08-24] - chore(p05): 资产迁移执行完成——24 条人工沉淀知识迁入新库并验证命中
+﻿## [2026-08-24] - docs(p1): P1 全模块承接验证任务包入库，Phase A 启动（trace: 20260824-p1-verify-plan）
+
+- 操作者: 架构师定稿任务包，AI (OpenCode) 收口并执行
+- trace_id: `20260824-p1-verify-plan`
+- parent_trace_id: `20260824-p05-knowledge-migration`
+- 来源: P0.5 资产迁移完成后，架构师下达 P1 任务包（依据计划书附录D v1.2——P1 = 验证全部已有模块）。
+- 范围: docs/specs/p1-module-acceptance-verify-plan.md 入库；原则"只验证、只修 bug，不加新功能、不重构"；问题按 P0-P3 分级登记于任务包末尾；每 Phase 收口走 LOGBOOK→钩子链→push→ls-remote 回读。
+- 执行计划: Phase A 后端全域 API 冒烟（会话登录/商品/订单/积分/券/储值/客服会话/企微/数据隔离九域，逐端点记录实际状态码；数据隔离为最高优先级——用户A token 查用户B订单必须 403/404）；Phase B 小程序静态检查+页面走查（并行）；Phase C 跨端链路（第 2 周）；完成后出《P1 验证报告》。
+- 验证: 本条目随任务包文件一并提交；钩子链通过后 push 并回读。
+- 变更: 新增 docs/specs/p1-module-acceptance-verify-plan.md。
+- residual_risks: Phase A 商品域验证依赖 YOUZAN_MOCK_MODE 取值确认（True 则 mock 数据属预期不修）；订单 mock 支付链路涉及 POINTS_DEDUCTION_FENCE=True 下新抵扣拒绝属预期。
+
+## [2026-08-24] - chore(p05): 资产迁移执行完成——24 条人工沉淀知识迁入新库并验证命中
 
 - 操作者: AI (OpenCode)
 - trace_id: `20260824-p05-knowledge-migration`
