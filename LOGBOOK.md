@@ -1,4 +1,17 @@
-﻿## [2026-08-24] - docs(scope): MVP 范围修正 v1.2——全模块承接，Week2+ 旧任务作废（trace: 20260824-scope-correction-v12）
+﻿## [2026-08-24] - chore(p05): 资产迁移执行完成——24 条人工沉淀知识迁入新库并验证命中
+
+- 操作者: AI (OpenCode)
+- trace_id: `20260824-p05-knowledge-migration`
+- parent_trace_id: `20260824-scope-correction-v12`
+- 来源: 架构师范围修正 v1.2 新增 P0.5 资产迁移阶段，授权按"dry-run→apply→命中验证"持续执行。
+- 范围: 仅 faq/policy/after_sales 三类目选择性迁移；禁触客户数据（2.4 万条主档留在旧库）与商品快照（614 条，Week 5 凭证重同步）。凭证迁移已于 Week 1 冒烟前置完成（旧仓 .env → 新仓 backend/.env，本地不入库）。
+- 实现: 新增 `backend/scripts/migrate_legacy_knowledge.py`——只读旧库指定白名单字段（category/title/content/keywords/priority/is_active/content_type/时间戳），按 (category,title) 幂等查重，写入新库并补齐 master schema 必填列（content_origin=legacy_migration、audience=all、review_status=published）；默认 dry-run，--apply 才写入。
+- 执行: dry-run 报告 24 源条/24 待插入/0 冲突；apply 写入 24 条；幂等重跑确认"已存在跳过=24"；首轮断言基数未计种子条目导致误报 AssertionError（数据无影响），已修正为"插入前基数+插入数"校验并通过。迁移后目标类目 30 条 = 24 迁移 + 6 种子共存（另有 store_info 种子 1 条）。
+- 命中验证: BM25-only 模式重启后以旧库存量问题的口语化改写实测三例——①磕碰损坏处理：明确命中（拍照取证→转人工售后→退款/补发/优惠券方案，触发 UMP 转人工工单）；②退货预约：部分命中（核实订单+退回原因流程要素）；③支付方式：部分命中（提及小程序微信支付，主体引导客服与源条目口径一致）。AI 回答已从空库兜底转为基于存量知识的实质回答。
+- 变更: backend/scripts/migrate_legacy_knowledge.py（新）；backend/data/bot.db（+24 行知识，本地运行时产物不入库）。
+- residual_risks: faq 类目部分条目命中质量一般（如支付方式），P1 承接验证阶段可对关键词做调优；检索缓存由服务启动自动重建（rebuild_embeddings.py 脚本仍依赖真实模型不可用，BM25-only 下无需手动跑）；商品快照 614 条待 Week 5 有赞凭证连通性验证后重同步；PROJECT-STATE.md 资产地图状态待下轮收口更新。
+
+## [2026-08-24] - docs(scope): MVP 范围修正 v1.2——全模块承接，Week2+ 旧任务作废（trace: 20260824-scope-correction-v12）
 
 - 操作者: 架构师（AI）复核定稿，AI (OpenCode) 收口提交
 - trace_id: `20260824-scope-correction-v12`
