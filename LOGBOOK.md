@@ -1,4 +1,18 @@
-﻿## [2026-08-25] - verify(p1): Phase B 小程序静态检查四项全过，实机走查因工具缺失 BLOCKED（trace: 20260825-p1-verify-phase-b）
+﻿## [2026-08-25] - docs(p1): 规划校准 v1.4 入库——MiniApp 承接优先，三条件状态校准（trace: 20260825-p1-miniapp-goal-calibration）
+
+- 操作者: 架构师（项目负责人决策）定稿，AI (OpenCode) 收口提交
+- trace_id: `20260825-p1-miniapp-goal-calibration`
+- parent_trace_id: `20260825-p1-verify-phase-b`
+- 来源: 项目负责人对 Phase B 阻塞判定与数据策略的三条件核实（开发者工具实况、有赞白名单 IP、微信支付商户号进度），驱动规划校准。
+- 范围: PROJECT-STATE.md（v1.3 优先级调整 + v1.4 状态校准表）；P1 任务包（优先级调整横幅 + 阶段目标"MiniApp 承接验证两周硬指标" + Phase C 更新为当前焦点 + 问题区 #5 更正/#7 新增）。
+- 核心校准: **①** Phase B 的 BLOCKED 为探测方法缺陷（仅扫 Program Files 目录），工具实际已安装并登录——阻塞解除，记入问题区 #7；**②** 数据策略定为真实有赞数据，出口 IP `10.161.106.143` 已加有赞白名单（10.x 为内网段，遇 60020 需回读 NAT 后公网出口核对）；**③** 微信支付商户号申请流转中，支付环节一律 mock，商户号通过后按既有受控门禁执行。
+- 优先级调整: MiniApp 承接优先（Phase C 提升为焦点）；知识缺口回填降级不阻塞（转人工兜底已验证可用，排入 P2 试运行前）。
+- 阶段目标固化: "让自研小程序在真实商品数据下从登录跑到订单闭环，证明替代有赞电商核心的能力"，五项硬指标（商品真实化/15 页面实机/跨端闭环/会员资产真机复验/P0P1 缺陷清零）+ 边界重申（无真实支付、无知识回填阻塞、无企微群运营）。
+- 验证: 两文件 diff 经架构师定稿；本条目随提交入库；钩子链通过后 push 回读。
+- 变更: PROJECT-STATE.md；docs/specs/p1-module-acceptance-verify-plan.md。
+- residual_risks: 有赞商品同步尚未执行（Phase C 第一步，真实凭证，60020 时需回读出口 IP）；10.161.106.143 为内网段，NAT 出口与白名单的一致性待首次真实调用验证。
+
+## [2026-08-25] - verify(p1): Phase B 小程序静态检查四项全过，实机走查因工具缺失 BLOCKED（trace: 20260825-p1-verify-phase-b）
 
 - 操作者: AI (OpenCode)
 - trace_id: `20260825-p1-verify-phase-b`
