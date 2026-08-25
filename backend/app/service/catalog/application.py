@@ -70,8 +70,11 @@ class CatalogApplicationService:
                     for entry in entries
                 ]
 
+        # 分类语义与搜索语义分离：category_id 仅对非空且非 "all" 时生效
+        # （作为 LIKE 搜索词或 youzan- 分类精确路径）；"all"/空 表示全量
+        search_term = "" if category_id in ("", "all") else category_id
         entries = await self._product_repo.get_all_products(
-            search=category_id,
+            search=search_term,
             limit=max(limit, 1),
             is_active=1,
             featured_titles=featured_titles,
