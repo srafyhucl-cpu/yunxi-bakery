@@ -18,6 +18,7 @@ from app.repository.session_repo import SessionRepo
 from app.repository.message_repo import MessageRepo
 from app.service.youzan.client import YouzanClient
 from app.repository.config_repo import ConfigRepo
+from app.repository.youzan_repo import YouzanProductRepo
 
 
 async def main() -> None:
@@ -46,6 +47,7 @@ async def main() -> None:
         transfer_repo = TransferRepo(db)
         knowledge_repo = KnowledgeRepo(db)
         config_repo = ConfigRepo(db)
+        youzan_repo = YouzanProductRepo(db)
 
         # 实例化 NumPy 向量搜索引擎并自愈对齐
         vs = EmbeddingSearcher()
@@ -128,6 +130,23 @@ async def main() -> None:
 
             page_no += 1
             await asyncio.sleep(0.1)  # 礼貌延迟，防止有赞 QPS 限制
+
+        # 4. 分类同步：拉取有赞商品分类写 youzan_product_categories（幂等 upsert）
+        categories = await yz_client.search_item_classifications()
+        print(f"  - 拉取到 {len(categories)} 条商品分类")
+        for cat in categories:
+            cat_id = str(cat.get("classification_id") or cat.get("id") or "").strip()
+            title = str(cat.get("name") or "").strip()
+            if not cat_id or not title:
+                continue
+            await youzan_repo.upsert_category(
+                tag_id=cat_id,
+                title=title,
+                sort=int(cat.get("sort") or 0),
+                product_count=int(cat.get("product_count") or 0),
+                is_public=int(cat.get("is_public", 1) or 1),
+            )
+        print(f"    ✓ 商品分类同步完成（{len(categories)} 条）")
 
         await yz_client.close()
 

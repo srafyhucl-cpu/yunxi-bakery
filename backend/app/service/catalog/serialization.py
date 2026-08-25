@@ -60,7 +60,9 @@ class CatalogProductSerializer:
         categories = await self._youzan_product_repo.list_public_categories()
         return [
             {
-                "id": build_youzan_category_id(str(category["tag_id"])),
+                # youzan_product_categories 存的是有赞商品分类（classification）id，
+                # 以 classification- 前缀构建前台 ID，命中 classification_ids_json 路径
+                "id": build_youzan_category_id(f"classification-{category['tag_id']}"),
                 "title": category["title"],
                 "sort": int(category["sort"] or 0),
                 "productCount": int(category["product_count"] or 0),
@@ -137,7 +139,9 @@ class CatalogProductSerializer:
             category = await self._youzan_product_repo.get_category(candidate_tag_id)
             if category is not None and int(category.get("is_public", 0) or 0) == 1:
                 return {
-                    "id": build_youzan_category_id(str(category["tag_id"])),
+                    "id": build_youzan_category_id(
+                        f"classification-{category['tag_id']}"
+                    ),
                     "title": str(category["title"]),
                 }
         if ordered_tag_ids:

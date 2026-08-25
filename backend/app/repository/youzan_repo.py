@@ -68,7 +68,7 @@ class YouzanProductRepo(BaseRepository):
         rows = await self._db.execute_fetchall(
             "SELECT tag_id, title, sort, product_count "
             "FROM youzan_product_categories "
-            "WHERE product_count > 0 AND is_public = 1 "
+            "WHERE is_public = 1 "
             "ORDER BY sort ASC, title ASC, tag_id ASC"
         )
         return [dict(row) for row in rows]
