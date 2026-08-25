@@ -132,9 +132,10 @@
               </view>
             </view>
 
-            <view wx:if="{{section.hasMatches === false}}" class="products-empty">
-              <text class="products-empty__title">暂时没有匹配商品</text>
-              <text class="products-empty__hint">请尝试输入其他关键词进行筛选</text>
+            <view wx:if="{{section.hasMatches === false && section.id !== 'all'}}" class="products-empty">
+              <text class="products-empty__title">该分类暂无商品</text>
+              <text class="products-empty__hint">再看看其他商品吧</text>
+              <view class="products-empty__action" bindtap="switchToAll">查看全部商品</view>
             </view>
           </view>
         </scroll-view>

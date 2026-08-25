@@ -376,6 +376,16 @@
   font-size: 22rpx;
 }
 
+.products-empty__action {
+  margin-top: 24rpx;
+  padding: 14rpx 36rpx;
+  border-radius: 999rpx;
+  background: #f7f0e3;
+  color: #7a5c3a;
+  font-size: 24rpx;
+  font-weight: 600;
+}
+
 .products-load-more {
   padding: 46rpx 0 8rpx;
   color: #9aa79a;

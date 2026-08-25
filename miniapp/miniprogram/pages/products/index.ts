@@ -57,6 +57,9 @@ interface ProductsPageData {
 const INITIAL_PRODUCTS_PER_SECTION = 12;
 const PRODUCTS_PAGE_SIZE = 12;
 const ALL_PRODUCTS_CATEGORY_ID = "all";
+// 全量目录安全上限：后端默认 50 未覆盖全量，取 500（≥ 当前全量并与默认分页档位拉开量级）；
+// 后续产品决策引入服务端分页后由 total/分页逻辑替换（API 现为纯数组无 total 字段）
+const FULL_CATALOG_LIMIT = 500;
 const FALLBACK_CATEGORY_TITLE = "特色推荐";
 const RAW_CATEGORY_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)+$/i;
 const GENERIC_CATEGORY_TOKENS = new Set([
@@ -316,7 +319,7 @@ Page<ProductsPageData, WechatMiniprogram.IAnyObject>({
     this.setData({ loading: true });
     try {
       const [products, categories] = await Promise.all([
-        listProducts({ limit: 309 }),
+        listProducts({ limit: FULL_CATALOG_LIMIT }),
         listProductCategories()
       ]);
       
@@ -473,6 +476,14 @@ Page<ProductsPageData, WechatMiniprogram.IAnyObject>({
     }
 
     this.setData({ activeCategoryId: categoryId });
+  },
+  switchToAll() {
+    // 分类空态兜底：一键切回全部商品
+    this.setData({
+      searchText: "",
+      globalSearchResults: [],
+      activeCategoryId: ALL_PRODUCTS_CATEGORY_ID
+    });
   },
   setDeliveryMode(event: WechatMiniprogram.TouchEvent) {
     const mode = event.currentTarget.dataset.mode as "delivery" | "pickup";

@@ -1,4 +1,17 @@
-﻿## [2026-08-25] - fix(p1): Phase D 修复三连完成 + 结算三分支补证（trace: 20260825-p1-phaseD-complete）
+﻿## [2026-08-25] - wrap(p1): P1 收尾四小项完成——P1 关闭待确认（trace: 20260825-p1-wrap）
+
+- 操作者: AI (OpenCode)
+- trace_id: `20260825-p1-wrap`
+- parent_trace_id: `20260825-p1-phaseD-complete`
+- 来源: 项目负责人指令 T-P1-WRAP-01（P1 一次性收口四小项）。
+- **① limit 魔法数字**: products/index.ts `limit: 309` → 命名常量 `FULL_CATALOG_LIMIT = 500`（含注释）。选型理由：后端 `{"code":0,"data":[]}` 纯数组无 total 字段，动态 total 需改后端响应结构（超出"不做架构变更"约束）；500 为安全上限。**验收**：typecheck rc=0；`GET /products?limit=500` → **311 条**（default 仍 50 不变，>309 不截断实证）。
+- **② #13 分类关联**: 有赞 `item.get` 响应 item 对象深度遍历**零命中**分类字段（categor/classif 全 absent；cid=0；item_tags/tag_ids 为 tag 体系 278395503 与 classification 129195807 零交集）→ **API 不可行**。降级兜底已落地：空分类 wxml 空态升级为"该分类暂无商品 / 再看看其他商品吧 / **查看全部商品**"（新增 switchToAll 方法一键回全量 + products-empty__action 样式）；typecheck rc=0。
+- **③ 商品口径**: 全集比对（有赞 onsale.get 全量 vs 库）——库 **311**、有赞当前在售 **310**、差集仅 `5811485729`（三角芝士火腿，已下架未清理，诚实记录待店家确认）、在售 0 缺（webhook 事件表 0 条无法回溯增量个体）。"309 全量"= 首次同步快照口径（限值 500 后页面呈现最新 311）。已写入任务包 #14。
+- **④ 收口**: 任务包 P1 收尾区块（四项验收证据）+ #13/#14 登记；PROJECT-STATE v16（Phase D 完成、P1 关闭**待项目负责人确认**）；本 LOGBOOK 条目。
+- 变更: miniapp/products/index.ts（limit 常量+switchToAll）；products/index.wxml（空分类兜底块）；products/index.wxss（__action 样式）；任务包；PROJECT-STATE；LOGBOOK。
+- residual_risks: 5811485729 下架残留待店家确认后处理；分类关联无 API 路径（兜底已足够体验）；P1 关闭需负责人确认后进入 P2 试运行准备。
+
+## [2026-08-25] - fix(p1): Phase D 修复三连完成 + 结算三分支补证（trace: 20260825-p1-phaseD-complete）
 
 - 操作者: AI (OpenCode)
 - trace_id: `20260825-p1-phaseD-complete`

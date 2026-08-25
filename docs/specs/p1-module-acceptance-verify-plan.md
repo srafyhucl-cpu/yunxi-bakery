@@ -144,6 +144,13 @@
 
 补充说明：automator 页面走查时发票回复曾显示欢迎语（30s 轮询窗口与发送通道差异），API 直测双身份确认命中正常；订单闭环为 API 级实证 + 页面验证组合。
 
+## P1 收尾（T-P1-WRAP-01，2026-08-25）
+
+- **① limit 魔法数字**：products/index.ts `listProducts({ limit: 309 })` → `limit: FULL_CATALOG_LIMIT`（新命名常量 = 500）。选固定上限而非 total 动态值的理由：后端响应为 `{"code":0,"data":[]}` 纯数组**无 total 字段**，动态方案需改后端响应结构（超出"不做架构变更"约束）；500 为 ≥ 当前全量且保护未来的安全上限。**验收证据**：typecheck rc=0；`GET /products?limit=500` 返回 311 条（<500 不截断，超过 309 的实证）。
+- **② #13 分类关联**：API 不可行（见 #13 行证据）；兜底已落地（空分类文案+查看全部按钮）。**验收证据**：typecheck rc=0；wxml 含 `switchToAll` 绑定与 `products-empty__action` 样式。
+- **③ 商品口径**：见 #14 行（全集比对证据：库 311 / 有赞在售 310 / 差集仅 5811485729 / 0 缺）。
+- **④ 收口**：LOGBOOK trace 20260825-p1-wrap；PROJECT-STATE v16 待本 P1 区块确认后登记。
+
 ## 问题登记区
 
 （Phase A-D 执行中填写）
@@ -160,6 +167,8 @@
 | 10 | **P2 一般** | 商品目录 | 目录可见范围受限：库内 309 条在售商品但 products 页仅少量可见 | **🔎 诊断完成（2026-08-25）——根因定性：①** `DEFAULT_PRODUCT_LIMIT=50`（catalog/application.py:20）且 **API 层未透传 limit 参数**（实测 default=50 / limit=309=50 / limit=500=50，恒 50 截断）；**②** 分类筛选语义混用——`categoryId=all` 被当 search 注入 `title LIKE '%all%'`（实测仅 2 条），分类 id（"youzan-" 前缀以外）与 LIKE 搜索词未区分；**③** 图片合规无问题：309/309 图片均 `img.yzcdn.cn` 白名单内；**④** `youzan_product_categories` 表 0 条——同步脚本只拉 `youzan.items.onsale.get`，**从未调分类接口**。**修复方案预估**：A. API 层透传 limit/分页参数；B. `_build_product_where` 将"分类 id 精确过滤"与"文本搜索"分离（"all"/"youzan-"分类走精确路径）；C. 同步脚本补拉分类（`youzan.itemcategories.get` + 分类映射）。**⏳ 标注：待产品决策（分页/全量/分类导航方案）后修复** |
 | 11 | P3 记录 | 环境 | automator screenshot 接口在本 IDE 版本全部超时不可用，页面截图留档改由人工截图补充 | 已记录 |
 | 12 | P3 记录 | 会员资产 UX | points/coupons 页对非会员身份显示 loadFailed=true（400 "未识别为会员"属身份前置设计）——真实客户有档案不受影响，但新访客引导注册的 UX 表达待议 | 记录待议 |
+| 13 | **P2 一般** | 商品分类关联 | 有赞 item.get/onsale 响应**不含 classification 字段**（深度遍历零命中；cid=0；item_tags 为 tag 体系与 classification 零交集）——分类→商品关联数据 API 不可行 | 🔎 **API 不可行，已落地兜底**（2026-08-25）：分类点选空分类时 wxml 已有 hasMatches 空态，升级为"该分类暂无商品 / 再看看其他商品吧 / 查看全部商品"（switchToAll 一键回全量，products-empty__action 样式已加）；typecheck 0 |
+| 14 | P3 记录 | 商品口径 | 库内 311 vs 前端"309 全量"口径说明：311 = 首次同步 309 快照 + 期间有赞实时上架/下架净变化（当前有赞在售 310；库内多 1 条 5811485729 三角芝士火腿已下架未清理——诚实记录不删，待商店确认）；有赞在售 310 全部已入库（0 缺，webhook 事件表空无法回溯单条增量） | 已记录（2026-08-25） |
 
 ## Phase C 第二步：15 页面实机走查实测记录（2026-08-25，automator ws://127.0.0.1:9420）
 
