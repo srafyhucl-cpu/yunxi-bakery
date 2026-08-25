@@ -144,7 +144,26 @@
 
 补充说明：automator 页面走查时发票回复曾显示欢迎语（30s 轮询窗口与发送通道差异），API 直测双身份确认命中正常；订单闭环为 API 级实证 + 页面验证组合。
 
-## P1 收尾（T-P1-WRAP-01，2026-08-25）
+## T-P2-PREP-01：P2 试运行准备包（2026-08-25）
+
+### ① 下架商品一致性处理 ✅
+- `youzan_products`/`knowledge_base` 5811485729（三角芝士火腿）已置 **is_active=0**（title 保留，待店家确认去留）。
+- **sync 覆盖规则结论**：`upsert_product`（youzan_repo.py）为原子 upsert 单行覆盖；sync_real_products_from_youzan.py 仅对 onsale 集合逐条模拟 webhook 写入，**不存在用 onsale 集合覆盖全表逻辑**；`ProductReconcileService` 存在但未接自动调度（admin POST /api/v1/admin/products/reconcile 可手动触发）→ 记录"手动 reconcile 可用，不会被自动改回 1"。
+- 验收：`GET /products?limit=500` count=310，不含 5811485729；DB 直查 is_active=0。
+- #14 已更新为"待店家确认"状态。
+
+### ② 发票承接执行 ✅（按 docs/specs/2026-08-25-invoice-mvp-plan.md）
+- **迁移 v027_invoice_requests.sql**（app/migrations/）：apply_migrations 执行成功，schema 版本 27，表 11 列符合方案。
+- **后端**：InvoiceRepo（repository/invoice_repo.py）、AdminInvoiceService（service/invoice/admin.py）、admin API（api/admin/invoices.py：POST 登记/GET 列表/POST {id}/mark-issued）、lifespan_routes.py 注册。
+- **admin 前端**：services/invoices.ts + pages/invoices/InvoicesPage.vue（登记表单+列表+标记已开）+ routes.ts /admin/invoices + adminNavigation.ts 菜单“发票管理”；npm run build 成功，dist 由后端 serve。
+- **验收实测**：认证后 create 200（id=2，验收烘焙有限公司）、list 200、mark-issued 200 status=issued、admin 页 /admin/invoices 200；DB 直查 invoice_requests 有测试记录（id=1 已开具电子普票 + id=2 验收）。
+- **三不做**：电子发票直连 / miniapp 登记入口 / 开票通知——未实现（按方案排除项）。
+
+### ③ 知识缺口回填——明确不做 ✅
+- knowledge_gaps 5 条维持转人工兜底；发票话术 #9566（"支持开具正规增值税电子普通发票...1-3 个工作日"）Phase C 已验证命中，未改动知识。兜底话术确认可用（API 复验两个身份均返回发票话术）。
+
+### ④ 收口
+LOGBOOK trace `20260825-p2-prep`（parent `20260825-p1-wrap`）；PROJECT-STATE v17：**P1 已关闭、P2 试运行准备完成、待项目负责人确认**（未获确认前不得擅自启动 P2 实测）。
 
 - **① limit 魔法数字**：products/index.ts `listProducts({ limit: 309 })` → `limit: FULL_CATALOG_LIMIT`（新命名常量 = 500）。选固定上限而非 total 动态值的理由：后端响应为 `{"code":0,"data":[]}` 纯数组**无 total 字段**，动态方案需改后端响应结构（超出"不做架构变更"约束）；500 为 ≥ 当前全量且保护未来的安全上限。**验收证据**：typecheck rc=0；`GET /products?limit=500` 返回 311 条（<500 不截断，超过 309 的实证）。
 - **② #13 分类关联**：API 不可行（见 #13 行证据）；兜底已落地（空分类文案+查看全部按钮）。**验收证据**：typecheck rc=0；wxml 含 `switchToAll` 绑定与 `products-empty__action` 样式。
@@ -168,7 +187,7 @@
 | 11 | P3 记录 | 环境 | automator screenshot 接口在本 IDE 版本全部超时不可用，页面截图留档改由人工截图补充 | 已记录 |
 | 12 | P3 记录 | 会员资产 UX | points/coupons 页对非会员身份显示 loadFailed=true（400 "未识别为会员"属身份前置设计）——真实客户有档案不受影响，但新访客引导注册的 UX 表达待议 | 记录待议 |
 | 13 | **P2 一般** | 商品分类关联 | 有赞 item.get/onsale 响应**不含 classification 字段**（深度遍历零命中；cid=0；item_tags 为 tag 体系与 classification 零交集）——分类→商品关联数据 API 不可行 | 🔎 **API 不可行，已落地兜底**（2026-08-25）：分类点选空分类时 wxml 已有 hasMatches 空态，升级为"该分类暂无商品 / 再看看其他商品吧 / 查看全部商品"（switchToAll 一键回全量，products-empty__action 样式已加）；typecheck 0 |
-| 14 | P3 记录 | 商品口径 | 库内 311 vs 前端"309 全量"口径说明：311 = 首次同步 309 快照 + 期间有赞实时上架/下架净变化（当前有赞在售 310；库内多 1 条 5811485729 三角芝士火腿已下架未清理——诚实记录不删，待商店确认）；有赞在售 310 全部已入库（0 缺，webhook 事件表空无法回溯单条增量） | 已记录（2026-08-25） |
+| 14 | P3 记录 | 商品口径 | 库内 311 vs 前端"309 全量"口径说明：311 = 首次同步 309 快照 + 期间有赞实时上架/下架净变化（当前有赞在售 310；库内多 1 条 5811485729 三角芝士火腿已下架未清理——诚实记录不删，待商店确认）；有赞在售 310 全部已入库（0 缺，webhook 事件表空无法回溯单条增量） | 🔄 **待店家确认**（T-P2-PREP-01 已置 is_active=0 双表，title 保留；sync 覆盖规则=单条 onsale upsert 不覆盖全表；待店家确认去留后按结论处理） |
 
 ## Phase C 第二步：15 页面实机走查实测记录（2026-08-25，automator ws://127.0.0.1:9420）
 

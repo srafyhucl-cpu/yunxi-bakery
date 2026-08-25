@@ -52,6 +52,15 @@ export const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: "/invoices",
+    name: "invoices",
+    component: () => import("@/pages/invoices/InvoicesPage.vue"),
+    meta: {
+      title: "发票管理",
+      navKey: "invoices",
+    },
+  },
+  {
     path: "/products/featured",
     name: "products-featured",
     component: () => import("@/pages/products/FeaturedProductsPage.vue"),

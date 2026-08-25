@@ -28,6 +28,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   { label: "AI 对话", shortLabel: "AI", to: "/ai-dialog", key: "ai-dialog", icon: ChatDotRound, mobilePrimary: false },
   { label: "商品管理", shortLabel: "商品", to: "/products", key: "products", icon: Goods, mobilePrimary: true },
   { label: "优惠券", shortLabel: "券", to: "/coupons", key: "coupons", icon: Ticket, mobilePrimary: false },
+  { label: "发票管理", shortLabel: "发票", to: "/invoices", key: "invoices", icon: Document, mobilePrimary: false },
   { label: "店铺装修", shortLabel: "装修", to: "/decoration", key: "decoration", icon: MagicStick, mobilePrimary: false },
   { label: "订单管理", shortLabel: "订单", to: "/orders", key: "orders", icon: Tickets, mobilePrimary: true },
   { label: "顾客地址", shortLabel: "地址", to: "/addresses", key: "addresses", icon: Location, mobilePrimary: false },

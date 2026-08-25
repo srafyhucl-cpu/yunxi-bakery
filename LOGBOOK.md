@@ -1,4 +1,18 @@
-﻿## [2026-08-25] - wrap(p1): P1 收尾四小项完成——P1 关闭待确认（trace: 20260825-p1-wrap）
+﻿## [2026-08-25] - feat(p2): P2 试运行准备完成——下架商品一致化 + 发票承接落地（trace: 20260825-p2-prep）
+
+- 操作者: AI (OpenCode)
+- trace_id: `20260825-p2-prep`
+- parent_trace_id: `20260825-p1-wrap`
+- 来源: 项目负责人指令 T-P2-PREP-01（P2 试运行前两落地项，做完后 P1 正式关闭）。
+- **① 下架商品一致性（必做）**：5811485729 三角芝士火腿（有赞已下架、库内 is_active=1）双表置 0，title 保留。sync 覆盖规则结论：upsert_product 单行原子覆盖，无 onsale 全表覆盖逻辑；ProductReconcileService 存在未接自动调度（admin reconcile 端点可手动触发）。验收：products?limit=500 count=310 不含该商品、DB is_active=0。任务包 #14 标"待店家确认"。
+- **② 发票承接**：迁移 v027_invoice_requests.sql（版本 27）+ InvoiceRepo + AdminInvoiceService + admin API（POST/GET/{id}/mark-issued）+ admin 前端（InvoicesPage.vue 登记表单/列表/标记已开 + /invoices 路由 + 菜单）+ dist 构建。验收：create/list/mark-issued 全 200、DB 2 条测试记录（id=1 已开具电子普票、id=2 验收）；三不做（电子发票直连/miniapp 登记入口/开票通知）按方案排除未实现。
+- **③ 知识缺口回填**：明确不做——5 条 gaps 维持转人工兜底，发票话术 #9566 未改动（Phase C 已验证命中）；兜底话术确认可用。
+- **④ 收口**：任务包 T-P2-PREP-01 区块；PROJECT-STATE v17（P1 已关闭、P2 试运行准备完成、待项目负责人确认——未获确认前不启动 P2 实测）。
+- 验证: 全链路可复现证据（API 响应/DB 直查/构建产物）；钩子链 → push → ls-remote 回读。
+- 变更: app/migrations/v027_invoice_requests.sql；app/repository/invoice_repo.py；app/service/invoice/admin.py；app/api/admin/invoices.py；app/lifespan_routes.py；backend/web/admin/src/{services/invoices.ts, pages/invoices/InvoicesPage.vue, router/routes.ts, constants/adminNavigation.ts, dist/}；docs/specs/p1-module-acceptance-verify-plan.md；PROJECT-STATE.md；本 LOGBOOK。
+- residual_risks: 商家确认 5811485729 去留（#14）；invoice 测试记录 2 条留库（本地开发库，P2 实测前可清理）；admin 前端 dist 由构建生成。
+
+## [2026-08-25] - wrap(p1): P1 收尾四小项完成——P1 关闭待确认（trace: 20260825-p1-wrap）
 
 - 操作者: AI (OpenCode)
 - trace_id: `20260825-p1-wrap`
