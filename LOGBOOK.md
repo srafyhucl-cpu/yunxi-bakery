@@ -1,4 +1,16 @@
-﻿## [2026-08-25] - docs(p1): 发票承接方案与有赞功能对标表入库 + PROJECT-STATE 更新（trace: 20260825-p1-invoice-plan-and-state）
+﻿## [2026-08-25] - fix(p1): #9 chat iOS 日期兼容修复 + #10 商品目录四步诊断（trace: 20260825-p1-fix9-diag10）
+
+- 操作者: AI (OpenCode)
+- trace_id: `20260825-p1-fix9-diag10`
+- parent_trace_id: `20260825-p1-invoice-plan-and-state`
+- 来源: 项目负责人指令任务二（#9 修复）+ 任务三（#10 定向诊断只读四步）。
+- **#9 修复**: chat 页 formatMsgTime 的 `new Date("yyyy-MM-dd HH:mm:ss")` iOS 不支持——提取至 `miniprogram/utils/time-format.ts`（normalizeTimeString 将空格分隔归一化为 ISO + formatMsgTime 显式 isNaN 判空），chat 页接入。单测 5/5 通过（含 "2026-08-25 12:30:45" 生成有效 Date 且时间正确、ISO 原样、空串/非法串返回空），typecheck 零错误。任务包 #9 → **已修复**。
+- **#10 诊断**: 四步只读结论——①limit 未透传恒 50（default/limit=309/limit=500 均 50），DEFAULT_PRODUCT_LIMIT=50 截断为主因；②分类语义混用：`categoryId=all`→`LIKE %all%` 仅 2 条；分类过滤与搜索未分离；③图片 309/309 全部 img.yzcdn.cn 白名单内无问题；④`youzan_product_categories` 表 0 条——同步脚本从未调分类接口。修复方案预估三条写入任务包 #10（待产品决策修复）。
+- 验证: 单测 5/5 + typecheck 0 错误；诊断脚本证据（limit 三种取值实测表、LIKE 计数、图片域名统计、分类表计数）。
+- 变更: miniapp/miniprogram/utils/time-format.ts（新）；miniapp/miniprogram/pages/chat/index.ts（接入 util）；miniapp/tests/utils/time-format.test.ts（新）；docs/specs/p1-module-acceptance-verify-plan.md（#9/#10 状态）。
+- residual_risks: #10 修复待产品决策；products 页 39 具体来源为页面请求组合（featured/分类默认）与后端逻辑共同作用，修复方案 A/B 即可覆盖；#9 真机复验待 iOS 实机。
+
+## [2026-08-25] - docs(p1): 发票承接方案与有赞功能对标表入库 + PROJECT-STATE 更新（trace: 20260825-p1-invoice-plan-and-state）
 
 - 操作者: 架构师定稿，AI (OpenCode) 收口提交
 - trace_id: `20260825-p1-invoice-plan-and-state`

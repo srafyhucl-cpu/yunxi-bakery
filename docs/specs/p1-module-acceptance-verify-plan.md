@@ -136,8 +136,8 @@
 | 4 | P3 记录 | 环境 | ALLOW_MOCK_PAYMENT 默认 False（fail-closed 正确），本地验证储值链路需在 .env 开启；已开启并跑通 unpaid→paid→入账 | 已解决 |
 | 5 | P3 记录 | 环境 | ~~本机未安装微信开发者工具，Phase B 页面实机走查 BLOCKED~~ **已更正（#7）：工具已安装，详见 #7** | ⛔→✅ 误报更正 |
 | 8 | **P1 严重** | 环境/走查 | devtools CLI 打开项目报 code 10 "需要重新登录"（islogin=true 与 open 行为矛盾，CLI 会话票据过期）；`cli login` 挂起等待人工扫码。AppID 配置已确认（wx4b59baadd9187a2e / YunxiBakeMiniApp / srcMiniprogramRoot=miniprogram/）| ✅ 已解决（项目负责人扫码重登后 `cli open √`、`cli auto --auto-port 9420 √`）|
-| 9 | **P2 一般** | 小程序/chat | chat 页 `formatMsgTime` 使用 `new Date("yyyy-MM-dd HH:mm:ss")` 格式，iOS 不支持（仅支持 yyyy/MM/dd）——开发者工具中为 warn，iOS 真机上消息时间将显示 Invalid Date | 待修（真机前必修） |
-| 10 | **P2 一般** | 商品目录 | 目录可见范围受限：库内 309 条在售商品（knowledge_base product is_active=1 共 309）但 products 页 allProducts 仅 **39**——catalog 服务 `DEFAULT_PRODUCT_LIMIT=50`（application.py:20）叠加筛选条件所致；需产品决策（分页加载/全量/分类导航）| 待产品决策 |
+| 9 | **P2 一般** | 小程序/chat | chat 页 `formatMsgTime` 使用 `new Date("yyyy-MM-dd HH:mm:ss")` 格式，iOS 不支持（仅支持 yyyy/MM/dd）——开发者工具中为 warn，iOS 真机上消息时间将显示 Invalid Date | ✅ **已修复（2026-08-25）**：提取 `miniprogram/utils/time-format.ts`（normalizeTimeString 归一化空格→T + formatMsgTime 显式 isNaN 判空），chat 页接入；单测 5/5 通过（含 "2026-08-25 12:30:45" 生成有效 Date 且时间正确），typecheck 零错误 |
+| 10 | **P2 一般** | 商品目录 | 目录可见范围受限：库内 309 条在售商品但 products 页仅少量可见 | **🔎 诊断完成（2026-08-25）——根因定性：①** `DEFAULT_PRODUCT_LIMIT=50`（catalog/application.py:20）且 **API 层未透传 limit 参数**（实测 default=50 / limit=309=50 / limit=500=50，恒 50 截断）；**②** 分类筛选语义混用——`categoryId=all` 被当 search 注入 `title LIKE '%all%'`（实测仅 2 条），分类 id（"youzan-" 前缀以外）与 LIKE 搜索词未区分；**③** 图片合规无问题：309/309 图片均 `img.yzcdn.cn` 白名单内；**④** `youzan_product_categories` 表 0 条——同步脚本只拉 `youzan.items.onsale.get`，**从未调分类接口**。**修复方案预估**：A. API 层透传 limit/分页参数；B. `_build_product_where` 将"分类 id 精确过滤"与"文本搜索"分离（"all"/"youzan-"分类走精确路径）；C. 同步脚本补拉分类（`youzan.itemcategories.get` + 分类映射）。**⏳ 标注：待产品决策（分页/全量/分类导航方案）后修复** |
 | 11 | P3 记录 | 环境 | automator screenshot 接口在本 IDE 版本全部超时不可用，页面截图留档改由人工截图补充 | 已记录 |
 | 12 | P3 记录 | 会员资产 UX | points/coupons 页对非会员身份显示 loadFailed=true（400 "未识别为会员"属身份前置设计）——真实客户有档案不受影响，但新访客引导注册的 UX 表达待议 | 记录待议 |
 
