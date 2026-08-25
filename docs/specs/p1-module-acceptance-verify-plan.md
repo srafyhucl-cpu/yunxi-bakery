@@ -31,12 +31,22 @@
 
 ## Phase B：小程序静态检查 + 页面走查（第 1 周并行）
 
-- [ ] `npm run typecheck` 零错误
-- [ ] `npm run check:miniapp` 全过
-- [ ] `npm run check:page-api-coverage` 全过
-- [ ] `npm run test:member-assets` 全过
-- [ ] 15 个页面在微信开发者工具中逐一打开，记录每个页面：正常渲染 / 报错 / 空态
-- [ ] 商品类页面空库表现：应有友好空态而非白屏
+- [x] `npm run typecheck` 零错误 — tsc --noEmit 退出码 0（2026-08-25）
+- [x] `npm run check:miniapp` 全过 — 15 pages / 15 routes（2026-08-25）
+- [x] `npm run check:page-api-coverage` 全过 — 15 pages / 33 API terms / 8 boundaries（2026-08-25）
+- [x] `npm run test:member-assets` 全过 — 11/11 pass（2026-08-25）
+- [ ] ⛔ **BLOCKED**：15 个页面在微信开发者工具中逐一打开 — 本机未安装微信开发者工具（Program Files 下 Tencent 目录无该工具）；已用静态走查替代（见下），实机走查待工具安装后补做
+- [x] 商品类页面空库表现（静态走查替代）：15/15 页面 wxml 均含空态区块（empty/暂无/加载失败类标记），无白屏风险结构；products 页以 `filter(products.length)` 过滤空分类并有"暂时没有匹配商品"搜索空态；cart 页以 hasItems 标志驱动空购物车条件渲染
+
+### product-detail 对后端 200+data:null 的处理方式核查（为 P2 决策收集）
+
+三层链路均为友好空态，无崩溃路径：
+
+1. services/products.ts `fetchProductDetail`：`isWrappedCatalogProduct(response)` 通过后 `response.data ? normalize : null` —— 后端 200+data:null 正确转为 null 返回
+2. 异常路径（后端不可达/500）：`IS_USING_LOCAL_API=True` 时走本地 mock-catalog 兜底（10 个本地商品，含 birthday-cake 等），假 id 查无返回 null；生产模式直接抛错
+3. 页面层 index.ts L63-66：null → setData product:null + unavailableText="商品不存在" + toast
+
+**结论**：P2 #2（后端 200+null 非 404）对小程序客户端实际无用户可见危害——客户端已按缺失语义处理。维持 RESTful 语义改进建议，定级可讨论下调。
 
 ## Phase C：跨端链路验证（第 2 周）
 
@@ -82,6 +92,8 @@
 | 2 | P2 一般 | 商品 | GET /api/v1/miniapp/products/{不存在id} 返回 200 `{"code":0,"data":null}`，任务包预期 404；客户端需判 data null 才能感知缺失 | 待修 |
 | 3 | P3 记录 | 环境 | YOUZAN_MOCK_MODE=False（.env 显式覆盖默认 True）：商品/订单域走真实有赞路径，本机 IP 未在白名单时相关调用将失败，属预期不修 | 已记录 |
 | 4 | P3 记录 | 环境 | ALLOW_MOCK_PAYMENT 默认 False（fail-closed 正确），本地验证储值链路需在 .env 开启；已开启并跑通 unpaid→paid→入账 | 已解决 |
+| 5 | P3 记录 | 环境 | 本机未安装微信开发者工具，Phase B 页面实机走查 BLOCKED；静态走查已替代完成（15/15 空态结构确认），实机走查待工具安装后补做 | ⛔ 阻塞实机走查 |
+| 6 | P3 记录 | 小程序 | product-detail 对后端 200+data:null 已有三层友好空态处理（services 转 null → 页面"商品不存在"）；本地模式下异常路径另有 mock-catalog 兜底。P2 #2 对小程序端无用户可见危害 | 已核查（支撑 P2 定级复议） |
 
 ## Phase A 冒烟实测记录（2026-08-25）
 

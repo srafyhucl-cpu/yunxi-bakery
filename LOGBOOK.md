@@ -1,4 +1,18 @@
-﻿## [2026-08-25] - fix(p1): Phase A 后端全域 API 冒烟完成——数据隔离五项全过，修复知识同步 NoneType 缺陷（trace: 20260825-p1-verify-phase-a）
+﻿## [2026-08-25] - verify(p1): Phase B 小程序静态检查四项全过，实机走查因工具缺失 BLOCKED（trace: 20260825-p1-verify-phase-b）
+
+- 操作者: AI (OpenCode)
+- trace_id: `20260825-p1-verify-phase-b`
+- parent_trace_id: `20260825-p1-verify-phase-a`
+- 来源: Phase A 验收通过后架构师启动 Phase B（检查轮：除崩溃级 P0 不做任何代码修改）。
+- 范围: miniapp 五项检查 + 15 页面走查 + product-detail 对 200+data:null 处理方式核查。
+- 执行结果: npm install 后四项静态检查全过——①typecheck（tsc --noEmit）退出码 0 零错误；②check:miniapp 通过（15 pages / 15 routes）；③check:page-api-coverage 通过（15 pages / 33 API terms / 8 boundaries）；④test:member-assets 通过（11/11）。⑤devtools 打开验证 **BLOCKED**——本机未安装微信开发者工具（Program Files Tencent 目录探测无该工具），页面实机走查无法执行。
+- 静态走查替代: 自写核查脚本批量检测 15 页面 wxml 空态标记与 ts 空数据分支——**15/15 页面 wxml 均含空态区块**；首轮 ts 检测 8 页误报"no"经抽查澄清为关键词覆盖不足（products 页用 filter(products.length) 谓词过滤空分类、cart 页用 hasItems 标志驱动条件渲染），实际均有空数据处理。重点商品类页面无白屏风险结构。
+- product-detail data:null 核查（P2 #2 决策信息）: 三层链路均友好空态——services 层 isWrappedCatalogProduct 通过后 data:null 正确转 null；异常路径在 IS_USING_LOCAL_API=True 时走 mock-catalog 兜底（10 个本地商品，假 id 查无仍 null）；页面层 null → "商品不存在"+toast。结论：后端 P2 问题对小程序端无用户可见危害，维持 RESTful 改进建议、定级可复议。
+- 变更: docs/specs/p1-module-acceptance-verify-plan.md（Phase B 勾选 + BLOCKED 标注 + 问题登记区新增 #5/#6）。
+- residual_risks: 实机走查未做——渲染层问题（样式错位、图片加载、rpx 适配）静态走查无法发现，需安装微信开发者工具后补做再进 Phase C；IS_USING_LOCAL_API 由开发者工具内 Storage 开关控制，联调时需确认已开启指向本地后端。
+- 收口: 本条目随任务包更新提交；钩子链 → push → ls-remote 回读。
+
+## [2026-08-25] - fix(p1): Phase A 后端全域 API 冒烟完成——数据隔离五项全过，修复知识同步 NoneType 缺陷（trace: 20260825-p1-verify-phase-a）
 
 - 操作者: AI (OpenCode)
 - trace_id: `20260825-p1-verify-phase-a`
