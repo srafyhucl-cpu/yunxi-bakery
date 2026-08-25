@@ -59,16 +59,32 @@ async def main() -> None:
             knowledge_repo, vs, config_repo=config_repo
         )
 
-        # 实例化高保真 ChatService
+        # 实例化高保真 ChatService（补齐基线必需依赖，与 main.py 装配对齐）
+        from app.repository.youzan_webhook_event_repo import YouzanWebhookEventRepo
+        from app.repository.analytics_repo import AnalyticsRepo
+        from app.service.youzan.event_handler import YouzanEventHandler
+
+        webhook_event_repo = YouzanWebhookEventRepo(db)
+        analytics_repo = AnalyticsRepo(db)
+        yz_client = YouzanClient(config_repo=config_repo)
+        youzan_event_handler = YouzanEventHandler(
+            db,
+            knowledge_retriever,
+            yz_client,
+            audit_repo=webhook_event_repo,
+        )
         chat_service = ChatService(
             session_repo=session_repo,
             message_repo=message_repo,
             transfer_repo=transfer_repo,
             knowledge_retriever=knowledge_retriever,
+            youzan_client=yz_client,
+            youzan_webhook_events_repo=webhook_event_repo,
+            youzan_event_handler=youzan_event_handler,
+            analytics_repo=analytics_repo,
         )
 
         # 3. 现场创建真实的 YouzanClient 并连通 API 循环分页抓取所有在售商品列表（最极客的分页自适应机制，无限流拉取！）
-        yz_client = YouzanClient(config_repo=config_repo)
         print(
             "🔗 正在建立与有赞开放平台的 HTTPS 连接，开始循环自适应拉取线上全量在售商品列表..."
         )

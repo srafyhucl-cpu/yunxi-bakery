@@ -1,4 +1,16 @@
-﻿## [2026-08-25] - docs(p1): 规划校准 v1.4 入库——MiniApp 承接优先，三条件状态校准（trace: 20260825-p1-miniapp-goal-calibration）
+﻿## [2026-08-25] - feat(p1): Phase C 第一步完成——有赞真实商品同步 309/309 全量入柜（trace: 20260825-p1-phasec-product-sync）
+
+- 操作者: AI (OpenCode)
+- trace_id: `20260825-p1-phasec-product-sync`
+- parent_trace_id: `20260825-p1-miniapp-goal-calibration`
+- 来源: 规划校准 v1.4 确认数据策略=真实有赞数据后，执行 Phase C 步骤 1 商品真实同步。
+- 执行过程: 首次运行暴露脚本与基线代码漂移——sync_real_products_from_youzan.py 的 ChatService 构造缺 4 个基线必需依赖（youzan_client/webhook_events_repo/event_handler/analytics_repo），已按 main.py 装配模式补齐（YouzanEventHandler(db, retriever, client, audit_repo) 同步构造）；二次运行遇 GBK 编码崩溃（🚀 emoji 无法 gbk 编码），设 PYTHONIOENCODING=utf-8 解决；第三次管道被 Select-Object -First 截断中断，改为输出落盘后完整跑通。
+- 同步结果: **有赞开放平台真实连通成功，无 60020 IP 拦截**（白名单生效）——access_token 刷新成功（有效期 604799s）并经 ConfigRepo 写入 shop_config；分页拉取 4 页共 **309 条在售商品**（非旧盘点预估 614 条，差额为已下架商品）；逐条模拟 webhook 双轨写入 **309/309 全部成功**；落库核验 youzan_products=309、knowledge_base product 类目=309。
+- 说明: embedding 走 YUNXI_USE_FAKE_EMBEDDING=1（BM25-only 检索不消费向量，fake 编码器仅为满足脚本内向量构建调用）；同步期间出现一条 EmbeddingSearcher.save 未 await 的 RuntimeWarning（协程收尾告警，不影响数据落库），留待 P2 排期清理。
+- 变更: backend/scripts/sync_real_products_from_youzan.py（ChatService 构造对齐基线）；backend/data/bot.db（youzan_products+309、knowledge_base+309，本地运行时产物不入库）。
+- residual_risks: 614→309 差异需与店家确认是否为正常下架口径（PROJECT-STATE 商品快照条目数字待下轮收口更新）；商品详情页价格/多规格数据质量待实机走查抽验；脚本内 yz_client._call 私有方法直调属既有债务，不在本轮范围。
+
+## [2026-08-25] - docs(p1): 规划校准 v1.4 入库——MiniApp 承接优先，三条件状态校准（trace: 20260825-p1-miniapp-goal-calibration）
 
 - 操作者: 架构师（项目负责人决策）定稿，AI (OpenCode) 收口提交
 - trace_id: `20260825-p1-miniapp-goal-calibration`
