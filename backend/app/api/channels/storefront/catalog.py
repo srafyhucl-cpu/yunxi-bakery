@@ -16,6 +16,7 @@ def create_storefront_catalog_router(service: CatalogApplicationService) -> APIR
         ids: str = "",
         categoryId: str = "",
         featured: bool = False,
+        limit: int = 50,
     ) -> dict[str, Any]:
         return {
             "code": 0,
@@ -23,6 +24,7 @@ def create_storefront_catalog_router(service: CatalogApplicationService) -> APIR
                 ids=ids,
                 category_id=categoryId,
                 featured=featured,
+                limit=limit,
             ),
         }
 

@@ -53,6 +53,7 @@ class CatalogApplicationService:
         ids: str = "",
         category_id: str = "",
         featured: bool = False,
+        limit: int = DEFAULT_PRODUCT_LIMIT,
     ) -> list[dict]:
         """按装修货架、分类或推荐位返回商品目录。"""
         if ids.strip():
@@ -71,7 +72,7 @@ class CatalogApplicationService:
 
         entries = await self._product_repo.get_all_products(
             search=category_id,
-            limit=DEFAULT_PRODUCT_LIMIT,
+            limit=max(limit, 1),
             is_active=1,
             featured_titles=featured_titles,
         )

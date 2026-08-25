@@ -13,6 +13,7 @@ interface ListProductsOptions {
   ids?: string[];
   categoryId?: string;
   featured?: boolean;
+  limit?: number;
 }
 
 export interface ProductCategory {
@@ -49,6 +50,9 @@ function buildProductsPath(options: ListProductsOptions): string {
   }
   if (options.featured) {
     params.push("featured=true");
+  }
+  if (options.limit) {
+    params.push(`limit=${encodeURIComponent(String(options.limit))}`);
   }
   return `/api/v1/miniapp/products${params.length ? `?${params.join("&")}` : ""}`;
 }

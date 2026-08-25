@@ -316,7 +316,7 @@ Page<ProductsPageData, WechatMiniprogram.IAnyObject>({
     this.setData({ loading: true });
     try {
       const [products, categories] = await Promise.all([
-        listProducts(),
+        listProducts({ limit: 309 }),
         listProductCategories()
       ]);
       
