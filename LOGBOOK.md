@@ -1,4 +1,16 @@
-﻿## [2026-08-25] - chore(p1): 走查工具链收口——automator 移入 devDependencies，minifyWXML 开启（trace: 20260825-p1-walkthrough-tooling）
+﻿## [2026-08-25] - docs(p1): 发票承接方案与有赞功能对标表入库 + PROJECT-STATE 更新（trace: 20260825-p1-invoice-plan-and-state）
+
+- 操作者: 架构师定稿，AI (OpenCode) 收口提交
+- trace_id: `20260825-p1-invoice-plan-and-state`
+- parent_trace_id: `20260825-p1-phasec-product-sync`
+- 来源: 有赞功能对标表（来源全部为实测与存量证据：有赞开放 API 实测 youzan.shop.get 连通、旧库 8466 条 webhook 事件、638 条商品+24 条人工沉淀、既有门禁设计文档）判定——核心链路全满足，**唯一真缺口=发票**；负证据判定 4 项不承接（评价/会员等级/营销/物流卡片）。
+- 发票方案: **三阶承接**——知识库话术（旧库 #9566 企业服务规则已有完整开票口径：支持增值税电子普通发票、客户提供企业抬头/税号/接收邮箱、交易完成后 1-3 个工作日开出，话术已沉淀在 24 条迁移知识中）+ 转人工 + 后台人工登记；不做电子发票直开；P2 试运行前执行，半天工作量。方案状态 approved（项目负责人拍板"按你说的办"）。
+- 范围: docs/specs/2026-08-25-invoice-mvp-plan.md（新）；docs/specs/youzan-feature-benchmark.md（新）；PROJECT-STATE.md（已完成+2 项：对标表/发票方案；进行中+2 行：发票承接待 P2、商品搜索入口 P3）。
+- 验证: 三文件为架构师定稿内容；本条目随提交入库；钩子链 → push → ls-remote 回读。
+- 变更: 上述三文件 + LOGBOOK 本条目。
+- residual_risks: 发票验收第 1 条（客服页问"可以开发票吗"确认 #9566 命中）将在 Phase C 第三步执行时顺带验证；商品搜索入口为 P3 增强待排期。
+
+## [2026-08-25] - chore(p1): 走查工具链收口——automator 移入 devDependencies，minifyWXML 开启（trace: 20260825-p1-walkthrough-tooling）
 
 - 操作者: AI (OpenCode)
 - trace_id: `20260825-p1-walkthrough-tooling`
