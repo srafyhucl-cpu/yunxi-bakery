@@ -15,3 +15,11 @@
 > ```
 
 <!-- 无历史受控更新记录 -->
+
+## [2026-08-25] - secrets baseline 受控更新
+- old_sha256: f6663f1263258dfd58bac8777cf3e60a35bfadb8be1931199ff5b635b5b9be2d
+- new_sha256: f13005d3750eace622e8397c7a539c1d3f9f0b6f1f0aa735875070a9fc37cbcc
+- command: detect_secrets scan D:\Project\YunxiBakery\miniapp\package.json（提取标准条目合并入 results["miniapp/package.json"]，Secret Keyword line 17 为 check:secrets 脚本名误报；行尾归一化 LF）
+- version: detect-secrets 1.5.0
+- trace_id: 20260825-p1-walkthrough-tooling
+- approved_by: 项目负责人（20260825-p1-walkthrough-tooling 收口指令授权；误报为 npm scripts 命令名含 secret 字样，非真实密钥）

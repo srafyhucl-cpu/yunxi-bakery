@@ -1,4 +1,16 @@
-﻿## [2026-08-25] - verify(p1): Phase C 第二步完成——15/15 页面实机走查，新登记 P2×2（trace: 20260825-p1-phasec-walkthrough-15pages）
+﻿## [2026-08-25] - chore(p1): 走查工具链收口——automator 移入 devDependencies，minifyWXML 开启（trace: 20260825-p1-walkthrough-tooling）
+
+- 操作者: AI (OpenCode)
+- trace_id: `20260825-p1-walkthrough-tooling`
+- parent_trace_id: `20260825-p1-phasec-walkthrough-15pages`
+- 来源: 项目负责人指出上轮走查后工具依赖与 IDE 配置改动未提交（收口疏漏），并要求今后收口自查固定项：每轮结束 git status 无改动残留。
+- 实现: package.json 将 miniprogram-automator 从 dependencies 移至 devDependencies（走查工具属开发期依赖，不应进入小程序生产依赖树）；npm install 同步 package-lock；project.config.json 的 minifyWXML=true 为开发者工具写入的构建配置，一并入库。
+- 验证: npm install up to date；三文件 git status 干净后随本条目提交。
+- 变更: miniapp/package.json；miniapp/package-lock.json；miniapp/project.config.json。
+- residual_risks: 无。
+- 收口自查新增固定项: 每轮结束检查 "git status 无改动残留"，未提交即未收口。
+
+## [2026-08-25] - verify(p1): Phase C 第二步完成——15/15 页面实机走查，新登记 P2×2（trace: 20260825-p1-phasec-walkthrough-15pages）
 
 - 操作者: AI (OpenCode)
 - trace_id: `20260825-p1-phasec-walkthrough-15pages`

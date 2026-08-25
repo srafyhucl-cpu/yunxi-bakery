@@ -82,7 +82,11 @@ def _git_show(expr: str) -> bytes | None:
     """按引用读取文件内容；引用中不存在（git show 128）时返回 None。
 
     其他非 0 返回码一律视为 Git 异常（阻断），不允许静默吞掉。
+    git show 的路径相对仓库根解析，而 BASELINE_REL 相对本脚本目录（backend/）；
+    统一加 "./" 前缀使路径按运行目录解析，修复从仓库根运行时误报
+    "index 与 HEAD 哈希相同" 的潜伏缺陷（2026-08-25 首次受控更新时暴露）。
     """
+    expr = expr.replace("HEAD:", "HEAD:./").replace(":0:", ":0:./")
     proc = _git(["show", expr])
     if proc.returncode == 0:
         return proc.stdout
@@ -169,7 +173,8 @@ def _main() -> int:
         return 1
 
     # 3) 受控记录必须随同一提交暂存
-    if not _git_has_staged(CHANGES_LOG_REL):
+    # pathspec 用 ":/" 前缀按仓库根解析：CHANGES_LOG_REL 相对仓库根，而 _git 的 cwd 是 backend/
+    if not _git_has_staged(f":/{CHANGES_LOG_REL}"):
         print(
             "[secrets-baseline] FAIL：.secrets.baseline 存在已暂存变更，但受控记录文件"
             f"`{CHANGES_LOG_REL}` 未随同一提交暂存（仅修改工作区不算）。"
@@ -181,8 +186,9 @@ def _main() -> int:
         return 1
 
     # 4) 从 index 读取记录（而非 worktree），匹配本次哈希对并校验完整字段
-    index_log = _git_show(f":0:{CHANGES_LOG_REL}")
-    head_log = _git_show(f"HEAD:{CHANGES_LOG_REL}")
+    # CHANGES_LOG_REL 相对仓库根，git 引用需带 "/" 前缀（cwd 是 backend/）
+    index_log = _git_show(f":0:/{CHANGES_LOG_REL}")
+    head_log = _git_show(f"HEAD:/{CHANGES_LOG_REL}")
     index_records = _parse_records((index_log or b"").decode("utf-8"))
     head_pairs = {
         (record.get("old_sha256"), record.get("new_sha256"))
