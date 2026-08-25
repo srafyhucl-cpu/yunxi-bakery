@@ -1,4 +1,15 @@
-﻿## [2026-08-25] - verify(p1): Phase C 第三步完成——跨端全链路闭环，发票 #9566 命中验收第 1 条通过（trace: 20260825-p1-phasec-step3）
+﻿## [2026-08-25] - docs(p1): PROJECT-STATE 状态推进——Phase C 第三步完成 + #10 定性收敛（trace: 20260825-p1-state-v15-phasec-done）
+
+- 操作者: AI (OpenCode)
+- trace_id: `20260825-p1-state-v15-phasec-done`
+- parent_trace_id: `20260825-p1-phasec-step3`
+- 来源: Phase C 第三步闭环后按收口规范同步状态活页，随后进入 Phase D。
+- 范围: PROJECT-STATE.md 两处——已完成列表新增"Phase C 第三步闭环/发票 #9566 命中/#9 已修/#10 诊断完成"一行；下一步顺序第 3 步划完成、第 4 步改为"Phase D 修复三连 + 结算三分支补证"。
+- 实现: 状态与已交付证据一致（d59baab/d775e3d 均已入库推送）。
+- 验证: 本条目随提交入库；钩子链 → push → ls-remote 回读。
+- 变更: PROJECT-STATE.md。
+
+## [2026-08-25] - verify(p1): Phase C 第三步完成——跨端全链路闭环，发票 #9566 命中验收第 1 条通过（trace: 20260825-p1-phasec-step3）
 
 - 操作者: AI (OpenCode)
 - trace_id: `20260825-p1-phasec-step3`
