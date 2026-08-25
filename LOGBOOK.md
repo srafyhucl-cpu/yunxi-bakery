@@ -1,4 +1,16 @@
-﻿## [2026-08-25] - fix(p1): #9 chat iOS 日期兼容修复 + #10 商品目录四步诊断（trace: 20260825-p1-fix9-diag10）
+﻿## [2026-08-25] - verify(p1): Phase C 第三步完成——跨端全链路闭环，发票 #9566 命中验收第 1 条通过（trace: 20260825-p1-phasec-step3）
+
+- 操作者: AI (OpenCode)
+- trace_id: `20260825-p1-phasec-step3`
+- parent_trace_id: `20260825-p1-fix9-diag10`
+- 来源: 项目负责人指令 Phase C 第三步（真实商品 + mock 支付全链路闭环 + 发票验收）。
+- 执行: HTTP 链路（下单 payload 字段校正三连：products→items、youzan_item_id→productId、嵌套 delivery→顶层 expectTime/deliveryType/receiver*）打通：create 200（真实商品 5081106074 抹茶无花果乐园 ¥178.00）→ mock-pay 200 → detail 200 → cancel 400"已支付不允许取消"（正确拦截）。automator 页面级：商品详情真实数据/加购/结算表单/余额页 4 档位/发票提问；订单列表/详情跨身份隔离正确（负责人真实微信身份 vs 合成会员）。
+- **发票验收第 1 条 ✅**：API 双身份直测"可以开发票吗"均回复"支持开具正规增值税电子普通发票...企业抬头、税号、接收邮箱...1-3个工作日内开出"——#9566 企业服务规则精准命中（automator 页面上曾见欢迎语系轮询窗口差异，API 直测确认命中）。
+- 记录: 任务包 Phase C 第三步实测表；phasec-step3.mjs 保留为走查工具。
+- 变更: docs/specs/p1-module-acceptance-verify-plan.md；miniapp/scripts/phasec-step3.mjs。
+- residual_risks: 我的页/券中心/积分明细对非会员显示 loadFailed/null（身份前置 UX 待议，P3 #12 已登记）；订单闭环为 API+页面组合证据（模拟器身份差异所致）；图片域名 309/309 合规；#10 待产品决策修复。
+
+## [2026-08-25] - fix(p1): #9 chat iOS 日期兼容修复 + #10 商品目录四步诊断（trace: 20260825-p1-fix9-diag10）
 
 - 操作者: AI (OpenCode)
 - trace_id: `20260825-p1-fix9-diag10`
