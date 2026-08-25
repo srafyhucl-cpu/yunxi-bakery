@@ -135,6 +135,7 @@
 | mock 支付 | ✅ 通过 | 200；订单状态转已支付 |
 | 订单详情 | ✅ 通过 | detail 200 完整订单数据 |
 | 取消 | ✅ 正确拦截 | cancel 400"已支付订单不允许取消"——已支付不可取消为正确业务行为 |
+| **结算三分支实测** | ✅ 全部完成 | **券**：GET /coupons→200 coupons=[]（合成会员无券），coupon-preview→200 availCouponFen=0 空券状态；**积分**：points-preview→200 可抵 pointsFen=500/pointsUsed=500，apply-points→**400 围栏拒绝**"积分抵扣已临时关闭，等待 D1 统一支付应用服务以预占方式重新开放"（B3.4 门禁）→ 按规则记"拒绝行为正确"即通过；**余额**：pay-with-balance→**200 paid 实际扣减成功**（balanceFen 50000→32200，扣 17800；pointsAwarded=178 积分奖励已结算） |
 | 我的页资产 | ⚠️ 身份前置 | 负责人真实微信身份非会员→资产 null/loadFailed（Phase A 合成会员不同，预期行为） |
 | 券中心/积分明细 | ⚠️ 身份前置 | loadFailed=true 同因 |
 | 余额页 | ✅ 通过 | ready=true tiers=4 档位正常 |

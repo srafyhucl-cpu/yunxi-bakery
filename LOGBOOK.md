@@ -1,4 +1,17 @@
-﻿## [2026-08-25] - docs(p1): PROJECT-STATE 状态推进——Phase C 第三步完成 + #10 定性收敛（trace: 20260825-p1-state-v15-phasec-done）
+﻿## [2026-08-25] - fix(p1): Phase D 修复三连完成 + 结算三分支补证（trace: 20260825-p1-phaseD-complete）
+
+- 操作者: AI (OpenCode)
+- trace_id: `20260825-p1-phaseD-complete`
+- parent_trace_id: `20260825-p1-state-v15-phasec-done`
+- 来源: 项目负责人指令 Phase D 修复三连（① limit 透传 ② 分类语义 ③ 分类采集）+ ④ 结算三分支补证。
+- **① limit 透传（f2a5e46）**: application.py list_products 加 limit 参数（默认 DEFAULT_PRODUCT_LIMIT=50 不变）；catalog.py API 层透传 limit query；前端 services/products.ts 加 limit 选项 + products 页 listProducts({limit:309})。回归：default=50、limit=309=309、limit=500=309；前端 typecheck 0。
+- **② 分类语义（a934290）**: category_id 为空或 "all" 时 search 清空走全量（不再把 all 当 LIKE 词）；非空非 all 时才作分类筛选。回归：categoryId=all&limit=309→309 全量（此前 %all% 只 2 条）。
+- **③ 分类采集（00a11dc）**: sync 脚本补 search_item_classifications 段（YouzanClient 既有方法）→ upsert_category 落库；repository list_public_categories 去掉 product_count>0 过滤（有赞 API 无计数字段）；serialization.py 分类 id 前缀改为 youzan-classification-（classification_id 体系与 tag 体系不交集）。重跑 309/309 + **34 条分类落表**（product-categories HTTP 200 count=34，首条 youzan-classification-62204227 12年招牌必吃榜）。诚实已知缺口：商品 classification_ids_json 全空（有赞 webhook 未同步分类字段）→ 分类点选显示空商品，待全量商品补分类关联后生效，已登记任务包 #13。
+- **④ 结算三分支（本轮）**: 券 coupons=[]+coupon-preview availCouponFen=0 空券状态；积分 points-preview 200 可抵 500fen、apply-points 400 B3.4 围栏拒绝（"积分抵扣已临时关闭"）按规则记"拒绝行为正确"通过；余额 pay-with-balance 200 实际扣减成功（50000→32200 扣 17800，pointsAwarded=178 已结算）。任务包 Phase C 第三步表格补三分支实测行。
+- 变更: docs/specs/p1-module-acceptance-verify-plan.md（三分支行）；本 LOGBOOK 条目。
+- residual_risks: 分类点选空商品（#13 待商品分类数据）；积分抵扣待 D1 统一支付应用服务开放（B3.4 门禁）；既有非阻断项照旧。
+
+## [2026-08-25] - docs(p1): PROJECT-STATE 状态推进——Phase C 第三步完成 + #10 定性收敛（trace: 20260825-p1-state-v15-phasec-done）
 
 - 操作者: AI (OpenCode)
 - trace_id: `20260825-p1-state-v15-phasec-done`
