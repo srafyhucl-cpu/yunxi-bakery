@@ -1,4 +1,16 @@
-﻿## [2026-08-25] - feat(p1): Phase C 第一步完成——有赞真实商品同步 309/309 全量入柜（trace: 20260825-p1-phasec-product-sync）
+﻿## [2026-08-25] - docs(p1): PROJECT-STATE 状态推进——商品 309 口径落地，下一步指向实机走查（trace: 20260825-p1-state-v14-sync-update）
+
+- 操作者: AI (OpenCode)
+- trace_id: `20260825-p1-state-v14-sync-update`
+- parent_trace_id: `20260825-p1-phasec-product-sync`
+- 来源: 商品同步完成后按收口规范同步状态活页，随后启动 Phase C 第二步实机走查。
+- 范围: PROJECT-STATE.md 三处——资产地图凭证/业务知识/商品三行状态更新；进行中表商品同步行转完成；下一步顺序第 2 步改为 Phase C 实机走查。
+- 实现: 凭证行更新为"已迁移并实测连通"（有赞 token 刷新+商品拉取、企微 token 刷新均通过）；业务知识行更新为迁移完成且 BM25 命中验证通过；商品快照行维持架构师已写的 309 在售口径并补充双轨落库明细。
+- 验证: 本条目随提交入库；钩子链通过后 push 回读。
+- 变更: PROJECT-STATE.md。
+- residual_risks: 309 与旧 614 快照的口径差异待店家确认下架口径；实机走查结果待本轮执行后回填。
+
+## [2026-08-25] - feat(p1): Phase C 第一步完成——有赞真实商品同步 309/309 全量入柜（trace: 20260825-p1-phasec-product-sync）
 
 - 操作者: AI (OpenCode)
 - trace_id: `20260825-p1-phasec-product-sync`
