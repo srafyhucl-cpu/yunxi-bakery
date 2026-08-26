@@ -25,6 +25,18 @@
 - 变更: miniapp/products/index.ts（limit 常量+switchToAll）；products/index.wxml（空分类兜底块）；products/index.wxss（__action 样式）；任务包；PROJECT-STATE；LOGBOOK。
 - residual_risks: 5811485729 下架残留待店家确认后处理；分类关联无 API 路径（兜底已足够体验）；P1 关闭需负责人确认后进入 P2 试运行准备。
 
+## [2026-08-25] - docs(p1): P2 试运行准备段完成——手册/版本/预检/清理预演（trace: 20260825-p2-prep-manual）
+
+- 操作者: AI (OpenCode)
+- trace_id: `20260825-p2-prep-manual`
+- parent_trace_id: `20260825-p2-prep`
+- 来源: 项目负责人指令 T-P2-RUN-01（P2 内部受控试运行·准备段；真人执行段由负责人另行组织）。
+- **① 手册**: docs/specs/2026-08-25-p2-manual.md——参与红线（测试者微信即真实身份/不开放真实顾客/全程 mock）；5 项测试 A 商品浏览搜索分类兜底（含"该分类暂无商品→查看全部"）B 购物车下单 mock 订单 C AI 客服推荐问题清单（营业时间/订蛋糕/能开发票吗#9566/退改规则/尺寸甜度，含必须转人工条目）D 资产页非会员 loadFailed 属预期 E 发票登记闭环（聊天→人工→后台 applied→issued）；小额原则黄天鹅水煮蛋¥2+鲜奶提子面包¥7、每人≤2 单合计≤¥100；记录表模板与清理预案（先列后问未经批准不执行）；异常处理；**六节【用户操作清单】**（导入项目→确认版本 0.133.0-p2trial.1→上传体验版→后台设体验版→添加店员体验成员→扫码分发→按手册执行；红线：不得提交审核）。
+- **② 版本**: backend/VERSION 0.132.9 → **0.133.0-p2trial.1**（config.py _read_version 唯一来源）；miniapp ci readiness needs_configuration 0 failures → 上传走开发者工具 GUI 手动路径（不加新依赖）。
+- **③ 预检证据**: miniapp typecheck rc=0；单测 16/16（member-assets 11 + time-format 5）；backend pytest 关键路径（health/config/invoice -k）58 项 passed rc=0（--no-cov，覆盖率阈值仅对全量子集不适用）；GET /products?limit=500 → **310 条不含 5811485729**；发票三端点 smoke list 200(2)→create 200 id=3→mark-issued 200 issued；**数据库清理预演 DRY-RUN 输出**（invoice 3 条测试记录 id=1,2,3、测试订单 3 条 mp_20260825165222/165258/165433、余额流水）标注"未经项目负责人批准不得执行"。已知问题复述：#11/#12 P3 不影响试运行、#13 兜底已上线。
+- 变更: docs/specs/2026-08-25-p2-manual.md（新）；backend/VERSION；PROJECT-STATE.md v18。
+- residual_risks: 真人执行段未开始（等负责人组织）；体验版上传需负责人扫码手工完成；清理 SQL 未执行。
+
 ## [2026-08-25] - fix(p1): Phase D 修复三连完成 + 结算三分支补证（trace: 20260825-p1-phaseD-complete）
 
 - 操作者: AI (OpenCode)
