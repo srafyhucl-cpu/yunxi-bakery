@@ -17,7 +17,8 @@ ENV_FILE = PROJECT_ROOT / ".env"
 def _read_version() -> str:
     """从项目根目录 VERSION 文件读取版本号，作为版本号的唯一来源。"""
     version_file = PROJECT_ROOT / "VERSION"
-    return version_file.read_text(encoding="utf-8").strip()
+    # utf-8-sig：兼容历史 BOM 文件（2026-08-25 p2trial 版本曾引入 BOM，已修复文件+防御双保险）
+    return version_file.read_text(encoding="utf-8-sig").strip()
 
 
 APP_VERSION: str = _read_version()

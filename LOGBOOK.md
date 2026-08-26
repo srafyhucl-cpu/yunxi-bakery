@@ -1,4 +1,20 @@
-﻿## [2026-08-25] - feat(p2): P2 试运行准备完成——下架商品一致化 + 发票承接落地（trace: 20260825-p2-prep）
+﻿## [2026-08-25] - fix(infra): VERSION BOM 污染修复——文件重写 + config 防御双保险（trace: 20260825-fix-version-bom）
+
+- 操作者: AI (OpenCode)
+- trace_id: `20260825-fix-version-bom`
+- parent_trace_id: `20260825-p2-prep-manual`
+- 来源: 架构师独立复核实证 backend/VERSION 以 UTF-8 BOM 开头（hexdump 前 3 字节 EF BB BF），Python `str.strip()` 不剥 U+FEFF，导致 APP_VERSION 实际为 "\ufeff0.133.0-p2trial.1"，污染 /health 与版本等值比较。
+- 根因: T-P2-RUN-01 版本 bump 时用 PowerShell Set-Content 写入（PowerShell 写 UTF-8 默认注入 BOM；0.132.9 原版无 BOM）。
+- 修复（双保险）: ① VERSION 用 Python write_bytes 重写（无 BOM 注入），内容不变仍为 0.133.0-p2trial.1；② config.py _read_version 的 read_text 改 encoding="utf-8-sig"（兼容历史 BOM 文件的防御性读取），除该行外 config.py 未动。
+- 验证实证（原始输出）:
+  - 字节层: before head3=b'\xef\xbb\xbf' → after head3=b'0.1'；after full=b'0.133.0-p2trial.1'
+  - repr 层: APP_VERSION repr='0.133.0-p2trial.1'（无 \ufeff）
+  - 运行层: /health body={"status":"ok","version":"0.133.0-p2trial.1"}
+  - 回归层: pytest -k "health or config or invoice" --no-cov → rc=0，58 个测试点全过 [100%]
+- 变更: backend/VERSION（重写无 BOM）；backend/app/config.py（utf-8-sig 一行加固）；LOGBOOK 本条目。
+- residual_risks: 无已知残留；教训已沉淀——版本文件等敏感文本一律用 Python 落盘，禁止 PowerShell Set-Content/Out-File（与 UTF-16 重定向坑同源，见环境事实）。
+
+## [2026-08-25] - feat(p2): P2 试运行准备完成——下架商品一致化 + 发票承接落地（trace: 20260825-p2-prep）
 
 - 操作者: AI (OpenCode)
 - trace_id: `20260825-p2-prep`
