@@ -1,4 +1,30 @@
-﻿## [2026-08-25] - fix(infra): VERSION BOM 污染修复——文件重写 + config 防御双保险（trace: 20260825-fix-version-bom）
+﻿## [2026-08-26] - fix(p2trial): P2 模拟器首测 4 缺陷修复收口（trace: 20260826-p2trial-sim-fixes）
+
+- 操作者: AI (OpenCode)（复核 + 分组提交 + 留痕收口）
+- trace_id: `20260826-p2trial-sim-fixes`
+- parent_trace_id: `20260825-p2-prep-manual`
+- 背景: P2 模拟器首测（A 项商品浏览）发现 4 缺陷。架构师现场修复并实证（现场排障需即时往返，单轮转述成本过高，属**授权偏差**，如实记录于此）。
+- 4 缺陷根因:
+  1. 首页 `wx:for-item` 缺失：内层 wx:for 未声明 item 别名，变量遮蔽导致商品卡全空、点击空 id 报"商品不存在"。
+  2. 开发版 API 默认连远程线上配置：本地 7001 修复不可见，开发者版须默认连本地。
+  3. featured 空配置返回空属特性，但 home-featured 占位模板 `source:manual` + 假 ID `p_001/p_002` 永不命中→空白货架。
+  4. 图片 `http://` 被微信 3.x 基础库拒 + 图片代理端点异常未保护→500。
+- 修复人: 架构师现场修复（含上述原因）。AI 员工独立复核 + 分 4 commit 收口（C1 621753c / C2 12cc895 / C3 ec1e9d5 / C4 23f0c4e）。
+- 验证证据（AI 复核）:
+  - 全量 `pytest --no-cov -q`：rc=1 但 6 个失败**均为 pre-existing**（git stash 干净树复现确认，涉及 tests/scripts/* 与 test_lifespan_routes_services 的 gbk 解码/环境问题，与本次 10 文件零相关），本次改动**零回归**。
+  - `npm run typecheck`：rc=0（exit=0）。
+  - 后端实测（127.0.0.1:7001）：`GET /api/v1/miniapp/products?featured=true&limit=6` → 6 条，imageUrl 全部 `https://img.yzcdn.cn/...` 直出 CDN（修复后不再走代理路径）。
+  - 图片端点：`GET /api/v1/miniapp/products/2815423258/image` → 200（本地环境 CDN 可达，直出真实图）；异常路径已改为 `fetch` 失败→`None`→**404**，原 500 路径已消除（不可达时返回 404 而非 500）。
+  - 负责人模拟器截图确认商品卡渲染 + 图片加载：由架构师现场复核（开发版连本地 + wx:for-item 修复后商品卡可见）。
+- 分组提交（严禁合并）:
+  - C1 `621753c` fix(catalog)：home-featured 改 source=auto+limit6、build_image_proxy_url→build_product_image_url（https 直出 CDN）、_resolve_classification_category 去 classification- 前缀、fetch 异常保护→404、三份测试断言同步。
+  - C2 `12cc895` fix(miniapp)：wx:for-item=product、source=auto 分支 featured+limit、getApiBaseUrl 默认连本地。
+  - C3 `ec1e9d5` chore(devtools)：project.config.json 开发者工具自动写入默认字段，单独提交不混入 C2。
+  - C4 `23f0c4e` chore(version)：0.133.0-p2trial.2（Python write_text utf-8 落盘，无 BOM）。
+- 遗留观察项: 模拟器 Console `Error: timeout` 未定位（Launch Time 偏慢），非阻断，留观察。
+- 授权偏差说明: 架构师现场修复未经单轮转述，属 P2 试运行首测即时排障的授权偏差，已在 PROJECT-STATE v19 与本条同步记录。
+
+## [2026-08-25] - fix(infra): VERSION BOM 污染修复——文件重写 + config 防御双保险（trace: 20260825-fix-version-bom）
 
 - 操作者: AI (OpenCode)
 - trace_id: `20260825-fix-version-bom`
