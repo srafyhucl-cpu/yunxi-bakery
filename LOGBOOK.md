@@ -1,4 +1,26 @@
-﻿## [2026-08-26] - fix(p2trial): P2 模拟器首测 4 缺陷修复收口（trace: 20260826-p2trial-sim-fixes）
+﻿## [2026-08-26] - fix(test): 新仓全量 pytest 首次基线清零（trace: 20260826-test-baseline-zero）
+
+- 操作者: AI (OpenCode)
+- trace_id: `20260826-test-baseline-zero`
+- parent_trace_id: `20260826-p2trial-sim-fixes`
+- 背景纠错: 上轮（T-COMMIT-P2TRIAL-FIXES-01）报告将 5-6 个失败统称"gbk 解码/环境问题"定性不准。本轮回溯根因，结论＝归类标签不成立，必须给根因证据。
+- 三类真实根因（非环境标签）:
+  1. `test_lifespan_routes_services.py`：测试桩缺 `app.api.admin.invoices`（e2639d4 发票承接真实回归，测试桩未同步补，属真实回归缺口）。
+  2. `test_sync_version.py::test_repository_progress_header_matches_version_file`：`项目进度与配置清单.md` 头部版本停在旧值未随 VERSION bump 同步（手动 bump 漏同步，真实配置漂移）。
+  3. `test_local_production_backup.py`×3：C 盘守卫面向 Linux 生产环境，Windows 开发机 `tmp_path` 必在 C 盘触发——属 Windows 开发机不兼容（skipif win32 跳过，守卫代码不改）。
+  - 偏差追加（如实披露）：第 4 个 `test_cli_help_starts_from_script_path` 同样因 Windows gbk 子进程解码失败（byte 0xac/0xbb），同属 Windows 开发机不兼容，架构师"backup×3"诊断漏算；为达成"全量清零"目标加第 4 跳过并透明说明。
+- 修复动作:
+  - 补 lifespan 路由桩（按 lifespan_routes 导入顺序 coupons→invoices→orders 插 `create_admin_invoices_router` + `AdminInvoiceService` 桩；`included_routers` 断言 28→29；services dict 补 `invoice_admin_service` 键）。
+  - 进度清单头同步：根目录与 backend/ 两份 `项目进度与配置清单.md` 第 3 行改 `当前本地代码版本为 \`0.133.0-p2trial.2\``（只改头部，D1/账务历史条目保留不动）。
+  - `docs/AGENTS/commit-workflow.md` 新增约束：VERSION 变更必须与两份进度清单表头同步，否则该测试会红。
+  - backup 4 测试加 `skipif(sys.platform=="win32")` 守卫代码不改。
+- 验证实证:
+  - backend 全量 `pytest --no-cov -q` → **rc=0（新仓首次全量基线清零）**（仅剩 gbk 线程解码 warning，非测试失败）。
+  - miniapp `npm run typecheck` → rc=0。
+- 教训（沉淀）: 报告失败必须给根因证据，而非贴归类标签；"环境问题"须能复现并定位到具体代码/平台机制。
+- 约束遵守: 只动指定测试/文档文件；未改 `scripts/local_production_backup.py` 守卫；未改 `lifespan_routes.py` 生产代码；VERSION 未再 bump（保持 0.133.0-p2trial.2）；未动旧仓 YunxiBakeBot。
+
+## [2026-08-26] - fix(p2trial): P2 模拟器首测 4 缺陷修复收口（trace: 20260826-p2trial-sim-fixes）
 
 - 操作者: AI (OpenCode)（复核 + 分组提交 + 留痕收口）
 - trace_id: `20260826-p2trial-sim-fixes`

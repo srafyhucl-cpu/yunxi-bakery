@@ -3,7 +3,7 @@
 > **这是唯一的项目状态入口**。每周收口时由 AI 员工更新，架构师复核。
 > 迷路时先看这里，不要去翻计划书和历史文档。
 
-**最后更新**：2026-08-26（P2 模拟器首测 4 缺陷修复收口 v19）
+**最后更新**：2026-08-26（新仓全量 pytest 首次基线清零 v20）
 
 ---
 
@@ -113,3 +113,11 @@ P0 整合 ✅ → P0.5 资产迁移 ✅ → P1 承接验证 ✅（P1 已关闭�
 - **体验版上传 BLOCKED**：测试号不支持，等 mp 后台条件（不向真实用户开放、不提审）。
 - **部署遗留项（上线前必须）**：生产库上线前须配置 `shop_config.featured_products` 精选 6 款（当前仅本地库直写，无 DB 迁移/发布配置覆盖 home-featured 默认值）。
 - 遗留观察：模拟器 Console Error: timeout 未定位（Launch Time 偏慢），非阻断。
+
+## 状态记录（v20，2026-08-26，新仓全量 pytest 首次基线清零）
+
+- 上轮（T-COMMIT-P2TRIAL-FIXES-01）将 5-6 个失败统称"gbk 解码/环境问题"定性不准；本轮回溯给出三类真实根因（trace 20260826-test-baseline-zero）：①lifespan 桩缺 app.api.admin.invoices（e2639d4 发票承接真实回归）②进度清单头未随 VERSION bump 同步③backup C 盘守卫 Windows 开发机不兼容（skipif win32 跳过，守卫不改）。
+- 偏差追加：第 4 个 test_cli_help 同样因 Windows gbk 子进程解码失败，同属 Windows 不兼容，已如实披露加第 4 跳过。
+- **新仓全量 pytest 首次基线清零**：`pytest --no-cov -q` rc=0；miniapp `npm run typecheck` rc=0。
+- 教训沉淀（commit-workflow.md 已写入）：VERSION 变更必须与根目录 + backend/ 两份 `项目进度与配置清单.md` 表头同步，否则 `test_repository_progress_header_matches_version_file` 会红；报告失败必须给根因证据而非归类标签。
+- 约束遵守：只动指定测试/文档文件；未改生产代码守卫；VERSION 保持 0.133.0-p2trial.2；未动旧仓 YunxiBakeBot。
