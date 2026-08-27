@@ -57,10 +57,10 @@ async def test_list_products_returns_sellable_miniapp_shape(
     product = products[0]
     assert product["title"] == "草莓奶油蛋糕"
     assert product["priceFen"] == 26800
-    assert product["imageUrl"] == "/api/v1/miniapp/products/61001/image"
+    assert product["imageUrl"] == "https://img.example/strawberry.jpg"
     assert product["stock"] == 6
     assert product["soldText"] == "已售 12"
-    assert product["categoryId"] == "youzan-tag-281476346"
+    assert product["categoryId"] == "youzan-classification-281476346"
     assert product["categoryName"] == "生日蛋糕"
     assert product["tags"] == ["生日蛋糕", "草莓"]
     assert "当季草莓" in product["subtitle"]
@@ -92,8 +92,8 @@ async def test_list_products_by_ids_preserves_requested_order_and_dedupes(
     assert [product["id"] for product in products] == ["62002", "62001"]
     assert [product["title"] for product in products] == ["黑森林蛋糕", "芒果千层"]
     assert [product["imageUrl"] for product in products] == [
-        "/api/v1/miniapp/products/62002/image",
-        "/api/v1/miniapp/products/62001/image",
+        "https://img.example/forest.jpg",
+        "https://img.example/mango.jpg",
     ]
 
 
@@ -142,7 +142,7 @@ async def test_get_product_supports_youzan_item_id_and_local_knowledge_id(
 
     assert by_youzan_id is not None
     assert by_youzan_id["title"] == "巧克力慕斯"
-    assert by_youzan_id["imageUrl"] == "/api/v1/miniapp/products/64001/image"
+    assert by_youzan_id["imageUrl"] == "https://img.example/chocolate.jpg"
     assert by_knowledge_id is not None
     assert by_knowledge_id["id"] == "64001"
     assert missing is None
@@ -219,8 +219,8 @@ async def test_list_categories_and_filter_by_youzan_tag(
     products = await service.list_products(category_id="youzan-tag-254005045")
 
     assert [category["id"] for category in categories] == [
-        "youzan-tag-254005045",
-        "youzan-tag-281476346",
+        "youzan-classification-254005045",
+        "youzan-classification-281476346",
     ]
     assert [product["id"] for product in products] == ["66002"]
     assert products[0]["categoryName"] == "下午茶甜品"

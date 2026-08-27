@@ -128,10 +128,10 @@ async def test_miniapp_products_api_lists_filters_and_reads_detail(
         assert detail_response.status_code == 200
         detail = detail_response.json()["data"]
         assert detail["title"] == "API 草莓蛋糕"
-        assert detail["imageUrl"] == "/api/v1/miniapp/products/71001/image"
+        assert detail["imageUrl"] == "https://img.example/api-strawberry.jpg"
         assert detail["priceFen"] == 26800
         assert detail["soldText"] == "已售 12"
-        assert detail["categoryId"] == "youzan-tag-281476346"
+        assert detail["categoryId"] == "youzan-classification-281476346"
         assert detail["categoryName"] == "生日蛋糕"
         assert detail["tags"] == ["生日蛋糕", "草莓"]
 
@@ -139,7 +139,7 @@ async def test_miniapp_products_api_lists_filters_and_reads_detail(
         assert categories_response.status_code == 200
         assert categories_response.json()["data"] == [
             {
-                "id": "youzan-tag-281476346",
+                "id": "youzan-classification-281476346",
                 "title": "生日蛋糕",
                 "sort": 10,
                 "productCount": 1,

@@ -41,8 +41,9 @@ DEFAULT_PAGE_CONFIGS: dict[str, dict[str, Any]] = {
                 "props": {
                     "title": "今日推荐",
                     "subtitle": "按需预订，新鲜制作",
-                    "source": "manual",
-                    "productIds": ["p_001", "p_002"],
+                    "source": "auto",
+                    "productIds": [],
+                    "limit": 6,
                 },
             },
         ],

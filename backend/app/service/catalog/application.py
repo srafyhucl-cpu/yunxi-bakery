@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from urllib.parse import urlparse
 
 from httpx import AsyncClient
+from app.logger import setup_logger
 from app.models.config import FEATURED_PRODUCTS_KEY
 from app.config import settings
 from app.models.knowledge import KnowledgeCategory, KnowledgeEntry
@@ -21,6 +22,8 @@ DEFAULT_PRODUCT_LIMIT = 50
 MAX_IDS_QUERY = 50
 IMAGE_FETCH_TIMEOUT_SECONDS = 8.0
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
+
+logger = setup_logger()
 
 
 @dataclass(frozen=True)
@@ -104,13 +107,24 @@ class CatalogApplicationService:
         hosts = settings.REMOTE_IMAGE_ALLOWED_HOSTS.split(",")
         if not self._is_remote_image_url(image_url):
             return None
-        result = await fetch_limited_remote_image(
-            image_url,
-            allowed_hosts=hosts,
-            timeout_seconds=IMAGE_FETCH_TIMEOUT_SECONDS,
-            max_bytes=MAX_IMAGE_BYTES,
-            client_factory=AsyncClient,
-        )
+        result = None
+        try:
+            result = await fetch_limited_remote_image(
+                image_url,
+                allowed_hosts=hosts,
+                timeout_seconds=IMAGE_FETCH_TIMEOUT_SECONDS,
+                max_bytes=MAX_IMAGE_BYTES,
+                client_factory=AsyncClient,
+            )
+        except Exception:
+            # 图片代理拉取失败必须留痕，降级为 404 而不是 500
+            logger.error(
+                "商品图片代理拉取异常 product_id=%s image_url=%s",
+                product_id,
+                image_url,
+                exc_info=True,
+            )
+            return None
         if result is None:
             return None
         content, content_type = result

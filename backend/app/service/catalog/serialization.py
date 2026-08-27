@@ -40,7 +40,7 @@ class CatalogProductSerializer:
             "id": str(entry.youzan_item_id or entry.id),
             "title": entry.title,
             "subtitle": build_subtitle(entry.content),
-            "imageUrl": build_image_proxy_url(entry),
+            "imageUrl": build_product_image_url(entry),
             "priceFen": int(getattr(entry, "price_fen", 0) or 0),
             "soldText": build_sold_text(sold_num, stock),
             "categoryId": category["id"],
@@ -110,11 +110,13 @@ class CatalogProductSerializer:
             item for item in classification_ids if item not in ordered_ids
         )
         for classification_id in ordered_ids:
-            category_key = f"classification-{classification_id}"
-            category = await self._youzan_product_repo.get_category(category_key)
+            # 生产库 tag_id 存纯数字 ID，查询必须用原始 ID，输出时再拼前缀
+            category = await self._youzan_product_repo.get_category(classification_id)
             if category is not None and int(category.get("is_public", 0) or 0) == 1:
                 return {
-                    "id": build_youzan_category_id(category_key),
+                    "id": build_youzan_category_id(
+                        f"classification-{classification_id}"
+                    ),
                     "title": str(category["title"]),
                 }
         return None
@@ -218,10 +220,13 @@ def split_tags(keywords: str) -> list[str]:
     return [item.strip() for item in normalized.split(",") if item.strip()]
 
 
-def build_image_proxy_url(entry: KnowledgeEntry) -> str:
-    """生成图片代理地址。"""
-    if not str(getattr(entry, "image_url", "") or "").strip():
+def build_product_image_url(entry: KnowledgeEntry) -> str:
+    """生成前台图片地址：优先直出 https CDN 原图，回退本地代理路径。"""
+    image_url = str(getattr(entry, "image_url", "") or "").strip()
+    if not image_url:
         return ""
+    if image_url.startswith("https://"):
+        return image_url
     product_id = str(entry.youzan_item_id or entry.id)
     return IMAGE_PROXY_PATH_TEMPLATE.format(product_id=product_id)
 
@@ -240,5 +245,5 @@ def extract_json_ids(entry: KnowledgeEntry, attr_name: str) -> list[str]:
 
 __all__ = [
     "CatalogProductSerializer",
-    "build_image_proxy_url",
+    "build_product_image_url",
 ]

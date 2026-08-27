@@ -31,7 +31,8 @@ async def test_list_categories_and_filter_by_item_base_classification(
         updated_at="2026-06-16 10:00:00",
     )
     await YouzanProductRepo(db).upsert_category(
-        tag_id="classification-67",
+        # 生产库 tag_id 存纯数字 ID，前缀由读取侧拼接，夹具需与生产格式一致
+        tag_id="67",
         title="有赞分类 67",
         sort=1000,
         product_count=1,
