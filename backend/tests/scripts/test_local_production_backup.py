@@ -25,6 +25,10 @@ def _write_inputs(tmp_path: Path) -> tuple[Path, Path, Path]:
     return backup_dir, key_file, ssh_key
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="C盘守卫面向 Linux 生产环境，Windows 开发机 tmp_path 必在 C 盘",
+)
 def test_run_backup_encrypts_and_removes_plaintext(tmp_path: Path) -> None:
     backup_dir, key_file, ssh_key = _write_inputs(tmp_path)
 
@@ -54,6 +58,10 @@ def test_run_backup_encrypts_and_removes_plaintext(tmp_path: Path) -> None:
     assert ssh.call_count == 2
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="C盘守卫面向 Linux 生产环境，Windows 开发机 tmp_path 必在 C 盘",
+)
 def test_run_backup_removes_plaintext_when_encryption_fails(tmp_path: Path) -> None:
     backup_dir, key_file, ssh_key = _write_inputs(tmp_path)
 
@@ -75,6 +83,10 @@ def test_run_backup_removes_plaintext_when_encryption_fails(tmp_path: Path) -> N
     assert ssh.call_count == 2
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="C盘守卫面向 Linux 生产环境，Windows 开发机 tmp_path 必在 C 盘",
+)
 def test_run_backup_attempts_remote_cleanup_when_snapshot_fails(tmp_path: Path) -> None:
     backup_dir, key_file, ssh_key = _write_inputs(tmp_path)
     snapshot_failure = subprocess.CalledProcessError(1, ["ssh.exe"])
@@ -132,6 +144,10 @@ def test_installer_uses_interactive_task_and_d_drive() -> None:
     assert "local_production_backup.py" in content
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="C盘守卫面向 Linux 生产环境，Windows 开发机子进程捕获输出受 gbk 代码页限制无法解码非 ASCII 字节",
+)
 def test_cli_help_starts_from_script_path() -> None:
     result = subprocess.run(
         [sys.executable, "scripts/local_production_backup.py", "--help"],

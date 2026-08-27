@@ -34,6 +34,7 @@ ______________________________________________________________________
 - 版本号唯一来源：根目录 `VERSION` 文件
 - `app/config.py` 中的 `APP_VERSION` 从 `VERSION` 文件自动读取，无需手动同步
 - `app/main.py` 中的 `version` 和 `/health` 端点均引用 `APP_VERSION`
+- **VERSION 变更必须与 `项目进度与配置清单.md` 表头同步**：每次改动 `VERSION`（含手动 bump 与 pre-commit 自动递增），须同步更新根目录与 `backend/` 下的 `项目进度与配置清单.md` 第 3 行 `当前本地代码版本为 \`<version>\``，否则 `test_repository_progress_header_matches_version_file` 会红（2026-08-26 教训：手动 bump 漏同步导致基线非空零）
 
 ---
 

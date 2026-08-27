@@ -129,6 +129,16 @@ def test_register_routes_starts_workers_and_includes_all_routers(
     )
     _install_module(
         monkeypatch,
+        "app.api.admin.invoices",
+        create_admin_invoices_router=lambda service: ("admin-invoices", service),
+    )
+    _install_module(
+        monkeypatch,
+        "app.service.invoice.admin",
+        AdminInvoiceService=lambda: "admin-invoice-service",
+    )
+    _install_module(
+        monkeypatch,
         "app.api.admin.orders",
         create_admin_orders_router=lambda service: ("admin-orders", service),
     )
@@ -285,13 +295,14 @@ def test_register_routes_starts_workers_and_includes_all_routers(
         "wecom_bot_ops_tool_service": "wecom-ops-tool-service",
         "wecom_bot_status_tool_service": status_tool_service,
         "employee_agent_service": "employee-agent-service",
+        "invoice_admin_service": "admin-invoice-service",
     }
 
     lifespan_routes.register_routes(app, services)
 
     assert wecom_queue.started_with == ["chat"]
     assert kf_queue.started_with == ["chat"]
-    assert len(app.included_routers) == 28
+    assert len(app.included_routers) == 29
     assert app.included_routers[0] == ("webhook", "chat")
     wecom_router = app.included_routers[-2]
     assert wecom_router[0] == "wecom-intelligent-bot-router"
