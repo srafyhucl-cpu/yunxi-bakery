@@ -101,6 +101,7 @@
           <view class="product-grid">
             <view
               wx:for="{{item.products}}"
+              wx:for-item="product"
               wx:key="id"
               class="product-card glass-panel hover-scale stagger-fade-in"
               style="animation-delay: {{index * 0.05}}s"

@@ -192,9 +192,18 @@ async function buildHomeBlocks(config: ShopPageConfig): Promise<HomeBlockView[]>
       return buildNoticeList(block);
     }
     if (block.type === "productShelf") {
-      const props = block.props as { productIds?: string[] };
+      const props = block.props as {
+        source?: string;
+        productIds?: string[];
+        limit?: number;
+      };
       const featuredClasses = ["cake-choco", "cake-yellow"];
-      const products = (await listProducts({ ids: props.productIds ?? [] })).map((product, index) => ({
+      // source=auto 时按精选+limit 拉取；manual 时按显式 ID 列表拉取
+      const products = (
+        await (props.source === "auto"
+          ? listProducts({ featured: true, limit: (props.limit as number) || 6 })
+          : listProducts({ ids: props.productIds ?? [] }))
+      ).map((product, index) => ({
         ...product,
         priceText: formatFen(product.priceFen),
         imageClass: featuredClasses[index] || getProductImageClass(product),
