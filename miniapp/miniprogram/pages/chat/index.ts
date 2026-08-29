@@ -203,7 +203,9 @@ Page({
       this.syncHumanReplyPolling(result.status || this.data.chatStatus);
 
     } catch (error) {
-      const errorMessage = getErrorMessage(error, CHAT_COPY.sendFailed);
+      const rawMessage = getErrorMessage(error, CHAT_COPY.sendFailed);
+      // 超时类错误转译为友好提示，避免直接展示底层 request:fail timeout
+      const errorMessage = rawMessage.includes("timeout") ? "AI 思考时间较长，请稍后重试" : rawMessage;
       this.setData({
         inputValue: content,
         canSendMessage: true,

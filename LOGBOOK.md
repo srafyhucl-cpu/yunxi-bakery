@@ -1,4 +1,34 @@
-﻿## [2026-08-26] - fix(test): 新仓全量 pytest 首次基线清零（trace: 20260826-test-baseline-zero）
+﻿## [2026-08-29] - fix(miniapp): 放宽 check:miniapp 超时守卫并提交 AI 聊天超时覆盖（trace: 20260829-chat-timeout-override）
+
+- 操作者: AI (CodeBuddy)
+- trace_id: `20260829-chat-timeout-override`
+- parent_trace_id: `20260826-test-baseline-zero`
+- 背景: AI 客服消息走 LLM，实测冷启动可达 48 秒，`transport.ts` 默认 `REQUEST_TIMEOUT_MS = 12000`。工作区已有改动为 AI 发消息单独放宽到 60000ms（`docs/specs/2026-08-25-p2-manual.md` L55-65 的 P2 C 项 C1–C5 五个问题否则 100% 超时）。守卫 `check-miniapp.mjs:348` 的字面量正则只认 `timeout: REQUEST_TIMEOUT_MS`，覆盖写法 `timeout: options.timeoutMs ?? REQUEST_TIMEOUT_MS` 不匹配，`npm run check:miniapp` EXIT=1，改动被卡住无法提交。
+- changed_files:
+  - `miniapp/scripts/check-miniapp.mjs`（本轮唯一代码改动）
+  - `miniapp/miniprogram/services/transport.ts`、`services/http.ts`、`services/chat.ts`、`pages/chat/index.ts`（工作区既有改动，本轮**未改动其中任何一行**，原样提交）
+  - `LOGBOOK.md`、根目录与 `backend/` 两份 `项目进度与配置清单.md` 表头、`backend/VERSION`
+- implementation:
+  - 守卫正则放宽（仍强制 `REQUEST_TIMEOUT_MS` 出现在兜底位置，不允许完全不设 timeout，也不允许只有覆盖值无兜底）：
+    - 改前：`/\bwx\.request\s*\(\s*\{[\s\S]*\btimeout\s*:\s*REQUEST_TIMEOUT_MS/`
+    - 改后：`/\bwx\.request\s*\(\s*\{[\s\S]*\btimeout\s*:\s*(?:\w+\.timeoutMs\s*\?\?\s*)?REQUEST_TIMEOUT_MS/`
+  - 抽出常量 `REQUEST_TIMEOUT_GUARD_PATTERN`，守卫函数改为引用该常量。
+  - 新增回归断言 `checkRequestTimeoutGuardRegression()`，在 `checkUnifiedHttpRequestTimeout()` 开头执行，用 `REQUEST_TIMEOUT_GUARD_FIXTURES` 五组固定件钉死正则行为：2 组正例（固定默认超时 / `options.timeoutMs ?? REQUEST_TIMEOUT_MS` 覆盖+兜底）必须放行；3 组反例（完全无 timeout / 只有 `options.timeoutMs` 无兜底 / 键名误写 `timeoutMs:`）必须拦截。
+- verification（全部为真实退出码，未使用管道判成败）:
+  - 改前基线：`npm run typecheck` EXIT=0；`npm run check:miniapp` EXIT=1，唯一报错 `miniprogram/services/transport.ts wx.request must set timeout: REQUEST_TIMEOUT_MS`。
+  - 改后：`npm run typecheck` EXIT=0；`npm run check:miniapp` EXIT=0，输出 `Miniapp static checks passed: 15 pages, 15 routes.`。
+  - 变异验证（均在临时目录建副本执行，仓库文件未受影响）：
+    - 变异体 A：把兜底值 `REQUEST_TIMEOUT_MS` 放宽为任意标识符 → EXIT=1，报「超时守卫正则回归失败：「只有覆盖值没有默认兜底」期望拦截，实际放行」。
+    - 变异体 B：把整个 `timeout:...` 段设为可选（即完全架空守卫）→ EXIT=1，3 条反例全部命中并报错。
+    - 变异体 C：复制真实 `transport.ts` 并删除其 timeout 行后喂给守卫 → EXIT=1，报 `miniprogram/services/transport.ts wx.request must set timeout: REQUEST_TIMEOUT_MS`。
+  - 以上证明新增回归断言不是空断言，且真实文件去掉 timeout 后守卫仍会拦截。
+- residual_risks:
+  - 守卫正则仍沿用既有的 `[\s\S]*` 跨内容匹配（本次未改这一行为）：若同一文件内 `wx.request` 之后出现另一处 `timeout: REQUEST_TIMEOUT_MS`，无 timeout 的调用可能被误放行。当前 `transport.ts` 只有一个 `wx.request` 调用，风险未实际化；后续若要收紧，需改为按调用块提取后再校验。
+  - 60000ms 只作用于 AI 发消息接口，非 AI 接口的 12 秒默认超时不变；若 LLM 冷启动超过 60 秒仍会超时（页面已把 timeout 类错误转译为「AI 思考时间较长，请稍后重试」）。
+  - 本轮只有静态守卫与类型检查，**未做开发者工具/真机实测**，P2 C 项 C1–C5 是否真实通过需按手册现场执行确认。
+- 约束遵守: 只改守卫脚本一处；未引入新依赖、未新增 pre-commit 钩子、未重构 transport/http 模块；未碰 `backend/`（版本号与两份进度清单表头除外）；未使用旧仓 `D:\Project\YunxiBakeMiniApp`；不部署、不执行真实支付、不开放真实用户访问（截至 2027-05-31 含，小程序仅限开发、调试和测试）。
+
+## [2026-08-26] - fix(test): 新仓全量 pytest 首次基线清零（trace: 20260826-test-baseline-zero）
 
 - 操作者: AI (OpenCode)
 - trace_id: `20260826-test-baseline-zero`

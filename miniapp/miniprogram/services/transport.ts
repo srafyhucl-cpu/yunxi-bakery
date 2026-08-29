@@ -9,6 +9,8 @@ export interface TransportRequestOptions<TBody extends RequestData> {
   path: string;
   data?: TBody;
   header?: WechatMiniprogram.IAnyObject;
+  // 单请求超时覆盖：AI 消息等慢接口需大于默认 12 秒
+  timeoutMs?: number;
 }
 
 export interface TransportResponse<TData> {
@@ -27,7 +29,7 @@ export function sendTransportRequest<
       url: `${API_BASE_URL}${options.path}`,
       method: options.method ?? "GET",
       data: options.data,
-      timeout: REQUEST_TIMEOUT_MS,
+      timeout: options.timeoutMs ?? REQUEST_TIMEOUT_MS,
       header: {
         "content-type": "application/json",
         ...(options.header ?? {})

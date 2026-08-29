@@ -340,12 +340,61 @@ function checkUnifiedNavigationCoverage() {
   }
 }
 
+// wx.request 超时守卫：必须显式设置 timeout，且 REQUEST_TIMEOUT_MS 必须出现在兜底位置。
+// 允许单请求覆盖写法 `timeout: options.timeoutMs ?? REQUEST_TIMEOUT_MS`（AI 聊天等慢接口需要），
+// 但不允许完全不设 timeout，也不允许只有覆盖值而没有 REQUEST_TIMEOUT_MS 兜底——那会架空默认超时。
+const REQUEST_TIMEOUT_GUARD_PATTERN =
+  /\bwx\.request\s*\(\s*\{[\s\S]*\btimeout\s*:\s*(?:\w+\.timeoutMs\s*\?\?\s*)?REQUEST_TIMEOUT_MS/;
+
+// 守卫回归固定件：把上述正则对下列写法的行为钉死（2 组正例 + 3 组反例），
+// 防止后续放宽覆盖面时把守卫架空——尤其是「完全没有 timeout」必须继续被拦截。
+const REQUEST_TIMEOUT_GUARD_FIXTURES = [
+  {
+    name: "固定默认超时",
+    source: "wx.request({\n  url,\n  timeout: REQUEST_TIMEOUT_MS,\n});",
+    mustMatch: true,
+  },
+  {
+    name: "单请求覆盖 + 默认兜底",
+    source: "wx.request({\n  url,\n  timeout: options.timeoutMs ?? REQUEST_TIMEOUT_MS,\n});",
+    mustMatch: true,
+  },
+  {
+    name: "完全没有 timeout",
+    source: "wx.request({\n  url,\n  method: \"GET\",\n});",
+    mustMatch: false,
+  },
+  {
+    name: "只有覆盖值没有默认兜底",
+    source: "wx.request({\n  url,\n  timeout: options.timeoutMs,\n});",
+    mustMatch: false,
+  },
+  {
+    name: "键名写成 timeoutMs 而非 timeout",
+    source: "wx.request({\n  url,\n  timeoutMs: 60000,\n});",
+    mustMatch: false,
+  },
+];
+
+function checkRequestTimeoutGuardRegression() {
+  for (const fixture of REQUEST_TIMEOUT_GUARD_FIXTURES) {
+    const matched = REQUEST_TIMEOUT_GUARD_PATTERN.test(fixture.source);
+    if (matched === fixture.mustMatch) {
+      continue;
+    }
+    const expected = fixture.mustMatch ? "放行" : "拦截";
+    const actual = matched ? "放行" : "拦截";
+    fail(`超时守卫正则回归失败：「${fixture.name}」期望${expected}，实际${actual}`);
+  }
+}
+
 function checkUnifiedHttpRequestTimeout() {
   const transportSource = readText(transportServicePath);
+  checkRequestTimeoutGuardRegression();
   if (!/\bconst\s+REQUEST_TIMEOUT_MS\s*=\s*\d+/.test(transportSource)) {
     fail("miniprogram/services/transport.ts must define REQUEST_TIMEOUT_MS for wx.request timeout guard");
   }
-  if (!/\bwx\.request\s*\(\s*\{[\s\S]*\btimeout\s*:\s*REQUEST_TIMEOUT_MS/.test(transportSource)) {
+  if (!REQUEST_TIMEOUT_GUARD_PATTERN.test(transportSource)) {
     fail("miniprogram/services/transport.ts wx.request must set timeout: REQUEST_TIMEOUT_MS");
   }
 }

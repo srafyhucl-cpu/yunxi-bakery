@@ -48,11 +48,15 @@ export async function getChatPayload(): Promise<ChatPayload> {
   return data;
 }
 
+// AI 消息走 LLM（实测冷启动可达 48 秒），默认 12 秒必超时，故单独放宽
+const CHAT_SEND_TIMEOUT_MS = 60000;
+
 export async function sendChatMessage(content: string): Promise<SendChatMessageResponse> {
   const response = await request<WrappedApiResponse<SendChatMessageResponse>, { content: string }>({
     method: "POST",
     path: "/api/v1/miniapp/chat/messages",
-    data: { content }
+    data: { content },
+    timeoutMs: CHAT_SEND_TIMEOUT_MS
   });
   return unwrapResponse(response);
 }

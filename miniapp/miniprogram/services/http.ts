@@ -15,6 +15,8 @@ interface RequestOptions<TBody extends RequestData> {
   path: string;
   data?: TBody;
   retryOnUnauthorized?: boolean;
+  // 单请求超时覆盖（毫秒），透传给 transport 层
+  timeoutMs?: number;
 }
 
 export interface ApiResponse<TData> {
@@ -81,7 +83,8 @@ async function requestWithRetry<
     method: options.method,
     path: options.path,
     data: options.data,
-    header: buildHeaders(session)
+    header: buildHeaders(session),
+    timeoutMs: options.timeoutMs
   });
   if (response.statusCode >= 200 && response.statusCode < 300) {
     return response.data;
