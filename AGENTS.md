@@ -35,28 +35,40 @@ ______________________________________________________________________
 
 | 涉及范围 | 必须调用的 Skill |
 |---------|----------------|
-| `app/api/` / `app/service/` / `app/repository/` / `app/models/` 任意一层 | **yunxi-architecture-guard** |
-| `app/service/llm/`（Prompt、Function Calling、意图识别、对话循环） | **yunxi-llm-guard** |
+| `backend/app/api/` / `backend/app/service/` / `backend/app/repository/` / `backend/app/models/` 任意一层 | **yunxi-architecture-guard** |
+| `backend/app/service/llm/`（Prompt、Function Calling、意图识别、对话循环） | **yunxi-llm-guard** |
 | 任意 `.py` 文件（新增内容 / 修改函数 / 新增类） | **yunxi-file-size-guard** |
 | 代码 Review / 发现命名混乱 / 魔法数字 / 函数过长 | **yunxi-clean-code-guard** |
 
 > 文件体量阈值只用于触发职责评审，目标是防止上帝类。不得为了压行数机械拆文件；职责混杂时按稳定、可独立测试的边界拆分，职责高度内聚时记录评审理由后保留。详见 ADR 0004。
 
-### Step 4：读取 LOGBOOK.md 最新条目
+### Step 4：读取 PROJECT-STATE.md 当前状态
+
+`PROJECT-STATE.md` 是当前阶段、范围和阻塞项的唯一入口。先读它，再读历史记录；不得用计划书或聊天内容替代。
+
+其中的机器快照、主线任务总表、状态视图和分支登记构成唯一动态开发总表。任何新改动先建立或认领 `task_id`；状态、阻塞、依赖、分支和下一步变化先回写总表，`LOGBOOK.md` 只记录历史证据。
+
+所有 Agent 的最小阅读集是 `AGENTS.md` + `PROJECT-STATE.md`；执行具体任务时再读对应 `docs/tasks/*.md`，专业契约按需读取。提交前运行 `python -B backend/scripts/check_project_development_register.py`，`check_project.py --skip-tests` 已包含该检查。
+
+### Step 5：读取 LOGBOOK.md 最新条目
 
 快速扫描 `LOGBOOK.md` 前 30 行，了解最近一次变更的上下文。
 
-### Step 5：确认修改范围不跨越架构边界
+### Step 6：确认修改范围不跨越架构边界
 
 架构分层：`api/ → service/ → repository/ → models/`，禁止任何层级向上穿透。
 
-### Step 6：确认 Storefront MiniApp 上线边界（项目级红线）
+### Step 7：确认 Storefront MiniApp 上线边界（项目级红线）
 
 - 截至 **2027 年 5 月 31 日（含）**，小程序仅用于开发、调试和测试，不向真实用户开放，不承接真实用户业务操作。
 - **2027 年 6 月只是最早候选上线窗口，不是自动上线日期**。只有项目负责人明确批准后，才允许开放真实用户访问。
 - 截至 **2026 年 8 月 14 日**，项目尚不具备受控真实微信支付 / 退款及真实有赞券测试条件，禁止冒充已完成真实验收。
 - 未来条件具备后，如需在正式上线前开展受控真实测试，必须使用授权测试账号、小额可核对交易，事前获得项目负责人批准，并完整记录退款、对账、测试数据清理和证据。
 - 代码部署、生产 API 可用、体验版上传、微信审核通过或受控测试通过，均不等于已向真实用户正式上线。
+
+### Step 8：遵守多 Agent 协作统一约束
+
+并行任务必须先读 [docs/AGENTS/multi-agent-coordination.md](./docs/AGENTS/multi-agent-coordination.md)。该文档统一权威源层级、`trace_id`/`as_of_commit` 字段、状态冲突处理、共享工作区边界和临时文件清理规则。发现版本、阶段或路径冲突时先停下核对，不得猜测或覆盖其他 Agent 的改动。
 
 ______________________________________________________________________
 
@@ -71,13 +83,13 @@ ______________________________________________________________________
 | 禁止 `# TODO` 占位符 | 要么实现，要么删除 |
 | 禁止 `SELECT *` | 必须明确列出字段 |
 | 禁止 `api/` 直接导入 `repository/` | 必须经过 `service/` |
-| 禁止根 API 兼容文件承载真实 Router | `app/api/miniapp_*.py`、`admin_*.py`、`webhook.py`、`wecom.py`、`channel_router.py` 只做兼容入口，真实实现放在 canonical 子目录 |
-| 禁止 `service/` 直接调用 `aiosqlite` | 必须经过 `repository/` |
-| 禁止 `models/` 引用上层模块 | `models/` 只依赖标准库和 pydantic |
+| 禁止根 API 兼容文件承载真实 Router | `backend/app/api/miniapp_*.py`、`admin_*.py`、`webhook.py`、`wecom.py`、`channel_router.py` 只做兼容入口，真实实现放在 canonical 子目录 |
+| 禁止 `backend/app/service/` 直接调用 `aiosqlite` | 必须经过 `backend/app/repository/` |
+| 禁止 `backend/app/models/` 引用上层模块 | `backend/app/models/` 只依赖标准库和 pydantic |
 | 禁止 SQL f-string 拼接 | 必须使用 `?` 参数化绑定 |
 | 禁止静默吞异常（`except: pass`） | 至少记录 `logger.error` |
 | 禁止 `print()` 调试 | 使用 `logger.debug()` |
-| 禁止硬编码密钥/Token | 通过 `app/config.py` 的 `get_settings()` 获取 |
+| 禁止硬编码密钥/Token | 通过 `backend/app/config.py` 的 `get_settings()` 获取 |
 | 禁止英文注释 | 代码注释统一使用中文 |
 | 使用 `ruff` 做代码风格检查 | 提交前自动运行 `ruff check --fix` |
 | 使用 `mypy` 做渐进式类型检查 | 新增函数建议加类型注解，不阻断提交 |
@@ -93,31 +105,35 @@ ______________________________________________________________________
 | Skill 调用速查 | [docs/AGENTS/skill-reference.md](./docs/AGENTS/skill-reference.md) |
 | 快速参考（关键路径 + 测试部署命令） | [docs/AGENTS/quick-reference.md](./docs/AGENTS/quick-reference.md) |
 | 中文编码与终端乱码处理 | [docs/AGENTS/encoding-and-terminal.md](./docs/AGENTS/encoding-and-terminal.md) |
+| 多 Agent 协作统一约束 | [docs/AGENTS/multi-agent-coordination.md](./docs/AGENTS/multi-agent-coordination.md) |
 
 
-## 小程序开发规范
-# YunxiBakeMiniApp Agent 工作规范
+## Storefront MiniApp（miniapp/）Agent 工作规范
 
-本项目是 `Bakery Commerce Platform` 的 `Storefront MiniApp` 渠道仓，独立于后端项目 `YunxiBakeBot`。
+> 本节源自旧独立小程序仓 `YunxiBakeMiniApp` 的 Agent 规范，2026-08-29 随 Monorepo 整合校准为单仓口径（trace 20260829-cleanup-deprecated-directions）；上线边界、文件操作红线与开发约定保持原文效力。
+
+小程序代码位于本 monorepo 的 `miniapp/` 目录；后端（`Bakery Commerce Platform` / `Platform`）位于同仓 `backend/` 目录。
 
 ## 启动检查
 
 每次开始任务前先阅读：
 
 1. 本文件。
-2. `LOGBOOK.md` 最新条目。
-3. `docs/harness-engineering/README.md`。
-4. 如果涉及接口、字段、支付、订单、客服、客户群登记或后端协作，先阅读 `docs/api-contract.md`。
-5. 如果涉及发布、体验版、真机、审核、支付联调或生产验证，先阅读 `docs/release/manual-acceptance-checklist.md`。
+2. `PROJECT-STATE.md` 当前状态。
+3. `LOGBOOK.md` 最新条目。
+4. `docs/harness-engineering/README.md`。
+5. `docs/AGENTS/multi-agent-coordination.md`。
+6. 如果涉及接口、字段、支付、订单、客服、客户群登记或后端协作，先阅读 `miniapp/docs/api-contract.md`。
+7. 如果涉及发布、体验版、真机、审核、支付联调或生产验证，先阅读 `miniapp/docs/release/manual-acceptance-checklist.md`。
 
 较大任务必须分配 `trace_id`，并在收口时更新 `LOGBOOK.md`。验证和证据规则见 `docs/harness-engineering/core/verification-matrix.md` 与 `docs/harness-engineering/core/evidence-index.md`。
 
 ## 项目边界
 
-- 当前仓库只放微信小程序前台渠道代码。
-- 后端能力通过 HTTP API 调用 `YunxiBakeBot`，即 `Platform` 主仓；接口契约记录在 `docs/api-contract.md`。
-- 不在本项目内实现 AI 对话、订单持久化、支付回调、商品同步等后端逻辑。
-- 涉及后端能力变更时，只更新本项目契约和调用代码；后端实现应回到 `YunxiBakeBot` 项目处理。
+- `miniapp/` 只放微信小程序前台渠道代码。
+- 后端能力通过 HTTP API 调用 monorepo 内 `backend/`（`Platform`）；接口契约记录在 `miniapp/docs/api-contract.md`。
+- 不在小程序内实现 AI 对话、订单持久化、支付回调、商品同步等后端逻辑。
+- 涉及后端能力变更时，先更新 `miniapp/docs/api-contract.md` 契约和调用代码；后端实现在同仓 `backend/` 内处理。
 
 ## 正式上线边界（项目级红线）
 
@@ -138,12 +154,13 @@ ______________________________________________________________________
 
 - 入口：`docs/harness-engineering/README.md`。
 - 追溯：每个较大任务使用 `YYYYMMDD-topic` 格式的 `trace_id`。
-- 契约：API 字段变更先更新 `docs/api-contract.md`，再改 `miniprogram/services/` 和页面调用。
+- 多 Agent：每个子任务声明 `owner`、`status`、`as_of_commit`、`version`、`allowed_paths` 和 `forbidden_paths`，状态冲突先回报 owner。
+- 契约：API 字段变更先更新 `miniapp/docs/api-contract.md`，再改 `miniapp/miniprogram/services/` 和页面调用。
 - 验证：按 `docs/harness-engineering/core/verification-matrix.md` 选择最低验证。
 - 证据：页面截图、微信开发者工具验证、接口联调、审核发布记录登记到 `docs/harness-engineering/core/evidence-index.md`。
 - 交接：长任务或上下文重置使用 `docs/harness-engineering/core/agent-handoff-template.md`。
 - 防重犯：值得记住的错误写入 `docs/harness-engineering/core/mistake-ledger.md`。
-- 路线图：跨阶段范围、MVP 后续能力和客户群运营闭环记录在 `docs/roadmap.md`。
+- 路线图：跨阶段范围、MVP 后续能力和客户群运营闭环记录在 `miniapp/docs/roadmap.md`。
 - ADR：项目边界、渲染基线、支付/订单归属、发布策略等长期决策记录在 `docs/harness-engineering/adr/`。
 
 管理文档收口时至少检查：
@@ -151,7 +168,7 @@ ______________________________________________________________________
 - `LOGBOOK.md` 是否有本轮条目。
 - `docs/harness-engineering/core/evidence-index.md` 是否登记文档、命令或报告证据。
 - `docs/harness-engineering/README.md` 的入口地图是否仍能覆盖新增文档。
-- 若改动影响发布、真机或支付，`docs/release/manual-acceptance-checklist.md` 是否同步。
+- 若改动影响发布、真机或支付，`miniapp/docs/release/manual-acceptance-checklist.md` 是否同步。
 
 ## 文件操作红线
 
@@ -184,6 +201,6 @@ npm install
 
 - 页面优先保持小而清晰，业务请求放在 `miniprogram/services/`。
 - 通用格式化、购物车本地状态等工具放在 `miniprogram/utils/`。
-- API 字段变更先更新 `docs/api-contract.md`，再改页面调用。
+- API 字段变更先更新 `miniapp/docs/api-contract.md`，再改页面调用。
 - 不把真实 AppID、密钥、支付商户配置写入仓库。
 

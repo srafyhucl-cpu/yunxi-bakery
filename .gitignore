@@ -61,5 +61,12 @@ Thumbs.db
 # Ruff cache
 .ruff_cache/
 
+# 本机质量门禁与 npm 缓存（均可重建）
+.pre-commit-cache/
+.npm-cache/
+
+# 本机 Agent 记忆（不属于项目事实源）
+.workbuddy/
+
 # Coverage
 .coverage.*

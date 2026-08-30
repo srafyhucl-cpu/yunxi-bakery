@@ -1,6 +1,6 @@
 # Traceability Model
 
-本文件定义 Bakery Commerce Platform 当前 `Platform` 主仓的任务级追溯模型；对应代码仓路径仍为 `YunxiBakeBot`。目标是让任何一次 Vibe Coding 变更都能回答：为什么改、改了什么、怎么证明、还剩什么风险。
+本文件定义 YunxiBakery monorepo 的任务级追溯模型；后端代码位于 `backend/`，小程序位于 `miniapp/`，旧仓 `YunxiBakeBot` 仅作冻结历史。目标是让任何一次 Vibe Coding 变更都能回答：为什么改、改了什么、怎么证明、还剩什么风险。
 
 ______________________________________________________________________
 
@@ -35,6 +35,10 @@ ______________________________________________________________________
 | `evidence` | 否 | JSON 报告、截图、日志、测试输出、链接 |
 | `logbook_entry` | 是 | LOGBOOK 对应条目标题 |
 | `residual_risks` | 否 | 未解决风险、人工确认项或未验证范围 |
+
+证据索引中的仓库来源使用 `repository_origin`：新证据填写 `monorepo`；冻结旧仓历史
+证据保留原始提交并由检查器标记 `legacy:YunxiBakeBot`；无法读取来源时标记为
+`external`/`external_unverified`，不得把旧仓证据改写成当前仓证据。
 
 ______________________________________________________________________
 
@@ -95,16 +99,16 @@ ______________________________________________________________________
 ## Reports 命名建议
 
 ```text
-reports/harness/handoff-{timestamp}.md
-reports/harness/handoff-{timestamp}.json
-reports/preflight-before-{timestamp}.json
-reports/preflight-after-{timestamp}.json
-reports/smoke-after-{timestamp}.json
-reports/migration-dry-run-{timestamp}.json
-reports/migration-apply-{timestamp}.json
-reports/baseline-seed-before-{timestamp}.json
-reports/baseline-seed-after-{timestamp}.json
-reports/rebuild-embeddings-after-{timestamp}.json
+backend/reports/harness/handoff-{timestamp}.md
+backend/reports/harness/handoff-{timestamp}.json
+backend/reports/preflight-before-{timestamp}.json
+backend/reports/preflight-after-{timestamp}.json
+backend/reports/smoke-after-{timestamp}.json
+backend/reports/migration-dry-run-{timestamp}.json
+backend/reports/migration-apply-{timestamp}.json
+backend/reports/baseline-seed-before-{timestamp}.json
+backend/reports/baseline-seed-after-{timestamp}.json
+backend/reports/rebuild-embeddings-after-{timestamp}.json
 ```
 
 报告文件应拒绝覆盖旧文件。涉及写库或生产状态变更时，必须同时保留 dry-run 和 apply 后验证证据。
@@ -118,11 +122,11 @@ ______________________________________________________________________
 长任务、上下文重置或换 Agent 前，运行：
 
 ```powershell
-python scripts/harness_snapshot.py --trace-id 20260611-example --goal "说明当前任务" --status in_progress
+  python backend/scripts/harness_snapshot.py --trace-id 20260611-example --goal "说明当前任务" --status in_progress
 ```
 
 需要归档时运行：
 
 ```powershell
-python scripts/harness_snapshot.py --json --output reports/harness/handoff-{timestamp}.json
+  python backend/scripts/harness_snapshot.py --json --output backend/reports/harness/handoff-{timestamp}.json
 ```

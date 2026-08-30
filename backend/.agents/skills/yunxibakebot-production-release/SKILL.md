@@ -1,13 +1,13 @@
 ---
 name: yunxibakebot-production-release
-description: Use when a YunxiBakeBot change must be pushed or deployed to production. Covers the current server layout, dual-remote push, Git Bundle deployment, systemd verification, and production HTTP proof.
+description: Use when a backend change in the YunxiBakery Monorepo must be pushed or deployed to production. Covers the current server layout, Git Bundle deployment, systemd verification, and production HTTP proof.
 ---
 
-# YunxiBakeBot Production Release
+# Backend Production Release
 
 ## Scope
 
-Use this skill for `D:\Project\YunxiBakeBot` production changes. Do not use it for MiniApp-only code, historical evidence review, or database snapshot work that does not alter the deployed application.
+Use this skill for `D:\Project\YunxiBakery\backend` production changes. Do not use it for MiniApp-only code, historical evidence review, or database snapshot work that does not alter the deployed application.
 
 Read [docs/release/server-layout.md](../../docs/release/server-layout.md) before executing a release. The active YunxiBakeBot worktree is `/opt/apps/yunxibakebot`; `/opt/backups/yunxibakebot` is archive-only.
 
@@ -15,8 +15,8 @@ Read [docs/release/server-layout.md](../../docs/release/server-layout.md) before
 
 1. Confirm the target commit, version, local verification, and repository state.
 2. Run pre-deploy evidence commands required by the change class. Quote report paths that contain `{timestamp}`.
-3. Push both Git remotes. A push is not a deployment.
-4. Run `bash scripts/deploy.sh`. It sends a Git bundle to `/opt/apps/yunxibakebot`, checks production startup configuration, restarts `yunxibakebot`, and waits for loopback `/health` and `/ready`.
+3. Push the configured version remote only after owner approval. A push is not a deployment.
+4. Run `bash backend/scripts/deploy.sh` when production deployment is explicitly approved. It sends a Git bundle to `/opt/apps/yunxibakebot`, checks production startup configuration, restarts `yunxibakebot`, and waits for loopback `/health` and `/ready`.
 5. Verify `systemctl is-active yunxibakebot`, `https://yunxifood.cn/health`, and `https://yunxifood.cn/ready`.
 6. Run an applicable callback or positive-path production probe. Record report locations without adding `reports/` artifacts to Git.
 

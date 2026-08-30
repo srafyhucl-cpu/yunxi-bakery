@@ -1,6 +1,6 @@
 # Platform 领域迁移盘点
 
-本文件记录 `Platform` 仓内部从历史 `miniapp_*` 命名继续收口到 canonical 领域的当前盘点结果。它不是新的接口契约；外部路径仍以 `docs/architecture/platform-miniapp-api-contract-v1.md` 为准。
+本文件记录 `Platform` 仓内部从历史 `miniapp_*` 命名继续收口到 canonical 领域的当前盘点结果。它不是新的接口契约；外部路径以 `miniapp/docs/api-contract.md` 为准（双仓时代契约 `platform-miniapp-api-contract-v1.md` 已归档于 `docs/archive/two-repo-era/`，trace 20260829-cleanup-deprecated-directions）。
 
 ## 结论
 

@@ -1,5 +1,6 @@
 import subprocess
 import sys
+from pathlib import Path
 
 from scripts import check_project
 
@@ -49,6 +50,9 @@ def test_run_command_sets_fake_embedding_for_quality_commands(monkeypatch) -> No
     assert result.passed is True
     assert captured["PYTHONUTF8"] == "1"
     assert captured["YUNXI_USE_FAKE_EMBEDDING"] == "1"
+    assert captured["PYTHONDONTWRITEBYTECODE"] == "1"
+    assert captured["TMP"] == captured["TEMP"] == captured["TMPDIR"]
+    assert Path(captured["TMP"]).parent == check_project.ROOT_DIR.parent
 
 
 def test_contract_checks_cache_read_only_results(monkeypatch) -> None:

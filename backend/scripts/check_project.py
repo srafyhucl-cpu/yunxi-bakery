@@ -6,9 +6,18 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
+
+try:
+    from scripts.check_project_development_register import (
+        check_project_development_register,
+    )
+except ModuleNotFoundError:
+    # 直接以脚本路径执行时，backend 目录可能尚未进入 sys.path。
+    from check_project_development_register import check_project_development_register
 
 sys.stdout.reconfigure(encoding="utf-8")
 
@@ -706,18 +715,26 @@ def scan_rule(rule: ScanRule) -> CheckResult:
 def run_command(command: tuple[str, ...]) -> CheckResult:
     env = os.environ.copy()
     env["PYTHONUTF8"] = "1"
+    env["PYTHONDONTWRITEBYTECODE"] = "1"
     # 质量门禁必须使用轻量编码器，避免本地或 CI 触发真实模型加载。
     env.setdefault("YUNXI_USE_FAKE_EMBEDDING", "1")
-    completed = subprocess.run(
-        command,
-        cwd=ROOT_DIR,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        check=False,
-        env=env,
-    )
+    # 第三方依赖（例如 jieba）会通过 tempfile 写缓存；质量门禁不得把
+    # 可重建文件落到用户 C 盘临时目录，且子进程结束后自动清理。
+    with tempfile.TemporaryDirectory(
+        prefix=".yunxi-quality-", dir=ROOT_DIR.parent
+    ) as temp_dir:
+        for key in ("TMP", "TEMP", "TMPDIR"):
+            env[key] = temp_dir
+        completed = subprocess.run(
+            command,
+            cwd=ROOT_DIR,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=False,
+            env=env,
+        )
     command_text = " ".join(command)
     details = []
     if completed.stdout.strip():
@@ -747,6 +764,20 @@ def run_doc_guard_checks() -> list[CheckResult]:
 def run_migration_guard_checks() -> list[CheckResult]:
     """运行 D1-0 直接写状态守卫（B3.4，评审问题 4）。"""
     return [check_d1_migration_guard()]
+
+
+def run_development_register_checks() -> list[CheckResult]:
+    """运行项目完整开发总表守卫。"""
+    result = check_project_development_register()
+    return [
+        CheckResult(
+            "项目完整开发总表",
+            result.passed,
+            list(result.issues)
+            if result.issues
+            else [f"任务数: {len(result.task_statuses)}"],
+        )
+    ]
 
 
 def run_tests() -> list[CheckResult]:
@@ -788,6 +819,9 @@ def main() -> int:
     migration_guard_results = run_migration_guard_checks()
     print_results("D1-0 迁移守卫", migration_guard_results)
 
+    development_register_results = run_development_register_checks()
+    print_results("项目开发总表守卫", development_register_results)
+
     contract_results = run_contract_checks()
     print_results("业务合约检查", contract_results)
 
@@ -810,6 +844,7 @@ def main() -> int:
         + clean_code_results
         + doc_guard_results
         + migration_guard_results
+        + development_register_results
         + contract_results
         + test_results
     )

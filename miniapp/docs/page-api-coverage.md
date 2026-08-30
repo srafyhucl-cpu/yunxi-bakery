@@ -1,8 +1,13 @@
 # Storefront MiniApp 页面 API 覆盖合约
 
+> updated_at: 2026-08-29
+> as_of_commit: `77f9346`
+> version: `0.133.0-p2trial.3`
+> status: current local mirror / project status source remains `PROJECT-STATE.md`
+
 trace_id: `20260707-miniapp-page-api-coverage-local-contract`
 
-本合约是 `YunxiBakeBot` / `Platform` 主仓 `docs/architecture/miniapp-page-api-coverage-contract.md` 的 MiniApp 本地镜像。目标是把页面、前端服务、后端 API 和仓库边界固定下来，避免后续把会员、营销、商品、订单或支付的业务真相误写进小程序仓。
+本合约是同一 Monorepo 根目录 `docs/architecture/miniapp-page-api-coverage-contract.md` 的 MiniApp 本地镜像。`backend/` 提供 Platform 业务 API，`miniapp/` 只负责前台页面、微信能力和 API client；目标是固定页面、前端服务、后端 API 与目录边界，避免把会员、营销、商品、订单或支付的业务真相误写进小程序。
 
 ## 覆盖范围
 
@@ -63,7 +68,7 @@ trace_id: `20260707-miniapp-page-api-coverage-local-contract`
 - 支付闭环：不把 mock-pay 当作正式微信支付闭环。
 - 客户群归因：不在本仓解析企业微信群身份或生成活动归因真相。
 
-如果页面需要新增上述能力，先回 `YunxiBakeBot` / `Platform` 定义 API 契约、数据来源和验证方式，再更新本仓服务调用和展示逻辑。接口缺口先回 Platform 定义 API 契约。
+如果页面需要新增上述能力，先回 `backend/`（Platform）定义 API 契约、数据来源和验证方式，再更新 `miniapp/` 服务调用和展示逻辑。接口缺口先回 Platform 定义 API 契约。
 
 ## 静态门禁
 
@@ -75,7 +80,7 @@ npm run check:page-api-coverage
 
 该检查会验证：
 
-- `miniprogram/app.json` 的 12 个页面均在本合约中出现。
+- `miniprogram/app.json` 的 15 个页面均在本合约中出现。
 - 本合约包含当前页面依赖的关键 API。
 - `docs/api-contract.md` 仍覆盖当前小程序服务调用的核心 API。
 - 本合约明确保留会员、营销、商品、订单、支付和客户群归因边界。

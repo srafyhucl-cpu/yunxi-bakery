@@ -1,5 +1,7 @@
 # GitHub 参考项目借鉴与可实施计划
 
+> **历史计划声明（2026-08-29）**：本文记录 2026-07 的参考项目评估与分阶段实施快照，相关阶段已执行或被后续 Monorepo 治理取代。不得将本文作为当前执行计划；当前状态以 `PROJECT-STATE.md`、当前待办清单和 `backend/VERSION` 为准。
+
 > trace_id: `20260706-github-reference-benchmark`
 > 状态：阶段 0 已冻结；阶段 1 首版能力目录已执行；阶段 2 上下文治理小切片已执行；阶段 3 知识库治理 v015/v016、入口 audience 分流、后台治理字段编辑、audience smoke、命中日志 smoke、只读日志趋势报表、后台只读 API 和后台只读页面已执行；阶段 4 员工助手能力合约清单首版已执行；阶段 5 Platform 侧和 MiniApp 仓页面 API 覆盖合约首版已执行；阶段 6 客户机器人可观测合约、MiniApp 仓可观测合约和 miniprogram-ci 发布准备合约首版已执行；主计划静态边界门禁已接入统一质量门禁和生产预检
 > 日期：2026-07-06
@@ -8,7 +10,7 @@
 > - [项目边界](./project-boundaries.md)
 > - [企微员工助手开发计划书](./wecom-employee-agent-development-plan.md)
 > - [企微智能机器人工具清单](./wecom-intelligent-bot-tools.md)
-> - [Platform / MiniApp API 契约](./platform-miniapp-api-contract-v1.md)
+> - [Platform / MiniApp API 契约（已归档）](../archive/two-repo-era/platform-miniapp-api-contract-v1.md)；现行契约见 `miniapp/docs/api-contract.md`
 > - [双机器人能力目录](./bot-capability-matrix.md)
 > - [客户会话摘要设计](./customer-session-summary-design.md)
 > - [客户长期记忆治理计划](./customer-memory-governance-plan.md)

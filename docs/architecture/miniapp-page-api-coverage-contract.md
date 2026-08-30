@@ -1,12 +1,18 @@
 # MiniApp 页面 API 覆盖合约
 
+> updated_at: 2026-08-29
+> as_of_commit: `77f9346`
+> version: `0.133.0-p2trial.3`
+> status: current contract / not a project-status source
+> 当前代码位于同一 Monorepo：`backend/` 提供 Platform 业务 API，`miniapp/` 提供 Storefront MiniApp 前台页面。
+
 > trace_id: `20260707-miniapp-page-api-coverage-contract`
-> 状态：治理设计冻结；首版只补页面到 Platform API 的覆盖清单和静态验收，不改 MiniApp 运行时代码
+> 状态：治理设计冻结；首版只补页面到 Platform API 的覆盖清单和静态验收，不改 MiniApp 运行时代码。当前阶段状态以 `PROJECT-STATE.md` 为准。
 > 日期：2026-07-07
-> 适用范围：`Storefront MiniApp` 页面、Platform `/api/v1/miniapp/*` 公开接口、双仓协作边界
+> 适用范围：`Storefront MiniApp` 页面、Platform `/api/v1/miniapp/*` 公开接口、monorepo 内 `backend/` 与 `miniapp/` 的协作边界
 > 关联文档：
 > - [GitHub 参考项目借鉴与可实施计划](./github-reference-benchmark-and-implementation-plan.md)
-> - [Platform / Storefront MiniApp API Contract v1](./platform-miniapp-api-contract-v1.md)
+> - [Platform / Storefront MiniApp API Contract v1（已归档，双仓时代契约）](../archive/two-repo-era/platform-miniapp-api-contract-v1.md)；现行契约见 `miniapp/docs/api-contract.md`
 
 ______________________________________________________________________
 
@@ -14,7 +20,7 @@ ______________________________________________________________________
 
 MiniApp 阶段 5 的第一步不是继续新增页面，而是把“页面依赖哪些 Platform API、哪些业务规则不得留在前端”冻结下来。
 
-当前 `YunxiBakeMiniApp` 已有以下前台页面：
+当前 `miniapp/` 已有以下前台页面：
 
 ```text
 pages/home/index
@@ -29,6 +35,9 @@ pages/order-detail/index
 pages/group-registration/index
 pages/chat/index
 pages/profile/index
+pages/points/index
+pages/coupons/index
+pages/recharge/index
 ```
 
 这些页面已经覆盖首页、分类 / 商品列表、商品详情、购物车、结算、协议政策、地址、订单、客户群登记、客服入口和会员中心的基础用户路径。下一步要补的是契约化验收和真实体验验证，而不是让前端仓自行扩展业务真相。
@@ -50,29 +59,36 @@ ______________________________________________________________________
 | `pages/order-detail/index` | 订单详情、时间线、取消、支付 | `GET /api/v1/miniapp/orders/{order_id}`、`POST /api/v1/miniapp/orders/{order_id}/cancel`、`POST /api/v1/miniapp/orders/{order_id}/prepare-payment`、`POST /api/v1/miniapp/orders/{order_id}/mock-pay` | 已有 API 契约；`mock-pay` 仅保留开发和无微信支付配置场景 |
 | `pages/group-registration/index` | 客户群团购 / 预订登记 | `POST /api/v1/miniapp/group-registrations`、`GET /api/v1/miniapp/group-registrations/me` | 已有 API 契约 |
 | `pages/chat/index` | 客服消息、转人工 | `GET /api/v1/miniapp/chat/messages`、`POST /api/v1/miniapp/chat/messages`、`POST /api/v1/miniapp/chat/transfer` | 已有 API 契约 |
-| `pages/profile/index` | 会员中心、订单入口、客服入口、登记记录入口 | `GET /api/v1/miniapp/shop-settings`、`GET /api/v1/miniapp/orders`、`GET /api/v1/miniapp/group-registrations/me` | 基础入口已有 API；会员权益、积分、储值、优惠券属于待补 Platform API |
+| `pages/profile/index` | 会员中心、订单入口、客服入口、登记记录入口 | `GET /api/v1/miniapp/pages/profile`、`GET /api/v1/miniapp/shop-settings`、`GET /api/v1/miniapp/orders`、`GET /api/v1/miniapp/group-registrations/me` | 已有 API 契约；资产页按后端返回值展示 |
+| `pages/points/index` | 积分余额与明细 | `GET /api/v1/miniapp/points` | 已有 API 契约；不在前端计算积分 |
+| `pages/coupons/index` | 我的优惠券 | `GET /api/v1/miniapp/coupons` | 已有 API 契约；不在前端生成或核销券 |
+| `pages/recharge/index` | 充值档位、确认和记录 | `POST /api/v1/miniapp/recharges`、`POST /api/v1/miniapp/recharges/{recharge_id}/mock-pay`、`GET /api/v1/miniapp/recharges` | 已有 API 契约；仅开发/受控 mock 场景 |
 
 ______________________________________________________________________
 
-## 三、明确待补 Platform API
+## 三、能力边界与待补 Platform API
 
-当前阶段不在 MiniApp 仓直接实现以下业务真相；如要上线相关能力，先回 Platform 定义 API 契约：
+当前阶段不在 `miniapp/` 直接实现以下业务真相；如要新增或扩展相关能力，先回 `backend/`（Platform）定义 API 契约。下表区分当前已有接口与仍待补的独立能力：
 
 | 待补能力 | Platform API 状态 | MiniApp 当前允许行为 |
 |---|---|---|
-| 会员权益 | 需由 Platform 补 `GET /api/v1/miniapp/member/benefits` 契约 | 只展示入口或静态说明，不计算权益 |
-| 积分 | 需由 Platform 补 `GET /api/v1/miniapp/member/points` 契约 | 不在前端累加或扣减积分 |
-| 储值余额 | 需由 Platform 补 `GET /api/v1/miniapp/member/balance` 契约 | 不在前端保存余额 |
-| 优惠券 | 需由 Platform 补 `GET /api/v1/miniapp/coupons` 契约 | 不在前端生成或核销券 |
+| 会员权益 | 未形成独立权益聚合接口；历史候选 `GET /api/v1/miniapp/member/benefits` 仅作兼容守卫术语 | 只展示后端返回值或静态说明，不计算权益 |
+| 积分 | 现行 `GET /api/v1/miniapp/points`；历史候选 `GET /api/v1/miniapp/member/points` 不作为当前路径 | 不在前端累加或扣减积分 |
+| 储值余额 | 现行 `GET /api/v1/miniapp/balance`；历史候选 `GET /api/v1/miniapp/member/balance` 不作为当前路径 | 不在前端保存或推导余额 |
+| 优惠券 | 现行 `GET /api/v1/miniapp/coupons`；独立会员券聚合仍待补 | 不在前端生成或核销券 |
 | 配送费 / 满减 / 活动价 | 需由 Platform 补订单预览或营销 API 契约 | 不在前端推导最终价格 |
 
-这些能力可以先作为页面入口存在，但本地示例数据不能呈现为真实权益。
+> 历史候选路径保留在本节，是为了让既有静态守卫继续覆盖边界术语；它们不代表当前缺失的运行时路由。当前实际路径以 `miniapp/docs/api-contract.md` 和运行中的 FastAPI OpenAPI 为准。
+
+这些能力可以先作为页面入口存在，但本地示例数据不能呈现为真实权益；接口已存在时也不得把前端展示误写成前端拥有业务真相。
 
 ______________________________________________________________________
 
-## 四、双仓边界
+## 四、Platform / Storefront MiniApp 边界
 
-Platform 继续负责：
+> 本节沿用历史“双仓”角色命名，但当前实现已经收敛到同一 Monorepo 的 `backend/` 与 `miniapp/` 目录。
+
+`backend/`（Platform）继续负责：
 
 - 客户主档、地址、身份、会员权益。
 - 商品、分类、价格、库存、上下架、图片安全代理。
@@ -80,7 +96,7 @@ Platform 继续负责：
 - 客服会话、转人工、AI 主链路。
 - 店铺运营配置、协议政策、售后政策。
 
-Storefront MiniApp 继续负责：
+`miniapp/`（Storefront MiniApp）继续负责：
 
 - 页面结构、组件交互、微信能力、API client。
 - 登录态保存、请求头注入、本地购物车临时状态。
@@ -103,12 +119,12 @@ ______________________________________________________________________
 
 ## 六、发布与验证入口
 
-Platform 侧：
+`backend/` 侧：
 
-- `python scripts/check_miniapp_page_api_contract.py --summary`
-- `python scripts/check_project.py --skip-tests`
-- `python scripts/preflight_production.py --json`
-- `python scripts/check_preflight_business_contracts.py "<preflight-report.json>" --summary`
+- `python backend/scripts/check_miniapp_page_api_contract.py --summary`
+- `python backend/scripts/check_project.py --skip-tests`
+- `python backend/scripts/preflight_production.py --json`
+- `python backend/scripts/check_preflight_business_contracts.py "<preflight-report.json>" --summary`
 
 MiniApp 侧：
 
@@ -117,13 +133,13 @@ MiniApp 侧：
 - `npm run release:readiness`
 - 真机验收清单覆盖商品、购物车、结算、支付、客服入口。
 
-双仓联动功能必须使用同一个 `trace_id`，分别记录 Platform API 验证和 MiniApp 真机验证证据。
+双仓联动功能必须使用同一个 `trace_id`，分别记录 Platform API 验证和 MiniApp 真机验证证据；在当前 Monorepo 中，该规则对应 `backend/` 与 `miniapp/` 的跨目录联动。
 
 ______________________________________________________________________
 
 ## 七、静态验收
 
-本计划由 `scripts/check_miniapp_page_api_contract.py` 验收，并接入 `scripts/check_project.py --skip-tests` 的业务合约检查。
+本合约由 `backend/scripts/check_miniapp_page_api_contract.py` 验收，并接入 `backend/scripts/check_project.py --skip-tests` 的业务合约检查。
 
 静态验收必须覆盖：
 
@@ -136,4 +152,4 @@ ______________________________________________________________________
 
 ## 八、当前结论
 
-阶段 5 可以先在 Platform 仓建立页面/API 覆盖合约，作为 MiniApp 仓后续补 roadmap、真机验收和 miniprogram-ci 的输入。当前切片只补契约和静态验收，不改小程序页面、不改 Platform API 行为、不引入新的业务规则。
+本合约作为 `backend/` 与 `miniapp/` 后续真机验收和 miniprogram-ci 检查的输入。当前切片只补契约和静态验收，不改小程序页面、不改 Platform API 行为、不引入新的业务规则。

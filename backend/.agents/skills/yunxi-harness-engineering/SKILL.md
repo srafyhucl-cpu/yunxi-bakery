@@ -27,10 +27,12 @@ docs/harness-engineering/README.md
 ## 启动顺序
 
 1. 读取 `AGENTS.md`，确认本轮还需要哪些 Guard Skill。
-2. 读取 `LOGBOOK.md` 最新条目，避免重复踩坑。
-3. 读取 `docs/harness-engineering/README.md`，只按场景继续打开子文档。
-4. 为中大型任务分配 `trace_id`，格式参考 `docs/harness-engineering/core/traceability-model.md`。
-5. 按 `docs/harness-engineering/core/verification-matrix.md` 选择最低验证和加强验证。
+2. 读取 `PROJECT-STATE.md` 当前状态，确认阶段和阻塞项。
+3. 读取 `LOGBOOK.md` 最新条目，避免重复踩坑。
+4. 读取 `docs/harness-engineering/README.md`，只按场景继续打开子文档。
+5. 读取 `docs/AGENTS/multi-agent-coordination.md`，确认权威源和并行边界。
+6. 为中大型任务分配 `trace_id`，格式参考 `docs/harness-engineering/core/traceability-model.md`。
+7. 按 `docs/harness-engineering/core/verification-matrix.md` 选择最低验证和加强验证。
 
 ## 记忆落点决策
 
@@ -43,7 +45,7 @@ docs/harness-engineering/README.md
 | 某类错误已发生且值得防重犯 | `docs/harness-engineering/core/mistake-ledger.md` |
 | 长期架构取舍 | `docs/harness-engineering/adr/` |
 | 上线、迁移、冒烟、交接证据 | `reports/harness/` + `core/evidence-index.md` |
-| 上下文要换人或续跑 | `scripts/harness_snapshot.py` + `core/agent-handoff-template.md` |
+| 上下文要换人或续跑 | `backend/scripts/harness_snapshot.py` + `core/agent-handoff-template.md` |
 
 ## 防重犯闭环
 
@@ -58,7 +60,7 @@ docs/harness-engineering/README.md
 然后运行：
 
 ```powershell
-python scripts/check_mistake_ledger.py
+python backend/scripts/check_mistake_ledger.py
 ```
 
 ## 证据留档
@@ -66,16 +68,16 @@ python scripts/check_mistake_ledger.py
 长任务、上下文切换或上线收口时运行：
 
 ```powershell
-python scripts/harness_snapshot.py --trace-id <trace_id> --goal "<任务目标>" --status in_progress
+python backend/scripts/harness_snapshot.py --trace-id <trace_id> --goal "<任务目标>" --status in_progress
 ```
 
 需要归档时：
 
 ```powershell
-python scripts/harness_snapshot.py --trace-id <trace_id> --goal "<任务目标>" --status completed --output reports/harness/handoff-{timestamp}.md
+python backend/scripts/harness_snapshot.py --trace-id <trace_id> --goal "<任务目标>" --status completed --output backend/reports/harness/handoff-{timestamp}.md
 ```
 
-归档后在 `docs/harness-engineering/core/evidence-index.md` 登记报告路径、命令、结果、关联 LOGBOOK 和敏感数据状态。
+归档后在 `docs/harness-engineering/core/evidence-index.md` 登记报告路径、命令、结果、关联 LOGBOOK 和敏感数据状态。新证据显式写 `repository_origin: monorepo`；冻结旧仓历史保留原始提交，由检查器标记 `legacy:YunxiBakeBot`，不得用当前 HEAD 重写。
 
 ## Skill 维护规则
 

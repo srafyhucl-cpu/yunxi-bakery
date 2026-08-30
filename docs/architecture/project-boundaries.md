@@ -1,24 +1,29 @@
 # Bakery Commerce Platform 项目边界
 
-相关长期决策见：[ADR 0002：采用逻辑总项目 + 双仓边界，并将 Yunxi 降级为实例名](../harness-engineering/adr/0002-platform-storefront-boundaries-and-instance-naming.md)
+> updated_at: 2026-08-29
+> as_of_commit: `77f9346`
+> version: `0.133.0-p2trial.3`
+> status: current
+> 当前代码唯一位于 `D:\Project\YunxiBakery` Monorepo；`backend/` 是 Platform 经营中枢，`miniapp/` 是 Storefront MiniApp 前台渠道。
+> 旧仓名只在历史路径、兼容层或迁移证据中保留，不作为当前执行入口。
+
+相关长期决策见：[ADR 0002：采用逻辑总项目 + 双仓边界，并将 Yunxi 降级为实例名](../harness-engineering/adr/0002-platform-storefront-boundaries-and-instance-naming.md)。该 ADR 记录的是角色边界；当前实现已落地为同一 Monorepo 内的 `backend/` 与 `miniapp/` 目录边界。
 
 ## 定位
 
 - `Bakery Commerce Platform`
   - 通用产品级逻辑总项目。
-  - 当前不新建第三个代码仓，只用来统一命名、边界和文档口径。
-- `Platform` 仓
-  - 当前代码仓：`YunxiBakeBot`
-  - 承担经营中枢、业务真相源、后台与集成主仓职责。
-- `Storefront MiniApp` 仓
-  - 当前代码仓：`YunxiBakeMiniApp`
-  - 承担消费者前台渠道职责。
-  - 这里的名称是角色口径，不是产品名；仓库路径名只是历史实现载体。
+  - 当前实现位于本 Monorepo，不新建第三个代码仓；统一命名、边界和文档口径。
+- `backend/`（Platform 经营中枢）
+  - 当前唯一后端代码目录，承担业务真相源、后台与第三方集成职责。
+- `miniapp/`（Storefront MiniApp 前台渠道）
+  - 当前唯一小程序代码目录，承担消费者前台页面、微信能力和 API client。
+  - `Platform` / `Storefront MiniApp` 是角色口径，不是仓库 slug；历史仓名只保留在迁移和兼容上下文。
 - `Yunxi`
   - 首个真实落地实例、配置集合、迁移来源和样板客户名。
   - 不是产品名，也不是长期能力命名。
 
-## Platform 仓职责
+## backend/（Platform）职责
 
 - 客户主档、客户迁移、企微绑定、CRM
 - 商品主档、分类、同步消费
@@ -27,14 +32,14 @@
 - 店铺配置、装修配置、管理后台
 - 有赞、企微、支付通知、Webhook 集成
 
-## Storefront MiniApp 仓职责
+## miniapp/（Storefront MiniApp）职责
 
 - 页面、组件、交互、微信能力
 - 购物车、下单页、用户订单页、地址页
 - API client、登录态、本地缓存
 - 用户侧客服入口展示
 
-## Platform 内部 canonical 领域
+## backend/ 内部 canonical 领域
 
 - `customer`
 - `order`
@@ -69,13 +74,14 @@
 - `group_registrations` 只作为前台渠道公开入口，不把登记规则留在前台仓。
 - 后续如果要补 `opengid_to_chatid` 归因，优先放入 `customer` / `integrations` 的 canonical 边界内，不在页面层临时拼接。
 
-## 推进顺序
+## 当前推进顺序
 
-> 说明：下面的“推进顺序”描述的是历史上的分阶段路线，不等于当前仍在执行的最新方案。当前真实现状以 `Platform` 已完成 canonical 收口、`MiniApp` 保留前台渠道与兼容边界为准。
+当前阶段、阻塞项和决策状态只看 [`PROJECT-STATE.md`](../../PROJECT-STATE.md)，不要从本边界文档推导里程碑。当前基线为：
 
-- `Platform` 可以先继续做第二阶段内部收口，不依赖 `MiniApp` 先完成大改。
-- `MiniApp` 历史上曾需要补一轮轻量第一阶段对齐，用来校正边界认知；如果当前仍有旧文档引用它，应按过渡态理解。
-- 双仓联动治理、仓库改名和接口统一，属于后续评估项，不应被误读为已经开始的实施动作。
+1. P0 Monorepo 整合与 P0.5 资产迁移已完成。
+2. P1 全模块承接验证技术工作已完成，阶段关闭待项目负责人确认。
+3. P2 准备段已完成，真人执行段尚未启动；未获批准不得开展实测。
+4. 旧双仓推进材料统一从 [`docs/README.md`](../README.md) 的历史方案区进入，不得作为当前执行计划。
 
 ## 命名约束
 
@@ -83,4 +89,4 @@
 - `YunxiBakeBot` / `YunxiBakeMiniApp` 只用于仓库路径、历史过渡材料或明确的迁移引用。
 - 新文档默认使用通用名，除非在讲历史仓、文件路径或兼容层命名。
 
-如需回看双仓推进与 MiniApp 对齐的历史过渡材料，请统一从 [docs/README.md](../README.md) 的“历史方案”区进入，避免把这些历史文档当作当前实施依据。
+如需回看双仓推进与 MiniApp 对齐的历史过渡材料，请统一从 [docs/README.md](../README.md) 的“已归档方向”区进入，避免把这些历史文档当作当前实施依据。

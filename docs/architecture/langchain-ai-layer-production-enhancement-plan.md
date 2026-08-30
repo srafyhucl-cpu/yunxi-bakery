@@ -1,5 +1,7 @@
 # LangChain AI 应用层生产增强计划书
 
+> ⚠️ **状态标注（2026-08-29，trace 20260829-cleanup-deprecated-directions）**：本文档为历史执行计划存档，因仍被 `backend/scripts/check_langchain_ai_layer_production_plan.py` 静态验收及配套测试引用而保留在原位、不归档（见 `docs/archive/README.md`）。项目层面注意：按根目录 PROJECT-STATE v20 与 2026-08-11 外部门禁裁决，**向量检索路径战略禁用（BM25 关键词检索已落地）**，LangSmith 外发灰度及脱敏回放已移出范围；下文「状态：持续执行中」等短语为计划内部历史口径，不再代表当前执行依据；当前唯一状态入口为根目录 `PROJECT-STATE.md`。
+
 > trace_id: `20260709-langchain-ai-layer-production-enhancement`
 > 日期：2026-07-09
 > 状态：持续执行中，P0-P14c 已完成；P12 样本池准入门禁、P13a 观测证据包、P13b 生产观测发布证据门禁、P14a 生产同步交接报告、P14b 生产运行时版本门禁、P14c callback 失败定位报告入口、P14c callback 稳定化本地修复与生产复验、P15a 真实 replay 样本池脱敏证明准入、P16a LangSmith 运行时配置预检、P17a 真实脱敏回放样本接入准备度报告、P17b-prep 真实 replay pool 条目草稿生成器、P17b-intake 外部接入操作包及可填写模板增强、P17b-candidate 真实 replay 候选样本准入审计、P18a LangSmith 生产灰度发布预检、P18b LangSmith 生产启用操作包、P19a RAG shadow 观测报告、P19b 真实 RAG shadow log 观测输入门禁、P19c 真实 RAG shadow log 外部交接包与来源证明、P21a LangChain AI 层容量门禁、P21b 生产只读资源观测门禁、P21c 生产观测 release gate 加强模式、P21d 生产观测发布证据容量校验、P22a LangChain 发布证据包、P5b/E6a 作品集证据真值清单、P23a 外部证据交接汇总包、P23b 动作分类、P23c 提交前自检摘要、P23d 交接合同静态门禁、P23e readiness 真值汇总、P23f Markdown 外部交接包和外部证据交接治理批量收口门禁已完成，下一步建议进入 P17b 首批真实脱敏样本接入；若生产 LangSmith 已完成人工外发合规和 key 注入，也可继续 P18c 小流量外发灰度。

@@ -1,4 +1,95 @@
-﻿## [2026-08-29] - fix(miniapp): 放宽 check:miniapp 超时守卫并提交 AI 聊天超时覆盖（trace: 20260829-chat-timeout-override）
+﻿## [2026-08-30] - chore(harness): 运行时临时目录与跨 PowerShell 清理收口（trace: 20260830-harness-runtime-cleanup-and-closeout）
+
+- 操作者: AI (Codex)
+- trace_id: `20260830-harness-runtime-cleanup-and-closeout`
+- parent_trace_id: `20260830-evidence-index-origin-and-summary`
+- 背景: 全局审计发现质量门禁中的第三方依赖可能把可重建缓存写入 C 盘临时目录，且 `scripts/cleanup-local-artifacts.ps1` 在 Windows PowerShell 5.1 下因参数默认值与编码问题无法解析；根目录 `.mypy_cache` 等项目级缓存也未纳入统一清理入口。
+- changed_files:
+  - `backend/scripts/check_project.py`：质量门禁子进程设置 `PYTHONDONTWRITEBYTECODE=1`，并将 `TMP`/`TEMP`/`TMPDIR` 固定到项目所在磁盘的一次性目录。
+  - `backend/tests/scripts/test_check_project.py`：回归验证临时目录和字节码环境变量。
+  - `scripts/cleanup-local-artifacts.ps1`：使用 UTF-8 BOM 兼容 Windows PowerShell 5.1；覆盖根目录、backend、miniapp、scripts 的可重建缓存；仅逐文件删除，不删除目录。
+  - `backend/tests/scripts/test_cleanup_local_artifacts.py`：新增脚本编码、清理边界和 PowerShell 5.1 解析测试。
+  - `docs/AGENTS/multi-agent-coordination.md`、`docs/AGENTS/quick-reference.md`：补充 D 盘临时目录与跨 PowerShell 约束。
+  - `PROJECT-STATE.md`、`docs/harness-engineering/core/evidence-index.md`、`backend/docs/harness-engineering/core/evidence-index.md`：登记任务状态与 E-20260830-002 证据。
+  - `backend/reports/harness/harness-runtime-cleanup-20260830.json`：保存本轮验证摘要。
+- verification（真实退出码）:
+  - `python -B -m pytest backend/tests/scripts/test_check_project.py backend/tests/scripts/test_cleanup_local_artifacts.py -q --no-cov` → EXIT=0。
+  - `python -m ruff check backend/scripts/check_project.py backend/tests/scripts/test_check_project.py backend/tests/scripts/test_cleanup_local_artifacts.py` → EXIT=0。
+  - `python -m ruff format --check backend/scripts/check_project.py backend/tests/scripts/test_check_project.py backend/tests/scripts/test_cleanup_local_artifacts.py` → EXIT=0。
+  - `powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/cleanup-local-artifacts.ps1` → EXIT=0（预览）；两次追加 `-Execute` → EXIT=0，共逐文件删除 180 个可重建缓存文件（首轮 175、收尾 5），空目录按红线保留。
+  - `pwsh -NoProfile -File scripts/cleanup-local-artifacts.ps1` → EXIT=0（预览）。
+  - `python -B backend/scripts/check_project.py --skip-tests` → EXIT=0；`python -B backend/scripts/check_project_development_register.py` → EXIT=0；`python -B backend/scripts/check_evidence_index.py --summary` → EXIT=0；`python -B backend/scripts/check_mistake_ledger.py` → EXIT=0；`python -B backend/scripts/check_text_encoding.py` → EXIT=0；`git diff --check` → EXIT=0。
+- residual_risks: 当前工作区仍 dirty，前序治理改动与本轮补强尚未提交或推送；体验版、真人试运行、正式 AppID、真实支付/退款和生产部署仍受项目负责人批准及外部条件约束。
+- 收尾补充: 本轮按授权在 D 盘逐文件清理 npm/pre-commit 缓存及 5 个测试/Ruff 临时目录，共删除 582 个文件（约 45 KB），未删除目录、业务数据、有效报告或冻结旧仓。
+- constraints: 未删除业务数据、有效报告、冻结旧仓或目录；未写生产、数据库、支付或客户数据。
+
+
+- 操作者: AI (Codex)
+- trace_id: `20260830-evidence-index-origin-and-summary`
+- parent_trace_id: `20260829-cleanup-temp-and-agent-governance`
+- 背景: `check_evidence_index.py --summary` 原先报告 total=360、retired=20、failed=1895。回溯确认失败主要由 Monorepo 整合后历史证据仍绑定旧仓提交，以及根索引/`backend/docs` 镜像路径基准不一致造成，不能把存量失败笼统解释为证据内容损坏。
+- changed_files:
+  - `backend/scripts/check_evidence_index.py`：默认索引改为根目录；`repo:` 按 Monorepo 根解析；Git 工件按当前仓与已登记旧仓（`D:\Project\YunxiBakeBot`）只读核验；增加来源与失败类别统计。
+  - `backend/tests/scripts/test_check_evidence_index.py`：新增旧仓可验证、外部不可验证、新证据来源门禁和哈希不计入验证回归测试；专项测试共 30 项，全部通过。
+  - `docs/harness-engineering/README.md`、`docs/harness-engineering/core/evidence-index.md`、`backend/docs/harness-engineering/core/evidence-index.md`：同步来源口径、默认入口和新证据规则。
+  - `backend/.agents/skills/yunxi-harness-engineering/SKILL.md`、`docs/AGENTS/skill-reference.md`：同步新证据来源约束。
+  - `PROJECT-STATE.md`：新增并完成 `T-HARNESS-EVIDENCE-INDEX`。
+  - `backend/reports/harness/evidence-index-origin-summary-20260830.json`：保存本轮 JSON 证据报告。
+- verification（真实退出码）:
+  - `python -m pytest backend/tests/scripts/test_check_evidence_index.py -q --no-cov` → EXIT=0（30 passed）。
+  - `python -m ruff check backend/scripts/check_evidence_index.py backend/tests/scripts/test_check_evidence_index.py` → EXIT=0。
+  - `python -m ruff format --check backend/scripts/check_evidence_index.py backend/tests/scripts/test_check_evidence_index.py` → EXIT=0。
+  - `python -m mypy --explicit-package-bases backend/scripts/check_evidence_index.py` → EXIT=0。
+  - `python -B backend/scripts/check_evidence_index.py --summary` → EXIT=0，`total=361 retired=20 failed=0 verified_git_files=1604 current_repo_verified=0 legacy_repo_verified=1604 external_unverified=0 malformed=0 missing_repo_file=0 hash_mismatch=0`。
+  - 根索引与 `backend/docs` 镜像分别执行摘要，统计一致，均 EXIT=0。
+- residual_risks: 当前历史条目仍保留原始旧仓 `commit_sha`，来源字段由检查器推断而非逐条回写；新证据必须绑定 Monorepo 当前提交。当前代码与文档仍在 dirty 工作区，未提交、未推送；未执行全量 pytest、MiniApp typecheck 或生产操作。
+- 约束遵守: 未改业务数据、生产环境或冻结旧仓；未伪造 commit、未删除历史证据；仅创建一个有效 JSON 报告，位于 D 盘项目目录。
+
+## [2026-08-29] - chore(cleanup): 清理本机临时产物并统一多 Agent 约束（trace: 20260829-cleanup-temp-and-agent-governance）
+
+- 操作者: AI (Codex)
+- trace_id: `20260829-cleanup-temp-and-agent-governance`
+- parent_trace_id: `20260829-cleanup-deprecated-directions`
+- 背景: 用户授权彻底清理明确无用、可重新生成的本机临时文件，并统一并行 Agent 的事实源、状态语义和修改边界。
+- changed_files:
+  - 清理：`.workbuddy/` 本机 Agent 记忆、Ruff/Pytest/Mypy/覆盖率缓存、`backend/.venv/`、`miniapp/node_modules/`，以及重复报告 `miniapp/reports/miniprogram-ci/miniprogram-ci-readiness-20260826-010232.json`；前阶段执行记录约 47,485 个文件、约 1.27 GB。
+  - 追加执行：`backend/web/admin/node_modules/`（13,568 个文件，139,348,717 字节）、`backend/**/__pycache__/`（984 个文件，12,646,209 字节）、`backend/.ruff_cache/`（6 个文件，1,158 字节）、`backend/.coverage` 与 `backend/coverage.xml`（2 个文件，855,766 字节）；本轮追加 14,560 个文件、152,851,850 字节。
+  - 保留：`backend/data/`、`backend/reports/`、`miniapp/reports/` 有效证据、`docs/tasks/` 活动/历史任务指令和 `docs/archive/` 历史材料。
+  - 新增/更新：`scripts/cleanup-local-artifacts.ps1`、`docs/AGENTS/multi-agent-coordination.md`、`docs/AGENT-HANDOFF-20260829.md`、治理规格/计划、`PROJECT-STATE.md`、活动待办、历史评估说明、5 份任务指令元数据和本条日志。
+- implementation: 以 `PROJECT-STATE.md` 作为唯一动态状态源，以 `backend/VERSION` 作为唯一版本源，以实时 `git rev-parse HEAD` 作为代码快照；任务指令统一声明 `owner`、`status`、`as_of_commit`、`version`、`allowed_paths`、`forbidden_paths`。体验版状态拆为 DevTools 瞬时竞态已解决、测试号/AppID 条件仍阻塞；P1 技术完成与负责人确认关闭分开记录。删除仅针对明确单文件路径，未清空业务数据和有效报告。
+- verification（真实退出码）：
+  - `git diff --check` → EXIT=0（仅有预期 LF/CRLF 警告）。
+  - `PYTHONDONTWRITEBYTECODE=1 python -B backend/scripts/check_project.py --skip-tests` → EXIT=0（红线、合同和业务合约检查通过；职责评审为提示，未重新生成字节码缓存）。
+  - `python backend/scripts/check_mistake_ledger.py` → EXIT=0（entries=14）。
+  - `python backend/scripts/check_evidence_index.py --summary` → EXIT=1（存量问题：total=360、retired=20、failed=1895；本轮未修改证据索引）。
+  - 临时路径 `Test-Path`：`.workbuddy/`、各级缓存、虚拟环境、`miniapp/node_modules/`、`backend/web/admin/node_modules/`、`backend/**/__pycache__/`、覆盖率文件和重复报告均不存在；`backend/data/`、`backend/reports/`、`miniapp/reports/` 及 `latest.json` 均存在。
+  - 追加收口验证：`check_miniapp_page_api_contract.py --summary` EXIT=0（43/43）；`check_mistake_ledger.py` EXIT=0（entries=14）；`check_text_encoding.py` EXIT=0（108 files）；`git diff --check` EXIT=0。
+  - `git status --short --branch`：工作区仍 dirty，归档移动、文档修改和治理文件未提交、未推送；未写生产或数据库。
+- residual_risks: 全量 pytest 与 `miniapp` 的 `npm run typecheck` 未运行，因为本轮已删除本地虚拟环境和 `node_modules`；如需复测必须按 D 盘缓存规则重新安装。证据索引存量失败需另立专项；`origin/main` 本地跟踪引用显示 `[gone]`，不据此推断远端主分支不存在。
+- 约束遵守: 未使用批量删除、递归删除或 `git clean`；未动冻结旧仓、业务源码、业务数据库和有效报告；未部署、未执行真实支付、未开放真实用户访问。
+
+## [2026-08-29] - docs(cleanup): 归档废弃方向文档 15 篇并重写导航与交接文档（trace: 20260829-cleanup-deprecated-directions）
+
+
+
+- 操作者: AI (OpenCode)
+- trace_id: `20260829-cleanup-deprecated-directions`
+- 背景: 用户指示「给我把项目内废弃的方向目标都清理掉，并写一份交接文档」。项目已完成 P0 monorepo 整合、计划书附录D v1.2 范围撤回与向量路径战略禁用，但仓库仍残留旧方向文档：v1.0「三大功能 MVP」框架文档（AI-EMPLOYEE-INSTRUCTIONS、MVP-DEVELOPMENT-GUIDE，范围已被 v1.2 撤回）、双仓协作文档（two-repo-rollout-plan、platform-miniapp-api-contract-v1 等，已被 monorepo 取代）、P0 整合一次性执行包（EXECUTION-GUIDE/REPORT、VERIFICATION-CHECKLIST、ARCHITECTURE-REVIEW，已执行完毕）、LangChain 接管与 next 执行计划（已落地）。根 README 与 docs/README 导航停在 2026-07-12 双仓口径（VERSION=0.107.12，引用不存在的 docs/api-contracts/ 与 scripts/deploy.sh）；AGENTS.md 小程序段仍写「独立于后端项目 YunxiBakeBot」。
+- changed_files:
+  - 归档（15 个单路径 `git mv`，零删除）: 根 4 篇 → `docs/archive/p0-monorepo-20260817/`；AI-EMPLOYEE-INSTRUCTIONS.md、MVP-DEVELOPMENT-GUIDE.md → `docs/archive/v1-scope-retracted/`；docs/architecture/ 的 two-repo-rollout-plan、platform-miniapp-api-contract-v1、miniapp-phase1-execution-checklist、miniapp-ai-handoff-plan 与 docs/AI对话页面原型设计说明.md → `docs/archive/two-repo-era/`；langchain-ecosystem-ai-layer-takeover-plan、langchain-langgraph-migration-plan、langchain-ai-layer-next-execution-plan、langchain-ai-layer-next-enhancement-execution-plan → `docs/archive/langchain-legacy-plans/`。
+  - 新增: `docs/archive/README.md`（归档索引：分组原因、保留原位清单、待决事项）、`docs/AGENT-HANDOFF-20260829.md`（结构化交接文档，含 6 要素与模板工作区字段）。
+  - 重写/修正: 根 `README.md`（版本/导航/部署入口全部校准为 monorepo 口径）、`docs/README.md`（当前权威口径指向 PROJECT-STATE，架构文档分活跃/历史/归档三层）、`AGENTS.md`（小程序段标题与项目边界改为「miniapp/ + 同仓 backend/」单仓口径，上线边界、文件操作红线、开发约定原文未动，api-contract/roadmap/manual-acceptance 路径加 miniapp/ 前缀）、`docs/harness-engineering/README.md`（仓定位改 monorepo，脚本路径加 `backend/` 前缀）、`docs/architecture/miniapp-page-api-coverage-contract.md` 与 `platform-domain-migration-inventory.md`（失效引用改指现行契约 `miniapp/docs/api-contract.md` 与归档路径）。
+  - 废弃横幅: `docs/architecture/langchain-ai-layer-production-enhancement-plan.md` 顶部加状态标注（向量路径战略禁用、LangSmith 外发灰度移出范围、计划不再作为执行依据；因被 `backend/scripts/check_langchain_ai_layer_production_plan.py` 及配套测试引用而保留原位）。
+- implementation: 归档决策依据＝①被正式决策撤回（v1.2）②被后续架构取代（monorepo）③已执行完毕的一次性文档④战略禁用方向；被脚本/测试引用的文档（production-enhancement-plan、portfolio）与待办⑫重新基线化所需的计划书保留原位；横幅措辞避开守卫脚本 FORBIDDEN_STALE_PHRASES 与占位词校验（实测守卫 passed）。引用排查用全仓 `git grep` 对 15 个被移动文件名逐一核对，活跃文档引用仅 2 处并已同步改写；LOGBOOK/evidence-index/进度清单/ADR/backend/docs 镜像中的命中属历史记录，按惯例不回写。
+- verification（真实退出码）:
+  - `python backend/scripts/check_project.py --skip-tests` EXIT=0（红线 13 项、洁净代码、合同文档守卫、D1-0 守卫、业务合约检查全过；其中 `langchain_ai_layer_production_plan status=passed total=50 failed=0` 证明加横幅未破坏守卫）。
+  - `python backend/scripts/check_mistake_ledger.py` EXIT=0（entries=14）。
+  - `python backend/scripts/check_evidence_index.py --summary` EXIT=1——**存量问题，非本轮引入**：本轮未触碰该文件（git status 无改动），failed=1895/total=360，系旧仓迁移条目缺完整 commit_sha 等字段与路径失配；处置登记为后续专项。
+  - `git status` 复核: 15 个 rename 全部 staged，无意外删除；未跟踪项与改动前一致（.workbuddy/、docs/tasks/、2 份 20260829 文档）。
+- residual_risks: ①本轮证据未登记 evidence-index——校验器要求完整 40 位 commit_sha，未提交无法登记，待负责人批准提交后补登 E-20260829-001；②check_evidence_index 存量 failed=1895 需专项修复；③backend/docs/ 旧仓文档镜像（与根 docs/ 大量重复）处置需负责人指示；④docs/tasks/ 5 份任务指令、docs/ 两份 20260829 评估/待办文档、.workbuddy/ 仍未跟踪，入库与否待负责人决定；⑤全量 pytest 与 pre-commit --all-files 未运行（本轮纯文档/移动，下轮含代码变更时必须补齐 exit=0）。
+- 约束遵守: 全部移动使用单路径 `git mv`，无任何批量删除；未改 backend/ 任何代码与 VERSION；未动 PROJECT-STATE.md、LOGBOOK 既有条目、项目重构与推进计划书.md；不部署、不写生产/数据库、不开放真实用户访问（截至 2027-05-31 含，小程序仅限开发、调试和测试）。
+
+## [2026-08-29] - fix(miniapp): 放宽 check:miniapp 超时守卫并提交 AI 聊天超时覆盖（trace: 20260829-chat-timeout-override）
 
 - 操作者: AI (CodeBuddy)
 - trace_id: `20260829-chat-timeout-override`
@@ -16057,4 +16148,40 @@ ______________________________________________________________________
 - residual_risks:
   - 尚未在微信开发者工具或真机中真实点击客服输入、快捷问题和发送按钮
   - 真实微信登录、客服发送接口和转人工仍需在可用 DevTools/体验版环境下补运行态证据
+## [2026-08-30] - chore(harness): 开发总表守卫边界加固与清理收口（trace: 20260829-project-development-register-and-chinese-governance）
 
+- 操作者: AI (Codex)
+- trace_id: `20260829-project-development-register-and-chinese-governance`
+- 背景: 继续收口中文优先 Harness 改造，确保多 Agent 只依赖 `AGENTS.md` + `PROJECT-STATE.md` 即可获取当前方向与进度。
+- implementation:
+  - `backend/scripts/check_project_development_register.py` 仅解析任务标题后的连续元数据区，避免正文历史快照覆盖当前字段。
+  - 新增未知状态视图引用、任务指令 `branch` 与总表一致性、`workspace_state` 与 Git 实况一致性校验；未知任务引用只报告失败，不抛异常。
+  - `PROJECT-STATE.md` 将 `T-HARNESS-REGISTER` 标记为 `completed`，状态视图不再保留 active 任务。
+- verification:
+  - `python -B backend/scripts/check_project.py --skip-tests` → EXIT=0。
+  - `python -B -m pytest backend/tests/scripts/test_check_project_development_register.py -q --no-cov` → 9 passed，EXIT=0。
+  - `python -B backend/scripts/check_project_development_register.py` → EXIT=0，tasks=13。
+  - `python -B backend/scripts/check_mistake_ledger.py` → EXIT=0；`python -B backend/scripts/check_text_encoding.py` → EXIT=0；`git diff --check` → EXIT=0。
+  - 证据索引 `check_evidence_index.py --summary` 仍为存量失败（total=360、retired=20、failed=1895），未在本轮伪造为通过。
+- residual_risks: 工作区仍 dirty，未提交、未推送；全量 pytest 和 miniapp typecheck 因本轮已清理依赖目录未重复运行；真实支付、生产写入和 P2 真人执行仍受项目级门禁约束。
+- cleanup: 本轮验证生成的 `backend/.pytest_cache/`、`backend/.ruff_cache/`、`backend/scripts/__pycache__/check_project_development_register.cpython-313.pyc` 及用户临时目录中的 `jieba.cache` 已按单文件路径清理，业务数据和有效报告不动。
+## [2026-08-30] - fix(harness): 证据索引来源冲突回归与全量收口（trace: 20260830-evidence-index-origin-and-summary）
+
+- 操作者: AI (Codex)
+- trace_id: `20260830-evidence-index-origin-and-summary`
+- 背景: 测试夹具中的当前仓与旧仓可能生成相同 commit SHA；解析器原先按仓库顺序先命中当前仓，造成旧仓证据来源统计失真。此前历史存量的 `failed=1895` 已由来源分类收敛为可验证结果，本轮补齐同 SHA 冲突防线。
+- changed_files:
+  - `backend/scripts/check_evidence_index.py`：当条目声明 `repository_origin` 时优先按声明来源筛选候选仓，避免相同 SHA 跨仓误归类。
+  - `backend/tests/scripts/test_check_evidence_index.py`：旧仓回归条目显式声明 `repository_origin: legacy:fixture-legacy`，覆盖来源优先规则。
+  - `docs/harness-engineering/core/evidence-index.md`、`backend/docs/harness-engineering/core/evidence-index.md`：补充同 SHA 来源判定口径。
+  - `backend/reports/harness/evidence-index-origin-summary-20260830.json`：刷新为最新 362 条证据摘要。
+  - `PROJECT-STATE.md`：证据索引任务恢复 `completed`。
+- verification:
+  - `python -B -m pytest tests/ -q --no-cov --basetemp D:\\Temp\\pytest-yunxi-harness-closeout-20260830-c` → EXIT=0。
+  - `npm ci --no-audit --no-fund`（缓存位于 D 盘）→ EXIT=0；`npm run typecheck` → EXIT=0。
+  - `pre-commit run --all-files` → EXIT=0。
+  - `python -B backend/scripts/check_project.py --skip-tests` → EXIT=0。
+  - `python -B backend/scripts/check_project_development_register.py` → EXIT=0。
+  - `python -B backend/scripts/check_evidence_index.py --summary` → EXIT=0，`total=363 retired=20 failed=0 verified_git_files=1604 current_repo_verified=0 legacy_repo_verified=1604 external_unverified=0 malformed=0 missing_repo_file=0 hash_mismatch=0`。
+  - `python -B backend/scripts/check_mistake_ledger.py`、`python -B backend/scripts/check_text_encoding.py`、`git diff --check` → EXIT=0。
+- residual_risks: 体验版、真人试运行、正式 AppID、真实支付/退款、生产部署仍受项目负责人批准和外部条件约束；未执行 `git push`。

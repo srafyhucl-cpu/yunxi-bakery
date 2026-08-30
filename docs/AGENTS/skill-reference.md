@@ -44,6 +44,12 @@ ______________________________________________________________________
 
 ---
 
+## 中文优先与单一进度入口
+
+- 当前进度、任务状态、主线/分支和阻塞只维护在 `PROJECT-STATE.md`；不要在新文档中另起动态进度表。
+- 最小阅读集：`AGENTS.md` + `PROJECT-STATE.md`；具体任务再读 `docs/tasks/*.md`，专业文档按需读取。
+- 新改动先登记 `task_id`，收口前运行 `python -B backend/scripts/check_project_development_register.py`。
+
 ## 工作流
 
 | 场景 | 工作流 |
@@ -60,3 +66,4 @@ ______________________________________________________________________
 - 任何较大任务先走 `AGENTS.md` → `docs/harness-engineering/README.md` → `traceability-model`。
 - 交接时优先补 `scripts/harness_snapshot.py`，不要把上下文只留在聊天里。
 - 证据、复盘和长期记忆分别落到 `core/evidence-index.md`、`LOGBOOK.md`、`core/mistake-ledger.md`。
+- 新证据必须绑定当前 Monorepo 提交并声明 `repository_origin: monorepo`；旧仓历史只读核验，不改写原始提交。

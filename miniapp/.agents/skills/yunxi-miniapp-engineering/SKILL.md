@@ -1,19 +1,19 @@
 ---
 name: yunxi-miniapp-engineering
-description: Use this skill whenever working in YunxiBakeMiniApp, the self-developed WeChat Mini Program replacing Youzan storefront flows. Trigger for any miniapp feature, page, component, API contract, checkout, WeChat login, WeChat Pay, order, customer-service chat, release-readiness, Harness Engineering, LOGBOOK, ADR, evidence, or handoff work. Also use when the user mentions 有赞迁移, 自研小程序, 微信小程序, Skyline, glass-easel, pages, services, api-contract, or wants to know what to do next in this project.
+description: Use this skill whenever working in the Storefront MiniApp under the YunxiBakery Monorepo. Trigger for any miniapp feature, page, component, API contract, checkout, WeChat login, WeChat Pay, order, customer-service chat, release-readiness, Harness Engineering, LOGBOOK, ADR, evidence, or handoff work. Also use when the user mentions 有赞迁移, 自研小程序, 微信小程序, Skyline, glass-easel, pages, services, api-contract, or wants to know what to do next in this project.
 ---
 
 # Storefront MiniApp Engineering
 
-This skill keeps YunxiBakeMiniApp work aligned with the Storefront MiniApp Harness before code, during implementation, and at handoff.
+This skill keeps `miniapp/` work aligned with the Storefront MiniApp Harness before code, during implementation, and at handoff.
 
 ## Project Identity
 
-YunxiBakeMiniApp is the current repository path for the `Storefront MiniApp` channel of `Bakery Commerce Platform`. `YunxiBakeBot` is the current repository path for the `Platform` main repo.
+The Storefront MiniApp lives in `D:\Project\YunxiBakery\miniapp` inside the active Monorepo. The backend lives alongside it in `D:\Project\YunxiBakery\backend`.
 
 - This repo owns miniapp pages, components, interaction, WeChat capabilities, API clients, login state, local cart state, and lightweight cache.
-- `YunxiBakeBot` owns customer master data, product and order rules of truth, AI chat logic, order persistence, payment callbacks, product sync, shop configuration truth, third-party integrations, databases, and backend APIs.
-- The two projects communicate through the contract in `docs/api-contract.md`.
+- `backend/` owns customer master data, product and order rules of truth, AI chat logic, order persistence, payment callbacks, product sync, shop configuration truth, third-party integrations, databases, and backend APIs.
+- The two directories communicate through the contract in `miniapp/docs/api-contract.md`.
 - `Yunxi` is the first landed instance / tenant name, not the product name.
 
 ## Startup Checklist
@@ -21,11 +21,13 @@ YunxiBakeMiniApp is the current repository path for the `Storefront MiniApp` cha
 At the start of every task:
 
 1. Read `AGENTS.md`.
-2. Read the latest entry in `LOGBOOK.md`.
-3. Read `docs/harness-engineering/README.md`.
-4. If the task touches backend calls or data fields, read `docs/api-contract.md`.
-5. Check `git status --short --branch`.
-6. Assign a `trace_id` for non-trivial work using `YYYYMMDD-topic`.
+2. Read `PROJECT-STATE.md`.
+3. Read the latest entry in `LOGBOOK.md`.
+4. Read `docs/harness-engineering/README.md`.
+5. Read `docs/AGENTS/multi-agent-coordination.md`.
+6. If the task touches backend calls or data fields, read `miniapp/docs/api-contract.md`.
+7. Check `git status --short --branch`.
+8. Assign a `trace_id` for non-trivial work using `YYYYMMDD-topic`.
 
 If the user asks only for status or explanation, report based on the files above and do not edit.
 
@@ -36,11 +38,11 @@ Stay inside the miniapp boundary:
 - Put page behavior in `miniprogram/pages/<page>/`.
 - Put backend requests in `miniprogram/services/`.
 - Put shared formatting and local state helpers in `miniprogram/utils/`.
-- Update `docs/api-contract.md` before changing service fields or request/response assumptions.
+- Update `miniapp/docs/api-contract.md` before changing service fields or request/response assumptions.
 - Do not implement backend persistence, payment callbacks, AI orchestration, or product sync in this repo.
 - Do not add customer master logic, product rules of truth, order rules of truth, CRM logic, third-party sync truth, or a backend configuration system in this repo.
 
-When backend work is required, state the required `YunxiBakeBot` contract/change explicitly and keep this repo to contract/client updates.
+When backend work is required, state the required `backend/` contract/change explicitly and keep the MiniApp changes to contract/client updates.
 
 ## Technical Direction
 
@@ -134,6 +136,6 @@ When reporting progress or final status, include:
 - What changed.
 - What was verified.
 - What remains risky or unverified.
-- Any backend contract or `YunxiBakeBot` follow-up needed.
+- Any backend contract or `backend/` follow-up needed.
 
 Keep the answer concise and grounded in file paths.

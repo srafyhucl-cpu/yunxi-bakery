@@ -1,6 +1,6 @@
 # Harness Engineering
 
-本目录是 Bakery Commerce Platform 当前 `Platform` 主仓的 AI 驾驭系统父目录；对应代码仓路径仍为 `YunxiBakeBot`。后续只需要记住一个入口：
+本目录是 Bakery Commerce Platform（YunxiBakery monorepo）的 AI 驾驭系统父目录；后端代码位于同仓 `backend/`，小程序位于同仓 `miniapp/`（2026-08-17 Monorepo 整合，旧仓 YunxiBakeBot 冻结只读）。后续只需要记住一个入口：
 
 ```text
 docs/harness-engineering/README.md
@@ -16,6 +16,8 @@ docs/harness-engineering/README.md
 4. `docs/harness-engineering/core/traceability-model.md`
 5. `docs/harness-engineering/core/verification-matrix.md`
 6. `docs/harness-engineering/core/evidence-index.md`
+
+> 当前进度的最小阅读集是 `AGENTS.md` + `PROJECT-STATE.md`。`PROJECT-STATE.md` 的机器快照、主线任务总表、状态视图和分支登记是唯一动态开发总表；`LOGBOOK.md`、计划书和归档文档只用于历史证据或背景，不得重新定义当前状态。
 
 ______________________________________________________________________
 
@@ -47,11 +49,12 @@ ______________________________________________________________________
 | `specs/` | 设计规格和路线图 | 大图和演进计划 |
 | `before-after.html` | 本轮整理前后的可视化对比 | 快速理解为什么这样收纳 |
 
-脚本不放进文档目录，仍保留在 `scripts/`：
+脚本不放进文档目录；Monorepo 整合后统一位于 `backend/scripts/`：
 
-- `scripts/harness_snapshot.py`：生成交接快照。
-- `scripts/check_mistake_ledger.py`：检查防重犯账本结构。
-- `scripts/check_evidence_index.py`：检查证据索引结构和关键证据引用。
+- `backend/scripts/harness_snapshot.py`：生成交接快照。
+- `backend/scripts/check_mistake_ledger.py`：检查防重犯账本结构。
+- `backend/scripts/check_evidence_index.py`：检查证据索引结构和关键证据引用。
+- `backend/scripts/check_project_development_register.py`：校验项目快照、任务总表、状态视图、分支和任务指令元数据。
 
 ______________________________________________________________________
 
@@ -82,21 +85,24 @@ ______________________________________________________________________
 
 ## 现有 Harness 资产
 
+> 路径口径：下表脚本按旧仓时期书写为 `scripts/`；Monorepo 整合后统一位于 `backend/scripts/`（读取时加 `backend/` 前缀）。
+
 | 资产 | 作用 |
 |---|---|
 | `AGENTS.md` | AI Agent 启动规范和红线 |
+| `docs/AGENTS/multi-agent-coordination.md` | 多 Agent 权威源、状态快照、并行边界和清理规则 |
 | `docs/AGENTS/` | 编码红线、提交收口、快速参考、skill 速查 |
 | `LOGBOOK.md` | 项目演进唯一真实编年史 |
 | `项目进度与配置清单.md` | 当前功能状态、生产同步清单和已知风险 |
 | `.pre-commit-config.yaml` | 提交前质量门禁 |
-| `scripts/check_project.py` | 统一红线扫描 |
-| `scripts/preflight_production.py` | 生产同步前只读预检和 recovery plan |
-| `scripts/smoke_test.py` | 服务冒烟和 JSON 留档 |
-| `scripts/run_isolated_remediation_harness.py` | 用生产同构组件隔离验证主体删除与消息进程崩溃重领 |
-| `scripts/local_production_backup.py` | 拉取生产一致快照并在本地 D 盘创建、验证和保留加密备份 |
-| `scripts/install_local_backup_task.ps1` | 注册每天运行的 Windows 本地加密备份计划任务 |
-| `scripts/check_privacy_outbound_contract.py` | 自动发现模型入口并聚合检查脱敏、trace 和生产外发关闭态 |
-| `scripts/check_security_outbound_contract.py` | 聚合检查统一远程下载、SSRF 逐跳策略和员工 Agent 工具授权 |
+| `backend/scripts/check_project.py` | 统一红线扫描 |
+| `backend/scripts/preflight_production.py` | 生产同步前只读预检和 recovery plan |
+| `backend/scripts/smoke_test.py` | 服务冒烟和 JSON 留档 |
+| `backend/scripts/run_isolated_remediation_harness.py` | 用生产同构组件隔离验证主体删除与消息进程崩溃重领 |
+| `backend/scripts/local_production_backup.py` | 拉取生产一致快照并在本地 D 盘创建、验证和保留加密备份 |
+| `backend/scripts/install_local_backup_task.ps1` | 注册每天运行的 Windows 本地加密备份计划任务 |
+| `backend/scripts/check_privacy_outbound_contract.py` | 自动发现模型入口并聚合检查脱敏、trace 和生产外发关闭态 |
+| `backend/scripts/check_security_outbound_contract.py` | 聚合检查统一远程下载、SSRF 逐跳策略和员工 Agent 工具授权 |
 | `docs/HarnessEngineering评估报告_20260604.md` | 既有 Harness 成熟度评估 |
 | `docs/VibeCoding可持续性评估报告_20260604.md` | 既有 Vibe Coding 可持续性评估 |
 
@@ -126,21 +132,24 @@ ______________________________________________________________________
 
 | 命令 | 作用 |
 |---|---|
-| `python scripts/harness_snapshot.py` | 生成 Markdown 交接快照，包含 trace、目标、最新 LOGBOOK、工作区状态和参考入口 |
-| `python scripts/harness_snapshot.py --json` | 输出机器可读快照，适合归档到 reports |
-| `python scripts/harness_snapshot.py --output reports/harness/handoff-{timestamp}.md` | 写入带 UTF-8 BOM 的快照文件，拒绝覆盖已有文件 |
-| `python scripts/check_mistake_ledger.py` | 检查 [core/mistake-ledger.md](core/mistake-ledger.md) 是否有合法空账本标记，或每条 mistake 是否字段完整、枚举合法 |
-| `python scripts/check_evidence_index.py` | 检查 [core/evidence-index.md](core/evidence-index.md) 的证据条目必填字段、结果枚举、重复 ID、预检业务合约引用和本地证据文件存在性；JSON 报告同时输出本地文件 SHA-256，生产路径保留为外部未验证引用 |
+| `python backend/scripts/harness_snapshot.py` | 生成 Markdown 交接快照，包含 trace、目标、最新 LOGBOOK、工作区状态和参考入口 |
+| `python backend/scripts/harness_snapshot.py --json` | 输出机器可读快照，适合归档到 reports |
+| `python backend/scripts/harness_snapshot.py --output reports/harness/handoff-{timestamp}.md` | 写入带 UTF-8 BOM 的快照文件，拒绝覆盖已有文件 |
+| `python backend/scripts/check_mistake_ledger.py` | 检查 [core/mistake-ledger.md](core/mistake-ledger.md) 是否有合法空账本标记，或每条 mistake 是否字段完整、枚举合法 |
+| `python backend/scripts/check_evidence_index.py` | 检查 [core/evidence-index.md](core/evidence-index.md) 的证据条目必填字段、结果枚举、重复 ID、预检业务合约引用和工件完整性；默认以 Monorepo 根目录为索引基准，并只读识别已登记旧仓的历史提交。摘要会区分当前仓、旧仓、外部未验证、格式错误、仓内缺失和哈希不一致 |
+| `python -B backend/scripts/check_project_development_register.py` | 单独检查唯一开发总表；失败时输出具体任务、字段、版本、提交或分支问题 |
 | `.\scripts\enable_utf8_console.ps1` | 修复当前 Windows PowerShell 会话的中文输入输出乱码 |
 
 推荐在长任务交接、上下文重置、上线收口前执行：
 
 ```powershell
-python scripts/harness_snapshot.py --trace-id 20260611-example --goal "说明当前任务" --status in_progress
-python scripts/check_mistake_ledger.py
-python scripts/check_evidence_index.py --summary
+python backend/scripts/harness_snapshot.py --trace-id 20260611-example --goal "说明当前任务" --status in_progress
+python backend/scripts/check_mistake_ledger.py
+python backend/scripts/check_evidence_index.py --summary
 ```
 
 生成需要归档的快照或生产报告后，在 [core/evidence-index.md](core/evidence-index.md) 追加索引条目；影响长期演进的决策写入 [adr/](adr/)。
 
 `check_mistake_ledger.py` 和 `check_evidence_index.py` 已接入 `.pre-commit-config.yaml`，每次提交前都会自动检查防重犯账本和证据索引结构。若账本条目不完整、证据字段缺失或证据 ID 重复，提交会被阻断，直到补齐字段或恢复合法结构。
+
+证据来源口径：新证据必须绑定 Monorepo 当前提交；历史证据保留原始提交并在检查结果中标记为 `legacy:YunxiBakeBot`，不得用当前 HEAD 覆盖。无法在当前仓或已登记旧仓读取的提交归为 `external_unverified`，不得伪造为通过。

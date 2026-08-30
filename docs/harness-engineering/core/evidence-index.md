@@ -6124,3 +6124,61 @@ ______________________________________________________________________
 - storage_scope: repository
 - sha256: .github/workflows/r4c-container-evidence.yml=0e3c4fe798a92e7fd023202786fb33b9fb7c580b518601fc98d9e2062c72ccea；requirements.txt=e1e5ae6ec8961e65caf6e919257347ef34b860308e596f2141a0f52cf0abb09c；requirements-dev.txt=bfcb97402093826b51a1714909d10ef51b1bbc380b429b70ddc47c29d4a7c0c6；Dockerfile=cbcb44b54d137e5da66c5482a94c02286ad3949e3239a94a2ea7e31c10f13e61
 - commit_sha: 332a14c4eac1b3275f50fb3f567366ed8a1a8f5a
+<!--
+证据来源口径（2026-08-30）：新证据必须绑定 Monorepo 当前提交；历史条目保留原始
+提交，由检查器只读核验当前仓或已登记旧仓。旧仓可验证不等于当前仓提交存在；摘要中
+分别显示 current_repo_verified、legacy_repo_verified、external_unverified、
+malformed、missing_repo_file 和 hash_mismatch。默认检查入口是本文件，
+backend/docs/harness-engineering/core/evidence-index.md 仅作为历史镜像。若不同仓库存在
+相同 SHA，证据条目的 repository_origin 声明优先于仓库探测顺序。
+-->
+
+## E-20260830-003：证据索引同 SHA 来源冲突回归修复与全量门禁
+
+- trace_id: 20260830-evidence-index-origin-and-summary
+- generated_at: 2026-08-30
+- evidence_type: governance/evidence-index-origin-regression
+- file: `local:backend/reports/harness/evidence-index-origin-summary-20260830.json`; `repo:backend/scripts/check_evidence_index.py`; `repo:backend/tests/scripts/test_check_evidence_index.py`
+- command: `python -B -m pytest tests/ -q --no-cov --basetemp D:\\Temp\\pytest-yunxi-harness-closeout-20260830-c`; `python -B backend/scripts/check_evidence_index.py --summary`; `pre-commit run --all-files`
+- result: pass
+- related_logbook: 2026-08-30 - fix(harness): 证据索引来源冲突回归与全量收口
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录来源判定回归、全量测试、项目门禁与摘要结果；不含密钥、客户数据、订单明细或生产写入。
+- storage_scope: repository
+- repository_origin: monorepo
+- sha256: backend/scripts/check_evidence_index.py=dd9ca2f91d21bfe382d44fbbb65ab6e36a3eef89337d64be768aea409a9c2a86；backend/tests/scripts/test_check_evidence_index.py=3bc05cf6e045e02c34cf52844b538bd9e33233b4af52005f6a2f370a2debb7bb
+- commit_sha: 77f93469ec3c9874995552defd9c13bbb3431ac5
+- summary: 当当前仓与旧仓恰好存在相同 commit SHA 时，检查器按证据条目声明的 repository_origin 优先选择来源；回归测试、全量后端测试、小程序类型检查、pre-commit、项目总守卫、开发总表、错误账本、编码和差异检查全部通过。摘要为 total=363、retired=20、failed=0、legacy_repo_verified=1604、external_unverified=0、missing_repo_file=0、hash_mismatch=0。
+## E-20260830-001：历史证据索引来源与摘要口径修正
+
+- trace_id: 20260830-evidence-index-origin-and-summary
+- generated_at: 2026-08-30
+- evidence_type: governance/evidence-index-origin-summary
+- file: `local:backend/reports/harness/evidence-index-origin-summary-20260830.json`
+- command: `python -B backend/scripts/check_evidence_index.py --summary`；`python -m pytest backend/tests/scripts/test_check_evidence_index.py -q --no-cov`
+- result: pass
+- related_logbook: 2026-08-30 - docs(governance): 历史证据索引来源与摘要口径修正
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录证据索引检查摘要、来源分类和回归测试结果；不含密钥、客户数据或订单明细。
+- storage_scope: local
+- repository_origin: monorepo
+- summary: 默认索引改为 Monorepo 根目录；repo 相对路径按索引根解析；git 提交同时在当前仓和已登记旧仓只读核验；摘要区分当前仓、旧仓、外部未验证、格式错误、仓内缺失和哈希不一致。历史旧仓条目不被伪造为当前仓通过。
+
+## E-20260830-002：Harness 运行时临时目录与跨 PowerShell 清理收口
+
+- trace_id: 20260830-harness-runtime-cleanup-and-closeout
+- generated_at: 2026-08-30
+- evidence_type: governance/harness-runtime-cleanup
+- file: `local:backend/reports/harness/harness-runtime-cleanup-20260830.json`；`local:scripts/cleanup-local-artifacts.ps1`；`local:backend/scripts/check_project.py`；`local:backend/tests/scripts/test_check_project.py`；`local:backend/tests/scripts/test_cleanup_local_artifacts.py`
+- command: `python -B -m pytest backend/tests/scripts/test_check_project.py backend/tests/scripts/test_cleanup_local_artifacts.py -q --no-cov`；`python -B backend/scripts/check_project.py --skip-tests`；`powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/cleanup-local-artifacts.ps1`；`powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/cleanup-local-artifacts.ps1 -Execute`；`pwsh -NoProfile -File scripts/cleanup-local-artifacts.ps1`；`python -B backend/scripts/check_project_development_register.py`；`python -B backend/scripts/check_evidence_index.py --summary`；`python -B backend/scripts/check_mistake_ledger.py`；`python -B backend/scripts/check_text_encoding.py`；`git diff --check`
+- result: pass
+- related_logbook: 2026-08-30 - chore(harness): 运行时临时目录与跨 PowerShell 清理收口
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录质量门禁临时目录、PowerShell 兼容性、逐文件清理边界和验证退出码；不含密钥、客户数据、订单明细或生产写入。
+- storage_scope: repository
+- repository_origin: monorepo
+- commit_sha: 77f93469ec3c9874995552defd9c13bbb3431ac5
+- summary: 质量门禁将 TMP/TEMP/TMPDIR 固定到项目所在磁盘的一次性目录并禁止写入 Python 字节码；本机清理脚本使用 UTF-8 BOM 兼容 Windows PowerShell 5.1，覆盖根目录、backend、miniapp 和 scripts 的可重建缓存，且仅逐文件删除。专项测试、项目总守卫、开发总表、证据索引、错误账本、编码检查和双 PowerShell 预览及执行均通过；两次执行共逐文件删除 180 个可重建缓存文件，未写生产或客户数据。

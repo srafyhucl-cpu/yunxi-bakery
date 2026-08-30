@@ -402,6 +402,28 @@ def test_sha256_map_format_checks_each_file(tmp_path: Path) -> None:
     assert any("sha256 mismatch" in issue for issue in result.issues)
 
 
+def test_hash_mismatch_is_not_counted_as_verified(tmp_path: Path, monkeypatch) -> None:
+    repo, sha, _ = _git_fixture(tmp_path)
+    monkeypatch.setattr(evidence_check, "ROOT_DIR", repo)
+    evidence_file = repo / "evidence-index.md"
+    entry = (
+        _git_entry(sha, "0" * 64, f"git:{sha}:artifact.json", entry_commit=sha)
+        .replace("2026-08-15", "2026-08-18")
+        .replace(
+            "- storage_scope: repository",
+            "- storage_scope: repository\n- repository_origin: monorepo",
+        )
+    )
+    evidence_file.write_text(
+        "# Evidence Index\n\n" + _valid_entry() + entry, encoding="utf-8"
+    )
+    result = evidence_check.check_evidence_index(evidence_file)
+    report = evidence_check.build_json_report(result, evidence_file)
+    assert result.passed is False
+    assert report["current_repo_verified"] == 0
+    assert report["hash_mismatch"] == 1
+
+
 def _git_fixture(tmp_path: Path) -> tuple[Path, str, str]:
     repo = tmp_path / "repo"
     repo.mkdir()
@@ -592,3 +614,91 @@ def test_git_batch_single_process_for_all_refs(tmp_path, monkeypatch) -> None:
     result_again = _run_git_index(repo, entry_artifact + entry_b)
     assert result_again.passed is True
     assert len(spawns) == 1
+
+
+def test_legacy_repository_commit_is_verified_without_failure(
+    tmp_path, monkeypatch
+) -> None:
+    (tmp_path / "current").mkdir()
+    (tmp_path / "legacy").mkdir()
+    current_repo, _, _ = _git_fixture(tmp_path / "current")
+    legacy_repo, legacy_sha, digest = _git_fixture(tmp_path / "legacy")
+    monkeypatch.setattr(evidence_check, "ROOT_DIR", current_repo)
+    monkeypatch.setattr(
+        evidence_check,
+        "_legacy_repository_candidates",
+        lambda: (
+            evidence_check._RepositoryCandidate(
+                "fixture-legacy", legacy_repo, "legacy:fixture-legacy"
+            ),
+        ),
+    )
+    result = _run_git_index(
+        current_repo,
+        _git_entry(
+            legacy_sha,
+            digest,
+            f"git:{legacy_sha}:artifact.json",
+            entry_commit=legacy_sha,
+        ).replace(
+            "- storage_scope: repository\n",
+            "- storage_scope: repository\n- repository_origin: legacy:fixture-legacy\n",
+        ),
+    )
+    report = evidence_check.build_json_report(
+        result, current_repo / "evidence-index.md"
+    )
+    assert result.passed is True
+    assert report["legacy_repo_verified"] == 1
+    assert report["current_repo_verified"] == 0
+    assert report["external_unverified"] == 0
+    assert any(
+        item.get("repository_origin") == "legacy:fixture-legacy"
+        for item in report["file_integrity"]
+    )
+
+
+def test_unresolved_commit_is_external_unverified(tmp_path, monkeypatch) -> None:
+    repo, _, _ = _git_fixture(tmp_path)
+    monkeypatch.setattr(evidence_check, "ROOT_DIR", repo)
+    unknown = "f" * 40
+    result = _run_git_index(
+        repo,
+        _git_entry(
+            unknown, "0" * 64, f"git:{unknown}:artifact.json", entry_commit=unknown
+        ),
+    )
+    report = evidence_check.build_json_report(result, repo / "evidence-index.md")
+    assert result.passed is False
+    assert report["external_unverified"] == 1
+    assert any("当前仓和已登记旧仓均不可解析" in issue for issue in result.issues)
+
+
+def test_post_monorepo_git_evidence_requires_current_origin(
+    tmp_path, monkeypatch
+) -> None:
+    repo, sha, digest = _git_fixture(tmp_path)
+    monkeypatch.setattr(evidence_check, "ROOT_DIR", repo)
+    entry = _git_entry(
+        sha, digest, f"git:{sha}:artifact.json", entry_commit=sha
+    ).replace("2026-08-15", "2026-08-18")
+    missing_origin = _run_git_index(repo, entry)
+    assert missing_origin.passed is False
+    assert any(
+        "repository_origin: monorepo" in issue for issue in missing_origin.issues
+    )
+
+    with_origin = entry.replace(
+        "- storage_scope: repository\n",
+        "- storage_scope: repository\n- repository_origin: monorepo\n",
+    )
+    evidence_file = repo / "evidence-index.md"
+    evidence_file.write_text(
+        "# Evidence Index\n\n" + _valid_entry() + with_origin, encoding="utf-8"
+    )
+    result = evidence_check.check_evidence_index(evidence_file)
+    assert result.passed is True
+    assert (
+        evidence_check.build_json_report(result, evidence_file)["current_repo_verified"]
+        == 1
+    )

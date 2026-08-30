@@ -21,21 +21,36 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import subprocess
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 try:
-    sys.stdout.reconfigure(encoding="utf-8")
-    sys.stderr.reconfigure(encoding="utf-8")
+    for _stream in (sys.stdout, sys.stderr):
+        _reconfigure = getattr(_stream, "reconfigure", None)
+        if _reconfigure is not None:
+            _reconfigure(encoding="utf-8")
 except Exception:
     pass
 
-ROOT_DIR = Path(__file__).resolve().parent.parent
+BACKEND_DIR = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = BACKEND_DIR.parent
+# 保留 ROOT_DIR 作为测试与旧调用方可替换的当前 Git 工作目录；默认执行时
+# 当前仓库根目录是 Monorepo 根，而不是 backend/ 子目录。
+ROOT_DIR = BACKEND_DIR
 DEFAULT_EVIDENCE_INDEX = (
-    ROOT_DIR / "docs" / "harness-engineering" / "core" / "evidence-index.md"
+    PROJECT_ROOT / "docs" / "harness-engineering" / "core" / "evidence-index.md"
+)
+MIRROR_EVIDENCE_INDEX = (
+    PROJECT_ROOT
+    / "backend"
+    / "docs"
+    / "harness-engineering"
+    / "core"
+    / "evidence-index.md"
 )
 ENTRY_HEADING_RE = re.compile(r"^##\s+(E-\d{8}-\d{3})：(.+)$")
 SECOND_LEVEL_HEADING_RE = re.compile(r"^##\s+")
@@ -77,6 +92,20 @@ PREFLIGHT_CONTRACT_REQUIRED_SNIPPETS = (
 # 本地留存工件：gitignore 的本地报告/证据输出。缺失（如干净 clone / CI）时不阻断，
 # 仅登记名称、哈希与保留策略；仓内必需证据（repo: 引用）缺失或哈希缺项仍阻断。
 LOCAL_ARTIFACT_PREFIXES = ("reports/harness",)
+CURRENT_REPOSITORY_ORIGIN = "monorepo"
+LEGACY_REPOSITORY_NAME = "YunxiBakeBot"
+LEGACY_REPOSITORY_ENV = "HARNESS_LEGACY_REPOSITORIES"
+MONOREPO_MIGRATION_DATE = "2026-08-17"
+
+# 摘要中的类别是稳定机器字段；中文问题正文继续保留，便于人工定位。
+CATEGORY_KEYS = (
+    "current_repo_verified",
+    "legacy_repo_verified",
+    "external_unverified",
+    "malformed",
+    "missing_repo_file",
+    "hash_mismatch",
+)
 
 
 @dataclass(frozen=True)
@@ -92,6 +121,14 @@ class EvidenceCheckResult:
     entries: tuple[EvidenceEntry, ...]
     issues: tuple[str, ...]
     file_integrity: tuple[dict[str, str | bool], ...] = ()
+    category_counts: dict[str, int] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class _RepositoryCandidate:
+    name: str
+    path: Path
+    origin: str
 
 
 def parse_entries(content: str) -> tuple[EvidenceEntry, ...]:
@@ -177,6 +214,15 @@ def validate_entry(entry: EvidenceEntry) -> list[str]:
     storage_scope = entry.fields.get("storage_scope")
     if storage_scope and storage_scope not in ALLOWED_STORAGE_SCOPES:
         issues.append(f"{entry.entry_id}: invalid storage_scope `{storage_scope}`")
+    repository_origin = entry.fields.get("repository_origin", "")
+    if repository_origin and not (
+        repository_origin == CURRENT_REPOSITORY_ORIGIN
+        or repository_origin == "external"
+        or repository_origin.startswith("legacy:")
+    ):
+        issues.append(
+            f"{entry.entry_id}: invalid repository_origin `{repository_origin}`"
+        )
     sha256 = entry.fields.get("sha256")
     is_pure_hex = bool(re.fullmatch(r"[0-9a-f]{64}", sha256 or ""))
     is_sha_map = bool(_parse_sha256_map(sha256 or ""))
@@ -204,11 +250,20 @@ def validate_entry(entry: EvidenceEntry) -> list[str]:
                 f"{entry.entry_id}: 含 git: 工件的活动条目必须有合法 "
                 f"commit_sha（完整 40 位 hex）"
             )
-        elif not _is_commit_sha(commit_sha):
-            issues.append(
-                f"{entry.entry_id}: commit_sha `{commit_sha[:12]}..` 不是有效 "
-                f"commit 对象（可变引用或不存在）"
-            )
+        generated_at = entry.fields.get("generated_at", "")
+        repository_origin = entry.fields.get("repository_origin", "")
+        if generated_at >= MONOREPO_MIGRATION_DATE:
+            if repository_origin != CURRENT_REPOSITORY_ORIGIN:
+                issues.append(
+                    f"{entry.entry_id}: Monorepo 整合后的新证据必须声明 "
+                    "repository_origin: monorepo"
+                )
+            elif not re.fullmatch(r"[0-9a-f]{40}", commit_sha) or not _is_commit_sha(
+                commit_sha, _current_repository_dir()
+            ):
+                issues.append(
+                    f"{entry.entry_id}: repository_origin=monorepo 的新证据必须绑定当前仓有效 commit_sha"
+                )
     return issues
 
 
@@ -251,10 +306,6 @@ def _parse_reference(reference: str) -> tuple[str, str]:
     return "", norm
 
 
-_GIT_BLOB_CACHE: dict[str, str] = {}
-_COMMIT_CACHE: dict[str, bool] = {}
-
-
 class _GitCatFileBatch:
     """`git cat-file --batch` 单进程批量读取器（B3：替代逐条启动 git 子进程）。
 
@@ -265,7 +316,8 @@ class _GitCatFileBatch:
     结果按表达式缓存，避免重复往返。
     """
 
-    def __init__(self) -> None:
+    def __init__(self, repo_dir: Path) -> None:
+        self.repo_dir = repo_dir
         self._proc: subprocess.Popen[bytes] | None = None
         self._blob_cache: dict[str, str] = {}
         self._commit_cache: dict[str, bool] = {}
@@ -276,7 +328,7 @@ class _GitCatFileBatch:
         try:
             self._proc = subprocess.Popen(
                 ["git", "cat-file", "--batch"],
-                cwd=ROOT_DIR,
+                cwd=self.repo_dir,
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
             )
@@ -358,53 +410,136 @@ class _GitCatFileBatch:
         return ok
 
 
-_GIT_BATCH: _GitCatFileBatch | None = None
+_GIT_BATCHES: dict[str, _GitCatFileBatch] = {}
+_GIT_BLOB_CACHE: dict[tuple[str, str], str] = {}
+_COMMIT_CACHE: dict[tuple[str, str], bool] = {}
 
 
-def _git_batch() -> _GitCatFileBatch:
-    """获取进程级批处理单例（懒加载，首次使用时才启动子进程）。"""
-    global _GIT_BATCH
-    if _GIT_BATCH is None:
-        _GIT_BATCH = _GitCatFileBatch()
-    return _GIT_BATCH
+def _current_repository_dir() -> Path:
+    """返回当前检查上下文的 Git 根目录。
+
+    生产调用从 Monorepo 根运行；测试可替换 ROOT_DIR 为临时 Git 仓库。
+    """
+    if ROOT_DIR == BACKEND_DIR:
+        return PROJECT_ROOT
+    return ROOT_DIR
+
+
+def _legacy_repository_candidates() -> tuple[_RepositoryCandidate, ...]:
+    """读取可选的旧仓只读目录；默认只探测已登记的 YunxiBakeBot。"""
+    if ROOT_DIR != BACKEND_DIR:
+        return ()
+    configured = [
+        item.strip()
+        for item in os.environ.get(LEGACY_REPOSITORY_ENV, "").split(";")
+        if item.strip()
+    ]
+    paths: list[tuple[str, Path]] = [
+        (LEGACY_REPOSITORY_NAME, Path(r"D:\Project\YunxiBakeBot"))
+    ]
+    paths.extend((Path(item).name or "legacy", Path(item)) for item in configured)
+    result: list[_RepositoryCandidate] = []
+    seen: set[Path] = set()
+    for name, path in paths:
+        resolved = path.resolve()
+        if resolved in seen or not resolved.exists():
+            continue
+        seen.add(resolved)
+        result.append(_RepositoryCandidate(name, resolved, f"legacy:{name}"))
+    return tuple(result)
+
+
+def _repository_candidates() -> tuple[_RepositoryCandidate, ...]:
+    current = _current_repository_dir().resolve()
+    candidates = [_RepositoryCandidate("monorepo", current, CURRENT_REPOSITORY_ORIGIN)]
+    candidates.extend(_legacy_repository_candidates())
+    return tuple(candidates)
+
+
+def _repository_candidates_for_origin(
+    repository_origin: str,
+) -> tuple[_RepositoryCandidate, ...]:
+    """按证据条目声明的来源筛选仓库，避免不同仓库复用同一 SHA 时误判。"""
+    candidates = _repository_candidates()
+    if not repository_origin:
+        return candidates
+    return tuple(
+        candidate for candidate in candidates if candidate.origin == repository_origin
+    )
+
+
+def _git_batch(repo_dir: Path | None = None) -> _GitCatFileBatch:
+    """按 Git 根目录复用批处理读取器。"""
+    resolved = (repo_dir or _current_repository_dir()).resolve()
+    key = str(resolved).lower()
+    batch = _GIT_BATCHES.get(key)
+    if batch is None:
+        batch = _GitCatFileBatch(resolved)
+        _GIT_BATCHES[key] = batch
+    return batch
 
 
 def _close_git_batch() -> None:
-    """关闭批处理单例，保证下次检查重新启动干净进程（测试可统计启动次数）。"""
-    global _GIT_BATCH
-    if _GIT_BATCH is not None:
-        _GIT_BATCH.close()
-        _GIT_BATCH = None
+    """关闭全部批处理进程，避免句柄泄漏并隔离测试。"""
+    for batch in _GIT_BATCHES.values():
+        batch.close()
+    _GIT_BATCHES.clear()
 
 
-def _git_blob_sha256(commit_path: str) -> str | None:
-    """按 `git:<commit>:<path>` 的 commit:path 计算 git blob 内容的 sha256（批处理）。"""
-    if commit_path in _GIT_BLOB_CACHE:
-        return _GIT_BLOB_CACHE[commit_path] or None
-    digest = _git_batch().blob_sha256(commit_path)
-    _GIT_BLOB_CACHE[commit_path] = digest or ""
+def _git_blob_sha256(commit_path: str, repo_dir: Path | None = None) -> str | None:
+    """按 `commit:path` 计算指定仓库中 Git blob 的 SHA-256。"""
+    resolved = (repo_dir or _current_repository_dir()).resolve()
+    key = (str(resolved).lower(), commit_path)
+    if key in _GIT_BLOB_CACHE:
+        return _GIT_BLOB_CACHE[key] or None
+    digest = _git_batch(resolved).blob_sha256(commit_path)
+    _GIT_BLOB_CACHE[key] = digest or ""
     return digest
 
 
-def _is_commit_sha(commit: str) -> bool:
-    """git: 工件引用只接受完整 40 位 commit SHA，且对象类型必须是 commit。
-
-    拒绝 `HEAD` / 分支名 / 短 SHA 等可变引用，保证不可变绑定。
-    """
+def _is_commit_sha(commit: str, repo_dir: Path | None = None) -> bool:
+    """校验完整 40 位 commit SHA 且对象类型为 commit。"""
     if not re.fullmatch(r"[0-9a-f]{40}", commit):
         return False
-    if commit in _COMMIT_CACHE:
-        return _COMMIT_CACHE[commit]
-    ok = _git_batch().is_commit(commit)
-    _COMMIT_CACHE[commit] = ok
+    resolved = (repo_dir or _current_repository_dir()).resolve()
+    key = (str(resolved).lower(), commit)
+    if key in _COMMIT_CACHE:
+        return _COMMIT_CACHE[key]
+    ok = _git_batch(resolved).is_commit(commit)
+    _COMMIT_CACHE[key] = ok
     return ok
+
+
+def _find_commit_repository(commit: str) -> _RepositoryCandidate | None:
+    """按当前仓、再旧仓顺序定位提交来源。"""
+    for candidate in _repository_candidates():
+        if _is_commit_sha(commit, candidate.path):
+            return candidate
+    return None
+
+
+def _git_path_candidates(
+    git_path: str, repository: _RepositoryCandidate
+) -> tuple[str, ...]:
+    """兼容 Monorepo 前缀与旧仓根目录路径。"""
+    candidates = [git_path]
+    if repository.origin == CURRENT_REPOSITORY_ORIGIN and not git_path.startswith(
+        "backend/"
+    ):
+        candidates.append(f"backend/{git_path}")
+    return tuple(dict.fromkeys(candidates))
+
+
+def _empty_category_counts() -> dict[str, int]:
+    return {key: 0 for key in CATEGORY_KEYS}
 
 
 def _collect_file_integrity(
     entries: tuple[EvidenceEntry, ...], base_dir: Path
-) -> tuple[tuple[dict[str, str | bool], ...], list[str]]:
+) -> tuple[tuple[dict[str, str | bool], ...], list[str], dict[str, int]]:
     integrity: list[dict[str, str | bool]] = []
     issues: list[str] = []
+    category_counts = _empty_category_counts()
     seen_paths: set[Path] = set()
     for entry in entries:
         if entry.fields.get("evidence_status", "active") == "retired":
@@ -422,11 +557,63 @@ def _collect_file_integrity(
                 commit, sep, git_path = rel.partition(":")
                 if not sep or not commit or not git_path:
                     issues.append(f"{entry.entry_id}: git 引用格式错误 `{reference}`")
+                    category_counts["malformed"] += 1
                     continue
-                if not _is_commit_sha(commit):
+                if not re.fullmatch(r"[0-9a-f]{40}", commit):
                     issues.append(
                         f"{entry.entry_id}: git 工件引用必须使用完整 40 位 commit SHA"
                         f"（拒绝 HEAD/分支名/短 SHA）：`{reference}`"
+                    )
+                    category_counts["malformed"] += 1
+                    continue
+                repository: _RepositoryCandidate | None = None
+                resolved_git_path = git_path
+                repository_origin = entry.fields.get("repository_origin", "")
+                for candidate in _repository_candidates_for_origin(repository_origin):
+                    if not _is_commit_sha(commit, candidate.path):
+                        continue
+                    repository = candidate
+                    for candidate_path in _git_path_candidates(git_path, candidate):
+                        if (
+                            _git_blob_sha256(
+                                f"{commit}:{candidate_path}", candidate.path
+                            )
+                            is not None
+                        ):
+                            resolved_git_path = candidate_path
+                            break
+                    break
+                if repository is None:
+                    issues.append(
+                        f"{entry.entry_id}: git 提交 `{commit[:12]}..` 在当前仓和已登记旧仓均不可解析"
+                    )
+                    category_counts["external_unverified"] += 1
+                    integrity.append(
+                        {
+                            "path": f"{commit}:{git_path}",
+                            "exists": False,
+                            "sha256": "",
+                            "kind": "external-unverified",
+                        }
+                    )
+                    continue
+                if not any(
+                    _git_blob_sha256(f"{commit}:{candidate_path}", repository.path)
+                    is not None
+                    for candidate_path in _git_path_candidates(git_path, repository)
+                ):
+                    issues.append(
+                        f"{entry.entry_id}: git 工件缺失 `{reference}`（来源 {repository.origin}）"
+                    )
+                    category_counts["missing_repo_file"] += 1
+                    integrity.append(
+                        {
+                            "path": f"{commit}:{resolved_git_path}",
+                            "exists": False,
+                            "sha256": "",
+                            "kind": "git-blob-missing",
+                            "repository_origin": repository.origin,
+                        }
                     )
                     continue
                 entry_commit = entry.fields.get("commit_sha", "")
@@ -438,22 +625,15 @@ def _collect_file_integrity(
                             f"commit_sha {entry_commit[:12]}.. 不一致"
                             f"（跨提交工件须在 commit_map 声明 `{git_path}={commit}`）"
                         )
-                commit_path = f"{commit}:{git_path}"
-                digest = _git_blob_sha256(commit_path)
-                if digest is None:
-                    issues.append(f"{entry.entry_id}: git 工件缺失 `{reference}`")
-                    integrity.append(
-                        {
-                            "path": commit_path,
-                            "exists": False,
-                            "sha256": "",
-                            "kind": "git-blob-missing",
-                        }
-                    )
-                    continue
-                base_name = Path(git_path).name
+                commit_path = f"{commit}:{resolved_git_path}"
+                digest = _git_blob_sha256(commit_path, repository.path)
+                assert digest is not None
+                base_name = Path(resolved_git_path).name
                 if re.fullmatch(r"[0-9a-f]{64}", recorded_sha):
-                    expected = recorded_sha if digest == recorded_sha else None
+                    if digest == recorded_sha or len(file_like_refs) == 1:
+                        expected = recorded_sha
+                    else:
+                        expected = None
                 else:
                     expected = (
                         sha_map.get(git_path)
@@ -464,17 +644,26 @@ def _collect_file_integrity(
                     issues.append(
                         f"{entry.entry_id}: git 工件缺少 sha256 `{reference}`"
                     )
+                    category_counts["malformed"] += 1
                 elif expected != digest:
                     issues.append(
                         f"{entry.entry_id}: sha256 mismatch for `{reference}` "
                         f"(recorded {expected[:12]}.., actual {digest[:12]}..)"
                     )
+                    category_counts["hash_mismatch"] += 1
+                if expected is not None and expected == digest:
+                    category_counts[
+                        "current_repo_verified"
+                        if repository.origin == CURRENT_REPOSITORY_ORIGIN
+                        else "legacy_repo_verified"
+                    ] += 1
                 integrity.append(
                     {
                         "path": commit_path,
                         "exists": True,
                         "sha256": digest,
                         "kind": "git-blob",
+                        "repository_origin": repository.origin,
                     }
                 )
                 continue
@@ -499,6 +688,7 @@ def _collect_file_integrity(
                     )
                     continue
                 issues.append(f"{entry.entry_id}: repo 工件缺失 `{reference}`")
+                category_counts["missing_repo_file"] += 1
                 integrity.append(
                     {
                         "path": str(resolved_path),
@@ -548,11 +738,13 @@ def _collect_file_integrity(
                     issues.append(
                         f"{entry.entry_id}: repo 工件缺少 sha256 `{reference}`"
                     )
+                    category_counts["malformed"] += 1
                 elif expected != digest:
                     issues.append(
                         f"{entry.entry_id}: sha256 mismatch for `{reference}` "
                         f"(recorded {expected[:12]}.., actual {digest[:12]}..)"
                     )
+                    category_counts["hash_mismatch"] += 1
             integrity.append(
                 {
                     "path": str(resolved_path),
@@ -561,7 +753,7 @@ def _collect_file_integrity(
                     "kind": "file",
                 }
             )
-    return tuple(integrity), issues
+    return tuple(integrity), issues, category_counts
 
 
 def check_evidence_index(path: Path = DEFAULT_EVIDENCE_INDEX) -> EvidenceCheckResult:
@@ -571,14 +763,31 @@ def check_evidence_index(path: Path = DEFAULT_EVIDENCE_INDEX) -> EvidenceCheckRe
     entries = parse_entries(content)
     if not entries:
         return EvidenceCheckResult(False, (), ("evidence index has no entries",))
-    base_dir = (
-        ROOT_DIR if path.resolve() == DEFAULT_EVIDENCE_INDEX.resolve() else path.parent
-    )
+    resolved_index = path.resolve()
+    if resolved_index in {
+        DEFAULT_EVIDENCE_INDEX.resolve(),
+        MIRROR_EVIDENCE_INDEX.resolve(),
+    }:
+        base_dir = _current_repository_dir()
+    else:
+        base_dir = path.parent
     try:
-        file_integrity, file_issues = _collect_file_integrity(entries, base_dir)
+        file_integrity, file_issues, category_counts = _collect_file_integrity(
+            entries, base_dir
+        )
         issues = validate_entries(entries)
         issues.extend(file_issues)
-        return EvidenceCheckResult(not issues, entries, tuple(issues), file_integrity)
+        if any("invalid" in issue or "missing field" in issue for issue in issues):
+            category_counts["malformed"] += sum(
+                1 for issue in issues if "invalid" in issue or "missing field" in issue
+            )
+        return EvidenceCheckResult(
+            not issues,
+            entries,
+            tuple(issues),
+            file_integrity,
+            category_counts,
+        )
     finally:
         # 批处理子进程用完即关，避免句柄泄漏并保证测试可统计进程启动次数
         _close_git_batch()
@@ -594,6 +803,11 @@ def build_json_report(result: EvidenceCheckResult, path: Path) -> dict[str, obje
         "status": "passed" if result.passed else "failed",
         "path": str(path),
         "total": len(result.entries),
+        "active": sum(
+            1
+            for entry in result.entries
+            if entry.fields.get("evidence_status", "active") == "active"
+        ),
         "retired": sum(
             1
             for entry in result.entries
@@ -602,6 +816,12 @@ def build_json_report(result: EvidenceCheckResult, path: Path) -> dict[str, obje
         "failed": len(result.issues),
         "issues": list(result.issues),
         "verified_files": verified_files,
+        "verified_git_files": sum(
+            1
+            for item in result.file_integrity
+            if item.get("exists") is True and item.get("kind") == "git-blob"
+        ),
+        **result.category_counts,
         "file_integrity": list(result.file_integrity),
     }
 
@@ -627,7 +847,14 @@ def main(argv: list[str] | None = None) -> int:
             "evidence_index "
             f"status={report['status']} total={report['total']} "
             f"retired={report['retired']} failed={report['failed']} "
-            f"verified_files={report['verified_files']}"
+            f"verified_files={report['verified_files']} "
+            f"active={report['active']} "
+            f"current_repo_verified={report['current_repo_verified']} "
+            f"legacy_repo_verified={report['legacy_repo_verified']} "
+            f"external_unverified={report['external_unverified']} "
+            f"malformed={report['malformed']} "
+            f"missing_repo_file={report['missing_repo_file']} "
+            f"hash_mismatch={report['hash_mismatch']}"
         )
         return 0 if result.passed else 1
     if result.passed:
