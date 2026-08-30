@@ -6138,7 +6138,7 @@ backend/docs/harness-engineering/core/evidence-index.md 仅作为历史镜像。
 - trace_id: 20260830-evidence-index-origin-and-summary
 - generated_at: 2026-08-30
 - evidence_type: governance/evidence-index-origin-regression
-- file: `local:backend/reports/harness/evidence-index-origin-summary-20260830.json`; `repo:backend/scripts/check_evidence_index.py`; `repo:backend/tests/scripts/test_check_evidence_index.py`
+- file: `local:backend/reports/harness/evidence-index-origin-summary-20260830.json`; `git:4ee06c8aa1506549bea52cfa6ac7168b85c73732:backend/scripts/check_evidence_index.py`; `git:4ee06c8aa1506549bea52cfa6ac7168b85c73732:backend/tests/scripts/test_check_evidence_index.py`
 - command: `python -B -m pytest tests/ -q --no-cov --basetemp D:\\Temp\\pytest-yunxi-harness-closeout-20260830-c`; `python -B backend/scripts/check_evidence_index.py --summary`; `pre-commit run --all-files`
 - result: pass
 - related_logbook: 2026-08-30 - fix(harness): 证据索引来源冲突回归与全量收口
@@ -6147,9 +6147,9 @@ backend/docs/harness-engineering/core/evidence-index.md 仅作为历史镜像。
 - retention_note: 仅记录来源判定回归、全量测试、项目门禁与摘要结果；不含密钥、客户数据、订单明细或生产写入。
 - storage_scope: repository
 - repository_origin: monorepo
-- sha256: backend/scripts/check_evidence_index.py=dd9ca2f91d21bfe382d44fbbb65ab6e36a3eef89337d64be768aea409a9c2a86；backend/tests/scripts/test_check_evidence_index.py=3bc05cf6e045e02c34cf52844b538bd9e33233b4af52005f6a2f370a2debb7bb
-- commit_sha: 77f93469ec3c9874995552defd9c13bbb3431ac5
-- summary: 当当前仓与旧仓恰好存在相同 commit SHA 时，检查器按证据条目声明的 repository_origin 优先选择来源；回归测试、全量后端测试、小程序类型检查、pre-commit、项目总守卫、开发总表、错误账本、编码和差异检查全部通过。摘要为 total=363、retired=20、failed=0、legacy_repo_verified=1604、external_unverified=0、missing_repo_file=0、hash_mismatch=0。
+- sha256: backend/scripts/check_evidence_index.py=7812fa61d6fc032fcf643af90ac7f4eca49c66cb2868f7b95a0b5562fd2d8a65；backend/tests/scripts/test_check_evidence_index.py=f5e2c8a36cd897d49531a04ebfaa5c30eba0b4a812a827072a0b226ce54b4747
+- commit_sha: 4ee06c8aa1506549bea52cfa6ac7168b85c73732
+- summary: 当当前仓与旧仓恰好存在相同 commit SHA 时，检查器按证据条目声明的 repository_origin 优先选择来源；回归测试、全量后端测试、小程序类型检查、pre-commit、项目总守卫、开发总表、错误账本、编码和差异检查全部通过。摘要为 total=363、retired=20、failed=0、verified_git_files=1606、current_repo_verified=2、legacy_repo_verified=1604、external_unverified=0、missing_repo_file=0、hash_mismatch=0。
 ## E-20260830-001：历史证据索引来源与摘要口径修正
 
 - trace_id: 20260830-evidence-index-origin-and-summary
@@ -6180,5 +6180,5 @@ backend/docs/harness-engineering/core/evidence-index.md 仅作为历史镜像。
 - retention_note: 仅记录质量门禁临时目录、PowerShell 兼容性、逐文件清理边界和验证退出码；不含密钥、客户数据、订单明细或生产写入。
 - storage_scope: repository
 - repository_origin: monorepo
-- commit_sha: 77f93469ec3c9874995552defd9c13bbb3431ac5
+- commit_sha: 4ee06c8aa1506549bea52cfa6ac7168b85c73732
 - summary: 质量门禁将 TMP/TEMP/TMPDIR 固定到项目所在磁盘的一次性目录并禁止写入 Python 字节码；本机清理脚本使用 UTF-8 BOM 兼容 Windows PowerShell 5.1，覆盖根目录、backend、miniapp 和 scripts 的可重建缓存，且仅逐文件删除。专项测试、项目总守卫、开发总表、证据索引、错误账本、编码检查和双 PowerShell 预览及执行均通过；两次执行共逐文件删除 180 个可重建缓存文件，未写生产或客户数据。

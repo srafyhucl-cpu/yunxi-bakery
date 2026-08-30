@@ -16174,7 +16174,7 @@ ______________________________________________________________________
   - `backend/scripts/check_evidence_index.py`：当条目声明 `repository_origin` 时优先按声明来源筛选候选仓，避免相同 SHA 跨仓误归类。
   - `backend/tests/scripts/test_check_evidence_index.py`：旧仓回归条目显式声明 `repository_origin: legacy:fixture-legacy`，覆盖来源优先规则。
   - `docs/harness-engineering/core/evidence-index.md`、`backend/docs/harness-engineering/core/evidence-index.md`：补充同 SHA 来源判定口径。
-  - `backend/reports/harness/evidence-index-origin-summary-20260830.json`：刷新为最新 362 条证据摘要。
+  - `backend/reports/harness/evidence-index-origin-summary-20260830.json`：刷新为最新 363 条证据摘要。
   - `PROJECT-STATE.md`：证据索引任务恢复 `completed`。
 - verification:
   - `python -B -m pytest tests/ -q --no-cov --basetemp D:\\Temp\\pytest-yunxi-harness-closeout-20260830-c` → EXIT=0。
@@ -16182,6 +16182,6 @@ ______________________________________________________________________
   - `pre-commit run --all-files` → EXIT=0。
   - `python -B backend/scripts/check_project.py --skip-tests` → EXIT=0。
   - `python -B backend/scripts/check_project_development_register.py` → EXIT=0。
-  - `python -B backend/scripts/check_evidence_index.py --summary` → EXIT=0，`total=363 retired=20 failed=0 verified_git_files=1604 current_repo_verified=0 legacy_repo_verified=1604 external_unverified=0 malformed=0 missing_repo_file=0 hash_mismatch=0`。
+  - `python -B backend/scripts/check_evidence_index.py --summary` → EXIT=0，`total=363 retired=20 failed=0 verified_git_files=1606 current_repo_verified=2 legacy_repo_verified=1604 external_unverified=0 malformed=0 missing_repo_file=0 hash_mismatch=0`。
   - `python -B backend/scripts/check_mistake_ledger.py`、`python -B backend/scripts/check_text_encoding.py`、`git diff --check` → EXIT=0。
 - residual_risks: 体验版、真人试运行、正式 AppID、真实支付/退款、生产部署仍受项目负责人批准和外部条件约束；未执行 `git push`。

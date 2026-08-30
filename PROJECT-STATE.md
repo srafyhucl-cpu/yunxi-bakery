@@ -5,7 +5,7 @@
 > 中文优先：人类可读内容使用中文；`task_id`、`trace_id`、`status`、`owner`、`branch`、`as_of_commit`、`version` 和路径保持稳定机器字段。
 > 最小阅读集：所有 Agent 先读 `AGENTS.md` 与本文件；执行具体任务时再读对应 `docs/tasks/*.md`，按需读取专业契约。
 
-**最后更新**：2026-08-30（as_of_commit: `77f9346`；version: `0.133.0-p2trial.3`）
+**最后更新**：2026-08-30（as_of_commit: `4ee06c8`；version: `0.133.0-p2trial.3`）
 
 > 当前状态口径：P1 承接验证技术工作已完成，阶段关闭待项目负责人确认；P2 准备段已完成，真人执行段尚未启动。版本号以 `backend/VERSION` 为准，代码快照以当前 `git rev-parse HEAD` 为准。
 
@@ -14,7 +14,7 @@
 
 ```yaml
 updated_at: 2026-08-30
-as_of_commit: 77f9346
+as_of_commit: 4ee06c8
 version: 0.133.0-p2trial.3
 current_branch: main
 workspace_state: dirty
@@ -28,20 +28,20 @@ state_owner: 项目负责人＋AI 员工
 | task_id | 任务 | status | 优先级 | owner | branch | as_of_commit | 依赖 | 证据 | 下一步 |
 |---|---|---|---|---|---|---|---|---|---|
 | T-P0-MONOREPO | Monorepo 整合与架构收口 | completed | P0 | 项目负责人＋AI 员工 | main | 1c2a3ea | — | LOGBOOK: 20260817 | 保持主线基线可复现 |
-| T-P05-ASSET-MIGRATION | 凭证、知识和商品资产迁移 | completed | P0 | AI 员工 | main | 77f9346 | T-P0-MONOREPO | PROJECT-STATE 状态记录 | 仅按正式流程处理客户数据 |
-| T-P1-ACCEPTANCE | P1 全模块承接验证 | pending | P0 | 项目负责人 | main | 77f9346 | T-P05-ASSET-MIGRATION | LOGBOOK: 20260825-p1-wrap | 等负责人确认阶段关闭 |
-| T-P2-PREP | P2 试运行准备段 | completed | P0 | AI 员工 | main | 77f9346 | T-P1-ACCEPTANCE | LOGBOOK: 20260826-p2trial-sim-fixes | 维持真人执行前门禁 |
-| T-P2-RUN | P2 真人执行段（B/C/D/E） | blocked | P0 | 项目负责人＋AI 员工 | main | 77f9346 | T-P1-ACCEPTANCE,T-P2-PREP | docs/specs/2026-08-25-p2-manual.md | 获负责人批准后按手册执行 |
-| T-P1-4-KNOWLEDGE | 知识缺口枚举与回填 | pending | P1 | AI 员工＋项目负责人 | main | 77f9346 | T-P2-RUN | docs/tasks/20260829-P1-4-知识缺口回填-指令.md | 先枚举并提交口径确认 |
-| T-P1-5-INVOICE | 发票承接专用测试与 E2E 验收 | pending | P1 | AI 员工 | main | 77f9346 | T-P2-PREP | docs/tasks/20260829-P1-5-发票承接验收-指令.md | 补测试并记录 E1-E4 |
-| T-P1-6-SIMULATOR | 模拟器 B/C/D/E 走查 | blocked | P1 | AI 员工＋项目负责人 | main | 77f9346 | T-P2-RUN | docs/tasks/20260829-P1-6-模拟器BCDE走查-指令.md | 等真人授权和测试号条件 |
-| T-P1-7-FAQ | FAQ 10 条店家事实回收 | blocked | P1 | AI 员工＋店家 | main | 77f9346 | T-P2-RUN | docs/tasks/20260829-P1-7-FAQ回收-指令.md | 发出填写版并等待店家答复 |
-| T-P3-SEARCH | 商品搜索入口增强 | deferred | P3 | 项目负责人 | main | 77f9346 | T-P2-RUN | PROJECT-STATE 风险记录 | P2 稳定后重新排期 |
+| T-P05-ASSET-MIGRATION | 凭证、知识和商品资产迁移 | completed | P0 | AI 员工 | main | 4ee06c8 | T-P0-MONOREPO | PROJECT-STATE 状态记录 | 仅按正式流程处理客户数据 |
+| T-P1-ACCEPTANCE | P1 全模块承接验证 | pending | P0 | 项目负责人 | main | 4ee06c8 | T-P05-ASSET-MIGRATION | LOGBOOK: 20260825-p1-wrap | 等负责人确认阶段关闭 |
+| T-P2-PREP | P2 试运行准备段 | completed | P0 | AI 员工 | main | 4ee06c8 | T-P1-ACCEPTANCE | LOGBOOK: 20260826-p2trial-sim-fixes | 维持真人执行前门禁 |
+| T-P2-RUN | P2 真人执行段（B/C/D/E） | blocked | P0 | 项目负责人＋AI 员工 | main | 4ee06c8 | T-P1-ACCEPTANCE,T-P2-PREP | docs/specs/2026-08-25-p2-manual.md | 获负责人批准后按手册执行 |
+| T-P1-4-KNOWLEDGE | 知识缺口枚举与回填 | pending | P1 | AI 员工＋项目负责人 | main | 4ee06c8 | T-P2-RUN | docs/tasks/20260829-P1-4-知识缺口回填-指令.md | 先枚举并提交口径确认 |
+| T-P1-5-INVOICE | 发票承接专用测试与 E2E 验收 | pending | P1 | AI 员工 | main | 4ee06c8 | T-P2-PREP | docs/tasks/20260829-P1-5-发票承接验收-指令.md | 补测试并记录 E1-E4 |
+| T-P1-6-SIMULATOR | 模拟器 B/C/D/E 走查 | blocked | P1 | AI 员工＋项目负责人 | main | 4ee06c8 | T-P2-RUN | docs/tasks/20260829-P1-6-模拟器BCDE走查-指令.md | 等真人授权和测试号条件 |
+| T-P1-7-FAQ | FAQ 10 条店家事实回收 | blocked | P1 | AI 员工＋店家 | main | 4ee06c8 | T-P2-RUN | docs/tasks/20260829-P1-7-FAQ回收-指令.md | 发出填写版并等待店家答复 |
+| T-P3-SEARCH | 商品搜索入口增强 | deferred | P3 | 项目负责人 | main | 4ee06c8 | T-P2-RUN | PROJECT-STATE 风险记录 | P2 稳定后重新排期 |
 | T-D1-REVIEW | D1 账务核心独立审阅轨道 | deferred | P3 | 项目负责人 | external:D:\Project\YunxiBakeBot | 7afd44b | T-P0-MONOREPO | docs/archive/ 与旧仓记录 | 仅获批准时审阅，不合入主线 |
-| T-P0-1-CHAT-TIMEOUT | 小程序 AI 聊天超时守卫 | historical | P0 | AI 员工 | main | 77f9346 | T-P2-PREP | docs/tasks/20260829-P0-1-指令.md | 仅供复盘，不得重执行 |
-| T-HARNESS-REGISTER | 中文优先 Harness 与开发总表 | completed | P0 | 项目负责人＋AI 员工 | main | 77f9346 | T-P0-1-CHAT-TIMEOUT | 本轮 trace: 20260829-project-development-register-and-chinese-governance；开发总表守卫与边界测试 EXIT=0 | 保持总表守卫随任务状态同步 |
-| T-HARNESS-EVIDENCE-INDEX | 历史证据索引来源与统计口径收敛 | completed | P0 | AI 员工 | main | 77f9346 | T-HARNESS-REGISTER | trace: 20260830-evidence-index-origin-and-summary；来源冲突回归已修复；摘要 total=363、failed=0 | 后续新证据显式声明 repository_origin；历史条目按来源只读核验 |
-| T-HARNESS-RUNTIME-CLEANUP | 质量门禁临时目录与跨 PowerShell 清理收口 | completed | P0 | AI 员工 | main | 77f9346 | T-HARNESS-EVIDENCE-INDEX | 本轮 trace: 20260830-harness-runtime-cleanup-and-closeout；E-20260830-002；专项测试与双 PowerShell 预览 EXIT=0 | 后续新增质量门禁继续复用 D 盘一次性临时目录 |
+| T-P0-1-CHAT-TIMEOUT | 小程序 AI 聊天超时守卫 | historical | P0 | AI 员工 | main | 4ee06c8 | T-P2-PREP | docs/tasks/20260829-P0-1-指令.md | 仅供复盘，不得重执行 |
+| T-HARNESS-REGISTER | 中文优先 Harness 与开发总表 | completed | P0 | 项目负责人＋AI 员工 | main | 4ee06c8 | T-P0-1-CHAT-TIMEOUT | 本轮 trace: 20260829-project-development-register-and-chinese-governance；开发总表守卫与边界测试 EXIT=0 | 保持总表守卫随任务状态同步 |
+| T-HARNESS-EVIDENCE-INDEX | 历史证据索引来源与统计口径收敛 | completed | P0 | AI 员工 | main | 4ee06c8 | T-HARNESS-REGISTER | trace: 20260830-evidence-index-origin-and-summary；来源冲突回归已修复；摘要 total=363、failed=0 | 后续新证据显式声明 repository_origin；历史条目按来源只读核验 |
+| T-HARNESS-RUNTIME-CLEANUP | 质量门禁临时目录与跨 PowerShell 清理收口 | completed | P0 | AI 员工 | main | 4ee06c8 | T-HARNESS-EVIDENCE-INDEX | 本轮 trace: 20260830-harness-runtime-cleanup-and-closeout；E-20260830-002；专项测试与双 PowerShell 预览 EXIT=0 | 后续新增质量门禁继续复用 D 盘一次性临时目录 |
 
 ## 状态视图（只引用主表 task_id）
 
@@ -65,7 +65,7 @@ state_owner: 项目负责人＋AI 员工
 
 | branch_or_track | 类型 | 状态 | 用途 | 基线 | owner | 绑定任务 |
 |---|---|---|---|---|---|---|
-| main | 本仓 Git 分支 | 当前 | Monorepo 唯一开发主线 | 77f9346 | 项目负责人 | 全部主线任务 |
+| main | 本仓 Git 分支 | 当前 | Monorepo 唯一开发主线 | 4ee06c8 | 项目负责人 | 全部主线任务 |
 | D:\Project\YunxiBakeBot | 外部历史轨道（非 Git 分支） | 冻结 | D1 审阅与历史证据 | 7afd44b | 项目负责人 | T-D1-REVIEW |
 | D:\Project\YunxiBakeMiniApp | 外部过期副本（非 Git 分支） | 停用 | 迁移前参考，不得开发 | 历史快照 | 项目负责人 | — |
 
