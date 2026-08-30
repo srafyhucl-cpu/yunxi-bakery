@@ -17,11 +17,11 @@ updated_at: 2026-08-30
 as_of_commit: 4ee06c8
 version: 0.133.0-p2trial.3
 current_branch: main
-workspace_state: dirty
+workspace_state: clean
 state_owner: 项目负责人＋AI 员工
 ```
 
-`workspace_state: dirty` 表示当前工作区包含尚未提交的治理文档、归档移动和任务文件；不得据此宣称已提交或已推送。
+`workspace_state: clean` 表示当前工作区没有尚未提交的文件变更；这不代表已推送或已完成生产发布。
 
 ## 主线任务总表（唯一动态明细源）
 
