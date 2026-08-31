@@ -65,7 +65,7 @@ ______________________________________________________________________
 | 文档 | `Test-Path` + `Select-String` 链接/关键词检查 | LOGBOOK 和进度清单同步检查 |
 | Harness 文档 | `Test-Path docs/harness-engineering/...` | 检查无未完成占位 |
 | Harness 脚本 | `python -B -m pytest backend/tests/scripts/test_harness_snapshot.py backend/tests/scripts/test_check_mistake_ledger.py backend/tests/scripts/test_check_evidence_index.py backend/tests/scripts/test_check_chinese_governance.py backend/tests/scripts/test_harness_policy.py backend/tests/scripts/test_harness_run_manifest.py backend/tests/scripts/test_harness_p0_gate.py -q --no-cov` | `python -B backend/scripts/harness_p0_gate.py --summary --json-out backend/reports/harness/p0-gate.json` + `pre-commit run --all-files` |
-| Harness P0 统一门禁 | `python -B backend/scripts/harness_p0_gate.py --summary` | 根级 CI `.github/workflows/harness-p0.yml` 上传 `reports/harness/p0-gate.json`；失败时保留报告并按 `failure_class` 归因 |
+| Harness P0 统一门禁 | `python -B backend/scripts/harness_p0_gate.py --summary` | 根级 CI `.github/workflows/harness-p0.yml` 在安装依赖前运行 `check_requirements_lock_alignment.py`，上传 `reports/harness/*.json`；失败时保留可用报告并按 `failure_class` 归因 |
 | 文件体量与职责治理 | `python -m pytest tests/scripts/test_check_file_sizes.py -q --no-cov` + `python scripts/check_file_sizes.py` | 对超线目标记录职责、变化原因、候选边界、测试成本和 `split_by_responsibility / keep_cohesive_with_review / defer_with_boundary_plan` 结论 |
 | ADR / 证据索引 | `python scripts/check_evidence_index.py --summary` | 搜索 `trace_id`、`related_adr`、`evidence_type` 关键字段；证据条目不得缺必填字段、不得重复 ID |
 | Harness 全面评审 | `Test-Path docs/harness-engineering/HARNESS-MATURITY-REVIEW-20260830.md` + 入口链接检查 | 评审报告、PROJECT-STATE、LOGBOOK、证据索引四者一致 |

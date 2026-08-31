@@ -19,6 +19,21 @@ ______________________________________________________________________
 
 `ERRORS.md` 是本项目唯一正式错误账本。其他历史路径只能保留兼容说明，不得新增条目；新增错误必须直接写入本文件并运行 `python -B backend/scripts/check_mistake_ledger.py`。
 
+## M-20260831-001：P0 门禁扩展未同步 Harness 自评与质量工作流
+
+- status: guarded
+- first_seen: 2026-08-31
+- severity: high
+- symptom: 为 P0 门禁新增“依赖锁一致性”后，本地 P0 门禁已变为 9 项，但 `harness_eval_regression.py` 仍固定期待 8 项，导致 P0 门禁通过而 Harness 自评实际失败（7/8）。P1/P2 工作流的触发路径也未覆盖 P0 门禁与依赖锁变更，直接推送主线时不会自动暴露该漂移。
+- root_cause: P0 门禁清单、自评基线和 P1/P2 CI 触发范围分散维护，扩展检查项时只更新了门禁本体及其单测。
+- impact: 会形成“本地 P0 通过、持续质量信号失效”的错误收口结论；云端依赖解析问题无法在安装前提供结构化诊断。
+- fix: 为生产/开发锁增加约束与一致性检查；P0 门禁纳入第九项；自评基线同步为九项；P1/P2 工作流同时覆盖 Harness 门禁、依赖锁、相关测试和 workflow 配置变更。
+- new_guardrail: 修改 `harness_p0_gate.build_commands()` 时，必须同时运行 `harness_eval_regression.py --summary` 和 `test_harness_eval_regression.py`；质量工作流必须在主线与 PR 的 Harness 门禁、依赖锁或工作流变更上触发。
+- verification: `python -B -m pytest backend/tests/scripts/test_harness_eval_regression.py backend/tests/scripts/test_harness_p0_gate.py backend/tests/scripts/test_check_requirements_lock_alignment.py backend/tests/scripts/test_observe_harness_runs.py backend/tests/scripts/test_check_doc_garden.py -q --no-cov -p no:cacheprovider --basetemp D:\Project\YunxiBakery\.tmp-harness-lock-tests\quality-loop-sync` → EXIT=0（18 passed）；`python -B backend/scripts/harness_p0_gate.py --summary` → EXIT=0（9/9）；`python -B backend/scripts/harness_eval_regression.py --summary` → EXIT=0（8/8）。
+- linked_trace: `20260831-harness-p0-hardening`
+- linked_files: `backend/scripts/check_requirements_lock_alignment.py`; `backend/scripts/harness_p0_gate.py`; `backend/scripts/harness_eval_regression.py`; `.github/workflows/harness-p0.yml`; `.github/workflows/harness-p1-p2.yml`; `backend/tests/scripts/test_harness_p0_gate.py`; `backend/tests/scripts/test_harness_eval_regression.py`; `backend/tests/scripts/test_check_requirements_lock_alignment.py`
+- next_time_signal: P0 门禁项数或顺序变化后，若 Harness 自评不是 8/8 通过，或 P1/P2 workflow 未因该变更触发，则不得声明 Harness 治理收口。
+
 ## M-20260830-005：已否决事项被重新激活为当前待办
 
 - status: guarded

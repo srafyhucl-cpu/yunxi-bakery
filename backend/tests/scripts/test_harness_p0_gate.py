@@ -14,6 +14,7 @@ def test_build_commands_contains_all_required_checks() -> None:
     names = [name for name, _command in harness_p0_gate.build_commands()]
 
     assert names == [
+        "依赖锁一致性",
         "中文治理 P0",
         "策略即代码 P0",
         "运行 manifest P0",
@@ -32,7 +33,7 @@ def test_build_commands_contains_all_required_checks() -> None:
 def test_build_commands_passes_commit_range_to_policy_check() -> None:
     _names, policy_command = harness_p0_gate.build_commands(
         base_sha="a" * 40, head_sha="b" * 40
-    )[1]
+    )[2]
 
     assert "--base" in policy_command
     assert "a" * 40 in policy_command

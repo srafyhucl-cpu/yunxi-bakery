@@ -1,3 +1,22 @@
+## [2026-08-31] - fix(harness): 修复云端依赖锁失败与 P0 自评漂移（trace: 20260831-harness-p0-hardening）
+
+- 操作者: AI (Codex)
+- trace_id: `20260831-harness-p0-hardening`
+- run_id: `20260831-harness-p0-hardening-r3`；parent_run_id: `20260831-harness-p0-hardening-r2`；P0 gate run_id: `p0-gate-3f33ea8453fb48dc`
+- 背景: 已推送的 `81e2a82` 触发 GitHub Actions `33379235859`，在依赖安装阶段因生产锁 `charset-normalizer==3.4.9` 与开发锁 `charset-normalizer==3.4.7` 冲突失败，P0 结论没有云端 artifact。复核还发现 P0 门禁新增依赖锁检查后，Harness 自评仍固定 8 个门禁项而失败。
+- implementation:
+  - 开发依赖输入以生产锁为 constraints，重建开发锁并新增 `check_requirements_lock_alignment.py`；P0 门禁升级为依赖锁一致性、中文治理、策略即代码、运行 manifest、开发总表、错误账本、证据索引、文本编码和项目红线九项检查。
+  - P0 workflow 在安装前输出依赖锁报告，失败时仍上传全部 JSON；P1/P2 workflow 在主线和 PR 的 Harness 门禁、依赖锁或质量工作流变更时触发，并覆盖相应合同测试。
+  - Harness 自评的门禁基线同步为九项，新增专项断言；错误账本登记 `M-20260831-001`，防止门禁与持续质量信号再次漂移。
+- validation:
+  - `python -B -m pytest backend/tests/scripts/test_harness_eval_regression.py backend/tests/scripts/test_harness_p0_gate.py backend/tests/scripts/test_check_requirements_lock_alignment.py backend/tests/scripts/test_observe_harness_runs.py backend/tests/scripts/test_check_doc_garden.py -q --no-cov -p no:cacheprovider --basetemp D:\Project\YunxiBakery\.tmp-harness-lock-tests\quality-loop-sync`：18 项通过。
+  - `python -B backend/scripts/check_requirements_lock_alignment.py --summary`：共享包 90 个，0 冲突。
+  - `python -B backend/scripts/harness_p0_gate.py --summary --json-out backend/reports/harness/p0-gate-20260831-lock-alignment-r3.json`：9/9 通过。
+  - `python -B backend/scripts/harness_eval_regression.py --summary`：8/8 通过。
+- 证据: `backend/reports/harness/20260831-harness-p0-hardening-r3.run.json`；`backend/reports/harness/20260831-harness-p0-hardening-r3.md`；`backend/reports/harness/p0-gate-20260831-lock-alignment-r3.json`。
+- 未运行全量业务测试: 本轮只涉及 Harness 脚本、依赖锁、CI 配置、测试和治理文档，未修改业务行为；已执行定向 Harness 门禁。
+- 残余风险: 修复仍在本地工作区，尚未提交、推送和取得 GitHub Actions P0/P1-P2 artifact；临时 `.tmp-harness-lock*` 目录将在本轮验证结束后按白名单清理。
+
 ## [2026-08-31] - docs(harness): 登记 P0 硬化提交后的本地证据（trace: 20260831-harness-p0-hardening）
 
 - 操作者: AI (Codex)

@@ -58,6 +58,7 @@ ______________________________________________________________________
 - `backend/scripts/check_mistake_ledger.py`：检查防重犯账本结构。
 - `backend/scripts/check_evidence_index.py`：检查证据索引结构和关键证据引用。
 - `backend/scripts/check_project_development_register.py`：校验项目快照、任务总表、状态视图、分支和任务指令元数据。
+- `backend/scripts/check_requirements_lock_alignment.py`：校验生产与开发依赖锁的共享包版本一致，并要求开发锁以生产锁为约束。
 - `backend/scripts/check_chinese_governance.py`：检查中文权威入口、状态标签和高风险路径可读性。
 - `backend/scripts/harness_run_manifest.py` / `backend/scripts/check_harness_run_manifest.py`：生成并校验运行 manifest 与 episode。
 - `backend/scripts/harness_policy.py` / `backend/scripts/check_harness_policy.py`：读取策略快照、校验敏感路径和高风险操作；CI 传入 `--base/--head` 按提交范围检查，避免干净工作区漏检。
@@ -145,7 +146,7 @@ ______________________________________________________________________
 python -B backend/scripts/harness_p0_gate.py --summary --json-out backend/reports/harness/p0-gate.json
 ```
 
-门禁包含中文治理、策略即代码、运行 manifest、开发总表、错误账本、证据索引、文本编码和项目红线八项检查。根级 GitHub Actions 入口为 `.github/workflows/harness-p0.yml`，失败时仍上传 JSON 报告；P0 任务指令统一位于 `docs/tasks/20260831-P0-Harness*.md`。临时产物清理不另设门禁项，统一由白名单清理脚本和 `rebuildable_cleanup` 策略约束。
+门禁包含依赖锁一致性、中文治理、策略即代码、运行 manifest、开发总表、错误账本、证据索引、文本编码和项目红线九项检查。根级 GitHub Actions 入口为 `.github/workflows/harness-p0.yml`；依赖安装前先输出锁一致性报告，随后 P0 门禁报告与其一并上传。P0 任务指令统一位于 `docs/tasks/20260831-P0-Harness*.md`。临时产物清理不另设门禁项，统一由白名单清理脚本和 `rebuildable_cleanup` 策略约束。
 
 清理脚本必须先预览再执行：预览输出目标清单授权令牌，执行时使用 `-PreviewToken <令牌> -Execute`；目标路径或文件状态变化会导致令牌失效并拒绝删除。
 
@@ -161,6 +162,7 @@ ______________________________________________________________________
 | `python backend/scripts/check_mistake_ledger.py` | 检查根目录 `ERRORS.md` 是否有合法空账本标记、重复 ID，或每条错误是否字段完整、枚举合法 |
 | `python backend/scripts/check_evidence_index.py` | 检查 [core/evidence-index.md](core/evidence-index.md) 的证据条目必填字段、结果枚举、重复 ID、预检业务合约引用和工件完整性；默认以 Monorepo 根目录为索引基准，并只读识别已登记旧仓的历史提交。摘要会区分当前仓、旧仓、外部未验证、格式错误、仓内缺失和哈希不一致 |
 | `python -B backend/scripts/check_project_development_register.py` | 单独检查唯一开发总表、状态中英映射和中文展示；失败时输出具体任务、字段、版本、提交或分支问题 |
+| `python -B backend/scripts/check_requirements_lock_alignment.py --summary` | 在安装前检查生产与开发依赖锁是否可共同解析 |
 | `python -B backend/scripts/check_chinese_governance.py --summary` | 检查 Harness P0 中文治理控制面和覆盖率 |
 | `python -B backend/scripts/check_harness_policy.py --git-diff --summary` | 检查当前变更路径与高风险操作策略 |
 | `python -B backend/scripts/check_harness_run_manifest.py --summary` | 批量校验运行 manifest 与 episode |

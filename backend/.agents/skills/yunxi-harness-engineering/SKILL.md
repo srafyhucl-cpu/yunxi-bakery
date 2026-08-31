@@ -110,9 +110,10 @@ docs/harness-engineering/README.md
 python -B backend/scripts/harness_p0_gate.py --summary --json-out backend/reports/harness/p0-gate.json
 ```
 
-门禁固定执行中文治理、策略即代码、运行 manifest、开发总表、错误账本、证据索引、文本编码和项目红线八项检查。单项调试命令如下：
+门禁固定执行依赖锁一致性、中文治理、策略即代码、运行 manifest、开发总表、错误账本、证据索引、文本编码和项目红线九项检查。单项调试命令如下：
 
 ```powershell
+python -B backend/scripts/check_requirements_lock_alignment.py --summary
 python -B backend/scripts/check_chinese_governance.py --summary
 python -B backend/scripts/check_harness_policy.py --git-diff --summary
 python -B backend/scripts/check_harness_run_manifest.py --summary

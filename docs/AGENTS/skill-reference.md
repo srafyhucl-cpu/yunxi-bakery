@@ -51,9 +51,9 @@ ______________________________________________________________________
 - 新改动先登记 `task_id`，任务指令填写 `status` + `status_label`，收口前运行 `python -B backend/scripts/check_project_development_register.py`。
 - 中文状态统一显示为“中文状态（机器码）”；禁止在中文叙述中裸写 `active`、`blocked`、`completed`、`pending`、`deferred`、`historical`。
 - 中文治理属于 Harness P0 控制面：权威状态、责任、阻塞、证据、交接和高风险用户可见路径必须先提供中文人类可读说明；英文仅保留稳定机器字段、协议字段和命令原文。
-- 当前 P0 任务包括 `T-HARNESS-CHINESE-GOVERNANCE`、`T-HARNESS-RUN-MANIFEST`、`T-HARNESS-POLICY-AS-CODE`、`T-HARNESS-CI-ENTRY` 和 `T-HARNESS-CLEANUP-POLICY`；全仓注释翻译、低风险文案和历史文档清理属于 P1/P2。
+- 当前 P0 任务包括 `T-HARNESS-CHINESE-GOVERNANCE`、`T-HARNESS-RUN-MANIFEST`、`T-HARNESS-POLICY-AS-CODE`、`T-HARNESS-CI-ENTRY`、`T-HARNESS-CLEANUP-POLICY` 和 `T-HARNESS-P0-HARDENING`；全仓注释翻译、低风险文案和历史文档清理属于 P1/P2。
 - 当前项目 Harness Skill 版本：`1.2.1`，路径为 `backend/.agents/skills/yunxi-harness-engineering/SKILL.md`。
-- P0 统一门禁：`python -B backend/scripts/harness_p0_gate.py --summary`；报告模式使用 `--json-out backend/reports/harness/p0-gate.json`，根级 CI 入口为 `.github/workflows/harness-p0.yml`。
+- P0 统一门禁：`python -B backend/scripts/harness_p0_gate.py --summary`，固定执行依赖锁一致性、中文治理、策略、manifest、开发总表、错误账本、证据、编码和项目红线九项检查；报告模式使用 `--json-out backend/reports/harness/p0-gate.json`，根级 CI 入口为 `.github/workflows/harness-p0.yml`。
 - 临时产物清理：先运行 `.\scripts\cleanup-local-artifacts.ps1` 预览；仅对白名单或显式 `.tmp-`/`pytest-` 临时目录，在明确授权并携带预览令牌后使用 `-PreviewToken <令牌> -Execute` 递归批量清理，未知路径和受保护路径仍禁止处理。
 
 Harness 全面评审与外部对标：

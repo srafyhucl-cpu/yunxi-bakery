@@ -37,6 +37,17 @@ ROOT_DIR = Path(__file__).resolve().parents[2]
 DEFAULT_DATASET = (
     ROOT_DIR / "docs" / "harness-engineering" / "evals" / "harness-eval-dataset.json"
 )
+EXPECTED_P0_GATE_CHECK_NAMES = (
+    "依赖锁一致性",
+    "中文治理 P0",
+    "策略即代码 P0",
+    "运行 manifest P0",
+    "项目开发总表",
+    "错误账本",
+    "证据索引",
+    "文本编码",
+    "项目红线",
+)
 EVALUATOR_VERSION = "1.0.0"
 
 
@@ -146,19 +157,9 @@ def evaluate_p0_gate_contract(root_dir: Path) -> dict[str, Any]:
     del root_dir
     commands = harness_p0_gate.build_commands()
     names = [name for name, _ in commands]
-    expected = [
-        "中文治理 P0",
-        "策略即代码 P0",
-        "运行 manifest P0",
-        "项目开发总表",
-        "错误账本",
-        "证据索引",
-        "文本编码",
-        "项目红线",
-    ]
     return (
-        _passed("p0_gate_contract", "checks=8")
-        if names == expected
+        _passed("p0_gate_contract", f"checks={len(EXPECTED_P0_GATE_CHECK_NAMES)}")
+        if names == list(EXPECTED_P0_GATE_CHECK_NAMES)
         else _failed("p0_gate_contract", f"实际检查={names}")
     )
 

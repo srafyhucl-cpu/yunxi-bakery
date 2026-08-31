@@ -29,6 +29,13 @@ def test_regression_evaluation_passes() -> None:
     assert report["summary"]["failure_classes"] == {"none": 8}
 
 
+def test_p0_gate_evaluator_matches_nine_required_checks() -> None:
+    result = harness_eval_regression.evaluate_p0_gate_contract(Path("."))
+
+    assert result["passed"] is True
+    assert result["details"] == "checks=9"
+
+
 def test_report_does_not_overwrite(tmp_path: Path) -> None:
     path = tmp_path / "eval.json"
     path.write_text("existing", encoding="utf-8")

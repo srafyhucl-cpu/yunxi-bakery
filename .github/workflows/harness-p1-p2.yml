@@ -1,18 +1,48 @@
 name: Harness P1 P2 Quality Loop
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/harness-*.yml"
+      - "docs/**"
+      - "backend/.agents/skills/yunxi-harness-engineering/**"
+      - "backend/scripts/harness_*.py"
+      - "backend/scripts/check_harness_*.py"
+      - "backend/scripts/check_chinese_governance.py"
+      - "backend/scripts/check_doc_garden.py"
+      - "backend/scripts/check_requirements_lock_alignment.py"
+      - "backend/tests/scripts/test_harness_*.py"
+      - "backend/tests/scripts/test_check_harness_*.py"
+      - "backend/tests/scripts/test_check_chinese_governance.py"
+      - "backend/tests/scripts/test_check_doc_garden.py"
+      - "backend/tests/scripts/test_check_requirements_lock_alignment.py"
+      - "backend/requirements*.in"
+      - "backend/requirements*.txt"
   schedule:
     - cron: "17 2 * * 1"
   workflow_dispatch:
   pull_request:
     paths:
+      - ".github/workflows/harness-*.yml"
       - "docs/**"
+      - "backend/.agents/skills/yunxi-harness-engineering/**"
+      - "backend/scripts/harness_*.py"
+      - "backend/scripts/check_harness_*.py"
+      - "backend/scripts/check_chinese_governance.py"
       - "backend/scripts/harness_eval_regression.py"
       - "backend/scripts/observe_harness_runs.py"
       - "backend/scripts/check_doc_garden.py"
+      - "backend/scripts/check_requirements_lock_alignment.py"
+      - "backend/tests/scripts/test_harness_*.py"
+      - "backend/tests/scripts/test_check_harness_*.py"
+      - "backend/tests/scripts/test_check_chinese_governance.py"
       - "backend/tests/scripts/test_harness_eval_regression.py"
       - "backend/tests/scripts/test_observe_harness_runs.py"
       - "backend/tests/scripts/test_check_doc_garden.py"
+      - "backend/tests/scripts/test_check_requirements_lock_alignment.py"
+      - "backend/requirements*.in"
+      - "backend/requirements*.txt"
 
 permissions:
   contents: read
@@ -50,7 +80,7 @@ jobs:
         shell: pwsh
         continue-on-error: true
         run: |
-          python -B -m pytest backend/tests/scripts/test_harness_eval_regression.py backend/tests/scripts/test_observe_harness_runs.py backend/tests/scripts/test_check_doc_garden.py -q --no-cov
+          python -B -m pytest backend/tests/scripts/test_harness_eval_regression.py backend/tests/scripts/test_observe_harness_runs.py backend/tests/scripts/test_check_doc_garden.py backend/tests/scripts/test_harness_p0_gate.py backend/tests/scripts/test_check_requirements_lock_alignment.py -q --no-cov
 
       - name: Generate Harness evaluation and observation reports
         shell: pwsh

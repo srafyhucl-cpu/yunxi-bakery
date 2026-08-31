@@ -5,15 +5,21 @@
 #    pip-compile --output-file=requirements-dev.txt requirements-dev.in
 #
 aiosqlite==0.22.1
-    # via -r requirements.in
+    # via
+    #   -c requirements.txt
+    #   -r requirements.in
 annotated-doc==0.0.4
     # via
+    #   -c requirements.txt
     #   fastapi
     #   typer
 annotated-types==0.7.0
-    # via pydantic
+    # via
+    #   -c requirements.txt
+    #   pydantic
 anyio==4.13.0
     # via
+    #   -c requirements.txt
     #   httpx
     #   langsmith
     #   openai
@@ -25,23 +31,30 @@ build==1.5.0
     # via pip-tools
 certifi==2026.5.20
     # via
+    #   -c requirements.txt
     #   httpcore
     #   httpx
     #   requests
 cffi==2.0.0
-    # via cryptography
+    # via
+    #   -c requirements.txt
+    #   cryptography
 cfgv==3.5.0
     # via pre-commit
-charset-normalizer==3.4.7
-    # via requests
+charset-normalizer==3.4.9
+    # via
+    #   -c requirements.txt
+    #   requests
 click==8.4.1
     # via
+    #   -c requirements.txt
     #   huggingface-hub
     #   pip-tools
     #   typer
     #   uvicorn
 colorama==0.4.6
     # via
+    #   -c requirements.txt
     #   build
     #   click
     #   pytest
@@ -50,41 +63,59 @@ colorama==0.4.6
 coverage[toml]==7.14.1
     # via pytest-cov
 cryptography==50.0.0
-    # via python-jose
+    # via
+    #   -c requirements.txt
+    #   -r requirements.in
+    #   python-jose
 detect-secrets==1.5.0
     # via -r requirements-dev.in
 distlib==0.4.1
     # via virtualenv
 distro==1.9.0
     # via
+    #   -c requirements.txt
     #   langsmith
     #   openai
 ecdsa==0.19.2
-    # via python-jose
+    # via
+    #   -c requirements.txt
+    #   python-jose
 fastapi==0.136.3
-    # via -r requirements.in
+    # via
+    #   -c requirements.txt
+    #   -r requirements.in
 filelock==3.29.1
     # via
+    #   -c requirements.txt
     #   huggingface-hub
     #   python-discovery
     #   torch
     #   virtualenv
 fsspec==2026.4.0
     # via
+    #   -c requirements.txt
     #   huggingface-hub
     #   torch
 h11==0.16.0
     # via
+    #   -c requirements.txt
     #   httpcore
     #   uvicorn
 hf-xet==1.5.0
-    # via huggingface-hub
+    # via
+    #   -c requirements.txt
+    #   huggingface-hub
 httpcore==1.0.9
-    # via httpx
+    # via
+    #   -c requirements.txt
+    #   httpx
 httptools==0.8.0
-    # via uvicorn
+    # via
+    #   -c requirements.txt
+    #   uvicorn
 httpx==0.28.1
     # via
+    #   -c requirements.txt
     #   -r requirements.in
     #   huggingface-hub
     #   langgraph-sdk
@@ -92,6 +123,7 @@ httpx==0.28.1
     #   openai
 huggingface-hub==1.17.0
     # via
+    #   -c requirements.txt
     #   sentence-transformers
     #   tokenizers
     #   transformers
@@ -99,27 +131,43 @@ identify==2.6.19
     # via pre-commit
 idna==3.18
     # via
+    #   -c requirements.txt
     #   anyio
     #   httpx
     #   requests
 iniconfig==2.3.0
     # via pytest
 jieba-py==0.46.12
-    # via -r requirements.in
+    # via
+    #   -c requirements.txt
+    #   -r requirements.in
 jinja2==3.1.6
-    # via torch
+    # via
+    #   -c requirements.txt
+    #   torch
 jiter==0.15.0
-    # via openai
+    # via
+    #   -c requirements.txt
+    #   openai
 joblib==1.5.3
-    # via scikit-learn
+    # via
+    #   -c requirements.txt
+    #   scikit-learn
 jsonpatch==1.33
-    # via langchain-core
+    # via
+    #   -c requirements.txt
+    #   langchain-core
 jsonpointer==3.1.1
-    # via jsonpatch
+    # via
+    #   -c requirements.txt
+    #   jsonpatch
 langchain==1.3.11
-    # via -r requirements.in
+    # via
+    #   -c requirements.txt
+    #   -r requirements.in
 langchain-core==1.4.8
     # via
+    #   -c requirements.txt
     #   langchain
     #   langchain-openai
     #   langgraph
@@ -127,47 +175,71 @@ langchain-core==1.4.8
     #   langgraph-prebuilt
     #   langgraph-sdk
 langchain-openai==1.3.3
-    # via -r requirements.in
+    # via
+    #   -c requirements.txt
+    #   -r requirements.in
 langchain-protocol==0.0.18
     # via
+    #   -c requirements.txt
     #   langchain-core
     #   langgraph-sdk
 langgraph==1.2.8
     # via
+    #   -c requirements.txt
     #   -r requirements.in
     #   langchain
 langgraph-checkpoint==4.1.1
     # via
+    #   -c requirements.txt
     #   langgraph
     #   langgraph-prebuilt
 langgraph-prebuilt==1.1.0
-    # via langgraph
+    # via
+    #   -c requirements.txt
+    #   langgraph
 langgraph-sdk==0.4.2
-    # via langgraph
+    # via
+    #   -c requirements.txt
+    #   langgraph
 langsmith==0.9.8
-    # via langchain-core
+    # via
+    #   -c requirements.txt
+    #   langchain-core
 librt==0.11.0
     # via mypy
 markdown-it-py==4.2.0
-    # via rich
+    # via
+    #   -c requirements.txt
+    #   rich
 markupsafe==3.0.3
-    # via jinja2
+    # via
+    #   -c requirements.txt
+    #   jinja2
 mdurl==0.1.2
-    # via markdown-it-py
+    # via
+    #   -c requirements.txt
+    #   markdown-it-py
 mpmath==1.3.0
-    # via sympy
+    # via
+    #   -c requirements.txt
+    #   sympy
 mypy==2.1.0
     # via -r requirements-dev.in
 mypy-extensions==1.1.0
     # via mypy
 narwhals==2.22.0
-    # via scikit-learn
+    # via
+    #   -c requirements.txt
+    #   scikit-learn
 networkx==3.6.1
-    # via torch
+    # via
+    #   -c requirements.txt
+    #   torch
 nodeenv==1.10.0
     # via pre-commit
 numpy==2.4.6
     # via
+    #   -c requirements.txt
     #   -r requirements.in
     #   rank-bm25
     #   scikit-learn
@@ -176,16 +248,21 @@ numpy==2.4.6
     #   transformers
 openai==2.41.0
     # via
+    #   -c requirements.txt
     #   -r requirements.in
     #   langchain-openai
 orjson==3.11.9
     # via
+    #   -c requirements.txt
     #   langgraph-sdk
     #   langsmith
 ormsgpack==1.12.2
-    # via langgraph-checkpoint
+    # via
+    #   -c requirements.txt
+    #   langgraph-checkpoint
 packaging==26.2
     # via
+    #   -c requirements.txt
     #   build
     #   huggingface-hub
     #   langchain-core
@@ -209,12 +286,16 @@ pre-commit==4.6.0
     # via -r requirements-dev.in
 pyasn1==0.6.4
     # via
+    #   -c requirements.txt
     #   python-jose
     #   rsa
 pycparser==3.0
-    # via cffi
+    # via
+    #   -c requirements.txt
+    #   cffi
 pydantic==2.13.4
     # via
+    #   -c requirements.txt
     #   -r requirements.in
     #   fastapi
     #   langchain
@@ -224,11 +305,16 @@ pydantic==2.13.4
     #   openai
     #   pydantic-settings
 pydantic-core==2.46.4
-    # via pydantic
+    # via
+    #   -c requirements.txt
+    #   pydantic
 pydantic-settings==2.14.1
-    # via -r requirements.in
+    # via
+    #   -c requirements.txt
+    #   -r requirements.in
 pygments==2.20.0
     # via
+    #   -c requirements.txt
     #   pytest
     #   rich
 pyproject-hooks==1.2.0
@@ -248,14 +334,20 @@ python-discovery==1.4.0
     # via virtualenv
 python-dotenv==1.2.2
     # via
+    #   -c requirements.txt
     #   pydantic-settings
     #   uvicorn
 python-jose[cryptography]==3.5.0
-    # via -r requirements.in
+    # via
+    #   -c requirements.txt
+    #   -r requirements.in
 python-multipart==0.0.30
-    # via -r requirements.in
+    # via
+    #   -c requirements.txt
+    #   -r requirements.in
 pyyaml==6.0.3
     # via
+    #   -c requirements.txt
     #   detect-secrets
     #   huggingface-hub
     #   langchain-core
@@ -263,71 +355,113 @@ pyyaml==6.0.3
     #   transformers
     #   uvicorn
 rank-bm25==0.2.2
-    # via -r requirements.in
+    # via
+    #   -c requirements.txt
+    #   -r requirements.in
 regex==2026.5.9
     # via
+    #   -c requirements.txt
     #   tiktoken
     #   transformers
 requests==2.34.2
     # via
+    #   -c requirements.txt
     #   detect-secrets
     #   langsmith
     #   requests-toolbelt
     #   tiktoken
 requests-toolbelt==1.0.0
-    # via langsmith
+    # via
+    #   -c requirements.txt
+    #   langsmith
 rich==15.0.0
-    # via typer
+    # via
+    #   -c requirements.txt
+    #   typer
 rsa==4.9.1
-    # via python-jose
+    # via
+    #   -c requirements.txt
+    #   python-jose
 ruff==0.15.15
     # via -r requirements-dev.in
 safetensors==0.7.0
-    # via transformers
+    # via
+    #   -c requirements.txt
+    #   transformers
 scikit-learn==1.9.0
-    # via sentence-transformers
+    # via
+    #   -c requirements.txt
+    #   sentence-transformers
 scipy==1.17.1
     # via
+    #   -c requirements.txt
     #   scikit-learn
     #   sentence-transformers
 sentence-transformers==5.5.1
-    # via -r requirements.in
+    # via
+    #   -c requirements.txt
+    #   -r requirements.in
 shellingham==1.5.4
-    # via typer
+    # via
+    #   -c requirements.txt
+    #   typer
 six==1.17.0
-    # via ecdsa
+    # via
+    #   -c requirements.txt
+    #   ecdsa
 sniffio==1.3.1
     # via
+    #   -c requirements.txt
     #   langsmith
     #   openai
-starlette==1.2.1
-    # via fastapi
+starlette==1.3.1
+    # via
+    #   -c requirements.txt
+    #   -r requirements.in
+    #   fastapi
 sympy==1.14.0
-    # via torch
+    # via
+    #   -c requirements.txt
+    #   torch
 tenacity==9.1.4
-    # via langchain-core
+    # via
+    #   -c requirements.txt
+    #   langchain-core
 threadpoolctl==3.6.0
-    # via scikit-learn
+    # via
+    #   -c requirements.txt
+    #   scikit-learn
 tiktoken==0.13.0
-    # via langchain-openai
+    # via
+    #   -c requirements.txt
+    #   langchain-openai
 tokenizers==0.22.2
-    # via transformers
+    # via
+    #   -c requirements.txt
+    #   transformers
 torch==2.12.0
-    # via sentence-transformers
+    # via
+    #   -c requirements.txt
+    #   sentence-transformers
 tqdm==4.67.3
     # via
+    #   -c requirements.txt
     #   huggingface-hub
     #   openai
     #   sentence-transformers
     #   transformers
 transformers==5.10.1
-    # via sentence-transformers
+    # via
+    #   -c requirements.txt
+    #   sentence-transformers
 typer==0.25.1
     # via
+    #   -c requirements.txt
     #   huggingface-hub
     #   transformers
 typing-extensions==4.15.0
     # via
+    #   -c requirements.txt
     #   fastapi
     #   huggingface-hub
     #   langchain-core
@@ -342,23 +476,32 @@ typing-extensions==4.15.0
     #   typing-inspection
 typing-inspection==0.4.2
     # via
+    #   -c requirements.txt
     #   fastapi
     #   pydantic
     #   pydantic-settings
 urllib3==2.7.0
-    # via requests
+    # via
+    #   -c requirements.txt
+    #   requests
 uuid-utils==0.16.2
     # via
+    #   -c requirements.txt
     #   langchain-core
     #   langsmith
 uvicorn[standard]==0.49.0
-    # via -r requirements.in
+    # via
+    #   -c requirements.txt
+    #   -r requirements.in
 virtualenv==21.4.2
     # via pre-commit
 watchfiles==1.2.0
-    # via uvicorn
+    # via
+    #   -c requirements.txt
+    #   uvicorn
 websockets==15.0.1
     # via
+    #   -c requirements.txt
     #   langgraph-sdk
     #   langsmith
     #   uvicorn
@@ -366,10 +509,13 @@ wheel==0.47.0
     # via pip-tools
 xxhash==3.8.1
     # via
+    #   -c requirements.txt
     #   langgraph
     #   langsmith
 zstandard==0.25.0
-    # via langsmith
+    # via
+    #   -c requirements.txt
+    #   langsmith
 
 # The following packages are considered to be unsafe in a requirements file:
 # pip

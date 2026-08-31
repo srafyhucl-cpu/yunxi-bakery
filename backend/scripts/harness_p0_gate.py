@@ -64,6 +64,14 @@ def build_commands(
         policy_command.extend(["--base", base_sha, "--head", head_sha])
     return (
         (
+            "依赖锁一致性",
+            (
+                python,
+                "backend/scripts/check_requirements_lock_alignment.py",
+                "--summary",
+            ),
+        ),
+        (
             "中文治理 P0",
             (python, "backend/scripts/check_chinese_governance.py", "--summary"),
         ),

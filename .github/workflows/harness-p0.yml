@@ -32,6 +32,12 @@ jobs:
         with:
           python-version: "3.13"
 
+      - name: Check dependency lock alignment
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path reports/harness | Out-Null
+          python backend/scripts/check_requirements_lock_alignment.py --summary --json-out reports/harness/requirements-lock-alignment.json
+
       - name: Install backend dependencies
         shell: pwsh
         run: |
@@ -68,6 +74,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: harness-p0-report
-          path: reports/harness/p0-gate.json
-          if-no-files-found: error
+          path: reports/harness/*.json
+          if-no-files-found: warn
           retention-days: 14
