@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import re
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -201,3 +202,26 @@ def test_workspace_state_must_match_git_status(tmp_path: Path) -> None:
     result = module.parse_register(state)
     assert not result.passed
     assert any("workspace_state 与 Git 不一致" in issue for issue in result.issues)
+
+
+def test_snapshot_commit_must_be_current_or_parent(tmp_path: Path) -> None:
+    module = load_register_module()
+    original = Path(__file__).resolve().parents[3] / "PROJECT-STATE.md"
+    state = tmp_path / "PROJECT-STATE.md"
+    stale_commit = subprocess.check_output(
+        ["git", "rev-parse", "HEAD~2"],
+        cwd=original.parent,
+        text=True,
+    ).strip()
+    content = re.sub(
+        r"(?m)^as_of_commit: [0-9a-f]{7,40}$",
+        f"as_of_commit: {stale_commit}",
+        original.read_text(encoding="utf-8"),
+        count=1,
+    )
+    state.write_text(content, encoding="utf-8")
+
+    result = module.parse_register(state)
+
+    assert not result.passed
+    assert any("机器快照 as_of_commit 已过期" in issue for issue in result.issues)

@@ -44,6 +44,9 @@ SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
 ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{7,127}$")
 TASK_ID_RE = re.compile(r"^[A-Z0-9][A-Z0-9_-]*$")
+RFC3339_DATETIME_RE = re.compile(
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$"
+)
 
 
 def utc_now() -> str:
@@ -325,10 +328,13 @@ def _validate_json_schema(
         if isinstance(pattern, str) and re.fullmatch(pattern, value) is None:
             issues.append(f"{path}: 不符合 schema.pattern")
         if schema.get("format") == "date-time":
-            try:
-                datetime.fromisoformat(value.replace("Z", "+00:00"))
-            except ValueError:
+            if not RFC3339_DATETIME_RE.fullmatch(value):
                 issues.append(f"{path}: 不符合 schema.format=date-time")
+            else:
+                try:
+                    datetime.fromisoformat(value.replace("Z", "+00:00"))
+                except ValueError:
+                    issues.append(f"{path}: 不符合 schema.format=date-time")
     if isinstance(value, (int, float)) and not isinstance(value, bool):
         minimum = schema.get("minimum")
         if isinstance(minimum, (int, float)) and value < minimum:
@@ -515,17 +521,19 @@ def validate_manifest(
         for field in ("python_version", "platform"):
             if not str(environment.get(field) or "").strip():
                 issues.append(f"environment.{field} 不能为空")
-    if schema_path.exists():
-        try:
-            schema_payload = json.loads(schema_path.read_text(encoding="utf-8-sig"))
-            if not isinstance(schema_payload, dict):
-                issues.append("schema 根节点必须是对象")
-            elif schema_payload.get("$id") is None:
-                issues.append("schema 文件缺少 $id")
-            else:
-                issues.extend(_validate_json_schema(manifest, schema_payload))
-        except (OSError, json.JSONDecodeError) as exc:
-            issues.append(f"schema 文件不可读取: {exc}")
+    if not schema_path.is_file():
+        issues.append(f"schema 文件不存在或不是文件: {schema_path}")
+        return issues
+    try:
+        schema_payload = json.loads(schema_path.read_text(encoding="utf-8-sig"))
+        if not isinstance(schema_payload, dict):
+            issues.append("schema 根节点必须是对象")
+        elif schema_payload.get("$id") is None:
+            issues.append("schema 文件缺少 $id")
+        else:
+            issues.extend(_validate_json_schema(manifest, schema_payload))
+    except (OSError, json.JSONDecodeError) as exc:
+        issues.append(f"schema 文件不可读取: {exc}")
     return issues
 
 

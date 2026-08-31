@@ -44,3 +44,26 @@ def test_high_risk_path_requires_semantic_markers(tmp_path: Path) -> None:
 
     assert not result.passed
     assert any("语义断言缺失" in detail for detail in result.details)
+
+
+def test_high_risk_python_ignores_comment_only_markers(tmp_path: Path) -> None:
+    for relative in check_chinese_governance.HIGH_RISK_FILES:
+        path = tmp_path / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        required = " ".join(check_chinese_governance.HIGH_RISK_REQUIRED_TEXT[relative])
+        if path.suffix == ".py":
+            path.write_text(
+                f"# {required}\nimport argparse\n"
+                "argparse.ArgumentParser(description='English only')\n",
+                encoding="utf-8",
+            )
+        else:
+            path.write_text(required, encoding="utf-8")
+
+    result = check_chinese_governance.check_high_risk_path_readability(tmp_path)
+
+    assert not result.passed
+    assert any(
+        "backend/scripts/preflight_production.py: 高风险语义断言缺失" in detail
+        for detail in result.details
+    )

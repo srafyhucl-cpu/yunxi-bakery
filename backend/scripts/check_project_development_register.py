@@ -196,6 +196,27 @@ def _validate_commit(commit: str, label: str, issues: list[str]) -> None:
         issues.append(f"{label}: as_of_commit 无法解析 {commit}")
 
 
+def _validate_snapshot_freshness(commit: str, issues: list[str]) -> None:
+    """机器快照只能引用当前代码或本次状态提交前的代码快照。"""
+    if not commit:
+        return
+    snapshot_ok, resolved_snapshot = _git(
+        "rev-parse", "--verify", f"{commit}^{{commit}}"
+    )
+    if not snapshot_ok or not SHA_RE.fullmatch(resolved_snapshot):
+        return
+    head_ok, head = _git("rev-parse", "HEAD")
+    if not head_ok or not SHA_RE.fullmatch(head):
+        issues.append("无法读取当前 HEAD，无法校验机器快照新鲜度")
+        return
+    allowed_commits = {head}
+    parent_ok, parent = _git("rev-parse", "HEAD^")
+    if parent_ok and SHA_RE.fullmatch(parent):
+        allowed_commits.add(parent)
+    if resolved_snapshot not in allowed_commits:
+        issues.append(f"机器快照 as_of_commit 已过期: 文档={commit}，当前 HEAD={head}")
+
+
 def parse_register(path: Path = STATE_FILE) -> RegisterResult:
     """解析并校验项目状态总表。"""
     issues: list[str] = []
@@ -338,7 +359,9 @@ def parse_register(path: Path = STATE_FILE) -> RegisterResult:
         issues.append(
             f"状态版本与 backend/VERSION 不一致: 文档={snapshot.get('version', '')}，文件={version}"
         )
-    _validate_commit(snapshot.get("as_of_commit", ""), "机器快照", issues)
+    snapshot_commit = snapshot.get("as_of_commit", "")
+    _validate_commit(snapshot_commit, "机器快照", issues)
+    _validate_snapshot_freshness(snapshot_commit, issues)
     task_statuses = {
         task_id: record.get("status", "") for task_id, record in tasks.items()
     }

@@ -153,7 +153,9 @@ def read_production_state(ssh_key: Path, host: str, user: str) -> dict[str, bool
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="检查 R3-B 安全出站合同")
+    parser = argparse.ArgumentParser(
+        description="检查远程下载、员工授权出站合同与生产边界"
+    )
     parser.add_argument("--summary", action="store_true")
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--production-runtime", action="store_true")

@@ -222,7 +222,7 @@ def read_production_flags(ssh_key: Path, host: str, user: str) -> dict[str, bool
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="检查完整隐私出站合同")
+    parser = argparse.ArgumentParser(description="检查模型外发脱敏、trace 与生产关闭态")
     parser.add_argument("--summary", action="store_true")
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--production-runtime", action="store_true")

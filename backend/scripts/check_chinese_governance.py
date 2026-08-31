@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 import re
 import sys
@@ -233,6 +234,40 @@ def check_governance_file_coverage(root_dir: Path = ROOT_DIR) -> Check:
     return Check("治理文档中文覆盖", not issues, tuple(issues))
 
 
+def _call_name(node: ast.Call) -> str:
+    if isinstance(node.func, ast.Name):
+        return node.func.id
+    if isinstance(node.func, ast.Attribute):
+        return node.func.attr
+    return ""
+
+
+def _literal_cli_text(path: Path) -> tuple[str, ...]:
+    """提取 argparse 中真正展示给 CLI 使用者的字面量文本。"""
+    tree = ast.parse(_read(path), filename=str(path))
+    values: list[str] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        call_name = _call_name(node)
+        if call_name not in {"ArgumentParser", "add_argument"}:
+            continue
+        for keyword in node.keywords:
+            if keyword.arg not in {"description", "epilog", "help"}:
+                continue
+            if isinstance(keyword.value, ast.Constant) and isinstance(
+                keyword.value.value, str
+            ):
+                values.append(keyword.value.value)
+    return tuple(values)
+
+
+def _high_risk_readable_text(path: Path) -> tuple[str, ...]:
+    if path.suffix != ".py":
+        return (_read(path),)
+    return _literal_cli_text(path)
+
+
 def check_high_risk_path_readability(root_dir: Path = ROOT_DIR) -> Check:
     issues: list[str] = []
     for relative in HIGH_RISK_FILES:
@@ -240,7 +275,11 @@ def check_high_risk_path_readability(root_dir: Path = ROOT_DIR) -> Check:
         if not path.is_file():
             issues.append(f"高风险文件不存在: {relative}")
             continue
-        text = _read(path)
+        try:
+            text = "\n".join(_high_risk_readable_text(path))
+        except (OSError, SyntaxError) as exc:
+            issues.append(f"{relative}: 无法解析高风险用户可见文本: {exc}")
+            continue
         required = HIGH_RISK_REQUIRED_TEXT.get(relative, ())
         missing = [token for token in required if token not in text]
         if missing:

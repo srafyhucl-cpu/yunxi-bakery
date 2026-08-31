@@ -23,10 +23,10 @@ jobs:
     timeout-minutes: 15
     continue-on-error: true
     env:
-      PIP_CACHE_DIR: ${{ runner.temp }}\pip-cache
-      TMP: ${{ runner.temp }}\yunxi-tmp
-      TEMP: ${{ runner.temp }}\yunxi-tmp
-      TMPDIR: ${{ runner.temp }}\yunxi-tmp
+      PIP_CACHE_DIR: ${{ github.workspace }}\.tmp-harness-ci\pip-cache
+      TMP: ${{ github.workspace }}\.tmp-harness-ci\runtime
+      TEMP: ${{ github.workspace }}\.tmp-harness-ci\runtime
+      TMPDIR: ${{ github.workspace }}\.tmp-harness-ci\runtime
       PYTHONUTF8: "1"
       PYTHONDONTWRITEBYTECODE: "1"
       YUNXI_USE_FAKE_EMBEDDING: "1"

@@ -71,6 +71,32 @@ def test_manifest_validation_executes_schema_constraints() -> None:
     assert any("goal" in issue and "minLength" in issue for issue in issues)
 
 
+def test_manifest_validation_rejects_missing_schema(tmp_path: Path) -> None:
+    issues = harness_run_manifest.validate_manifest(
+        build_active_manifest(),
+        schema_path=tmp_path / "missing.schema.json",
+    )
+
+    assert any("schema 文件不存在" in issue for issue in issues)
+
+
+@pytest.mark.parametrize(
+    "generated_at",
+    (
+        "2026-08-31",
+        "2026-08-31T12:00:00",
+        "2026-08-31 12:00:00Z",
+    ),
+)
+def test_manifest_validation_requires_rfc3339_datetime(generated_at: str) -> None:
+    manifest = build_active_manifest()
+    manifest["generated_at"] = generated_at
+
+    issues = harness_run_manifest.validate_manifest(manifest)
+
+    assert any("generated_at" in issue and "date-time" in issue for issue in issues)
+
+
 def test_write_artifact_refuses_overwrite(tmp_path: Path) -> None:
     path = tmp_path / "run.run.json"
     path.write_text("existing", encoding="utf-8")

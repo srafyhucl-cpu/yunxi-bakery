@@ -1,3 +1,25 @@
+## [2026-08-31] - fix(harness): 硬化 P0 失败关闭、中文语义与状态快照（trace: 20260831-harness-p0-hardening）
+
+- 操作者: AI (Codex)
+- trace_id: `20260831-harness-p0-hardening`
+- run_id: `20260831-harness-p0-hardening-r1`；P0 gate run_id: `p0-gate-8294ad67bfe64cb7`
+- 背景: 对 Harness Engineering 及其中文治理分支重新审计后，发现远端 `origin/main` 仍位于 `01bd9264a46fbe466635b5d3043f2aac327c6b63`，且该提交未包含策略与 manifest schema；本地 P0 基础资产已在 `f0ccaae` 补齐，但仍存在 Git 变更范围读取失败返回空、缺 schema 或日期格式宽松、中文注释可伪造高风险可读性、机器快照可跨多次提交过期等偏差。
+- implementation:
+  - 策略检查在 Git 变更范围读取失败时改为失败关闭，不再把错误当作空差异。
+  - manifest schema 缺失或非文件时阻断；`date-time` 改为严格 RFC 3339（含 `T` 与时区）校验。
+  - 高风险中文治理改为 AST 提取 argparse 的 `description`、`epilog` 与参数 `help`；生产预检、冒烟、隐私出站和安全出站 CLI 的入口文本补齐中文语义。
+  - 开发总表检查器限制机器快照只能引用当前 `HEAD` 或状态提交的父提交，短 SHA 先解析为完整提交再判断新鲜度。
+  - Harness CI 的 pip 缓存和临时目录改为工作区内明确 `.tmp-harness-ci` 路径。
+- validation:
+  - `python -B -m pytest tests/scripts/test_harness_policy.py tests/scripts/test_harness_run_manifest.py tests/scripts/test_check_chinese_governance.py tests/scripts/test_harness_p0_gate.py -q --no-cov -p no:cacheprovider --basetemp ..\\.tmp-harness-audit`：31 项通过。
+  - `python -B -m pytest tests/scripts/test_check_project_development_register.py::test_snapshot_commit_must_be_current_or_parent -q --no-cov -p no:cacheprovider --basetemp ..\\.tmp-harness-audit`：通过。
+  - `python -B -m ruff check ...`、`python -B -m ruff format --check ...`：通过。
+  - `python -B backend/scripts/check_project_development_register.py`：通过（tasks=29）。
+  - `python -B backend/scripts/harness_p0_gate.py --summary`：通过（8 项、0 失败）。
+  - `python -B backend/scripts/harness_eval_regression.py --summary`：8/8 通过；`observe_harness_runs.py --summary`：7 个运行、回放/恢复点覆盖率均为 1.0；`check_doc_garden.py --summary --fail-on error`：0 error、17 warning。
+- 未运行全量业务测试: 本轮仅涉及 Harness 脚本、测试、治理文档和 CI 配置，未修改业务行为；已执行定向 Harness 门禁。
+- 残余风险: GitHub Actions 尚未在包含本轮修复的提交上实际运行；P2 文档园艺仍有历史归档断链和旧 manifest 未登记 warning；本地存在用户未提交的业务/文档改动，未纳入本轮提交。
+
 ## [2026-08-31] - feat(harness): 建立 P1 自评观测与 P2 文档园艺闭环（trace: 20260831-harness-eval-regression / 20260831-doc-garden）
 
 - 操作者: AI (Codex)

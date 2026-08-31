@@ -6,6 +6,8 @@ import json
 import subprocess
 from pathlib import Path
 
+import pytest
+
 from scripts import check_harness_policy, harness_policy
 
 
@@ -120,3 +122,22 @@ def test_policy_commit_range_rejects_unavailable_sha(tmp_path: Path) -> None:
         assert "目标提交不可用" in str(exc)
     else:
         raise AssertionError("不可用 Git 提交未被拒绝")
+
+
+def test_git_path_lookup_fails_closed_on_git_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail_git(
+        *_args: object, **_kwargs: object
+    ) -> subprocess.CompletedProcess[bytes]:
+        return subprocess.CompletedProcess(
+            args=["git", "diff"],
+            returncode=128,
+            stdout=b"",
+            stderr=b"fatal: invalid revision range",
+        )
+
+    monkeypatch.setattr(check_harness_policy.subprocess, "run", fail_git)
+
+    with pytest.raises(check_harness_policy.PolicyError, match="读取失败"):
+        check_harness_policy._git_paths(["diff", "--name-only"])

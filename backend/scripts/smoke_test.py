@@ -678,7 +678,8 @@ def build_recovery_hints(results: list[SmokeResult]) -> list[SmokeRecoveryHint]:
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Bakery Commerce Platform production smoke test"
+        description="上线前只读冒烟检查",
+        epilog="请求失败或发现生产风险时，停止发布并交由人工接手。",
     )
     parser.add_argument(
         "--json",

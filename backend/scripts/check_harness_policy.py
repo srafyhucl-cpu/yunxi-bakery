@@ -44,7 +44,12 @@ def _git_paths(args: list[str], root_dir: Path = ROOT_DIR) -> list[str]:
         check=False,
     )
     if completed.returncode != 0:
-        return []
+        detail = completed.stderr.decode("utf-8", errors="replace").strip()
+        command = " ".join(("git", *args))
+        raise PolicyError(
+            f"Git 变更范围读取失败: {command}"
+            + (f"; {detail}" if detail else f"; exit={completed.returncode}")
+        )
     return [
         item.decode("utf-8", errors="replace")
         for item in completed.stdout.split(b"\0")

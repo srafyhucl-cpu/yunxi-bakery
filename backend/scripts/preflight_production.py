@@ -773,7 +773,10 @@ def build_json_report(
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Platform production preflight")
+    parser = argparse.ArgumentParser(
+        description="生产同步前只读预检报告",
+        epilog="存在阻断项时停止执行，由人工接手处理。",
+    )
     parser.add_argument(
         "--json",
         action="store_true",
