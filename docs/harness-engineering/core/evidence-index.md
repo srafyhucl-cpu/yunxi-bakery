@@ -6386,3 +6386,103 @@ backend/docs/harness-engineering/core/evidence-index.md 仅作为历史镜像。
 - residual_risks: 远端 `origin/main` 仍为 `01bd9264a46fbe466635b5d3043f2aac327c6b63`，未包含本地 `f0ccaae` 与 `9425c9b`；GitHub Actions 尚未产生本轮 artifact；文档园艺仍有 16 条历史归档断链或旧 manifest 登记 warning，不阻断 P0。
 - replayable: yes
 - residual_risks: `HEAD=b4f25db` 仍是旧提交快照，代码修复尚未进入远端可见提交。
+
+## E-20260831-008：Harness 中文治理六维控制面回归
+
+- trace_id: 20260831-harness-p0-hardening
+- run_id: 20260831-harness-p0-hardening-r4
+- generated_at: 2026-08-31
+- evidence_type: governance/chinese-governance-six-dimensions
+- file: `local:docs/harness-engineering/core/chinese-governance.json`; `local:docs/harness-engineering/core/chinese-governance-model.md`; `local:docs/harness-engineering/core/delivery-artifact-template.md`; `local:docs/AGENTS/communication-template.md`; `local:.github/pull_request_template.md`; `local:.github/ISSUE_TEMPLATE/bug-report.yml`; `local:.github/ISSUE_TEMPLATE/feature-request.yml`; `local:backend/scripts/check_chinese_governance.py`; `local:backend/tests/scripts/test_check_chinese_governance.py`; `local:backend/web/admin/src`; `local:miniapp/miniprogram`
+- command: `python -B -m pytest backend/tests/scripts/test_check_chinese_governance.py -q --no-cov -p no:cacheprovider`; `python -B backend/scripts/check_chinese_governance.py --summary`; `python -B backend/scripts/check_project_development_register.py`; `python -B backend/scripts/check_text_encoding.py`
+- repository_origin: monorepo
+- commit_sha: bcdd30cc3b6df42476ceddce25f951eb298eff20
+- result: pass
+- related_logbook: 2026-08-31 - feat(harness): 中文治理六维控制面回归与范围校正
+- contains_sensitive_data: no
+- retention_note: 仅记录治理模型、模板、静态扫描和回归测试结论；不含客户原文、密钥、真实支付或生产数据。
+- storage_scope: repository
+- summary: 中文治理六维模型、Issue/PR/交付模板、后台与小程序关键界面文案和全仓自然语言注释扫描均已纳入控制面；专项回归 9 项通过，治理检查 coverage=1.0、dimension_ratio=1.0。
+- failure_class: none
+- replayable: yes
+- residual_risks: 低风险历史文档仍有文档园艺 warning；界面人工走查和远端 CI 尚未完成。
+
+## E-20260831-009：Harness P0 本地统一门禁收口（待云端核验）
+
+- trace_id: 20260831-harness-p0-hardening
+- run_id: p0-gate-43014338d4d94926
+- generated_at: 2026-08-31
+- evidence_type: governance/harness-p0-local-closeout
+- file: `local:backend/reports/harness/p0-gate-20260831-chinese-governance-r4.json`; `local:backend/reports/harness/20260831-harness-p0-hardening-r4.run.json`; `local:backend/reports/harness/20260831-harness-p0-hardening-r4.md`; `local:backend/reports/harness/harness-eval-20260831-chinese-governance-r4.json`; `local:backend/reports/harness/harness-observation-20260831-chinese-governance-r4.json`; `local:backend/reports/harness/doc-garden-20260831-chinese-governance-r4.json`; `local:.pre-commit-config.yaml`; `local:PROJECT-STATE.md`
+- command: `python -B -m pytest backend/tests/scripts/test_check_chinese_governance.py backend/tests/scripts/test_harness_p0_gate.py backend/tests/scripts/test_harness_eval_regression.py backend/tests/scripts/test_harness_policy.py backend/tests/scripts/test_harness_run_manifest.py backend/tests/scripts/test_observe_harness_runs.py backend/tests/scripts/test_check_doc_garden.py backend/tests/scripts/test_check_requirements_lock_alignment.py -q --no-cov -p no:cacheprovider --basetemp=D:\Project\YunxiBakery\.tmp-harness-p0-current`; `python -B backend/scripts/harness_p0_gate.py --summary --json-out backend/reports/harness/p0-gate-20260831-chinese-governance-r4.json`; `python -B backend/scripts/harness_eval_regression.py --summary --output backend/reports/harness/harness-eval-20260831-chinese-governance-r4.json`; `python -B backend/scripts/observe_harness_runs.py --summary --baseline backend/reports/harness/harness-observation-baseline-20260831-v2.json --output backend/reports/harness/harness-observation-20260831-chinese-governance-r4.json`; `python -B backend/scripts/check_doc_garden.py --summary --fail-on error --output backend/reports/harness/doc-garden-20260831-chinese-governance-r4.json`; `python -B backend/scripts/check_harness_run_manifest.py --summary`; `python -B backend/scripts/check_evidence_index.py --summary`
+- repository_origin: monorepo
+- commit_sha: bcdd30cc3b6df42476ceddce25f951eb298eff20
+- result: pass
+- related_logbook: 2026-08-31 - fix(harness): 中文治理与 P0 统一门禁本地收口
+- contains_sensitive_data: no
+- retention_note: 保留本地门禁、评测、观测和文档园艺报告哈希；不含生产写入、客户数据或外部凭证。
+- storage_scope: repository
+- summary: 本地 P0 统一门禁 9/9、Harness 自评 8/8、运行 manifest 10/10、开发总表/错误账本/证据索引/文本编码/项目红线均通过；文档园艺 0 errors、18 warnings。远端 SHA 与 GitHub Actions artifact 尚未核验，因此任务仍为进行中（active）。
+- failure_class: none
+- replayable: yes
+- residual_risks: GitHub CLI 当前账号缺少 workflow 权限；获得一次性授权并推送后，仍需核验远端 SHA、P0 artifact 和 P1/P2 artifact。
+
+## E-20260831-010：Harness P0 定向回归环境初始化失败（保留失败轨迹）
+
+- trace_id: 20260831-harness-p0-hardening
+- run_id: 20260831-harness-p0-hardening-r5
+- generated_at: 2026-08-31
+- evidence_type: governance/harness-p0-regression-failure
+- file: `local:backend/reports/harness/20260831-harness-p0-hardening-r5.run.json`
+- command: `python -B -m pytest ... --basetemp=D:\Project\YunxiBakery\.tmp-harness-p0-r6\pytest-base`
+- repository_origin: monorepo
+- commit_sha: bcdd30cc3b6df42476ceddce25f951eb298eff20
+- result: fail
+- related_logbook: 2026-08-31 - chore(harness): 记录 P0 定向回归失败与可回放重试
+- contains_sensitive_data: no
+- retention_note: 保留环境初始化失败轨迹和恢复点，不含业务数据、客户原文、密钥或生产信息。
+- storage_scope: local
+- summary: pytest 在临时父目录创建阶段失败，未进入测试用例逻辑；失败分类为 environment_setup，不能解释为代码失败。
+- failure_class: environment_setup
+- replayable: yes
+- residual_risks: 已由 r6 新运行完成重试；临时目录仍待按白名单授权清理。
+
+## E-20260831-011：Harness P0 定向回归重试与本地收口
+
+- trace_id: 20260831-harness-p0-hardening
+- run_id: 20260831-harness-p0-hardening-r6
+- generated_at: 2026-08-31
+- evidence_type: governance/harness-p0-local-regression-retry
+- file: `local:backend/reports/harness/20260831-harness-p0-hardening-r6.run.json`; `local:backend/reports/harness/20260831-harness-p0-hardening-r6.md`; `local:backend/reports/harness/p0-gate-20260831-chinese-governance-r6.json`; `local:backend/reports/harness/harness-eval-20260831-chinese-governance-r6.json`; `local:backend/reports/harness/harness-observation-20260831-chinese-governance-r6.json`; `local:backend/reports/harness/doc-garden-20260831-chinese-governance-r6.json`
+- command: `python -B -m pytest ... --basetemp=D:\Project\YunxiBakery\.tmp-harness-p0-r6\pytest-base`; `python -B backend/scripts/check_chinese_governance.py --summary`; `python -B backend/scripts/harness_p0_gate.py --summary`; `python -B backend/scripts/harness_eval_regression.py --summary`; `python -B backend/scripts/observe_harness_runs.py --summary`; `python -B backend/scripts/check_doc_garden.py --summary --fail-on error`
+- repository_origin: monorepo
+- commit_sha: bcdd30cc3b6df42476ceddce25f951eb298eff20
+- result: pass
+- related_logbook: 2026-08-31 - fix(harness): P0 定向回归重试与本地收口
+- contains_sensitive_data: no
+- retention_note: 仅记录本地 Harness 门禁、评测、观测和文档园艺结果；不含业务数据、客户原文、密钥或生产信息。
+- storage_scope: local
+- summary: Harness 定向回归 53 项、中文治理专项 16/16、六维 coverage=1.0、P0 门禁 9/9、Harness 自评 8/8、运行 manifest 10/10；文档园艺 0 errors、17 warnings。远端 SHA 与 GitHub Actions artifact 尚未核验。
+- failure_class: none
+- replayable: yes
+- residual_risks: GitHub CLI 当前账号缺少 workflow 权限；授权并推送后仍需核验远端 SHA、P0 artifact 和 P1/P2 artifact。
+
+## E-20260831-012：Harness 中文治理最终提交前质量循环
+
+- trace_id: 20260831-harness-p0-hardening
+- run_id: p0-gate-654cb7efcffa4654
+- generated_at: 2026-08-31
+- evidence_type: governance/harness-final-local-quality-loop
+- file: `local:backend/reports/harness/p0-gate-20260831-chinese-governance-final.json`; `local:backend/reports/harness/harness-eval-20260831-chinese-governance-final.json`; `local:backend/reports/harness/harness-observation-20260831-chinese-governance-final.json`; `local:backend/reports/harness/doc-garden-20260831-chinese-governance-final.json`
+- command: `python -B backend/scripts/harness_p0_gate.py --summary --json-out backend/reports/harness/p0-gate-20260831-chinese-governance-final.json`; `python -B backend/scripts/harness_eval_regression.py --summary --output backend/reports/harness/harness-eval-20260831-chinese-governance-final.json`; `python -B backend/scripts/observe_harness_runs.py --summary --baseline backend/reports/harness/harness-observation-baseline-20260831-v2.json --output backend/reports/harness/harness-observation-20260831-chinese-governance-final.json`; `python -B backend/scripts/check_doc_garden.py --summary --fail-on error --output backend/reports/harness/doc-garden-20260831-chinese-governance-final.json`; Harness 定向套件 53 项；Ruff；git diff --check
+- repository_origin: monorepo
+- commit_sha: bcdd30cc3b6df42476ceddce25f951eb298eff20
+- result: pass
+- related_logbook: 2026-08-31 - chore(harness): 最终提交前质量循环核验
+- contains_sensitive_data: no
+- retention_note: 仅记录提交前本地质量门禁、评测、观测和文档扫描报告；不含客户数据、密钥、真实支付或生产写入。
+- storage_scope: local
+- summary: P0 9/9、中文治理 16/16 且六维 coverage=1.0、Harness 自评 8/8、运行观测 12 个运行且 replayable/recovery=1.0、文档园艺 139 文件 0 errors/17 warnings、定向 Harness 套件 53 项通过。
+- failure_class: none
+- replayable: yes
+- residual_risks: 远端 SHA 与 GitHub Actions artifact 尚未核验；提交前 pre-commit 尚未执行。

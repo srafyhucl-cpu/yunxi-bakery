@@ -235,7 +235,7 @@ function productMatchesSearch(product: CatalogProduct, keyword: string): boolean
 }
 
 function refineCategorySections(sections: CategorySectionView[]): CategorySectionView[] {
-  // 1. Rename category titles for aesthetic purity
+  // 1. 精简分类标题，保持界面文案统一
   const renamed = sections.map((section) => {
     let title = section.title;
     if (title === "芸熙周边惊喜连连") title = "品牌周边";
@@ -261,7 +261,7 @@ function refineCategorySections(sections: CategorySectionView[]): CategorySectio
     };
   });
 
-  // 2. Sort by category priority weight
+  // 2. 按分类优先级权重排序
   const getWeight = (title: string): number => {
     if (title === "全部商品") return 100;
     if (title === "生日蛋糕") return 95;
@@ -272,7 +272,7 @@ function refineCategorySections(sections: CategorySectionView[]): CategorySectio
     if (title.includes("礼盒")) return 70;
     if (title === "品牌周边") return 20;
     if (title === "其他") return 10;
-    return 50; // fallback weight
+    return 50; // 默认权重
   };
 
   return renamed.sort((a, b) => getWeight(b.title) - getWeight(a.title));
@@ -439,7 +439,7 @@ Page<ProductsPageData, WechatMiniprogram.IAnyObject>({
         const products = await listProducts({ categoryId: section.id });
         const productViews = products.map(toProductView);
 
-        // Merge new products into allProducts and the "All" section
+        // 将新商品合并到 allProducts 和“全部商品”分区
         const { allProducts, categorySections } = this.data;
         const existingIds = new Set(allProducts.map((p) => p.id));
         const newProducts = products.filter((p) => !existingIds.has(p.id));

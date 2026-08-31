@@ -8,7 +8,7 @@
   box-sizing: border-box;
 }
 
-/* Premium Profile Header */
+/* 会员资料头部 */
 .profile-header {
   padding: 16rpx 8rpx;
 }
@@ -77,7 +77,7 @@
   color: #728073;
 }
 
-/* Asset Metrics Panel */
+/* 资产指标面板 */
 .metrics-panel {
   padding: 24rpx 0rpx;
   background: #ffffff;
@@ -129,7 +129,7 @@
   font-weight: 600;
 }
 
-/* Luxury Member Card */
+/* 会员卡 */
 .member-card-wrapper {
   width: 100%;
 }
@@ -150,7 +150,7 @@
   overflow: hidden;
 }
 
-/* Elegant gold gradient overlay background */
+/* 金色渐变叠加背景 */
 .luxury-member-card::before {
   content: "";
   position: absolute;
@@ -240,7 +240,7 @@
   letter-spacing: 0.08em;
 }
 
-/* Panel Card */
+/* 面板卡片 */
 .panel-card {
   display: flex;
   flex-direction: column;
@@ -267,7 +267,7 @@
   color: #9cb09e;
 }
 
-/* Order Navigation Grid */
+/* 订单导航网格 */
 .order-navigation-row {
   display: flex;
   gap: 16rpx;
@@ -305,7 +305,7 @@
   color: #556056;
 }
 
-/* Service List cells */
+/* 服务列表单元格 */
 .service-list {
   display: flex;
   flex-direction: column;

@@ -36,6 +36,7 @@ ______________________________________________________________________
 | 需要更新或审计项目 Skill | `.agents/SKILL_AUDIT.md`、`.agents/skills/yunxi-harness-engineering/SKILL.md`、`docs/AGENTS/skill-reference.md` |
 | 查看 Harness 全面评审与外部对标 | [HARNESS-MATURITY-REVIEW-20260830.md](HARNESS-MATURITY-REVIEW-20260830.md) |
 | 查看 Harness P0 改进队列 | 评审报告第五节；P0 包含中文治理控制面、运行 manifest/episode、策略即代码、统一 CI 入口和受控临时产物清理 |
+| 查看中文治理六维模型 | [core/chinese-governance-model.md](core/chinese-governance-model.md)；机器契约为 [core/chinese-governance.json](core/chinese-governance.json) |
 | 终端或文件中文乱码 | [../AGENTS/encoding-and-terminal.md](../AGENTS/encoding-and-terminal.md) |
 | 了解完整设计 | [specs/2026-06-11-vibe-coding-harness-engineering-design.md](specs/2026-06-11-vibe-coding-harness-engineering-design.md) |
 | 想看这次整理前后对比 | [before-after.html](before-after.html) |
@@ -60,6 +61,9 @@ ______________________________________________________________________
 - `backend/scripts/check_project_development_register.py`：校验项目快照、任务总表、状态视图、分支和任务指令元数据。
 - `backend/scripts/check_requirements_lock_alignment.py`：校验生产与开发依赖锁的共享包版本一致，并要求开发锁以生产锁为约束。
 - `backend/scripts/check_chinese_governance.py`：检查中文权威入口、状态标签和高风险路径可读性。
+- `docs/harness-engineering/core/chinese-governance.json`：声明文档、系统界面、协作沟通、流程规范、交付物、代码注释六维范围与优先级。
+- `docs/harness-engineering/core/delivery-artifact-template.md`：统一中文交付字段和结果/策略/证据/回放四分法。
+- `docs/AGENTS/communication-template.md`：统一 Issue、PR、会议纪要、交接和跨 Agent 沟通字段。
 - `backend/scripts/harness_run_manifest.py` / `backend/scripts/check_harness_run_manifest.py`：生成并校验运行 manifest 与 episode。
 - `backend/scripts/harness_policy.py` / `backend/scripts/check_harness_policy.py`：读取策略快照、校验敏感路径和高风险操作；CI 传入 `--base/--head` 按提交范围检查，避免干净工作区漏检。
 - `backend/scripts/harness_p0_gate.py`：串联上述 P0 检查并输出不可覆盖的 JSON 门禁报告。
@@ -147,6 +151,8 @@ python -B backend/scripts/harness_p0_gate.py --summary --json-out backend/report
 ```
 
 门禁包含依赖锁一致性、中文治理、策略即代码、运行 manifest、开发总表、错误账本、证据索引、文本编码和项目红线九项检查。根级 GitHub Actions 入口为 `.github/workflows/harness-p0.yml`；依赖安装前先输出锁一致性报告，随后 P0 门禁报告与其一并上传。P0 任务指令统一位于 `docs/tasks/20260831-P0-Harness*.md`。临时产物清理不另设门禁项，统一由白名单清理脚本和 `rebuildable_cleanup` 策略约束。
+
+中文治理六维度中，文档、系统界面、协作沟通、流程规范和交付物属于 P0；代码注释是 P1 全仓基线，但本轮新增或修改的自然语言英文注释仍会阻断门禁。系统界面扫描覆盖 `miniapp/miniprogram/pages/**/*.wxml` 与 `backend/web/admin/src/**/*.vue`，代码注释扫描覆盖后端应用、脚本、测试以及小程序和后台前端源文件。
 
 清理脚本必须先预览再执行：预览输出目标清单授权令牌，执行时使用 `-PreviewToken <令牌> -Execute`；目标路径或文件状态变化会导致令牌失效并拒绝删除。
 

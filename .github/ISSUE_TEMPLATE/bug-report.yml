@@ -1,0 +1,50 @@
+name: 缺陷报告
+description: 报告可复现的功能、流程或治理问题
+title: "[缺陷] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        请先确认没有重复报告，并提供可复现证据。涉及生产、支付或客户数据时，请不要粘贴敏感原文。
+  - type: input
+    id: task_id
+    attributes:
+      label: 任务编号
+      description: 对应 PROJECT-STATE.md 的 task_id
+      placeholder: T-EXAMPLE-001
+    validations:
+      required: true
+  - type: input
+    id: trace_id
+    attributes:
+      label: 追溯编号
+      description: 使用 YYYYMMDD-topic 格式
+      placeholder: 20260831-example
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: 复现步骤
+      description: 写明输入、操作、实际结果和期望结果
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 验证与证据
+      description: 提供命令、退出码、报告路径和未验证范围
+    validations:
+      required: true
+  - type: dropdown
+    id: risk
+    attributes:
+      label: 风险级别
+      options:
+        - P0：阻断发布或高风险结论
+        - P1：影响治理完整性或验收
+        - P2：低风险维护
+    validations:
+      required: true

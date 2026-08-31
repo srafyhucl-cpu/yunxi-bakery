@@ -1,4 +1,4 @@
-# tests/service/test_coupon_inventory.py
+# 测试文件：tests/service/test_coupon_inventory.py
 """券库存账本测试：最新态、核销、退回、并发幂等。"""
 
 import aiosqlite

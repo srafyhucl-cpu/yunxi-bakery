@@ -62,7 +62,7 @@ onMounted(loadOverview);
   <section class="overview-page">
     <el-card shadow="never" class="overview-page__hero" v-loading="loading">
       <div class="hero-left">
-        <span class="hero-eyebrow">Yunxi Store MVP</span>
+        <span class="hero-eyebrow">芸熙商城试运行版</span>
         <h2>商城经营台</h2>
         <p>订单 · 商品 · 装修 · 客服待处理一屏掌握</p>
       </div>

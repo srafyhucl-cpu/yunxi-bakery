@@ -215,7 +215,7 @@ def _build_b_rail_webhook(
     return raw_body, signature
 
 
-# ── Workers ────────────────────────────────────────────────────────────────────
+# ── 并发工作单元 ────────────────────────────────────────────────────────────────
 
 
 async def _post_webhook(raw_body: bytes, signature: str) -> tuple[bool, float, str]:

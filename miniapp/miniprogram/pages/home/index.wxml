@@ -66,7 +66,7 @@
             <text>Y</text>
           </view>
           <view class="member-promo__copy">
-            <text class="member-promo__kicker">YUNXI MEMBER</text>
+            <text class="member-promo__kicker">芸熙会员</text>
             <text class="member-promo__title">{{item.props.title}}</text>
             <text class="member-promo__subtitle">{{item.props.subtitle}}</text>
           </view>
@@ -92,7 +92,7 @@
         <view wx:elif="{{item.type === 'productShelf'}}" class="shelf">
           <view class="shelf-head">
             <view>
-              <text class="shelf-head__eyebrow">FRESH TODAY</text>
+              <text class="shelf-head__eyebrow">今日鲜制</text>
               <text class="shelf-head__title">{{item.props.title}}</text>
               <text wx:if="{{item.props.subtitle}}" class="shelf-head__subtitle">{{item.props.subtitle}}</text>
             </view>

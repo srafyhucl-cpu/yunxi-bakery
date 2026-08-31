@@ -220,7 +220,7 @@ async def run_phase_c() -> bool:
 
     db_path = str(ROOT_DIR / settings.DB_PATH)
 
-    # ── Setup ──────────────────────────────────────────────────────────────────
+    # ── 测试准备 ────────────────────────────────────────────────────────────────
     _step("Setup：选取测试商品 item_id")
     item_id = await _get_test_item_id(db_path)
     if not item_id:

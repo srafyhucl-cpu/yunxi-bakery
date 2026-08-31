@@ -15,6 +15,21 @@ ______________________________________________________________________
 - 用户需要反复提醒同一流程。
 - 某个操作依赖聊天上下文，换 Agent 后容易丢失。
 
+## M-20260831-002：中文注释扫描器误判 URL、资源和工具指令
+
+- status: guarded
+- first_seen: 2026-08-31
+- severity: medium
+- symptom: 非 Python 注释扫描器把字符串中的 URL、内嵌 SVG 的 `//`、TypeScript 的 `/// <reference>` 以及多行 CSS 分隔注释误判为英文自然语言注释，导致中文治理 P0 门禁错误失败。
+- root_cause: 使用单行正则直接搜索斜杠标记，没有区分字符串、跨行注释和编译器工具指令。
+- impact: 合法源文件被错误阻断，真实英文注释缺口与扫描器噪声混在一起，无法稳定判断六维中文治理覆盖率。
+- fix: 改用字符串外状态机提取 `//`、`/* */`、`<!-- -->` 注释；跳过 URL、内嵌资源和 `/// <reference>`；对实际自然语言英文注释逐项翻译并保留技术标识白名单。
+- new_guardrail: `backend/tests/scripts/test_check_chinese_governance.py` 增加英文注释、模型缺维度、协作模板缺字段和英文界面文案负向测试；提交前通过 Harness 中文治理 P0 钩子执行全仓扫描。
+- verification: `python -B -m pytest backend/tests/scripts/test_check_chinese_governance.py -q --no-cov -p no:cacheprovider` → EXIT=0（9 passed）；`python -B backend/scripts/check_chinese_governance.py --summary` → EXIT=0（coverage=1.0，dimension_ratio=1.0）。
+- linked_trace: `20260831-harness-p0-hardening`
+- linked_files: `backend/scripts/check_chinese_governance.py`; `backend/tests/scripts/test_check_chinese_governance.py`; `.pre-commit-config.yaml`; `docs/harness-engineering/core/chinese-governance.json`
+- next_time_signal: 修改注释扫描规则后若 URL、内嵌资源或工具指令再次被报为自然语言，必须先补解析边界测试，不得直接扩大英文白名单。
+
 ## 单一入口原则
 
 `ERRORS.md` 是本项目唯一正式错误账本。其他历史路径只能保留兼容说明，不得新增条目；新增错误必须直接写入本文件并运行 `python -B backend/scripts/check_mistake_ledger.py`。

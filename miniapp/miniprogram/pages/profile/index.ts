@@ -68,7 +68,7 @@ Page({
   },
   onShow() {
     syncCustomTabBar(ROUTES.profile);
-    // Refresh session view state on show to catch login state changes
+    // 页面显示时刷新会话视图，及时反映登录状态变化
     const session = getMiniappSession();
     this.setData({
       session,
@@ -152,7 +152,7 @@ Page({
         session,
         sessionView: buildMiniappSessionView(session)
       });
-      // Re-load profile to fetch potential member details after login
+      // 登录后重新加载个人资料，获取可能新增的会员信息
       this.setData({ loaded: false, assetsLoaded: false });
       await this.loadProfile();
       wx.showToast({ title: "登录已更新", icon: "none" });

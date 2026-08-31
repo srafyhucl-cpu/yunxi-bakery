@@ -92,7 +92,7 @@
           <view wx:for="{{order.itemsView}}" wx:key="productId" class="product-row">
             <view>
               <text class="product-title">{{item.title}}</text>
-              <text class="product-meta">{{item.priceText}} x {{item.quantity}}</text>
+              <text class="product-meta">{{item.priceText}} × {{item.quantity}}</text>
             </view>
             <text class="product-subtotal">{{item.subtotalText}}</text>
           </view>

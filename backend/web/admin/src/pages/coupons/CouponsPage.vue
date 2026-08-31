@@ -53,7 +53,7 @@
           <el-table-column prop="occurred_at" label="时间" />
         </el-table>
       </el-tab-pane>
-      <el-tab-pane label="local 发券" name="grant">
+      <el-tab-pane label="本地发券" name="grant">
         <el-form inline>
           <el-form-item label="模板">
             <el-select v-model="grantTemplateId">

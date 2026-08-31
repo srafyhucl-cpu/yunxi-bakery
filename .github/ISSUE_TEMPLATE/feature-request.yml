@@ -1,0 +1,47 @@
+name: 需求建议
+description: 提出可追溯、可验证的功能或工程改进
+title: "[需求] "
+labels:
+  - enhancement
+body:
+  - type: input
+    id: task_id
+    attributes:
+      label: 任务编号
+      description: 新建前先在 PROJECT-STATE.md 登记 task_id
+      placeholder: T-HARNESS-EXAMPLE
+    validations:
+      required: true
+  - type: input
+    id: trace_id
+    attributes:
+      label: 追溯编号
+      description: 使用 YYYYMMDD-topic 格式
+      placeholder: 20260831-example
+    validations:
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: 目标与验收标准
+      description: 描述要达到的结果、范围、依赖和可验证证据
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: 验证、证据与未验证范围
+      description: 写明计划采用的验证命令、预期证据路径，以及当前尚未验证的范围
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: 优先级
+      options:
+        - P0：控制面或高风险前置
+        - P1：持续评测、观测或协作增强
+        - P2：上线前维护
+        - P3：增强或独立轨道
+    validations:
+      required: true

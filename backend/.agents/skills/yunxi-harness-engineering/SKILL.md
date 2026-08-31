@@ -70,6 +70,8 @@ docs/harness-engineering/README.md
 - 任务、评审、验收和证据摘要同时保留中文人类可读内容与稳定 ASCII 机器字段；
 - 中文治理检查器能发现权威源漂移、裸机器状态码、关键模板缺字段和高风险路径中文缺失。
 
+六维范围固定为：文档、系统界面、协作沟通、流程规范、交付物、代码注释。模型与检查入口位于 `docs/harness-engineering/core/chinese-governance.json` 和 `backend/scripts/check_chinese_governance.py`；涉及后台 Vue、小程序 WXML/TS/WXSS 或脚本/测试注释时，任务的 `allowed_paths` 必须明确登记，不能继续沿用只允许文档的旧快照。
+
 全仓注释翻译、低风险文案优化和历史文档清理属于 P1/P2，不能替代上述 P0 控制面，也不应阻塞运行契约、策略即代码和发布前置工作。
 
 ## 管理文件单一入口约束

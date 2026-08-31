@@ -49,7 +49,7 @@
               <text class="order-status">{{item.statusText}}</text>
             </view>
           </view>
-          <text class="order-title">{{item.itemTitle || '未命名商品'}} x {{item.itemCount || 1}}</text>
+          <text class="order-title">{{item.itemTitle || '未命名商品'}} × {{item.itemCount || 1}}</text>
           <view class="order-meta">
             <text>{{item.receiverName}} {{item.receiverPhone}}</text>
             <text>{{item.expectTime || '时间待确认'}}</text>

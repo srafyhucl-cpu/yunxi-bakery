@@ -1,4 +1,4 @@
-# tests/service/test_coupon_models.py
+# 测试文件：tests/service/test_coupon_models.py
 """M4 券模块数据模型与 v024 迁移结构测试。"""
 
 import aiosqlite

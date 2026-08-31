@@ -181,7 +181,7 @@ async def main() -> None:
     print(f"\n  商品总数: {total}")
     print(f"  基准路径: {settings.DB_PATH}\n")
 
-    all_issues: list[tuple[int, str, str]] = []  # (id, title, issue)
+    all_issues: list[tuple[int, str, str]] = []  # （商品编号、标题、问题）
     for idx, product in enumerate(products, start=1):
         issues = validate_product(product, idx)
         for issue in issues:

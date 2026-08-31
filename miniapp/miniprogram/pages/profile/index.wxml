@@ -4,7 +4,7 @@
 
   <scroll-view class="page-scroll" scroll-y enhanced show-scrollbar="{{false}}">
     <view class="page profile-page">
-      <!-- Session Login Notice (if not logged in) -->
+      <!-- 未登录时显示会话登录提示 -->
       <session-notice
         wx:if="{{loginStateText && !sessionView.loggedIn}}"
         status-text="{{sessionView.statusText}}"
@@ -15,16 +15,16 @@
         bind:action="refreshSession"
       ></session-notice>
 
-      <!-- Premium Profile Header -->
+      <!-- 会员资料头部 -->
       <view class="profile-header">
         <view class="profile-user-info">
-          <!-- Avatar Frame -->
+          <!-- 头像边框 -->
           <view class="profile-avatar-frame">
             <view class="profile-avatar">
               {{sessionView.loggedIn ? (sessionView.name ? sessionView.name[0] : '林') : '👤'}}
             </view>
           </view>
-          <!-- Text details -->
+          <!-- 资料文字 -->
           <view class="profile-meta">
             <view class="profile-name-row">
               <text class="profile-name">{{sessionView.loggedIn ? (sessionView.name || '微信用户') : '未登录用户'}}</text>
@@ -59,12 +59,12 @@
         </view>
       </view>
 
-      <!-- Luxury Gold-Green Member Card -->
+      <!-- 金绿色会员卡 -->
       <view wx:if="{{sessionView.loggedIn}}" class="member-card-wrapper fade-in">
         <view class="luxury-member-card shimmer-sweep">
           <view class="card-logo-row">
-            <text class="card-brand">YUNXI BAKERY</text>
-            <text class="card-type">PREMIUM CARD</text>
+            <text class="card-brand">芸熙烘焙</text>
+            <text class="card-type">会员卡</text>
           </view>
           <view class="card-main-row">
             <view class="card-holder-info">
@@ -82,12 +82,12 @@
           </view>
           <view class="card-footer-row">
             <text class="card-validity">有效期: {{memberProps.cardValidity || '永久有效'}}</text>
-            <text class="card-number">NO. 8888 6666</text>
+            <text class="card-number">编号 8888 6666</text>
           </view>
         </view>
       </view>
 
-      <!-- Order Management Panel -->
+      <!-- 订单管理面板 -->
       <view class="panel-card glass-panel fade-in">
         <view class="panel-card__header">
           <text class="panel-card__title">我的订单</text>
@@ -103,7 +103,7 @@
             data-link-target="{{order.linkTarget}}"
             bindtap="handleOrderTap"
           >
-            <!-- Badge Icon -->
+            <!-- 徽章图标 -->
             <view class="order-nav-icon-wrapper">
               <text class="order-nav-emoji">{{order.emoji}}</text>
             </view>

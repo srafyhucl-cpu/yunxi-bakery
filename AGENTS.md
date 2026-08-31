@@ -166,10 +166,12 @@ ______________________________________________________________________
 ## Harness Engineering
 
 - 入口：`docs/harness-engineering/README.md`。
+- 中文治理是 Harness 的 P0 控制面，覆盖文档、系统界面、协作沟通、流程规范、交付物、代码注释六个维度；P0 先保证权威状态、风险提示、审批/阻断、证据和交接可用中文理解，机器字段保留稳定 ASCII。
 - 追溯：每个较大任务使用 `YYYYMMDD-topic` 格式的 `trace_id`。
 - 多 Agent：每个子任务声明 `owner`、`status`、`as_of_commit`、`version`、`allowed_paths` 和 `forbidden_paths`，状态冲突先回报 owner。
 - 契约：API 字段变更先更新 `miniapp/docs/api-contract.md`，再改 `miniapp/miniprogram/services/` 和页面调用。
 - 验证：按 `docs/harness-engineering/core/verification-matrix.md` 选择最低验证。
+- 中文治理门禁：`python -B backend/scripts/check_chinese_governance.py --summary`；新增或修改的用户可见文案、自然语言注释和治理模板必须纳入检查范围。
 - 证据：页面截图、微信开发者工具验证、接口联调、审核发布记录登记到 `docs/harness-engineering/core/evidence-index.md`。
 - 交接：长任务或上下文重置使用 `docs/harness-engineering/core/agent-handoff-template.md`。
 - 防重犯：值得记住的错误统一写入根目录 `ERRORS.md`；旧路径仅作兼容入口，不得复制条目。

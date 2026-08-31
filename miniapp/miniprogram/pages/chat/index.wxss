@@ -276,7 +276,7 @@
   transform: scale(0.95);
 }
 
-/* Typing / Thinking Indicator Styles (WeChat style) */
+/* 输入/思考指示器样式（微信样式） */
 .typing-bubble {
   border-radius: 4rpx 24rpx 24rpx 24rpx;
   background: #ffffff;

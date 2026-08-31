@@ -4,7 +4,7 @@
 
   <scroll-view class="message-list" scroll-y enhanced show-scrollbar="{{false}}" scroll-into-view="{{lastMessageId}}" scroll-with-animation="{{true}}">
     <view class="message-body">
-      <!-- Loading & Error states -->
+      <!-- 加载与错误状态 -->
       <view wx:if="{{loading}}" class="loading-text">{{copy.loading}}</view>
       <view wx:if="{{errorMessage}}" class="error-text">{{errorMessage}}</view>
 
@@ -15,7 +15,7 @@
         <button class="primary-button empty-login__action" bindtap="goProfile">去登录</button>
       </view>
 
-      <!-- Chat Messages with Avatar & Bubble -->
+      <!-- 带头像和气泡的聊天消息 -->
       <block wx:else>
         <view
           wx:for="{{messages}}"
@@ -23,22 +23,22 @@
           id="msg-{{item.id}}"
           class="message-row {{item.role}}"
         >
-          <!-- Assistant Avatar (Left side) -->
+          <!-- 助手头像（左侧） -->
           <view wx:if="{{item.role === 'assistant'}}" class="message-avatar assistant-avatar">👩‍🍳</view>
 
-          <!-- Message Bubble -->
+          <!-- 消息气泡 -->
           <view class="message-bubble {{item.role}}">
             <text class="message-content">{{item.content}}</text>
             <text wx:if="{{item.timeText}}" class="message-time">{{item.timeText}}</text>
           </view>
 
-          <!-- User Avatar (Right side) -->
+          <!-- 用户头像（右侧） -->
           <view wx:if="{{item.role === 'user'}}" class="message-avatar user-avatar">
             {{sessionView.loggedIn ? (sessionView.name ? sessionView.name[0] : '林') : '我'}}
           </view>
         </view>
 
-        <!-- Dynamic Typing/Thinking Indicator (WeChat style) -->
+        <!-- 动态输入/思考指示器（微信样式） -->
         <view
           wx:if="{{isAssistantTyping}}"
           id="typing"
@@ -57,9 +57,9 @@
     </view>
   </scroll-view>
 
-  <!-- Composer & Quick Questions panel at bottom -->
+  <!-- 底部输入区与快捷问题面板 -->
   <view wx:if="{{canUseChat}}" class="chat-bottom-bar">
-    <!-- Quick Questions Horizontal Scroll -->
+    <!-- 快捷问题横向滚动区 -->
     <scroll-view class="quick-questions-scroll" scroll-x enhanced show-scrollbar="{{false}}">
       <view class="quick-questions-wrapper">
         <view
@@ -85,7 +85,7 @@
       </view>
     </scroll-view>
 
-    <!-- Chat input area -->
+    <!-- 聊天输入区 -->
     <view class="composer">
       <input
         placeholder="{{copy.inputPlaceholder}}"

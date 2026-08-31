@@ -1,3 +1,62 @@
+## [2026-08-31] - chore(harness): 最终提交前质量循环核验（trace: 20260831-harness-p0-hardening）
+
+- 操作者: AI (Codex)
+- trace_id: `20260831-harness-p0-hardening`
+- run_id: `p0-gate-654cb7efcffa4654`
+- 背景: 修正“local 发券”漏网及注释扫描白名单后，对当前 Harness/中文治理工作区执行最终本地质量循环。
+- validation: P0 统一门禁 9/9；中文治理专项 16/16、六维 coverage=1.0；Harness 自评 8/8；运行观测 12 个运行、replayable=1.0、recovery=1.0；文档园艺 139 个文件、0 errors、17 warnings；定向 Harness 套件 53 项通过；Ruff 与 `git diff --check` 通过。
+- 证据: `backend/reports/harness/p0-gate-20260831-chinese-governance-final.json`；`backend/reports/harness/harness-eval-20260831-chinese-governance-final.json`；`backend/reports/harness/harness-observation-20260831-chinese-governance-final.json`；`backend/reports/harness/doc-garden-20260831-chinese-governance-final.json`。
+- 未运行全量业务测试: 本轮仍只涉及 Harness/治理脚本、文档、模板、注释与低风险界面文案，未修改业务逻辑；按验证矩阵执行定向门禁。
+- 结论四分法: 结果正确=是；策略合规=是；证据完整=本地是、云端未验证；可回放=是。
+- 残余风险: 提交前仍需通过 pre-commit；提交后需授权 workflow scope、推送并核验远端 SHA 与 GitHub Actions artifact。
+
+## [2026-08-31] - chore(harness): 记录 P0 定向回归失败与可回放重试（trace: 20260831-harness-p0-hardening）
+
+- 操作者: AI (Codex)
+- trace_id: `20260831-harness-p0-hardening`
+- run_id: `20260831-harness-p0-hardening-r5`；parent_run_id: `20260831-harness-p0-hardening-r4`
+- 背景: 按同一 Harness 定向回归集合启动测试时，pytest 在创建临时目录阶段失败，尚未进入测试用例逻辑。
+- validation: `python -B -m pytest ... --basetemp=D:\Project\YunxiBakery\.tmp-harness-p0-r6\pytest-base` → EXIT=1（临时父目录尚未创建）。
+- failure_class: `environment_setup`；结果不能解释为代码失败。
+- recovery_point: 创建明确的 `.tmp-harness-p0-r6` 父目录后，以新的 r6 run_id 重试，保留本次失败记录。
+- 证据: `backend/reports/harness/20260831-harness-p0-hardening-r5.run.json`。
+- 结论四分法: 结果正确=未验证；策略合规=是；证据完整=是；可回放=是。
+
+## [2026-08-31] - fix(harness): P0 定向回归重试与本地收口（trace: 20260831-harness-p0-hardening）
+
+- 操作者: AI (Codex)
+- trace_id: `20260831-harness-p0-hardening`
+- run_id: `20260831-harness-p0-hardening-r6`；parent_run_id: `20260831-harness-p0-hardening-r5`
+- 背景: 在创建 D 盘临时父目录后重试同一 Harness 集合，中文治理、P0 门禁、自评、运行观测和文档园艺均完成本地验证。
+- validation: Harness 定向回归 53 项通过；中文治理专项 16/16、六维 coverage=1.0；P0 门禁 9/9；Harness 自评 8/8；运行 manifest 10/10；证据索引 376 条且 0 失败；文档园艺 0 errors、17 warnings。随后白名单人工审计发现“local 发券”漏网，已改为“本地发券”并新增负向断言；最终提交前专项结果以最新复跑为准。
+- 职责评审: `backend/scripts/check_chinese_governance.py` 共 1035 行，当前职责均属于同一中文治理 CLI，公开检查函数可独立测试；模型、状态、界面和注释扫描是后续候选边界。本轮结论为 `defer_with_boundary_plan`：先稳定 P0 远端基线，不按行数机械拆分，禁止继续加入无关业务职责。
+- 证据: `backend/reports/harness/20260831-harness-p0-hardening-r6.run.json`；`backend/reports/harness/20260831-harness-p0-hardening-r6.md`；`backend/reports/harness/p0-gate-20260831-chinese-governance-r6.json`；`backend/reports/harness/harness-eval-20260831-chinese-governance-r6.json`；`backend/reports/harness/harness-observation-20260831-chinese-governance-r6.json`；`backend/reports/harness/doc-garden-20260831-chinese-governance-r6.json`。
+- 未运行全量业务测试: 本轮只涉及 Harness 脚本、治理文档、模板、注释和低风险界面文案，未修改业务逻辑；按验证矩阵执行定向门禁。
+- 结论四分法: 结果正确=是；策略合规=是；证据完整=本地是、云端未验证；可回放=是。任务 `T-HARNESS-P0-HARDENING` 继续保持进行中（active），等待推送后的远端 SHA 与 GitHub Actions artifact。
+- 临时文件: `.tmp-harness-p0-r6` 是本轮 pytest 生成的可重建目录，因包含大量文件，按项目规则暂不递归清理，待明确授权后按白名单预览令牌处理。
+
+## [2026-08-31] - feat(harness): 中文治理六维控制面回归与 P0 本地收口（trace: 20260831-harness-p0-hardening）
+
+- 操作者: AI (Codex)
+- trace_id: `20260831-harness-p0-hardening`
+- run_id: `20260831-harness-p0-hardening-r4`；P0 gate run_id: `p0-gate-43014338d4d94926`
+- 背景: 在补齐 Harness 中文治理 P0 控制面后，注释扫描器仍会把 URL、内嵌 SVG、TypeScript 工具指令和多行 CSS 分隔注释误判为英文自然语言；任务指令的旧 forbidden/allowed 路径也与实际六维治理范围不一致。
+- implementation:
+  - 中文治理模型固定文档、系统界面、协作沟通、流程规范、交付物、代码注释六个维度；新增中文协作、PR/Issue 和交付物模板，并把后台 Vue 与小程序关键用户文案纳入扫描。
+  - 注释扫描改为识别字符串外的 `//`、`/* */`、`<!-- -->`，跳过 URL、内嵌资源和 `/// <reference>` 工具指令；翻译本轮扫描到的自然语言英文注释，不改变业务逻辑。
+  - P0 中文治理任务范围登记后台/小程序界面与注释文件；`.pre-commit-config.yaml` 重新加入中文治理 P0 钩子；项目状态快照更新到 `bcdd30c`。
+- validation:
+  - `python -B -m pytest backend/tests/scripts/test_check_chinese_governance.py backend/tests/scripts/test_harness_p0_gate.py backend/tests/scripts/test_harness_eval_regression.py backend/tests/scripts/test_harness_policy.py backend/tests/scripts/test_harness_run_manifest.py backend/tests/scripts/test_observe_harness_runs.py backend/tests/scripts/test_check_doc_garden.py backend/tests/scripts/test_check_requirements_lock_alignment.py -q --no-cov -p no:cacheprovider`：40 项通过。
+  - `python -B backend/scripts/check_chinese_governance.py --summary`：六维 coverage=1.0、dimension_ratio=1.0。
+  - `python -B backend/scripts/harness_p0_gate.py --summary --json-out backend/reports/harness/p0-gate-20260831-chinese-governance-r4.json`：9/9 通过。
+  - `python -B backend/scripts/harness_eval_regression.py --summary --output backend/reports/harness/harness-eval-20260831-chinese-governance-r4.json`：8/8 通过。
+  - `python -B backend/scripts/check_harness_run_manifest.py --summary`：10/10 通过；`python -B backend/scripts/check_evidence_index.py --summary`：376 条、0 失败。
+  - `python -B backend/scripts/check_project_development_register.py`、`check_mistake_ledger.py`、`check_text_encoding.py`、`check_project.py --skip-tests`：均通过。
+- 证据: `E-20260831-008`、`E-20260831-009`；`backend/reports/harness/20260831-harness-p0-hardening-r4.run.json`；`backend/reports/harness/p0-gate-20260831-chinese-governance-r4.json`；`backend/reports/harness/harness-eval-20260831-chinese-governance-r4.json`；`backend/reports/harness/harness-observation-20260831-chinese-governance-r4.json`；`backend/reports/harness/doc-garden-20260831-chinese-governance-r4.json`。
+- 未运行全量业务测试: 本轮只涉及 Harness 脚本、治理文档、模板、注释和低风险用户文案，未修改业务逻辑；已按验证矩阵执行定向 Harness 门禁。
+- 结论四分法: 结果正确=是；策略合规=是；证据完整=本地是、云端未验证；可回放=是。任务 `T-HARNESS-P0-HARDENING` 保持进行中（active），原因是尚未完成 GitHub workflow 授权、推送、远端 SHA 和 GitHub Actions artifact 核验。
+- 临时文件: `.tmp-harness-p0-current` 已按预览令牌清理，83 个文件、60689 字节，清理后路径不存在。
+
 ## [2026-08-31] - fix(harness): 修复云端依赖锁失败与 P0 自评漂移（trace: 20260831-harness-p0-hardening）
 
 - 操作者: AI (Codex)

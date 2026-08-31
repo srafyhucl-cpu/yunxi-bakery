@@ -1,4 +1,4 @@
-# tests/service/test_coupon_template_sync.py
+# 测试文件：tests/service/test_coupon_template_sync.py
 """券模板仓储与有赞模板同步解析测试。"""
 
 import aiosqlite

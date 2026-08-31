@@ -132,9 +132,9 @@ onMounted(loadSummary);
           <el-card shadow="never">
             <template #header>有赞渠道</template>
             <div class="settings-status__checks">
-              <span>Client ID <el-tag :type="statusType(summary.channels.youzan.clientIdConfigured)">{{ statusText(summary.channels.youzan.clientIdConfigured) }}</el-tag></span>
-              <span>Client Secret <el-tag :type="statusType(summary.channels.youzan.clientSecretConfigured)">{{ statusText(summary.channels.youzan.clientSecretConfigured) }}</el-tag></span>
-              <span>KDT ID <el-tag :type="statusType(summary.channels.youzan.kdtIdConfigured)">{{ statusText(summary.channels.youzan.kdtIdConfigured) }}</el-tag></span>
+              <span>客户端编号 <el-tag :type="statusType(summary.channels.youzan.clientIdConfigured)">{{ statusText(summary.channels.youzan.clientIdConfigured) }}</el-tag></span>
+              <span>客户端密钥 <el-tag :type="statusType(summary.channels.youzan.clientSecretConfigured)">{{ statusText(summary.channels.youzan.clientSecretConfigured) }}</el-tag></span>
+              <span>店铺编号 <el-tag :type="statusType(summary.channels.youzan.kdtIdConfigured)">{{ statusText(summary.channels.youzan.kdtIdConfigured) }}</el-tag></span>
               <span>仿真模式 <el-tag :type="summary.channels.youzan.mockMode ? 'warning' : 'success'">{{ summary.channels.youzan.mockMode ? "开启" : "关闭" }}</el-tag></span>
             </div>
           </el-card>
@@ -142,11 +142,11 @@ onMounted(loadSummary);
           <el-card shadow="never">
             <template #header>企微渠道</template>
             <div class="settings-status__checks">
-              <span>Corp ID <el-tag :type="statusType(summary.channels.wecom.corpIdConfigured)">{{ statusText(summary.channels.wecom.corpIdConfigured) }}</el-tag></span>
-              <span>Agent ID <el-tag :type="statusType(summary.channels.wecom.agentIdConfigured)">{{ statusText(summary.channels.wecom.agentIdConfigured) }}</el-tag></span>
-              <span>Secret <el-tag :type="statusType(summary.channels.wecom.secretConfigured)">{{ statusText(summary.channels.wecom.secretConfigured) }}</el-tag></span>
-              <span>Token <el-tag :type="statusType(summary.channels.wecom.tokenConfigured)">{{ statusText(summary.channels.wecom.tokenConfigured) }}</el-tag></span>
-              <span>AES Key <el-tag :type="statusType(summary.channels.wecom.encodingAesKeyConfigured)">{{ statusText(summary.channels.wecom.encodingAesKeyConfigured) }}</el-tag></span>
+              <span>企业编号 <el-tag :type="statusType(summary.channels.wecom.corpIdConfigured)">{{ statusText(summary.channels.wecom.corpIdConfigured) }}</el-tag></span>
+              <span>应用编号 <el-tag :type="statusType(summary.channels.wecom.agentIdConfigured)">{{ statusText(summary.channels.wecom.agentIdConfigured) }}</el-tag></span>
+              <span>应用密钥 <el-tag :type="statusType(summary.channels.wecom.secretConfigured)">{{ statusText(summary.channels.wecom.secretConfigured) }}</el-tag></span>
+              <span>令牌 <el-tag :type="statusType(summary.channels.wecom.tokenConfigured)">{{ statusText(summary.channels.wecom.tokenConfigured) }}</el-tag></span>
+              <span>加密密钥 <el-tag :type="statusType(summary.channels.wecom.encodingAesKeyConfigured)">{{ statusText(summary.channels.wecom.encodingAesKeyConfigured) }}</el-tag></span>
               <span>值班客服 <el-tag :type="statusType(summary.channels.wecom.staffIdConfigured)">{{ statusText(summary.channels.wecom.staffIdConfigured) }}</el-tag></span>
               <span>群机器人 <el-tag :type="statusType(summary.channels.wecom.robotWebhookConfigured)">{{ statusText(summary.channels.wecom.robotWebhookConfigured) }}</el-tag></span>
             </div>
@@ -159,13 +159,13 @@ onMounted(loadSummary);
           <el-descriptions-item label="管理员 Token">
             <el-tag :type="statusType(summary.api.adminTokenConfigured)">{{ statusText(summary.api.adminTokenConfigured) }}</el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="MiMo API Key">
+          <el-descriptions-item label="MiMo 接口密钥">
             <el-tag :type="statusType(summary.api.mimoApiKeyConfigured)">{{ statusText(summary.api.mimoApiKeyConfigured) }}</el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="对话模型">{{ summary.api.mimoChatModel }}</el-descriptions-item>
           <el-descriptions-item label="视觉模型">{{ summary.api.mimoVisionModel }}</el-descriptions-item>
           <el-descriptions-item label="语音模型">{{ summary.api.mimoAsrModel }}</el-descriptions-item>
-          <el-descriptions-item label="Base URL">{{ summary.api.mimoBaseUrl }}</el-descriptions-item>
+          <el-descriptions-item label="基础地址">{{ summary.api.mimoBaseUrl }}</el-descriptions-item>
         </el-descriptions>
       </template>
     </el-card>

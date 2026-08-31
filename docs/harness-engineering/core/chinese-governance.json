@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yunxi-bakery.local/schemas/chinese-governance.json",
+  "schema_version": "1.0",
+  "model_id": "yunxi-chinese-governance",
+  "updated_at": "2026-08-31",
+  "description": "Harness 中文治理六维度机器契约；机器字段保留 ASCII，人类可读内容优先使用中文。",
+  "dimensions": [
+    {
+      "id": "documentation",
+      "name": "文档",
+      "priority": "P0",
+      "required_files": [
+        "AGENTS.md",
+        "PROJECT-STATE.md",
+        "LOGBOOK.md",
+        "ERRORS.md",
+        "docs/harness-engineering/README.md",
+        "docs/harness-engineering/core/traceability-model.md",
+        "docs/harness-engineering/core/verification-matrix.md",
+        "docs/harness-engineering/core/agent-handoff-template.md",
+        "docs/harness-engineering/core/evidence-index.md"
+      ],
+      "required_markers": ["中文", "证据", "状态"]
+    },
+    {
+      "id": "interface",
+      "name": "系统界面",
+      "priority": "P0",
+      "targets": [
+        {"path": "miniapp/miniprogram/pages", "extensions": [".wxml"]},
+        {"path": "backend/web/admin/src", "extensions": [".vue"]}
+      ],
+      "required_markers": ["错误", "加载"]
+    },
+    {
+      "id": "collaboration",
+      "name": "协作沟通",
+      "priority": "P0",
+      "required_files": [
+        ".github/pull_request_template.md",
+        ".github/ISSUE_TEMPLATE/bug-report.yml",
+        ".github/ISSUE_TEMPLATE/feature-request.yml",
+        "docs/AGENTS/communication-template.md"
+      ],
+      "required_markers": ["trace_id", "task_id", "验证", "未验证"],
+      "file_markers": {
+        ".github/pull_request_template.md": ["trace_id", "task_id", "验证", "未验证"],
+        ".github/ISSUE_TEMPLATE/bug-report.yml": ["trace_id", "task_id", "验证", "未验证"],
+        ".github/ISSUE_TEMPLATE/feature-request.yml": ["trace_id", "task_id", "验证", "未验证"],
+        "docs/AGENTS/communication-template.md": ["trace_id", "task_id", "验证", "未验证"]
+      }
+    },
+    {
+      "id": "process",
+      "name": "流程规范",
+      "priority": "P0",
+      "required_files": [
+        "AGENTS.md",
+        "backend/.agents/skills/yunxi-harness-engineering/SKILL.md",
+        "docs/AGENTS/commit-workflow.md",
+        "docs/AGENTS/skill-reference.md",
+        "docs/AGENTS/multi-agent-coordination.md"
+      ],
+      "required_markers": ["status_label", "中文状态", "P0", "门禁"]
+    },
+    {
+      "id": "delivery",
+      "name": "交付物",
+      "priority": "P0",
+      "required_files": [
+        "docs/harness-engineering/core/delivery-artifact-template.md",
+        "docs/harness-engineering/core/evidence-index.md",
+        "docs/harness-engineering/core/run-manifest.schema.json",
+        "docs/harness-engineering/core/traceability-model.md"
+      ],
+      "required_markers": ["结果正确", "策略合规", "证据完整", "可回放"]
+    },
+    {
+      "id": "code_comments",
+      "name": "代码注释",
+      "priority": "P1",
+      "targets": [
+        {"path": "backend/app", "extensions": [".py"]},
+        {"path": "backend/scripts", "extensions": [".py"]},
+        {"path": "backend/tests", "extensions": [".py"]},
+        {"path": "miniapp/miniprogram", "extensions": [".ts", ".js", ".wxml", ".wxss"]},
+        {"path": "backend/web/admin/src", "extensions": [".ts", ".vue", ".css"]}
+      ],
+      "required_markers": ["中文注释", "技术标识白名单"]
+    }
+  ]
+}

@@ -29,7 +29,7 @@
   </view>
 
   <view class="page-scroll products-scroll-region">
-    <!-- Global Search Results List -->
+    <!-- 全局搜索结果列表 -->
     <scroll-view 
       class="products-global-search" 
       scroll-y 
@@ -74,7 +74,7 @@
       </view>
     </scroll-view>
 
-    <!-- Normal Category Sidebar + Content Layout (Keep-Alive Cache) -->
+    <!-- 常规分类侧栏与内容布局（保持缓存） -->
     <view class="products-layout" hidden="{{!!searchText}}">
       <scroll-view class="products-sidebar" scroll-y enhanced show-scrollbar="{{false}}">
         <view
@@ -141,7 +141,7 @@
         </scroll-view>
       </view>
 
-      <!-- Removed FABs for layout purity -->
+      <!-- 已移除悬浮按钮，保持布局简洁 -->
     </view>
   </view>
 </view>

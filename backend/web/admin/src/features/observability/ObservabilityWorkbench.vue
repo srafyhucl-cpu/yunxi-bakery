@@ -471,7 +471,7 @@ function copyErrorLog() {
             <span class="observability-page__dot yellow"></span>
             <span class="observability-page__dot green"></span>
           </div>
-          <span class="observability-page__terminal-title">System Stack Trace & Diagnostic Logs</span>
+          <span class="observability-page__terminal-title">系统堆栈与诊断日志</span>
         </div>
         <div class="observability-page__terminal-body">
           <pre class="observability-page__terminal-pre"><code>{{ activeErrorLog }}</code></pre>

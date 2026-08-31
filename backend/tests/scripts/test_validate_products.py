@@ -71,7 +71,7 @@ def run_validate(rows: list[dict]) -> list[tuple[int, str, str]]:
 
 
 # ══════════════════════════════════════════
-# Tool functions: extract_prices
+# 工具函数：extract_prices
 # ══════════════════════════════════════════
 
 
@@ -100,7 +100,7 @@ def test_extract_prices_empty() -> None:
 
 
 # ══════════════════════════════════════════
-# Tool functions: has_encoding_issues
+# 工具函数：has_encoding_issues
 # ══════════════════════════════════════════
 
 
@@ -139,7 +139,7 @@ def test_encoding_bracket_halfwidth_mismatch() -> None:
 
 
 # ══════════════════════════════════════════
-# Tool functions: check_title_anomaly
+# 工具函数：check_title_anomaly
 # ══════════════════════════════════════════
 
 
@@ -165,7 +165,7 @@ def test_title_too_short() -> None:
 
 
 # ══════════════════════════════════════════
-# Integration: validate_product
+# 集成校验：validate_product
 # ══════════════════════════════════════════
 
 

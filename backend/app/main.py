@@ -110,7 +110,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     shutdown：
         1. 关闭数据库连接
     """
-    # ── startup ──
+    # ── 启动 ──
     # 0. 启动安全检查
     _check_startup_safety()
 
@@ -118,7 +118,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     yield
 
-    # ── shutdown ──
+    # ── 关闭 ──
     await _shutdown_lifespan_services(app, bg_tasks)
 
 

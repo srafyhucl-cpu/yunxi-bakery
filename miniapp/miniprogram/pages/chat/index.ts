@@ -158,7 +158,7 @@ Page({
 
     const baseMessages = this.data.messages.filter((message) => message.id !== CHAT_WELCOME_MESSAGE.id);
 
-    // Stage user message & switch assistant to typing state, scroll to bottom
+    // 先展示用户消息，再切换助手为输入状态并滚动到底部
     this.setData({
       inputValue: "",
       canSendMessage: false,
@@ -167,7 +167,7 @@ Page({
       messages: [...baseMessages, optimisticMessage],
       isAssistantTyping: true
     });
-    // Defer scroll anchor update so DOM has rendered the new node first
+    // 延迟更新滚动锚点，确保 DOM 先完成新节点渲染
     wx.nextTick(() => { this.setData({ lastMessageId: "typing" }); });
 
     try {
@@ -198,7 +198,7 @@ Page({
         chatStatus: result.status || this.data.chatStatus,
         isAssistantTyping: false
       });
-      // Defer scroll anchor update so DOM renders the final message first
+      // 延迟更新滚动锚点，确保 DOM 先完成最终消息渲染
       wx.nextTick(() => { this.setData({ lastMessageId: nextId }); });
       this.syncHumanReplyPolling(result.status || this.data.chatStatus);
 

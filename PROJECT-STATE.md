@@ -5,7 +5,7 @@
 > 中文优先：人类可读内容使用中文；`task_id`、`trace_id`、`status`、`owner`、`branch`、`as_of_commit`、`version` 和路径保持稳定机器字段。
 > 最小阅读集：所有 Agent 先读 `AGENTS.md` 与本文件；执行具体任务时再读对应 `docs/tasks/*.md`，按需读取专业契约。
 
-**最后更新**：2026-08-31（as_of_commit: `9425c9b`；version: `0.133.0-p2trial.3`）
+**最后更新**：2026-08-31（as_of_commit: `bcdd30c`；version: `0.133.0-p2trial.3`）
 
 > 当前状态口径：P1 承接验证已于 2026-08-30 经项目负责人确认正式关闭；P2 准备段已完成，真人执行段已阻塞（blocked），尚未启动。版本号以 `backend/VERSION` 为准，代码快照以当前 `git rev-parse HEAD` 为准。
 
@@ -14,7 +14,7 @@
 
 ```yaml
 updated_at: 2026-08-31
-as_of_commit: 9425c9b
+as_of_commit: bcdd30cc3b6df42476ceddce25f951eb298eff20
 version: 0.133.0-p2trial.3
 current_branch: main
 workspace_state: dirty
@@ -48,14 +48,14 @@ state_owner: 项目负责人＋AI 员工
 | T-HARNESS-CLEANUP-POLICY | Harness 临时与可重建产物递归清理规则收口 | completed | 已完成（completed） | P0 | AI 员工＋项目负责人 | main | b4f25db | T-HARNESS-RUNTIME-CLEANUP,T-HARNESS-POLICY-AS-CODE | 本轮 trace: 20260831-cleanup-policy；run_id: 20260831-045839-140531c67c4d；E-20260831-002 | 白名单临时/可重建产物允许预览后递归批量清理；未知路径和受保护路径继续阻断 |
 | T-HARNESS-ERRORS-LEDGER | 错误账本唯一入口与重复 ID 守卫 | completed | 已完成（completed） | P0 | AI 员工 | main | 4ee06c8 | T-HARNESS-RUNTIME-CLEANUP | LOGBOOK: 20260830-errors-ledger-canonicalization；错误账本专项测试 13/13；检查器 EXIT=0 | 后续错误统一写入根目录 ERRORS.md，不得创建同职能副本 |
 | T-HARNESS-MATURITY-REVIEW | Harness Engineering 全面评审与外部对标 | completed | 已完成（completed） | P0 | 项目负责人＋AI 员工 | main | b4f25db | T-HARNESS-ERRORS-LEDGER | HARNESS-MATURITY-REVIEW-20260830；本轮定向 Harness 门禁 | 保持评审报告与唯一入口同步，不另起动态状态表 |
-| T-HARNESS-CHINESE-GOVERNANCE | Harness 中文治理控制面 | completed | 已完成（completed） | P0 | 项目负责人＋AI 员工 | main | b4f25db | T-HARNESS-MATURITY-REVIEW | 本轮 trace: 20260831-p0-execution；run_id: 20260831-p0-execution-r1；E-20260831-001 | 中文权威源、关键路径状态、协作/证据模板和中文治理覆盖率守卫已落地 |
+| T-HARNESS-CHINESE-GOVERNANCE | Harness 中文治理控制面 | completed | 已完成（completed） | P0 | 项目负责人＋AI 员工 | main | bcdd30c | T-HARNESS-MATURITY-REVIEW | trace: 20260831-p0-execution；run_id: 20260831-p0-execution-r1；E-20260831-008 | 中文权威源、六维模型、关键路径状态、协作/证据模板和中文治理覆盖率守卫已落地 |
 | T-HARNESS-RUN-MANIFEST | 统一运行 manifest 与 episode 回放 | completed | 已完成（completed） | P0 | AI 员工 | main | b4f25db | T-HARNESS-MATURITY-REVIEW | 本轮 trace: 20260831-p0-execution；run_id: 20260831-p0-execution-r1；E-20260831-001 | JSON schema、生成器、检查器和最小回放报告已落地 |
 | T-HARNESS-POLICY-AS-CODE | 工具权限与生产边界策略即代码 | completed | 已完成（completed） | P0 | AI 员工＋项目负责人 | main | b4f25db | T-HARNESS-MATURITY-REVIEW | 本轮 trace: 20260831-p0-execution；run_id: 20260831-p0-execution-r1；E-20260831-001 | 路径、网络、生产开关和高风险工具策略快照与阻断门禁已落地 |
 | T-HARNESS-CI-ENTRY | 仓库级 Harness CI 统一入口 | completed | 已完成（completed） | P0 | AI 员工 | main | b4f25db | T-HARNESS-MATURITY-REVIEW,T-HARNESS-CHINESE-GOVERNANCE | 本轮 trace: 20260831-p0-execution；run_id: 20260831-p0-execution-r1；E-20260831-001 | 根级可发现 CI 已落地，复用治理脚本并强制中文治理、状态、证据和安全检查 |
 | T-HARNESS-EVAL-REGRESSION | Harness 自评数据集与趋势基线 | completed | 已完成（completed） | P1 | AI 员工 | main | b4f25db | T-HARNESS-MATURITY-REVIEW | 本轮 trace: 20260831-harness-eval-regression；run_id: 20260831-053324-6f048e5f42ce；P1 自评 8/8；运行观测 4 个 manifest；恢复点覆盖率 1.0 | 后续按周期运行自评与观测，追加 baseline 差异并观察样本量增长 |
 | T-HARNESS-DOC-GARDEN | 文档园艺扫描与低风险中文维护 | completed | 已完成（completed） | P2 | AI 员工 | main | b4f25db | T-HARNESS-RUN-MANIFEST,T-HARNESS-POLICY-AS-CODE,T-HARNESS-CI-ENTRY | 本轮 trace: 20260831-doc-garden；P2 文档园艺扫描 135 个文件、0 个错误、16 个低风险警告；P2 CI 不阻断 P0 | 按周运行扫描；历史归档断链和未登记旧报告按 warning 逐步治理，不删除审计证据 |
 | T-HARNESS-P1-FOUR-FIXES | Harness P1 四项缺陷复核与修复 | completed | 已完成（completed） | P1 | AI 员工 | main | b4f25db | T-HARNESS-CI-ENTRY,T-HARNESS-RUN-MANIFEST,T-HARNESS-CHINESE-GOVERNANCE,T-HARNESS-CLEANUP-POLICY | trace: 20260831-harness-p1-four-fixes-hardening；定向测试 32/32；P0 总门禁 8 项 0 失败；run_id: p0-gate-cc6e8922a14f4a2a | 持续观察 CI 事件基线、Schema 约束和高风险中文语义断言 |
-| T-HARNESS-P0-HARDENING | Harness P0 失败关闭与中文语义硬化 | active | 进行中（active） | P0 | AI 员工 | main | 9425c9b | T-HARNESS-P1-FOUR-FIXES,T-HARNESS-CHINESE-GOVERNANCE,T-HARNESS-RUN-MANIFEST,T-HARNESS-POLICY-AS-CODE,T-HARNESS-CI-ENTRY | trace: 20260831-harness-p0-hardening；run_id: 20260831-harness-p0-hardening-r2；E-20260831-007；本地 P0 8/8 通过 | 获项目负责人批准推送后，核验 GitHub Actions artifact 和远端 SHA，再决定关闭 |
+| T-HARNESS-P0-HARDENING | Harness P0 失败关闭与中文语义硬化 | active | 进行中（active） | P0 | AI 员工 | main | bcdd30c | T-HARNESS-P1-FOUR-FIXES,T-HARNESS-CHINESE-GOVERNANCE,T-HARNESS-RUN-MANIFEST,T-HARNESS-POLICY-AS-CODE,T-HARNESS-CI-ENTRY | trace: 20260831-harness-p0-hardening；run_id: 20260831-harness-p0-hardening-r6；E-20260831-010,E-20260831-011；本地 P0 9/9、中文六维覆盖率 1.0 | 获项目负责人批准推送后，核验 GitHub Actions artifact 和远端 SHA，再决定关闭 |
 
 ## 状态视图（只引用主表 task_id）
 
@@ -109,7 +109,7 @@ P0 整合 ✅ → P0.5 资产迁移 ✅ → P1 承接验证 ✅（2026-08-30 负
 
 > **【关键】P1 已关闭，但未获 P2 真人执行批准、授权测试号和体验版条件前，不得启动 P2 实测。**
 
-> **Harness P0 执行状态**：中文治理、运行 manifest、策略即代码和统一 CI 的基础资产及本地失败关闭硬化均已通过；`T-HARNESS-P0-HARDENING` 保持进行中（active），仅等待经批准推送后的 GitHub Actions artifact 和远端 SHA 核验。本轮不启动 P2 真人实测、不访问生产、不处理真实支付或客户数据。
+> **Harness P0 执行状态**：中文治理六维模型、运行 manifest、策略即代码和统一 CI 的本地门禁均已通过；`T-HARNESS-P0-HARDENING` 保持进行中（active），仅等待经批准推送后的 GitHub Actions artifact 和远端 SHA 核验。本轮不启动 P2 真人实测、不访问生产、不处理真实支付或客户数据。
 
 ---
 

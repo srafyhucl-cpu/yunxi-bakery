@@ -26,7 +26,7 @@ def order_repo(db: aiosqlite.Connection) -> YouzanOrderRepo:
     return YouzanOrderRepo(db)
 
 
-# ───────────── YouzanProductRepo ─────────────
+# ───────────── 有赞商品仓储 ─────────────
 
 
 async def test_product_get_by_id_returns_none_when_missing(
@@ -155,7 +155,7 @@ async def test_product_delete_soft_deactivates(product_repo: YouzanProductRepo) 
     assert row["is_active"] == 0
 
 
-# ───────────── YouzanOrderRepo ─────────────
+# ───────────── 有赞订单仓储 ─────────────
 
 
 async def test_order_get_by_order_no_returns_none_when_missing(

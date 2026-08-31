@@ -1,8 +1,8 @@
-# 芸熙烘焙 Monorepo - pre-commit 门禁（MVP 7 钩子版）
-# 依据架构评审 R2 修正：17 钩子 → 7 钩子（安全类不可砍，治理类移出门禁）
+# 芸熙烘焙 Monorepo - pre-commit 门禁（P0 中文治理 + 7 项基础钩子）
+# 依据架构评审 R2 修正：治理检查按 P0 重新纳入门禁，低频历史维护仍按周运行
 # 安全：密钥扫描/基线防改写/红线扫描（SQL参数化+SELECT*+分层）/红线自测
 # 基础：ruff format / mypy（非阻断）/ 核心测试快速集
-# 砍掉（改每周手动跑）：sync-version、check-logbook、check-file-sizes、
+# 低频维护（按周或收口时运行）：sync-version、check-logbook、check-file-sizes、
 #   check-mistake-ledger、check-evidence-index、check-text-encoding、ruff-check
 repos:
   - repo: local
@@ -27,6 +27,13 @@ repos:
         name: 项目红线门禁：SQL参数化+SELECT*+架构分层（安全）
         entry: python backend/scripts/check_project.py
         args: [--skip-tests]
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: chinese-governance
+        name: Harness P0 中文治理六维门禁
+        entry: python -B backend/scripts/check_chinese_governance.py --summary
         language: system
         pass_filenames: false
         always_run: true

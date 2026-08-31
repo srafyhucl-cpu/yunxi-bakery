@@ -110,7 +110,7 @@ onUnmounted(() => {
           </el-input>
 
           <el-select v-model="filterDraft.contentType" clearable placeholder="全部内容类型" style="width: 130px">
-            <el-option label="FAQ" value="faq" />
+            <el-option label="常见问题" value="faq" />
             <el-option label="规则" value="rule" />
             <el-option label="话术" value="script" />
           </el-select>
@@ -248,7 +248,7 @@ onUnmounted(() => {
         <el-form-item label="内容类型">
           <div class="knowledge-page__inline-field">
             <el-select v-model="form.contentType">
-              <el-option label="FAQ" value="faq" />
+              <el-option label="常见问题" value="faq" />
               <el-option label="规则" value="rule" />
               <el-option label="话术" value="script" />
             </el-select>

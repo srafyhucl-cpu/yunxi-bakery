@@ -394,10 +394,10 @@
   text-align: center;
 }
 
-/* Removed FAB styles */
+/* 已移除悬浮按钮样式 */
 
 /* ==========================================
-   Navigation Bar Alignment & SVG Overrides
+   导航栏对齐与 SVG 覆盖
    ========================================== */
 .page-fixed-safe.has-custom-title .page-fixed-safe__home {
   position: absolute;
@@ -431,7 +431,7 @@
   white-space: nowrap;
 }
 
-/* Global Search Results Page */
+/* 全局搜索结果页 */
 .products-global-search {
   flex: 1;
   height: 100%;
