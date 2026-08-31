@@ -6363,5 +6363,26 @@ backend/docs/harness-engineering/core/evidence-index.md 仅作为历史镜像。
 - storage_scope: repository
 - summary: 当前工作区四项问题不可复现；提交范围缺失或不完整会直接失败；定向测试 32/32、P0 门禁 8/8 通过。由于本轮变更尚未提交，远端 CI 仍需在提交流程完成后验证。
 - failure_class: none
+
+## E-20260831-007：Harness P0 失败关闭与中文语义硬化本地提交核验
+
+- trace_id: 20260831-harness-p0-hardening
+- run_id: 20260831-harness-p0-hardening-r2
+- generated_at: 2026-08-31
+- evidence_type: governance/harness-p0-hardening
+- file: `local:backend/reports/harness/20260831-harness-p0-hardening-r1.run.json`; `local:backend/reports/harness/20260831-harness-p0-hardening-r1.md`; `local:backend/reports/harness/20260831-harness-p0-hardening-r2.run.json`; `local:backend/reports/harness/20260831-harness-p0-hardening-r2.md`; `local:backend/reports/harness/p0-gate-20260831-harness-p0-hardening-r2.json`; `local:docs/harness-engineering/core/harness-policy.json`; `local:docs/harness-engineering/core/run-manifest.schema.json`; `local:.github/workflows/harness-p0.yml`; `local:.github/workflows/harness-p1-p2.yml`; `local:backend/scripts/check_harness_policy.py`; `local:backend/scripts/harness_run_manifest.py`; `local:backend/scripts/check_chinese_governance.py`; `local:backend/scripts/check_project_development_register.py`; `local:PROJECT-STATE.md`; `local:docs/tasks/20260831-P0-Harness控制面硬化-指令.md`
+- command: `python -B -m pytest backend/tests/scripts/test_harness_policy.py backend/tests/scripts/test_harness_run_manifest.py backend/tests/scripts/test_check_chinese_governance.py backend/tests/scripts/test_harness_p0_gate.py -q --no-cov -p no:cacheprovider --basetemp D:\Project\YunxiBakery\.tmp-harness-audit`; `python -B -m pytest backend/tests/scripts/test_check_project_development_register.py::test_snapshot_commit_must_be_current_or_parent -q --no-cov -p no:cacheprovider --basetemp D:\Project\YunxiBakery\.tmp-harness-audit`; `python -B -m ruff check ...`; `python -B -m ruff format --check ...`; `python -B backend/scripts/check_project_development_register.py`; `python -B backend/scripts/check_harness_policy.py --git-diff --base f0ccaaeb05ef1816a241794ba2122ab8623e380e --head 9425c9b --summary`; `python -B backend/scripts/harness_p0_gate.py --summary --json-out backend/reports/harness/p0-gate-20260831-harness-p0-hardening-r2.json`; `python -B backend/scripts/harness_eval_regression.py --summary`; `python -B backend/scripts/observe_harness_runs.py --summary`; `python -B backend/scripts/check_doc_garden.py --summary --fail-on error`
+- repository_origin: monorepo
+- commit_sha: 9425c9b3401653892c8babae12ee43ef6d06fd1b
+- result: pass
+- related_logbook: 2026-08-31 - fix(harness): 硬化 P0 失败关闭、中文语义与状态快照
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录 Harness 策略、运行 manifest、门禁报告、验证命令和脱敏治理结论；不含密钥、客户原文、订单明细、真实支付信息或生产写入。
+- storage_scope: local
+- summary: `9425c9b` 将 Git 变更范围失败、缺失或非文件 schema、非 RFC 3339 时间、跨多次提交的状态快照和注释伪造的高风险中文语义均改为失败关闭；四个高风险 CLI 的入口文本补齐中文；CI 临时目录固定到工作区 `.tmp-harness-ci`。定向测试 31 项及状态新鲜度回归通过；P0 总门禁 8/8 通过；Harness 自评 8/8 通过；运行观测 7 个 manifest 的回放与恢复点覆盖率均为 1.0。
+- failure_class: none
+- replayable: yes
+- residual_risks: 远端 `origin/main` 仍为 `01bd9264a46fbe466635b5d3043f2aac327c6b63`，未包含本地 `f0ccaae` 与 `9425c9b`；GitHub Actions 尚未产生本轮 artifact；文档园艺仍有 16 条历史归档断链或旧 manifest 登记 warning，不阻断 P0。
 - replayable: yes
 - residual_risks: `HEAD=b4f25db` 仍是旧提交快照，代码修复尚未进入远端可见提交。

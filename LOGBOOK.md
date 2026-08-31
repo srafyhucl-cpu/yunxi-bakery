@@ -1,3 +1,12 @@
+## [2026-08-31] - docs(harness): 登记 P0 硬化提交后的本地证据（trace: 20260831-harness-p0-hardening）
+
+- 操作者: AI (Codex)
+- commit: `9425c9bd1d2a4859241994e768a7b99327b97de5`
+- run_id: `20260831-harness-p0-hardening-r2`；P0 gate run_id: `p0-gate-0849f98ece414558`
+- 结果: 本地 P0 统一门禁 8/8 通过，提交范围策略检查 19 条路径通过；Harness 自评 8/8 通过，观测 7 个运行且回放/恢复点覆盖率均为 1.0。
+- 证据: `E-20260831-007`；`backend/reports/harness/20260831-harness-p0-hardening-r2.run.json`；`backend/reports/harness/p0-gate-20260831-harness-p0-hardening-r2.json`。
+- 未验证: 未获项目负责人批准推送，本地 `main` 尚未推到 `origin/main`；因此 GitHub Actions artifact 和远端 SHA 仍未核验，`T-HARNESS-P0-HARDENING` 保持进行中（active）。
+
 ## [2026-08-31] - fix(harness): 硬化 P0 失败关闭、中文语义与状态快照（trace: 20260831-harness-p0-hardening）
 
 - 操作者: AI (Codex)
