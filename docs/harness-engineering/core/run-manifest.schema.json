@@ -1,0 +1,331 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yunxibakery.local/harness/run-manifest.schema.json",
+  "title": "YunxiBakery Harness Run Manifest",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "manifest_type",
+    "run_id",
+    "trace_id",
+    "task_id",
+    "source",
+    "goal",
+    "status",
+    "status_label",
+    "generated_at",
+    "as_of_commit",
+    "version",
+    "model_id",
+    "tool_policy_hash",
+    "policy_snapshot",
+    "allowed_paths",
+    "forbidden_paths",
+    "changed_files",
+    "verification",
+    "evidence",
+    "failure_class",
+    "latency_ms",
+    "cost",
+    "human_intervention",
+    "human_intervention_count",
+    "replayable",
+    "input_artifact_hash",
+    "output_artifact_hash",
+    "assertions",
+    "episode",
+    "environment"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "manifest_type": {
+      "type": "string",
+      "const": "harness_run"
+    },
+    "run_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{7,127}$"
+    },
+    "parent_run_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "trace_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{3,127}$"
+    },
+    "task_id": {
+      "type": "string",
+      "pattern": "^[A-Z0-9][A-Z0-9_-]*$"
+    },
+    "source": {
+      "type": "string",
+      "minLength": 1
+    },
+    "goal": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "completed",
+        "blocked",
+        "failed"
+      ]
+    },
+    "status_label": {
+      "type": "string",
+      "minLength": 1
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "as_of_commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "model_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "tool_policy_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "policy_snapshot": {
+      "type": "object",
+      "required": [
+        "policy_id",
+        "schema_version",
+        "sha256"
+      ],
+      "properties": {
+        "policy_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "schema_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "additionalProperties": true
+    },
+    "operation": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "allowed_paths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "forbidden_paths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "changed_files": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "verification": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "object"
+          }
+        ]
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "object"
+          }
+        ]
+      }
+    },
+    "failure_class": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "latency_ms": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "cost": {
+      "type": [
+        "string",
+        "number",
+        "null"
+      ]
+    },
+    "human_intervention": {
+      "type": "boolean"
+    },
+    "human_intervention_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "replayable": {
+      "type": "boolean"
+    },
+    "input_artifact_hash": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "output_artifact_hash": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "decision_refs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "residual_risks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "assertions": {
+      "type": "object",
+      "required": [
+        "result_correct",
+        "policy_compliant",
+        "evidence_complete",
+        "replayable"
+      ],
+      "properties": {
+        "result_correct": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "policy_compliant": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "evidence_complete": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "replayable": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    },
+    "episode": {
+      "type": "object",
+      "required": [
+        "plan_summary",
+        "tool_call_count",
+        "tool_calls",
+        "verification_commands",
+        "recovery_point",
+        "events"
+      ],
+      "properties": {
+        "plan_summary": {
+          "type": "string"
+        },
+        "tool_call_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "tool_calls": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "verification_commands": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "recovery_point": {
+          "type": "string"
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "environment": {
+      "type": "object",
+      "required": [
+        "python_version",
+        "platform"
+      ],
+      "properties": {
+        "python_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "platform": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

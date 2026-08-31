@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "schema_version": "1.0",
+  "policy_id": "yunxi-harness-default",
+  "human_title": "芸熙 Harness P0 权限与生产边界策略",
+  "description": "默认拒绝敏感文件和高风险生产操作；任务级允许路径由运行 manifest 显式记录。任意路径递归删除保持阻断，仅允许白名单临时/可重建产物通过预览和明确授权后清理。",
+  "default_allowed_path_patterns": [
+    "**"
+  ],
+  "forbidden_path_patterns": [
+    ".env",
+    ".env.*",
+    "**/.env",
+    "**/.env.*",
+    "backend/data/**",
+    "backend/reports/production/**",
+    "miniapp/miniprogram/.tea/**",
+    "node_modules/**",
+    ".git/**"
+  ],
+  "forbidden_path_exceptions": [
+    ".env.example",
+    "**/.env.example"
+  ],
+  "operations": {
+    "production_deploy": {
+      "enabled": false,
+      "requires_human_approval": true,
+      "human_title": "生产部署"
+    },
+    "real_payment": {
+      "enabled": false,
+      "requires_human_approval": true,
+      "human_title": "真实支付或退款"
+    },
+    "customer_data_import": {
+      "enabled": false,
+      "requires_human_approval": true,
+      "human_title": "客户数据导入"
+    },
+    "database_migration": {
+      "enabled": true,
+      "requires_human_approval": true,
+      "human_title": "数据库迁移"
+    },
+    "delete": {
+      "enabled": true,
+      "requires_human_approval": true,
+      "human_title": "删除操作"
+    },
+    "rebuildable_cleanup": {
+      "enabled": true,
+      "requires_human_approval": true,
+      "human_title": "白名单临时与可重建产物递归清理"
+    },
+    "recursive_delete": {
+      "enabled": false,
+      "requires_human_approval": true,
+      "human_title": "任意路径递归删除"
+    }
+  },
+  "network": {
+    "default": "deny",
+    "allowed_hosts": []
+  },
+  "production": {
+    "enabled": false,
+    "requires_human_approval": true
+  },
+  "data_handling": {
+    "allow_raw_customer_text": false,
+    "allow_real_order_payload": false,
+    "require_redaction_for_replay": true
+  }
+}
