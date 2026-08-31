@@ -68,7 +68,7 @@ Get-ChildItem -Recurse -Filter "*.py" -Path "app" |
 ### 1.4 先对齐 Harness 口径
 
 - 如果这次拆分或重构会产生可追溯结果，先准备 `trace_id`
-- 如果会留下可复用教训，先看 `docs/harness-engineering/core/mistake-ledger.md`
+- 如果会留下可复用教训，先看根目录 `ERRORS.md`
 - 如果会产生交接或证据，先看 `docs/harness-engineering/core/agent-handoff-template.md` 和 `docs/harness-engineering/core/evidence-index.md`
 
 ## 2️⃣ 拆分原则（编码阶段）

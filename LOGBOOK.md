@@ -1,4 +1,162 @@
-﻿## [2026-08-30] - chore(harness): 运行时临时目录与跨 PowerShell 清理收口（trace: 20260830-harness-runtime-cleanup-and-closeout）
+## [2026-08-31] - feat(harness): 建立 P1 自评观测与 P2 文档园艺闭环（trace: 20260831-harness-eval-regression / 20260831-doc-garden）
+
+- 操作者: AI (Codex)
+- trace_id: `20260831-harness-eval-regression`；`20260831-doc-garden`
+- run_id: `20260831-053324-6f048e5f42ce`；`20260831-053739-f7dbb5cb748a`
+- 背景: 项目负责人要求继续推进“P1 Harness 自评、趋势基线、运行观测、恢复能力”和“P2 文档园艺、历史镜像清理、低风险中文文案和注释维护”，并明确 P2 不作为当前高风险执行的前置阻断项。
+- implementation:
+  - 新增八项 Harness 自评数据集与评估器，固定 dataset_version、evaluator_version、threshold、失败分类和 baseline 差异结构。
+  - 新增运行 manifest 观测器，统计运行数量、状态、失败分类、回放率、策略/证据完整率、人工介入率、延迟、工具调用、恢复点和父子运行关联，并输出 OTel-compatible 属性。
+  - 新增只读文档园艺扫描，检查当前断链、历史归档断链、孤立任务、重复 task_id、过期快照、未登记报告和低风险中文覆盖；历史归档问题降级为 warning。
+  - 新增 `.github/workflows/harness-p1-p2.yml`，按周或手动/PR 触发，P1/P2 结果使用 `continue-on-error`，不改变 P0 门禁。
+  - 修正 3 个当前文档断链，保留历史归档证据，不删除审计材料。
+- changed_files:
+  - `docs/harness-engineering/evals/harness-eval-dataset.json`
+  - `backend/scripts/harness_eval_regression.py`
+  - `backend/scripts/observe_harness_runs.py`
+  - `backend/scripts/check_doc_garden.py`
+  - `backend/tests/scripts/test_harness_eval_regression.py`
+  - `backend/tests/scripts/test_observe_harness_runs.py`
+  - `backend/tests/scripts/test_check_doc_garden.py`
+  - `.github/workflows/harness-p1-p2.yml`
+  - `docs/tasks/20260831-P1-Harness自评观测-指令.md`
+  - `docs/tasks/20260831-P2-Harness文档园艺-指令.md`
+  - `docs/architecture/global-risk-remediation-and-framework-convergence-plan.md`
+  - `docs/architecture/langchain-ai-layer-production-enhancement-plan.md`
+  - `docs/architecture/project-boundaries.md`
+  - `docs/harness-engineering/README.md`
+  - `backend/.agents/skills/yunxi-harness-engineering/SKILL.md`
+  - `PROJECT-STATE.md`
+  - `docs/harness-engineering/core/evidence-index.md`
+- verification:
+  - `python -B -m pytest backend/tests/scripts/test_harness_eval_regression.py backend/tests/scripts/test_observe_harness_runs.py backend/tests/scripts/test_check_doc_garden.py -q --tb=short --no-cov --basetemp=D:\Temp\pytest-harness-p1p2-v2` → EXIT=0（7/7）。
+  - `python -B -m ruff check ...`、`python -B -m ruff format --check ...` → EXIT=0。
+  - Harness 自评 → 8/8，通过比例 1.0。
+  - 运行观测 → 4 个 manifest，回放覆盖率 1.0，恢复点覆盖率 1.0，失败分类 none=4。
+  - 文档园艺 → 135 个文件，错误 0，低风险 warning 16；P2 周期 CI 不阻断 P0。
+  - `python -B backend/scripts/check_project_development_register.py`、`check_evidence_index.py --summary`、`check_harness_run_manifest.py --summary`、`check_chinese_governance.py --summary`、`check_harness_policy.py --git-diff --summary`、`harness_p0_gate.py --summary`、`git diff --check` → 已通过。
+- result: P1 自评/趋势/观测/恢复闭环与 P2 文档园艺入口已完成；两项均已从待处理更新为已完成（completed）。
+- residual_risks: P1 当前样本量为 4 个运行 manifest，尚未接入生产运行数据；P2 尚有 16 个历史或低风险 warning 待按周治理；GitHub Actions 周期 artifact 尚未触发。
+- constraints: 未修改业务代码、业务数据或生产环境；未执行真实支付、客户数据处理或小程序真人执行。
+- replayable: 是；失败分类：无；人工介入：项目负责人明确优先级与不阻断边界。
+## [2026-08-31] - chore(harness): 校正临时清理规则最终运行证据（trace: 20260831-cleanup-policy）
+
+- 操作者: AI (Codex)
+- trace_id: `20260831-cleanup-policy`
+- run_id: `20260831-045839-140531c67c4d`
+- parent_run_id: `20260831-044850-9ca39a7e251a`
+- 背景: 在最终 manifest 生成后补充 `.env*` 保护测试，原最终记录的 10/10 验证口径已过时；本轮生成新的不可覆盖 `final-v2` 运行记录并统一证据引用。
+- changed_files:
+  - `backend/reports/harness/20260831-cleanup-policy-final-v2.run.json`
+  - `backend/reports/harness/20260831-cleanup-policy-final-v2.md`
+  - `docs/tasks/20260831-P0-Harness临时清理规则-指令.md`
+  - `PROJECT-STATE.md`
+  - `docs/harness-engineering/core/evidence-index.md`
+- verification:
+  - `python -B -m pytest backend/tests/scripts/test_cleanup_local_artifacts.py backend/tests/scripts/test_harness_policy.py -q --tb=short --no-cov --basetemp=D:\Temp\pytest-cleanup-policy-v2` → EXIT=0（11/11）
+  - `python -B backend/scripts/harness_run_manifest.py --output backend/reports/harness/20260831-cleanup-policy-final-v2.run.json --markdown-output backend/reports/harness/20260831-cleanup-policy-final-v2.md ...` → EXIT=0
+- result: 最终运行证据已切换到 `20260831-045839-140531c67c4d`；规则仍允许白名单临时/可重建产物在预览和明确授权后递归批量清理，未知路径和受保护路径继续阻断。
+- residual_risks: P0 门禁将在本轮文档同步后复跑；GitHub Actions 云端 artifact 尚未触发；规则尚未提交 Git commit。
+- replayable: 是；失败分类：无；人工介入：项目负责人明确提出规则变更。
+## [2026-08-31] - chore(harness): 将中文治理纳入 Harness P0 控制面（trace: 20260831-harness-priority-realignment）
+
+- 操作者: AI (Codex)
+- trace_id: `20260831-harness-priority-realignment`
+- run_id: `20260831-harness-priority-realignment-r1`
+- 背景: 项目负责人确认中文管理属于 Harness 的项目管理与驾驭工程能力，并要求中文治理进入 P0；本轮据此重排评审报告和项目总表。
+- 决策: 不另设“翻译项目”。将权威源、任务/交接/评审/验收/证据摘要、高风险用户可见状态和中文治理检查器纳入 P0 控制面；全仓注释翻译、低风险文案和历史文档清理保留在 P1/P2。
+- changed_files:
+  - `docs/harness-engineering/HARNESS-MATURITY-REVIEW-20260830.md`
+  - `PROJECT-STATE.md`
+  - `backend/.agents/skills/yunxi-harness-engineering/SKILL.md`
+  - `docs/AGENTS/skill-reference.md`
+  - `docs/harness-engineering/core/verification-matrix.md`
+  - `docs/harness-engineering/README.md`
+  - `docs/待办优先级清单_20260829.md`
+- verification:
+  - `python -B backend/scripts/check_project_development_register.py` → EXIT=0（tasks=26）
+  - `python -B backend/scripts/check_text_encoding.py` → EXIT=0（checked 108 files）
+  - `git diff --check` → EXIT=0（仅报告 LF/CRLF 警告，无差异错误）
+- result: 中文治理已作为 Harness P0 控制面登记；新增 `T-HARNESS-CHINESE-GOVERNANCE`，并将运行 manifest、策略即代码和统一 CI 入口提升为 P0 前置任务。
+- residual_risks: 中文治理检查器、运行 manifest、策略快照和根级 CI 尚未实现；本条只完成优先级和权威状态调整，不代表建设目标已完成。
+- constraints: 未修改业务代码、业务数据或生产环境；未执行 P2 真人验证。
+- replayable: 是；失败分类：无；人工介入：项目负责人明确决策。
+
+## [2026-08-30] - chore(harness): 校正已否决事项复活（trace: 20260830-p1p2-state-correction）
+
+- 操作者: AI (Codex)
+- trace_id: `20260830-p1p2-state-correction`
+- run_id: `20260830-p1p2-state-correction-r1`
+- 背景: 项目负责人已否决 P1-7 FAQ 店家回收，但该事项被错误保留为当前阻塞待办；本轮已校正全部管理入口。
+- implementation: `T-P1-7-FAQ` 改为历史（historical）并标记“已否决、禁止执行”；从状态视图、待办清单和交接活动列表移除；删除误建填写版；新增 `M-20260830-005` 防止任务复活。
+- verification: `python -B backend/scripts/check_project_development_register.py`、`python -B backend/scripts/check_mistake_ledger.py`、`python -B backend/scripts/check_evidence_index.py --summary`、`git diff --check` 均 EXIT=0。
+- result: P1-7 已从当前待办中彻底移除；P1/P2 其余状态未改变。
+- residual_risks: 历史 LOGBOOK 旧条目可能仍提到 P1-7，但不构成当前入口；当前状态以 `PROJECT-STATE.md` 为准。
+- constraints: 未修改业务代码、未部署、未执行真实支付、未访问生产数据。
+- replayable: 是；失败分类：scope_drift；人工介入：项目负责人明确否决。
+## [2026-08-30] - test(p1-p2): 继续推进 P1/P2 知识缺口枚举与发票验收（trace: 20260830-p1p2-continue）
+
+- 操作者: AI (Codex)
+- trace_id: `20260830-p1p2-continue`
+- run_id: `20260830-p1p2-continue-r2`
+- parent_trace_id: `20260830-harness-maturity-review`
+- 背景: 继续执行 P1/P2 可执行工作。P1-4 先只读枚举知识缺口；P1-5 补齐发票 API 专用测试；P2 真人 B/C/D/E 仍受负责人批准、测试号和体验版条件约束。
+- changed_files:
+  - `backend/tests/api/test_admin_invoice_api.py`
+  - `docs/tasks/20260829-P1-4-知识缺口回填-指令.md`
+  - `docs/tasks/20260829-P1-5-发票承接验收-指令.md`
+  - `PROJECT-STATE.md`
+  - `ERRORS.md`
+  - `docs/specs/faq-template-fillable-20260830.md`
+  - `docs/tasks/20260830-P1-5-发票实现修复-指令.md`
+- implementation:
+  - 只读查询 `backend/data/bot.db` 的 `knowledge_gaps`，总数 0、未结数 0；与历史“5 条”口径不一致，未猜测、未写入。
+  - 新增发票登记、列表、标记已开、鉴权、重复标记和必填字段缺失测试；测试夹具使用真实运行时 `DatabaseHandle`。
+  - 整理 `docs/specs/faq-template-fillable-20260830.md`，完成 10 条 FAQ 的中文店家填写版，不代填经营事实。
+  - 新建 `T-P1-5-INVOICE-FIX` 任务指令，将业务实现修复与原验收任务解耦，避免越权修改 `backend/app/**`。
+- verification:
+  - `python -B -m pytest tests/api/test_admin_invoice_api.py -q --no-cov --basetemp=D:/Project/.tmp-20260830-invoice/pytest-base` → EXIT=0（3 passed，4 strict xfailed）。
+  - `python -B scripts/check_knowledge.py` → EXIT=0（342 条知识，未结 knowledge_gaps 0）。
+  - `python -m ruff check backend/tests/api/test_admin_invoice_api.py` → EXIT=0。
+  - `python -m ruff format --check backend/tests/api/test_admin_invoice_api.py` → EXIT=0。
+  - `python -B backend/scripts/check_project_development_register.py` → EXIT=0。
+  - `git diff --check` → EXIT=0。
+- result: P1-4 因历史口径来源未确认而阻塞；P1-5 因两个业务校验缺口而阻塞；P2 真人走查未启动。
+- residual_risks:
+  - 发票 API 尚未拒绝 issued 重复标记和三个必填字段缺失；需另行授权修改 `backend/app/**` 后再完成 E1-E4。
+  - 当前数据库与历史状态“5 条知识缺口”不一致，需项目负责人确认来源。
+- constraints: 未部署、未执行真实支付、未开放真实用户访问、未修改业务实现、未清理业务数据；FAQ 仅整理填写版，未代填店家事实。
+- replayable: 是；失败分类：无；人工介入：未发生；策略快照：仅限文档、测试和状态登记，禁止修改业务实现与生产环境。
+## [2026-08-30] - chore(harness): Harness Engineering 全面评审与外部对标（trace: 20260830-harness-maturity-review）
+
+- 操作者: AI (Codex)
+- trace_id: `20260830-harness-maturity-review`
+- parent_trace_id: `20260830-errors-ledger-canonicalization`
+- 背景: 按项目负责人要求全面审查现有 Harness，并对照公开的 Agent Harness、运行时隔离、轨迹回放和评估实践，确认现有体系未落后到需要重做，但仍缺少统一运行契约、策略即代码、Harness 自评、episode 回放、文档园艺和统一 CI 入口。
+- changed_files:
+  - `docs/harness-engineering/HARNESS-MATURITY-REVIEW-20260830.md`
+  - `docs/harness-engineering/core/traceability-model.md`
+  - `docs/harness-engineering/core/verification-matrix.md`
+  - `backend/.agents/skills/yunxi-harness-engineering/SKILL.md`
+  - `AGENTS.md`
+  - `backend/AGENTS.md`
+  - `miniapp/AGENTS.md`
+  - `docs/AGENTS/multi-agent-coordination.md`
+  - `docs/AGENTS/skill-reference.md`
+  - `PROJECT-STATE.md`
+- verification:
+  - `python -B backend/scripts/check_project_development_register.py`
+  - `python -B backend/scripts/check_project.py --skip-tests`
+  - `python -B backend/scripts/check_mistake_ledger.py`
+  - `python -B backend/scripts/check_evidence_index.py --summary`
+  - `python -B backend/scripts/check_text_encoding.py`
+  - `git diff --check`
+- evidence:
+  - `docs/harness-engineering/core/evidence-index.md`：E-20260830-005
+- residual_risks:
+  - 运行 manifest、策略即代码、Harness 自评和文档园艺仍登记为后续任务，尚未实现机器化闭环。
+- constraints: 未改业务代码、业务数据、生产环境或数据库；未运行全量测试。
+## [2026-08-30] - chore(harness): 运行时临时目录与跨 PowerShell 清理收口（trace: 20260830-harness-runtime-cleanup-and-closeout）
 
 - 操作者: AI (Codex)
 - trace_id: `20260830-harness-runtime-cleanup-and-closeout`
@@ -22,6 +180,30 @@
 - residual_risks: 当前工作区仍 dirty，前序治理改动与本轮补强尚未提交或推送；体验版、真人试运行、正式 AppID、真实支付/退款和生产部署仍受项目负责人批准及外部条件约束。
 - 收尾补充: 本轮按授权在 D 盘逐文件清理 npm/pre-commit 缓存及 5 个测试/Ruff 临时目录，共删除 582 个文件（约 45 KB），未删除目录、业务数据、有效报告或冻结旧仓。
 - constraints: 未删除业务数据、有效报告、冻结旧仓或目录；未写生产、数据库、支付或客户数据。
+
+## [2026-08-30] - chore(harness): 错误账本唯一入口与重复 ID 守卫（trace: 20260830-errors-ledger-canonicalization）
+
+- 操作者: AI (Codex)
+- trace_id: `20260830-errors-ledger-canonicalization`
+- parent_trace_id: `20260830-chinese-status-display-guard`
+- 背景: 发现根 `docs/` 与 `backend/docs/` 各有一份错误账本，且账本存在重复 ID、`###` 条目未被检查器识别、模板字段污染上一条记录等结构问题；为避免多 Agent 长期读取不同事实源，统一为根目录 `ERRORS.md`。
+- changed_files:
+  - `ERRORS.md`：由当前账本迁移而来；补充单一入口原则，修复条目层级、重复编号和缺失字段，新增错误账本镜像分叉与测试节奏教训。
+  - `docs/harness-engineering/core/mistake-ledger.md`、`backend/docs/harness-engineering/core/mistake-ledger.md`：改为仅指向 `ERRORS.md` 的兼容入口，不再承载条目。
+  - `backend/scripts/check_mistake_ledger.py`：默认检查根目录 `ERRORS.md`，阻断重复 ID，并正确处理非条目二级标题。
+  - `backend/scripts/harness_snapshot.py`：仓库根路径修正为 Monorepo 根，参考入口改为 `ERRORS.md`。
+  - `AGENTS.md`、Harness Skill、协作规则、工作流、MiniApp 管理文档和现行 Harness 导航：统一单一正式文件规则及 `ERRORS.md` 路径。
+  - `PROJECT-STATE.md`：新增 `T-HARNESS-ERRORS-LEDGER` 任务。
+- verification（真实退出码）:
+  - `python -B -m pytest backend/tests/scripts/test_check_mistake_ledger.py backend/tests/scripts/test_harness_snapshot.py -q --no-cov` → EXIT=0（13 passed）。
+  - `python -B backend/scripts/check_mistake_ledger.py` → EXIT=0（22 条）。
+  - `python -B backend/scripts/check_project_development_register.py` → EXIT=0。
+  - `python -B backend/scripts/check_project.py --skip-tests` → EXIT=0。
+  - `python -B backend/scripts/check_evidence_index.py --summary` → EXIT=0（total=364、failed=0）。
+  - `python -B backend/scripts/check_text_encoding.py`、Ruff check/format、`git diff --check` → EXIT=0。
+  - 未运行全量测试：本轮仅涉及 Harness、文档和检查器治理，按项目测试节奏规则不要求全量收口。
+- residual_risks: 工作区仍 dirty，未提交、未推送；历史 LOGBOOK/evidence-index/归档中的旧路径保留原文用于追溯，非当前执行入口。
+- constraints: 未改业务代码、业务数据、生产环境或数据库；兼容文件均不承载新增错误条目。
 
 
 - 操作者: AI (Codex)
@@ -16185,3 +16367,181 @@ ______________________________________________________________________
   - `python -B backend/scripts/check_evidence_index.py --summary` → EXIT=0，`total=363 retired=20 failed=0 verified_git_files=1606 current_repo_verified=2 legacy_repo_verified=1604 external_unverified=0 malformed=0 missing_repo_file=0 hash_mismatch=0`。
   - `python -B backend/scripts/check_mistake_ledger.py`、`python -B backend/scripts/check_text_encoding.py`、`git diff --check` → EXIT=0。
 - residual_risks: 体验版、真人试运行、正式 AppID、真实支付/退款、生产部署仍受项目负责人批准和外部条件约束；未执行 `git push`。
+## [2026-08-30] - chore(harness): 测试节奏与耗时治理（trace: 20260830-test-cadence-governance）
+
+- 操作者: AI (Codex)
+- trace_id: `20260830-test-cadence-governance`
+- 背景: 项目负责人要求避免功能开发期间无目标重复运行全量测试；每个功能或模块仅在上线候选收口执行全量测试，并评估测试耗时。
+- 变更范围:
+  - `backend/.agents/skills/yunxi-harness-engineering/SKILL.md`、`AGENTS.md`：增加定向测试优先、上线候选一次全量、失败后定向修复与耗时阈值规则。
+  - `docs/harness-engineering/core/verification-matrix.md`：增加测试节奏、耗时记录命令、失败复跑和优化方向。
+  - `docs/AGENTS/commit-workflow.md`、`docs/AGENTS/quick-reference.md`、中文治理设计规格：同步工作流口径。
+  - `PROJECT-STATE.md`：新增 `T-HARNESS-TEST-CADENCE` 任务登记。
+- 规则口径: 全量测试默认仅用于上线候选收口；单次超过 10 分钟或较最近基线增加 20% 以上，必须登记测试优化评估；不得用跳过测试替代优化。
+- 本轮验证: 仅修改 Harness 规则和文档，未触及业务代码；未运行全量测试，已运行开发总表专项测试和相关 Harness 门禁。
+- residual_risks: 尚未建立新的全量测试耗时基线；下一个功能/模块上线候选收口时必须记录首次基线。
+
+## [2026-08-30] - chore(harness): 中文状态展示防回归守卫（trace: 20260830-chinese-status-display-guard）
+
+- 操作者: AI (Codex)
+- trace_id: `20260830-chinese-status-display-guard`
+- 背景: 扫描发现当前管理文档中机器状态码与中文叙述混用，部分中文段落直接出现裸 `completed` / `blocked` / `pending`，容易造成阅读和多 Agent 方向偏差。
+- 变更范围:
+  - `backend/scripts/check_project_development_register.py`：新增 `status_label` 映射校验；主线任务表和任务指令必须保持中文状态说明与机器状态码一致；`PROJECT-STATE.md` 中文叙述禁止裸写管理状态码。
+  - `backend/tests/scripts/test_check_project_development_register.py`：新增状态说明匹配、中文叙述防裸码和任务元数据必填回归测试。
+  - `PROJECT-STATE.md`：主线任务表增加“状态说明”列，当前状态统一使用中文优先展示；新增 `T-HARNESS-STATUS-LABEL-GUARD`。
+  - `docs/tasks/*.md`：补充 `status_label` 中文状态说明。
+  - `docs/AGENTS/multi-agent-coordination.md`、`docs/AGENTS/quick-reference.md`、中文治理设计规格：固化中文展示与机器字段边界。
+- 验证:
+  - `python -B -m pytest backend/tests/scripts/test_check_project_development_register.py -vv --no-cov` → EXIT=0（12 passed）。
+  - `python -B backend/scripts/check_project_development_register.py` → EXIT=0（tasks=16）。
+  - `python -B backend/scripts/check_evidence_index.py --summary` → EXIT=0（当前证据索引通过）。
+  - `git diff --check` → EXIT=0。
+- 规则结论: 人类展示统一使用“中文状态（机器码）”；`status`、`status_label` 等稳定字段保持可解析格式；业务代码中的订单/会话状态枚举不受本规则影响。
+- residual_risks: 历史 LOGBOOK、历史报告和命令输出保留原始英文状态，不做批量改写；新任务和新日志必须遵循中文优先展示规则。
+
+## [2026-08-30] - governance: P1 阶段正式关闭（trace: 20260830-p1-close-confirmation）
+
+- 操作者: AI (Codex)
+- trace_id: `20260830-p1-close-confirmation`
+- 背景: 项目负责人明确确认关闭 P1；P1 技术验收四项收尾已完成，P2 真人执行段仍因外部前置条件 blocked。
+- 变更范围:
+  - `PROJECT-STATE.md`：`T-P1-ACCEPTANCE` 从 `pending` 更新为 `completed`，同步已完成视图、时间线和 P1 关闭记录。
+  - `LOGBOOK.md`：登记负责人确认、关闭日期和 P2 独立阻塞边界。
+- 关闭依据: P1 四项收尾（商品上限、分类兜底、商品口径核对、收口登记）均有可复现证据；项目负责人于 2026-08-30 明确确认关闭。
+- P2 状态: `T-P2-PREP=completed`；`T-P2-RUN=blocked`。当前卡点为负责人批准、授权测试号/体验版条件和真人执行前置，不是 P1 未关闭。
+- verification: 待执行开发总表、证据索引和 `git diff --check` 检查。
+- residual_risks: P2 真人执行、正式 AppID、真实支付/退款和生产部署仍受项目负责人批准及外部条件约束。
+## [2026-08-31] - chore(harness): 执行 Harness P0 四项控制面并完成本地收口（trace: 20260831-p0-execution）
+
+- 操作者: AI (Codex)
+- trace_id: `20260831-p0-execution`
+- run_id: `20260831-p0-execution-r1`
+- parent_run_id: none
+- 背景: 项目负责人要求开始处理 P0；本轮将中文治理、运行 manifest/episode、策略即代码和根级 Harness CI 作为同一控制面执行。
+- implementation:
+  - 新增四份可复制执行的 P0 任务指令，并在 `PROJECT-STATE.md` 建立唯一状态关联。
+  - 新增根级 `.github/workflows/harness-p0.yml`，统一运行八项治理/红线检查并在失败时上传 JSON 报告。
+  - 新增中文治理、策略、运行 manifest 和 P0 总门禁的脚本/合同测试；P0 门禁使用项目盘临时目录，避免 C 盘缓存。
+  - Harness README、验证矩阵、项目 Skill 和 Skill 速查已加入同一命令入口。
+- changed_files:
+  - `.github/workflows/harness-p0.yml`
+  - `backend/scripts/check_chinese_governance.py`
+  - `backend/scripts/harness_policy.py`
+  - `backend/scripts/check_harness_policy.py`
+  - `backend/scripts/harness_run_manifest.py`
+  - `backend/scripts/check_harness_run_manifest.py`
+  - `backend/scripts/harness_p0_gate.py`
+  - `backend/tests/scripts/test_check_chinese_governance.py`
+  - `backend/tests/scripts/test_harness_policy.py`
+  - `backend/tests/scripts/test_harness_run_manifest.py`
+  - `backend/tests/scripts/test_harness_p0_gate.py`
+  - `docs/harness-engineering/core/harness-policy.json`
+  - `docs/harness-engineering/core/run-manifest.schema.json`
+  - `docs/harness-engineering/README.md`
+  - `docs/harness-engineering/core/verification-matrix.md`
+  - `docs/AGENTS/skill-reference.md`
+  - `docs/tasks/20260831-P0-Harness中文治理-指令.md`
+  - `docs/tasks/20260831-P0-Harness运行契约-指令.md`
+  - `docs/tasks/20260831-P0-Harness策略即代码-指令.md`
+  - `docs/tasks/20260831-P0-Harness统一CI-指令.md`
+  - `PROJECT-STATE.md`
+- verification:
+  - `python -B -m pytest backend/tests/scripts/test_check_chinese_governance.py backend/tests/scripts/test_harness_policy.py backend/tests/scripts/test_harness_run_manifest.py backend/tests/scripts/test_harness_p0_gate.py -q --no-cov --basetemp=D:\\Project\\YunxiBakery\\.tmp-harness-p0\\pytest-base` → EXIT=0（17 项）
+  - `python -B backend/scripts/check_project_development_register.py` → EXIT=0（tasks=26）
+  - `python -B backend/scripts/check_chinese_governance.py --summary` → EXIT=0（coverage=1.0）
+  - `python -B backend/scripts/check_harness_policy.py --git-diff --summary` → EXIT=0（策略哈希 `f81b988ee35e5a6d3b8b36c49738e13301e79353b562546c130dc87cea3a0153`）
+  - `python -B backend/scripts/check_harness_run_manifest.py --summary` → EXIT=0（1 份 manifest）
+  - `python -B backend/scripts/check_project.py --skip-tests` → EXIT=0
+  - `python -B backend/scripts/check_mistake_ledger.py` → EXIT=0
+  - `python -B backend/scripts/check_text_encoding.py` → EXIT=0（108 files）
+  - `python -B backend/scripts/check_evidence_index.py --summary` → EXIT=0（367 条，failed=0）
+  - `python -B backend/scripts/harness_p0_gate.py --summary` → EXIT=0（8 项检查，0 失败，约 57.4 秒）
+  - `python -B backend/scripts/harness_p0_gate.py --summary --json-out backend/reports/harness/p0-gate-20260831-p0-final.json` → EXIT=0（8 项检查，0 失败，约 58.76 秒；最终状态收口报告）
+  - `python -B -m ruff check ...` / `python -B -m ruff format --check ...` → EXIT=0
+  - `git diff --check` → EXIT=0（仅换行符提示）
+- evidence:
+  - `local:backend/reports/harness/20260831-p0-execution.run.json`
+  - `local:backend/reports/harness/20260831-p0-execution.md`
+  - `local:backend/reports/harness/p0-gate-20260831-p0-execution.json`
+  - `local:backend/reports/harness/p0-gate-20260831-p0-final.json`
+- result: 本地 P0 四项控制面全部完成，结果正确、策略合规、证据完整、可回放四项断言均满足；四个 P0 任务状态已切换为已完成（completed）。
+- failure_class: none
+- human_intervention: 用户授权执行；未执行任何高风险生产操作。
+- replayable: 是；固定 `run_id`、策略哈希、任务快照和验证命令可重放本轮决策阶段。
+- residual_risks:
+  - GitHub Actions 云端执行尚未在本地模拟，需推送或手动触发后核验 artifact。
+  - P2 真人执行仍受负责人批准、测试号和体验版条件约束，本轮未启动实测。
+  - 工作区仍包含本轮之前的其他未提交修改，不能据此宣称整个工作区已提交或生产已发布。
+## [2026-08-31] - chore(harness): 放开白名单临时产物递归批量清理（trace: 20260831-cleanup-policy）
+
+- 操作者: AI (Codex)
+- trace_id: `20260831-cleanup-policy`
+- run_id: `20260831-044850-9ca39a7e251a`
+- 背景: 项目负责人要求临时文件及时清理，允许在明确边界内递归批量清理，不再要求 Agent 手工逐个删除。
+- 决策: 任意路径递归删除仍由 `recursive_delete` 策略默认阻断；新增 `rebuildable_cleanup` 操作，允许通过 `scripts/cleanup-local-artifacts.ps1` 对白名单临时/可重建目录执行预览后递归清理。自定义目录仅支持工作区或 `D:\Temp` 下的 `.tmp-`/`pytest-` 前缀路径。
+- changed_files:
+  - `AGENTS.md`
+  - `miniapp/AGENTS.md`
+  - `docs/AGENTS/multi-agent-coordination.md`
+  - `docs/AGENTS/commit-workflow.md`
+  - `docs/AGENTS/quick-reference.md`
+  - `docs/AGENTS/skill-reference.md`
+  - `docs/harness-engineering/HARNESS-MATURITY-REVIEW-20260830.md`
+  - `docs/harness-engineering/README.md`
+  - `docs/harness-engineering/core/harness-policy.json`
+  - `backend/.agents/skills/yunxi-harness-engineering/SKILL.md`
+  - `scripts/cleanup-local-artifacts.ps1`
+  - `backend/tests/scripts/test_cleanup_local_artifacts.py`
+  - `backend/tests/scripts/test_harness_policy.py`
+  - `docs/tasks/20260831-P0-Harness临时清理规则-指令.md`
+- verification: `python -B -m pytest backend/tests/scripts/test_cleanup_local_artifacts.py backend/tests/scripts/test_harness_policy.py -q --tb=short --no-cov` → EXIT=0（10/10）；Windows PowerShell 5.1 预览与 `-OnlyTemporaryPath -Execute` 递归清理 → EXIT=0；`python -B backend/scripts/check_chinese_governance.py --summary`、`check_harness_policy.py --git-diff --summary`、`check_project_development_register.py`、`check_evidence_index.py --summary`、`harness_p0_gate.py --summary` → EXIT=0（P0 总门禁 8 项、0 失败）。
+- result: 规则已修改；按新规则预览并递归清理 `.tmp-harness-p0`，删除 6 个文件、1926 字节；未执行生产、业务数据或有效报告删除。
+- residual_risks: 旧历史文档中的“禁止递归删除”描述仅代表当时约束；当前入口以本条和 `AGENTS.md`、`multi-agent-coordination.md` 为准。
+- replayable: 是；失败分类：无；人工介入：项目负责人明确规则变更。
+## [2026-08-31] - fix(harness): 复核并修复四项 P1 控制面缺陷（trace: 20260831-harness-p1-four-fixes）
+
+- 操作者: AI (Codex)
+- trace_id: `20260831-harness-p1-four-fixes`
+- run_id: `p0-gate-27955743ec6b4e24`
+- 背景: 复核 CI 提交差异、临时清理授权、运行 manifest Schema 执行和高风险中文治理语义断言四项问题。
+- 复核结论: 四项问题均真实存在；原实现分别存在 `git diff HEAD` 在干净 CI 工作区漏检、`-Execute` 可绕过预览、仅检查 Schema `$id`、任意中文字符即可满足高风险覆盖四类缺陷。
+- implementation:
+  - `check_harness_policy.py` 支持 `--base/--head` 提交范围；P0 CI checkout 使用完整历史并传入事件基线与目标 SHA。
+  - `cleanup-local-artifacts.ps1` 生成目标清单哈希预览令牌，`-Execute` 必须携带匹配令牌；目录状态变化后自动拒绝执行。
+  - `harness_run_manifest.py` 增加 Schema type、const、enum、minLength、pattern、format、minimum、required、items、oneOf 等实际约束校验。
+  - `check_chinese_governance.py` 对高风险路径增加明确中文语义标记断言，避免单一注释或帮助文本伪通过。
+- changed_files:
+  - `.github/workflows/harness-p0.yml`
+  - `backend/scripts/check_harness_policy.py`
+  - `backend/scripts/harness_p0_gate.py`
+  - `backend/scripts/harness_run_manifest.py`
+  - `backend/scripts/check_chinese_governance.py`
+  - `scripts/cleanup-local-artifacts.ps1`
+  - `backend/tests/scripts/test_harness_policy.py`
+  - `backend/tests/scripts/test_harness_run_manifest.py`
+  - `backend/tests/scripts/test_check_chinese_governance.py`
+  - `backend/tests/scripts/test_cleanup_local_artifacts.py`
+- verification: `python -B -m pytest backend/tests/scripts/test_harness_policy.py backend/tests/scripts/test_harness_run_manifest.py backend/tests/scripts/test_check_chinese_governance.py backend/tests/scripts/test_cleanup_local_artifacts.py backend/tests/scripts/test_harness_p0_gate.py -q --tb=short --no-cov` → EXIT=0（28/28）；`ruff check ...` → EXIT=0；`ruff format --check ...` → EXIT=0；`python -B backend/scripts/harness_p0_gate.py --summary` → EXIT=0（8/8）；`python -B backend/scripts/check_harness_policy.py --git-diff --summary` → EXIT=0（113 paths）；`python -B backend/scripts/check_harness_run_manifest.py --summary` → EXIT=0（6/6）；`python -B backend/scripts/check_chinese_governance.py --summary` → EXIT=0（coverage 1.0）；`python -B backend/scripts/check_project_development_register.py` → EXIT=0；`git diff --check` → EXIT=0。
+- result: 已完成（completed）；四项 P1 缺陷均已修复并补回归测试，P0 总门禁保持 8 项 0 失败。
+- failure_class: none
+- human_intervention: 无；清理脚本授权机制改为机器令牌，仍需操作者先预览再执行。
+- replayable: 是；可按本条命令、测试 fixture 和 P0 run_id 重放。
+- residual_risks: GitHub Actions 云端尚未实际触发验证；首次提交的全零 base SHA 逻辑已实现但未在云端事件中核验。
+## [2026-08-31] - fix(harness): 二次加固四项问题的提交基线与边界验证（trace: 20260831-harness-p1-four-fixes-hardening）
+
+- 操作者: AI (Codex)
+- trace_id: `20260831-harness-p1-four-fixes-hardening`
+- run_id: `p0-gate-792011c9839042ae`
+- 背景: 外部复核再次发现“四项可修复问题”，核对后确认上一轮修复尚未进入当前 `HEAD` 提交快照，且需要进一步证明 CI 提交范围和清理授权边界不会回退。
+- 复核结论: 当前工作区实现已包含四项修复；旧 `HEAD=b4f25db` 未包含本轮未提交变更，外部按提交快照检查时会复现旧问题。该差异已明确记录，未擅自提交或推送。
+- hardening:
+  - P0 CI 对 push、pull_request、首个提交和手动事件均解析非空 base/head SHA；不再允许半缺省提交范围。
+  - P0 门禁报告记录 `policy_diff_range`，提交范围缺失或仅提供一端时直接失败。
+  - 增加提交范围回归测试、部分范围拒绝测试和 P0 命令传参测试。
+- verification: `python -B -m pytest backend/tests/scripts/test_harness_policy.py backend/tests/scripts/test_harness_run_manifest.py backend/tests/scripts/test_check_chinese_governance.py backend/tests/scripts/test_cleanup_local_artifacts.py backend/tests/scripts/test_harness_p0_gate.py -q --tb=short --no-cov` → EXIT=0（32/32）；`ruff check ...` → EXIT=0；`python -B backend/scripts/harness_p0_gate.py --summary` → EXIT=0（8/8）；`python -B backend/scripts/check_harness_policy.py --git-diff --summary` → EXIT=0；`python -B backend/scripts/check_harness_run_manifest.py --summary` → EXIT=0；`python -B backend/scripts/check_chinese_governance.py --summary` → EXIT=0；`git diff --check` → EXIT=0。
+- result: 已完成（completed）；四项问题在工作区均不可复现，P0 统一门禁保持通过。
+- failure_class: none
+- human_intervention: 无；未进行提交、推送、生产部署或真实支付操作。
+- replayable: 是；可按本条命令和 `run_id` 重放。
+- residual_risks: 变更尚未提交，因此远端 CI 和基于提交的评审仍会看到旧快照；需要项目负责人按提交流程收口后，云端验证才会覆盖本次修复。

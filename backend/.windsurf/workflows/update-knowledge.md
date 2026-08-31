@@ -66,4 +66,4 @@ python scripts/validate_products.py
 
 ### 7. 必要时补 Harness 证据
 
-如果本次知识变更影响生产口径、业务规则或长期记忆，补 `trace_id`，并在 `docs/harness-engineering/core/evidence-index.md` 或 `docs/harness-engineering/core/mistake-ledger.md` 留痕。
+如果本次知识变更影响生产口径、业务规则或长期记忆，补 `trace_id`，并在 `docs/harness-engineering/core/evidence-index.md` 或根目录 `ERRORS.md` 留痕；不得新建同职能账本。

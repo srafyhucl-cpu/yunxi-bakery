@@ -31,6 +31,8 @@ ______________________________________________________________________
 
 如果本轮还涉及提交收口、技能索引、验证矩阵或交接模板，继续对照 `docs/AGENTS/commit-workflow.md`、`docs/AGENTS/skill-reference.md` 和 `docs/harness-engineering/core/traceability-model.md`。
 
+Harness 全面评审与外部对标统一见：[HARNESS-MATURITY-REVIEW-20260830.md](../docs/harness-engineering/HARNESS-MATURITY-REVIEW-20260830.md)。中大型 Agent 运行必须保留 `run_id`、策略摘要、失败分类和可回放结论，不能只保留最终回答。
+
 ### Step 3：识别涉及的代码范围 → 调用对应 Guard Skill
 
 | 涉及范围 | 必须调用的 Skill |

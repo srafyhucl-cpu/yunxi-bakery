@@ -31,6 +31,8 @@ ______________________________________________________________________
 
 如果本轮还涉及提交收口、技能索引、验证矩阵或交接模板，继续对照 `docs/AGENTS/commit-workflow.md`、`docs/AGENTS/skill-reference.md` 和 `docs/harness-engineering/core/traceability-model.md`。
 
+Harness 全面评审与外部对标统一见：[HARNESS-MATURITY-REVIEW-20260830.md](./docs/harness-engineering/HARNESS-MATURITY-REVIEW-20260830.md)。中大型 Agent 运行必须保留 `run_id`、策略摘要、失败分类和可回放结论，不能只保留最终回答。
+
 ### Step 3：识别涉及的代码范围 → 调用对应 Guard Skill
 
 | 涉及范围 | 必须调用的 Skill |
@@ -46,9 +48,20 @@ ______________________________________________________________________
 
 `PROJECT-STATE.md` 是当前阶段、范围和阻塞项的唯一入口。先读它，再读历史记录；不得用计划书或聊天内容替代。
 
-其中的机器快照、主线任务总表、状态视图和分支登记构成唯一动态开发总表。任何新改动先建立或认领 `task_id`；状态、阻塞、依赖、分支和下一步变化先回写总表，`LOGBOOK.md` 只记录历史证据。
+其中的机器快照、主线任务总表、状态视图和分支登记构成唯一动态开发总表。任何新改动先建立或认领 `task_id`；状态、阻塞、依赖、分支和下一步变化先回写总表，`LOGBOOK.md` 只记录历史证据。状态展示必须使用“中文状态（机器码）”，任务指令同时填写 `status` 与 `status_label`，禁止在中文叙述中裸写机器状态码。
+
+### 管理文件单一入口原则
+
+同一职能尽可能只保留一个正式文件：`PROJECT-STATE.md` 管当前状态，`LOGBOOK.md` 管历史证据，根目录 `ERRORS.md` 管错误账本。旧仓镜像或迁移兼容页只能指向正式文件，不得复制、并行维护或承载新增内容；发现多份同职能文件时，先统一权威源再继续开发。
 
 所有 Agent 的最小阅读集是 `AGENTS.md` + `PROJECT-STATE.md`；执行具体任务时再读对应 `docs/tasks/*.md`，专业契约按需读取。提交前运行 `python -B backend/scripts/check_project_development_register.py`，`check_project.py --skip-tests` 已包含该检查。
+
+### 测试节奏约束
+
+- 功能开发和修复期间默认只跑改动相关的定向测试；不要因每次编辑或每个小提交重复跑全量测试。
+- 每个功能或模块上线候选收口时只做一次全量测试；全量失败后先定向定位，修复后仅允许一次有记录的最终复跑。
+- 全量测试必须评估并记录耗时；超过 10 分钟或较最近基线增加 20% 以上，必须建立测试优化事项，不得用跳过测试代替优化。
+- 纯文档或 Harness 规则变更不要求全量测试，但必须记录未运行原因和已执行的定向门禁。
 
 ### Step 5：读取 LOGBOOK.md 最新条目
 
@@ -110,7 +123,7 @@ ______________________________________________________________________
 
 ## Storefront MiniApp（miniapp/）Agent 工作规范
 
-> 本节源自旧独立小程序仓 `YunxiBakeMiniApp` 的 Agent 规范，2026-08-29 随 Monorepo 整合校准为单仓口径（trace 20260829-cleanup-deprecated-directions）；上线边界、文件操作红线与开发约定保持原文效力。
+> 本节源自旧独立小程序仓 `YunxiBakeMiniApp` 的 Agent 规范，2026-08-29 随 Monorepo 整合校准为单仓口径（trace 20260829-cleanup-deprecated-directions）；上线边界与开发约定保持原文效力，文件清理按本文件统一白名单规则执行。
 
 小程序代码位于本 monorepo 的 `miniapp/` 目录；后端（`Bakery Commerce Platform` / `Platform`）位于同仓 `backend/` 目录。
 
@@ -159,7 +172,7 @@ ______________________________________________________________________
 - 验证：按 `docs/harness-engineering/core/verification-matrix.md` 选择最低验证。
 - 证据：页面截图、微信开发者工具验证、接口联调、审核发布记录登记到 `docs/harness-engineering/core/evidence-index.md`。
 - 交接：长任务或上下文重置使用 `docs/harness-engineering/core/agent-handoff-template.md`。
-- 防重犯：值得记住的错误写入 `docs/harness-engineering/core/mistake-ledger.md`。
+- 防重犯：值得记住的错误统一写入根目录 `ERRORS.md`；旧路径仅作兼容入口，不得复制条目。
 - 路线图：跨阶段范围、MVP 后续能力和客户群运营闭环记录在 `miniapp/docs/roadmap.md`。
 - ADR：项目边界、渲染基线、支付/订单归属、发布策略等长期决策记录在 `docs/harness-engineering/adr/`。
 
@@ -172,9 +185,9 @@ ______________________________________________________________________
 
 ## 文件操作红线
 
-禁止批量删除文件或目录。
+禁止对未知路径、业务数据、生产目录、有效报告或其他 Agent 的有效工作区执行递归或批量删除。
 
-不要使用：
+以下命令不得直接用于未知路径或未列入清理白名单的目录：
 
 - `del /s`
 - `rd /s`
@@ -182,7 +195,13 @@ ______________________________________________________________________
 - `Remove-Item -Recurse`
 - `rm -rf`
 
-需要删除文件时，只能一次删除一个明确路径的文件。
+需要清理临时或可重建产物时：
+
+- 允许对本轮创建或已明确列入 `scripts/cleanup-local-artifacts.ps1` 白名单的目录递归扫描并批量删除。
+- 执行前必须先运行预览模式，核对目标路径、文件数量和保护边界；复制预览输出的授权令牌，再使用 `-PreviewToken <令牌> -Execute` 执行。
+- 清理入口必须校验目标位于当前工作区或项目临时目录，且不得触碰 `backend/data/`、`backend/reports/`、`miniapp/reports/`、`.env*`、`.git/`、生产目录或其他 Agent 的有效工件。
+- 自定义临时目录只有在本轮创建、可重新生成、无审计/用户数据且已记录在任务 manifest 中时才可递归清理；不符合条件的目录保留并上报。
+- 清理完成后记录范围、文件数量、失败项和剩余目录状态；失败不得静默。
 
 ## 下载、安装与临时文件规则
 
@@ -195,7 +214,8 @@ npm install
 ```
 
 - 临时文件必须随用随清。
-- 清理临时文件时仍只能一次删除一个明确路径的文件。
+- 清理临时文件优先使用 `scripts/cleanup-local-artifacts.ps1` 的白名单递归批量清理，不再要求 Agent 手工逐个删除。
+- 未列入白名单的目录仍按删除红线处理，不得因为“看起来像缓存”就直接递归清理。
 
 ## 开发约定
 

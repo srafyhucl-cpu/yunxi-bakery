@@ -14,7 +14,7 @@
 | 不确定该跑哪些验证 | [core/verification-matrix.md](core/verification-matrix.md) |
 | 开发页面前避免重复和魔法值 | [core/reuse-and-configuration-rules.md](core/reuse-and-configuration-rules.md) |
 | 需要登记截图、报告、审核材料 | [core/evidence-index.md](core/evidence-index.md) |
-| 犯过一次值得记住的错 | [core/mistake-ledger.md](core/mistake-ledger.md) |
+| 犯过一次值得记住的错 | [根目录 ERRORS.md](../../ERRORS.md) |
 | 上下文要重置或换 Agent | [core/agent-handoff-template.md](core/agent-handoff-template.md) |
 | 需要记录长期技术决策 | [adr/README.md](adr/README.md) |
 | 需要确认双仓职责边界 | [../architecture/project-boundaries.md](../architecture/project-boundaries.md) |
@@ -65,7 +65,7 @@
 | 计划和边界 | `docs/roadmap.md`、`docs/architecture/project-boundaries.md` | 阶段目标、跨仓职责、能力归属变化 |
 | 契约 | `docs/api-contract.md` | API 路径、字段、状态、错误或调用口径变化 |
 | 执行规则 | `core/traceability-model.md`、`core/verification-matrix.md`、`core/reuse-and-configuration-rules.md` | 任务追溯、验证门槛、复用规则变化 |
-| 证据和复盘 | `core/evidence-index.md`、`core/mistake-ledger.md`、`LOGBOOK.md` | 验证完成、风险登记、错误防重犯 |
+| 证据和复盘 | `core/evidence-index.md`、根目录 `ERRORS.md`、`LOGBOOK.md` | 验证完成、风险登记、错误防重犯 |
 | 发布验收 | `docs/release/manual-acceptance-checklist.md` | 体验版、真机、支付、合法域名、审核材料变化 |
 | 长期决策 | `adr/` | 渲染基线、仓库边界、支付归属、发布策略等不可轻易反复的决策 |
 | 交接 | `core/agent-handoff-template.md` | 长任务暂停、上下文重置、换 Agent 或跨仓继续 |
@@ -88,6 +88,6 @@
 | [core/verification-matrix.md](core/verification-matrix.md) | 按变更类型选择验证 |
 | [core/reuse-and-configuration-rules.md](core/reuse-and-configuration-rules.md) | 页面开发的复用、配置和禁止魔法值规则 |
 | [core/evidence-index.md](core/evidence-index.md) | 证据索引 |
-| [core/mistake-ledger.md](core/mistake-ledger.md) | 防重犯账本 |
+| [根目录 ERRORS.md](../../ERRORS.md) | 防重犯账本（唯一正式入口） |
 | [core/agent-handoff-template.md](core/agent-handoff-template.md) | 交接模板 |
 | [adr/README.md](adr/README.md) | 架构决策入口 |

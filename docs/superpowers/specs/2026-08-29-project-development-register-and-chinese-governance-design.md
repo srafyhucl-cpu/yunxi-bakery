@@ -26,7 +26,8 @@
 3. **机器标识稳定**：`trace_id`、`task_id`、`status`、`owner`、`as_of_commit`、`version`、路径和 Git 分支名保持 ASCII，避免脚本解析漂移。
 4. **技术完成不等于治理关闭**：测试或代码完成后，仍需记录负责人确认、证据状态和下一步。
 5. **状态必须有证据**：任何“通过”“完成”“阻塞”结论都要关联命令、退出码、报告路径或负责人决策。
-6. **历史材料不作为执行入口**：历史计划进入 `docs/archive/` 或保留历史横幅，当前 Agent 只能从 `PROJECT-STATE.md` 和当前任务队列开始。
+6. **测试按风险分层**：开发期间运行定向测试；功能或模块上线候选收口时执行一次全量测试并记录耗时，较长时进入优化评估。
+7. **历史材料不作为执行入口**：历史计划进入 `docs/archive/` 或保留历史横幅，当前 Agent 只能从 `PROJECT-STATE.md` 和当前任务队列开始。
 
 ## 三、唯一完整开发总表
 
@@ -77,9 +78,9 @@ state_owner:
 |---|---|---|
 | 已完成 | `completed` | 技术和验收条件均已满足 |
 | 进行中 | `active` | 已授权且正在执行 |
-| 阻塞 | `blocked` | 有明确外部条件或决策阻塞 |
+| 已阻塞 | `blocked` | 有明确外部条件或决策阻塞 |
 | 待处理 | `pending` | 已排队但尚未开始 |
-| 暂缓 | `deferred` | 明确推迟，不进入当前执行队列 |
+| 已暂缓 | `deferred` | 明确推迟，不进入当前执行队列 |
 | 历史 | `historical` | 仅作证据，不得继续执行 |
 
 ### 3.3 状态视图
@@ -117,7 +118,7 @@ state_owner:
 
 ### 4.2 任务字段
 
-任务元数据键保持稳定：`owner`、`status`、`as_of_commit`、`version`、`allowed_paths`、`forbidden_paths`。字段值中的人类说明使用中文，状态码使用固定 ASCII 枚举；页面和表格展示中文状态。
+任务元数据键保持稳定：`owner`、`status`、`status_label`、`as_of_commit`、`version`、`allowed_paths`、`forbidden_paths`。`status` 使用固定 ASCII 枚举，`status_label` 使用中文状态并附机器码；页面和表格优先展示中文状态。
 
 ### 4.3 分支命名
 
@@ -135,8 +136,8 @@ Git 分支名继续使用 ASCII，推荐 `codex/<topic>` 或仓库现有命名�
 4. `current_branch` 与当前工作区分支一致，且只登记一个当前分支。
 5. 主线任务 `task_id` 唯一，状态码属于允许枚举，必填列完整。
 6. 已完成、进行中、未完成和历史视图中的任务 ID 存在于主表，且状态不冲突。
-7. `docs/tasks/*.md` 均具备 `owner`、`status`、`as_of_commit`、`version`、`allowed_paths`、`forbidden_paths`。
-8. 任务指令的 `version` 与 `backend/VERSION` 一致，`as_of_commit` 可解析。
+7. `docs/tasks/*.md` 均具备 `owner`、`status`、`status_label`、`as_of_commit`、`version`、`allowed_paths`、`forbidden_paths`。
+8. 任务指令的 `status_label` 与 `status` 映射一致，`version` 与 `backend/VERSION` 一致，`as_of_commit` 可解析。
 9. 分支表登记的本仓分支真实存在；外部轨道明确标为非 Git 分支。
 
 守卫接入一条执行链：
@@ -152,7 +153,7 @@ Git 分支名继续使用 ASCII，推荐 `codex/<topic>` 或仓库现有命名�
 2. 领取任务：确认唯一 owner、基线提交、版本、允许路径和禁止路径。
 3. 并行执行：只修改授权路径；发现状态或版本冲突立即回报 owner。
 4. 更新状态：owner 在主线任务表和状态视图中同步状态，其他 Agent 不直接覆盖全局状态。
-5. 收口验证：记录命令、退出码、证据路径和未验证项。
+5. 收口验证：记录命令、退出码、证据路径、测试耗时和未验证项；全量测试不在开发迭代中重复运行。
 6. 分支收口：记录创建基线、合并提交、废弃原因或保留期限；未真实创建的分支不得写成已存在。
 7. 任务结束：更新 LOGBOOK、必要时生成 handoff，并运行项目总守卫。
 

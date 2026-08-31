@@ -102,3 +102,65 @@ def test_invalid_status_and_severity_fail(tmp_path: Path) -> None:
     assert result.passed is False
     assert any("invalid status" in issue for issue in result.issues)
     assert any("invalid severity" in issue for issue in result.issues)
+
+
+def test_duplicate_entry_id_fails(tmp_path: Path) -> None:
+    ledger = load_ledger_module()
+    ledger_file = tmp_path / "ERRORS.md"
+    entry = (
+        "## M-20260611-001：重复条目\n\n"
+        "- status: guarded\n"
+        "- first_seen: 2026-06-11\n"
+        "- severity: medium\n"
+        "- symptom: 现象\n"
+        "- root_cause: 根因\n"
+        "- impact: 影响\n"
+        "- fix: 修复\n"
+        "- new_guardrail: 防线\n"
+        "- verification: 验证\n"
+        "- linked_trace: trace\n"
+        "- linked_files: file\n"
+        "- next_time_signal: signal\n\n"
+    )
+    ledger_file.write_text("# 错误账本\n\n" + entry + entry, encoding="utf-8")
+
+    result = ledger.check_ledger(ledger_file)
+
+    assert result.passed is False
+    assert any("duplicate entry id" in issue for issue in result.issues)
+
+
+def test_default_ledger_is_repo_root_errors_file() -> None:
+    ledger = load_ledger_module()
+
+    assert ledger.DEFAULT_LEDGER.name == "ERRORS.md"
+    assert ledger.DEFAULT_LEDGER.parent == Path(__file__).resolve().parents[3]
+
+
+def test_non_entry_section_does_not_mutate_previous_entry(tmp_path: Path) -> None:
+    ledger = load_ledger_module()
+    ledger_file = tmp_path / "ERRORS.md"
+    ledger_file.write_text(
+        "## M-20260611-001：正常条目\n\n"
+        "- status: guarded\n"
+        "- first_seen: 2026-06-11\n"
+        "- severity: medium\n"
+        "- symptom: 现象\n"
+        "- root_cause: 根因\n"
+        "- impact: 影响\n"
+        "- fix: 修复\n"
+        "- new_guardrail: 防线\n"
+        "- verification: 验证\n"
+        "- linked_trace: trace\n"
+        "- linked_files: file\n"
+        "- next_time_signal: signal\n\n"
+        "## 条目模板\n\n"
+        "- status: open | guarded | verified\n"
+        "- severity: low | medium | high | critical\n",
+        encoding="utf-8",
+    )
+
+    result = ledger.check_ledger(ledger_file)
+
+    assert result.passed is True
+    assert len(result.entries) == 1

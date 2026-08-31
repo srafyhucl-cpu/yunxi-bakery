@@ -14,6 +14,8 @@
 
 较大任务必须分配 `trace_id`，并在收口时更新 `LOGBOOK.md`。验证和证据规则见 `docs/harness-engineering/core/verification-matrix.md` 与 `docs/harness-engineering/core/evidence-index.md`。
 
+Harness 全面评审与外部对标统一见：`../docs/harness-engineering/HARNESS-MATURITY-REVIEW-20260830.md`。中大型任务交接必须区分 `trace_id`（任务链）与 `run_id`（一次执行），并记录策略摘要、失败分类和可回放结论。
+
 ## 项目边界
 
 - 当前仓库只放微信小程序前台渠道代码。
@@ -44,7 +46,7 @@
 - 验证：按 `docs/harness-engineering/core/verification-matrix.md` 选择最低验证。
 - 证据：页面截图、微信开发者工具验证、接口联调、审核发布记录登记到 `docs/harness-engineering/core/evidence-index.md`。
 - 交接：长任务或上下文重置使用 `docs/harness-engineering/core/agent-handoff-template.md`。
-- 防重犯：值得记住的错误写入 `docs/harness-engineering/core/mistake-ledger.md`。
+- 防重犯：值得记住的错误统一写入根目录 `ERRORS.md`；旧路径仅作兼容入口，不得复制条目。
 - 路线图：跨阶段范围、MVP 后续能力和客户群运营闭环记录在 `docs/roadmap.md`。
 - ADR：项目边界、渲染基线、支付/订单归属、发布策略等长期决策记录在 `docs/harness-engineering/adr/`。
 
@@ -57,9 +59,9 @@
 
 ## 文件操作红线
 
-禁止批量删除文件或目录。
+禁止对未知路径、业务数据、生产目录、有效报告或其他 Agent 的有效工作区执行递归或批量删除。
 
-不要使用：
+以下命令不得直接用于未知路径或未列入清理白名单的目录：
 
 - `del /s`
 - `rd /s`
@@ -67,7 +69,13 @@
 - `Remove-Item -Recurse`
 - `rm -rf`
 
-需要删除文件时，只能一次删除一个明确路径的文件。
+需要清理临时或可重建产物时：
+
+- 允许对本轮创建或已明确列入 `scripts/cleanup-local-artifacts.ps1` 白名单的目录递归扫描并批量删除。
+- 执行前必须先运行预览模式，核对目标路径、文件数量和保护边界；复制预览输出的授权令牌，再使用 `-PreviewToken <令牌> -Execute` 执行。
+- 清理入口必须校验目标位于当前工作区或项目临时目录，且不得触碰 `backend/data/`、`backend/reports/`、`miniapp/reports/`、`.env*`、`.git/`、生产目录或其他 Agent 的有效工件。
+- 自定义临时目录只有在本轮创建、可重新生成、无审计/用户数据且已记录在任务 manifest 中时才可递归清理；不符合条件的目录保留并上报。
+- 清理完成后记录范围、文件数量、失败项和剩余目录状态；失败不得静默。
 
 ## 下载、安装与临时文件规则
 
@@ -80,7 +88,8 @@ npm install
 ```
 
 - 临时文件必须随用随清。
-- 清理临时文件时仍只能一次删除一个明确路径的文件。
+- 清理临时文件优先使用 `scripts/cleanup-local-artifacts.ps1` 的白名单递归批量清理，不再要求 Agent 手工逐个删除。
+- 未列入白名单的目录仍按删除红线处理，不得因为“看起来像缓存”就直接递归清理。
 
 ## 开发约定
 

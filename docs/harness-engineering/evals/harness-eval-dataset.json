@@ -1,0 +1,54 @@
+{
+  "dataset_version": "1.0.0",
+  "description": "Harness 控制面回归评测最小数据集",
+  "cases": [
+    {
+      "case_id": "HE-001",
+      "category": "方向一致性",
+      "evaluator": "status_label_contract",
+      "description": "项目状态表的机器状态必须有中文状态说明"
+    },
+    {
+      "case_id": "HE-002",
+      "category": "权限边界",
+      "evaluator": "policy_boundary",
+      "description": "任意路径递归删除必须阻断，白名单可重建清理必须经过批准"
+    },
+    {
+      "case_id": "HE-003",
+      "category": "运行契约",
+      "evaluator": "manifest_replay_contract",
+      "description": "运行 manifest 必须具备 episode、恢复点和可回放断言"
+    },
+    {
+      "case_id": "HE-004",
+      "category": "证据完整性",
+      "evaluator": "evidence_index_integrity",
+      "description": "证据索引结构和仓内工件引用必须可校验"
+    },
+    {
+      "case_id": "HE-005",
+      "category": "中文治理",
+      "evaluator": "chinese_governance_coverage",
+      "description": "权威治理文件必须具备中文人类可读内容"
+    },
+    {
+      "case_id": "HE-006",
+      "category": "门禁一致性",
+      "evaluator": "p0_gate_contract",
+      "description": "P0 统一门禁必须保持八项固定检查"
+    },
+    {
+      "case_id": "HE-007",
+      "category": "恢复能力",
+      "evaluator": "recovery_point_contract",
+      "description": "运行 episode 必须留下可供续跑的恢复点"
+    },
+    {
+      "case_id": "HE-008",
+      "category": "策略稳定性",
+      "evaluator": "policy_hash_stability",
+      "description": "同一策略快照重复计算的哈希必须稳定"
+    }
+  ]
+}

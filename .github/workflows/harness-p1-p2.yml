@@ -1,0 +1,76 @@
+name: Harness P1 P2 Quality Loop
+
+on:
+  schedule:
+    - cron: "17 2 * * 1"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "docs/**"
+      - "backend/scripts/harness_eval_regression.py"
+      - "backend/scripts/observe_harness_runs.py"
+      - "backend/scripts/check_doc_garden.py"
+      - "backend/tests/scripts/test_harness_eval_regression.py"
+      - "backend/tests/scripts/test_observe_harness_runs.py"
+      - "backend/tests/scripts/test_check_doc_garden.py"
+
+permissions:
+  contents: read
+
+jobs:
+  harness-p1-p2:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    continue-on-error: true
+    env:
+      PIP_CACHE_DIR: ${{ runner.temp }}\pip-cache
+      TMP: ${{ runner.temp }}\yunxi-tmp
+      TEMP: ${{ runner.temp }}\yunxi-tmp
+      TMPDIR: ${{ runner.temp }}\yunxi-tmp
+      PYTHONUTF8: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+      YUNXI_USE_FAKE_EMBEDDING: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install backend dependencies
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path $env:PIP_CACHE_DIR, $env:TMP | Out-Null
+          python -m pip install --upgrade pip --cache-dir $env:PIP_CACHE_DIR
+          python -m pip install -r backend/requirements.txt -r backend/requirements-dev.txt --cache-dir $env:PIP_CACHE_DIR
+
+      - name: Run P1 P2 contract tests
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          python -B -m pytest backend/tests/scripts/test_harness_eval_regression.py backend/tests/scripts/test_observe_harness_runs.py backend/tests/scripts/test_check_doc_garden.py -q --no-cov
+
+      - name: Generate Harness evaluation and observation reports
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          New-Item -ItemType Directory -Force -Path backend/reports/harness | Out-Null
+          python backend/scripts/harness_eval_regression.py --summary --output backend/reports/harness/harness-eval-latest.json
+          python backend/scripts/observe_harness_runs.py --summary --output backend/reports/harness/harness-observation-latest.json
+
+      - name: Run documentation garden scan
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          python backend/scripts/check_doc_garden.py --summary --fail-on error --output backend/reports/harness/doc-garden-latest.json
+
+      - name: Upload P1 P2 reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: harness-p1-p2-quality-loop
+          path: backend/reports/harness/*latest.json
+          if-no-files-found: warn
+          retention-days: 14

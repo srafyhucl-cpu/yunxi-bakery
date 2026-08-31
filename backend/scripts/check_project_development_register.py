@@ -33,6 +33,14 @@ ASCII_ID_RE = re.compile(r"^[A-Z0-9][A-Z0-9_-]*$")
 ALLOWED_STATUSES = frozenset(
     {"completed", "active", "blocked", "pending", "deferred", "historical"}
 )
+STATUS_LABELS = {
+    "completed": "已完成（completed）",
+    "active": "进行中（active）",
+    "blocked": "已阻塞（blocked）",
+    "pending": "待处理（pending）",
+    "deferred": "已暂缓（deferred）",
+    "historical": "历史（historical）",
+}
 REQUIRED_SNAPSHOT_FIELDS = (
     "updated_at",
     "as_of_commit",
@@ -44,6 +52,7 @@ REQUIRED_SNAPSHOT_FIELDS = (
 REQUIRED_TASK_COLUMNS = (
     "task_id",
     "status",
+    "状态说明",
     "owner",
     "branch",
     "as_of_commit",
@@ -74,6 +83,25 @@ class RegisterResult:
     issues: tuple[str, ...]
     task_statuses: dict[str, str]
     task_branches: dict[str, str] = field(default_factory=dict)
+
+
+def _validate_human_status_display(content: str, issues: list[str]) -> None:
+    """禁止 PROJECT-STATE 中文叙述中裸写机器状态码。"""
+    human_content = MACHINE_BLOCK_RE.sub("", content)
+    in_fence = False
+    for line_number, line in enumerate(human_content.splitlines(), start=1):
+        if line.strip().startswith("```"):
+            in_fence = not in_fence
+            continue
+        if in_fence or re.match(r"^\s*>?\s*status(?:_label)?\s*:", line):
+            continue
+        for status in STATUS_LABELS:
+            if re.search(rf"(?i)(?<![\w（(]){re.escape(status)}(?![\w）)])", line):
+                issues.append(
+                    "PROJECT-STATE 中文状态展示缺少中文标签: "
+                    f"第 {line_number} 行应使用 {STATUS_LABELS[status]}"
+                )
+                break
 
 
 def _split_table(block: str, heading: str) -> tuple[list[str], list[list[str]]]:
@@ -177,6 +205,7 @@ def parse_register(path: Path = STATE_FILE) -> RegisterResult:
         content = path.read_text(encoding="utf-8-sig")
     except OSError as exc:
         return RegisterResult(False, (f"无法读取项目状态文件: {exc}",), {})
+    _validate_human_status_display(content, issues)
     match = MACHINE_BLOCK_RE.search(content)
     if not match:
         return RegisterResult(
@@ -195,9 +224,9 @@ def parse_register(path: Path = STATE_FILE) -> RegisterResult:
         if snapshot_match
         else {}
     )
-    for field in REQUIRED_SNAPSHOT_FIELDS:
-        if not snapshot.get(field):
-            issues.append(f"机器快照缺少字段 {field}")
+    for field_name in REQUIRED_SNAPSHOT_FIELDS:
+        if not snapshot.get(field_name):
+            issues.append(f"机器快照缺少字段 {field_name}")
     if snapshot.get("updated_at") and not DATE_RE.fullmatch(snapshot["updated_at"]):
         issues.append("机器快照 updated_at 必须是 YYYY-MM-DD")
     if snapshot.get("workspace_state") not in {"clean", "dirty"}:
@@ -223,6 +252,15 @@ def parse_register(path: Path = STATE_FILE) -> RegisterResult:
         status = record.get("status", "").strip()
         if status not in ALLOWED_STATUSES:
             issues.append(f"{task_id}: 非法 status {status}")
+        status_label = record.get("状态说明", "").strip()
+        expected_label = STATUS_LABELS.get(status)
+        if not status_label:
+            issues.append(f"{task_id}: 缺少状态说明")
+        elif expected_label and status_label != expected_label:
+            issues.append(
+                f"{task_id}: 状态说明与 status 不一致: "
+                f"应为 {expected_label}，实际为 {status_label}"
+            )
         for column in REQUIRED_TASK_COLUMNS:
             if not record.get(column, "").strip():
                 issues.append(f"{task_id}: 缺少字段 {column}")
@@ -316,6 +354,7 @@ def parse_task_metadata(path: Path) -> tuple[dict[str, str], list[str]]:
         "task_id",
         "owner",
         "status",
+        "status_label",
         "as_of_commit",
         "version",
         "branch",
@@ -348,15 +387,24 @@ def parse_task_metadata(path: Path) -> tuple[dict[str, str], list[str]]:
                 metadata[match.group(1)] = match.group(2).strip()
     issues: list[str] = []
     rel = _display_path(path)
-    for field in required:
-        if not metadata.get(field):
-            issues.append(f"{rel}: 缺少元数据 {field}")
+    for field_name in required:
+        if not metadata.get(field_name):
+            issues.append(f"{rel}: 缺少元数据 {field_name}")
     task_id = metadata.get("task_id", "")
     if task_id and not ASCII_ID_RE.fullmatch(task_id):
         issues.append(f"{rel}: task_id 非法 {task_id}")
     status = metadata.get("status", "")
     if status and status not in ALLOWED_STATUSES:
         issues.append(f"{rel}: 非法 status {status}")
+    status_label = metadata.get("status_label", "")
+    expected_label = STATUS_LABELS.get(status)
+    if not status_label:
+        issues.append(f"{rel}: 缺少元数据 status_label")
+    elif expected_label and status_label != expected_label:
+        issues.append(
+            f"{rel}: status_label 与 status 不一致: "
+            f"应为 {expected_label}，实际为 {status_label}"
+        )
     _validate_commit(metadata.get("as_of_commit", ""), rel, issues)
     version = _read_version()
     if metadata.get("version") and metadata["version"] != version:

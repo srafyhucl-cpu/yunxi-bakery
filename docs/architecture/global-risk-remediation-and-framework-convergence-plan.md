@@ -32,7 +32,7 @@
 
 执行采用“发布列车”而不是“一个文件一个提交”：工作包内只跑定向测试，工作包尾跑域级门禁，整列车出站前才跑全量门禁和集中推送。预计 6-9 个可回滚提交，不制造几十个 micro-commit。
 
-现有 [LangChain AI 应用层后续增强计划](./langchain-ai-layer-next-enhancement-execution-plan.md) 保留为后续专项。其 E1-E6 在本计划 R0-R4 的上线阻断项关闭前暂停扩大生产范围，不伪造 readiness，不启用 LangSmith 外发，不扩大 RAG 热路径。
+现有 [LangChain AI 应用层后续增强计划](../archive/langchain-legacy-plans/langchain-ai-layer-next-enhancement-execution-plan.md) 保留为后续专项。其 E1-E6 在本计划 R0-R4 的上线阻断项关闭前暂停扩大生产范围，不伪造 readiness，不启用 LangSmith 外发，不扩大 RAG 热路径。
 
 ## 二、不可突破的约束
 

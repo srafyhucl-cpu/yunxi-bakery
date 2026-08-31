@@ -26,7 +26,7 @@ ______________________________________________________________________
 | 开始一个较大任务 | `AGENTS.md`、`LOGBOOK.md` 最新条目、本文件 |
 | 需要给任务留追溯 | [core/traceability-model.md](core/traceability-model.md) |
 | 不确定该跑哪些验证 | [core/verification-matrix.md](core/verification-matrix.md) |
-| AI 或人工犯过一次值得记住的错 | [core/mistake-ledger.md](core/mistake-ledger.md) |
+| AI 或人工犯过一次值得记住的错 | 根目录 `ERRORS.md`（本目录仅为历史镜像） |
 | 上下文要重置或换 Agent | [core/agent-handoff-template.md](core/agent-handoff-template.md) |
 | 需要追溯架构决策 | [adr/README.md](adr/README.md) |
 | 需要登记上线或交接证据 | [core/evidence-index.md](core/evidence-index.md) |
@@ -108,7 +108,7 @@ ______________________________________________________________________
 |---|---|
 | [core/traceability-model.md](core/traceability-model.md) | 统一 trace、证据链和报告字段 |
 | [core/verification-matrix.md](core/verification-matrix.md) | 按变更类型选择最低验证和加强验证 |
-| [core/mistake-ledger.md](core/mistake-ledger.md) | 记录错误、根因和新增防线 |
+| 根目录 `ERRORS.md` | 记录错误、根因和新增防线（唯一正式账本） |
 | [core/agent-handoff-template.md](core/agent-handoff-template.md) | 长任务续跑和换 Agent 交接模板 |
 | [specs/2026-07-12-isolated-remediation-harness-design.md](specs/2026-07-12-isolated-remediation-harness-design.md) | 隔离主体删除与消息崩溃恢复的生产同构设计 |
 | [specs/2026-07-12-local-production-backup-job-design.md](specs/2026-07-12-local-production-backup-job-design.md) | 无生产独立磁盘时的本地主动加密备份设计 |
@@ -129,7 +129,7 @@ ______________________________________________________________________
 | `python scripts/harness_snapshot.py` | 生成 Markdown 交接快照，包含 trace、目标、最新 LOGBOOK、工作区状态和参考入口 |
 | `python scripts/harness_snapshot.py --json` | 输出机器可读快照，适合归档到 reports |
 | `python scripts/harness_snapshot.py --output reports/harness/handoff-{timestamp}.md` | 写入带 UTF-8 BOM 的快照文件，拒绝覆盖已有文件 |
-| `python scripts/check_mistake_ledger.py` | 检查 [core/mistake-ledger.md](core/mistake-ledger.md) 是否有合法空账本标记，或每条 mistake 是否字段完整、枚举合法 |
+| `python backend/scripts/check_mistake_ledger.py` | 检查根目录 `ERRORS.md` 的空账本标记、重复 ID、必填字段和枚举值 |
 | `python scripts/check_evidence_index.py` | 检查 [core/evidence-index.md](core/evidence-index.md) 的证据条目必填字段、结果枚举、重复 ID、预检业务合约引用和本地证据文件存在性；JSON 报告同时输出本地文件 SHA-256，生产路径保留为外部未验证引用 |
 | `.\scripts\enable_utf8_console.ps1` | 修复当前 Windows PowerShell 会话的中文输入输出乱码 |
 

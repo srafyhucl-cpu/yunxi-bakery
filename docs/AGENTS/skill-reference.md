@@ -38,7 +38,7 @@ ______________________________________________________________________
 | Harness 文档导航 | [docs/harness-engineering/README.md](../harness-engineering/README.md) |
 | 任务追溯字段 | [docs/harness-engineering/core/traceability-model.md](../harness-engineering/core/traceability-model.md) |
 | 验证选择 | [docs/harness-engineering/core/verification-matrix.md](../harness-engineering/core/verification-matrix.md) |
-| 防重犯账本 | [docs/harness-engineering/core/mistake-ledger.md](../harness-engineering/core/mistake-ledger.md) |
+| 防重犯账本 | [ERRORS.md](../../ERRORS.md) |
 | 证据索引 | [docs/harness-engineering/core/evidence-index.md](../harness-engineering/core/evidence-index.md) |
 | 中文乱码处理 | [docs/AGENTS/encoding-and-terminal.md](encoding-and-terminal.md) |
 
@@ -48,7 +48,18 @@ ______________________________________________________________________
 
 - 当前进度、任务状态、主线/分支和阻塞只维护在 `PROJECT-STATE.md`；不要在新文档中另起动态进度表。
 - 最小阅读集：`AGENTS.md` + `PROJECT-STATE.md`；具体任务再读 `docs/tasks/*.md`，专业文档按需读取。
-- 新改动先登记 `task_id`，收口前运行 `python -B backend/scripts/check_project_development_register.py`。
+- 新改动先登记 `task_id`，任务指令填写 `status` + `status_label`，收口前运行 `python -B backend/scripts/check_project_development_register.py`。
+- 中文状态统一显示为“中文状态（机器码）”；禁止在中文叙述中裸写 `active`、`blocked`、`completed`、`pending`、`deferred`、`historical`。
+- 中文治理属于 Harness P0 控制面：权威状态、责任、阻塞、证据、交接和高风险用户可见路径必须先提供中文人类可读说明；英文仅保留稳定机器字段、协议字段和命令原文。
+- 当前 P0 任务包括 `T-HARNESS-CHINESE-GOVERNANCE`、`T-HARNESS-RUN-MANIFEST`、`T-HARNESS-POLICY-AS-CODE`、`T-HARNESS-CI-ENTRY` 和 `T-HARNESS-CLEANUP-POLICY`；全仓注释翻译、低风险文案和历史文档清理属于 P1/P2。
+- 当前项目 Harness Skill 版本：`1.2.1`，路径为 `backend/.agents/skills/yunxi-harness-engineering/SKILL.md`。
+- P0 统一门禁：`python -B backend/scripts/harness_p0_gate.py --summary`；报告模式使用 `--json-out backend/reports/harness/p0-gate.json`，根级 CI 入口为 `.github/workflows/harness-p0.yml`。
+- 临时产物清理：先运行 `.\scripts\cleanup-local-artifacts.ps1` 预览；仅对白名单或显式 `.tmp-`/`pytest-` 临时目录，在明确授权并携带预览令牌后使用 `-PreviewToken <令牌> -Execute` 递归批量清理，未知路径和受保护路径仍禁止处理。
+
+Harness 全面评审与外部对标：
+
+- [HARNESS-MATURITY-REVIEW-20260830.md](../harness-engineering/HARNESS-MATURITY-REVIEW-20260830.md)
+- 评审结论已同步到 `traceability-model`、`verification-matrix` 和 `multi-agent-coordination`，不新增平行状态入口。
 
 ## 工作流
 
@@ -65,5 +76,5 @@ ______________________________________________________________________
 
 - 任何较大任务先走 `AGENTS.md` → `docs/harness-engineering/README.md` → `traceability-model`。
 - 交接时优先补 `scripts/harness_snapshot.py`，不要把上下文只留在聊天里。
-- 证据、复盘和长期记忆分别落到 `core/evidence-index.md`、`LOGBOOK.md`、`core/mistake-ledger.md`。
+- 证据、复盘和长期记忆分别落到 `core/evidence-index.md`、`LOGBOOK.md`、根目录 `ERRORS.md`。
 - 新证据必须绑定当前 Monorepo 提交并声明 `repository_origin: monorepo`；旧仓历史只读核验，不改写原始提交。

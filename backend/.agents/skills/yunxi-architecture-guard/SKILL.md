@@ -12,7 +12,7 @@ description: "【必须在动代码前调用】芸熙烘焙 AI 客服分层架�
 
 - 用 `docs/harness-engineering/core/traceability-model.md` 记录 trace。
 - 用 `docs/harness-engineering/core/verification-matrix.md` 选择架构验证。
-- 需要长期记忆时，写入 `docs/harness-engineering/core/mistake-ledger.md`，并补测试、脚本、pre-commit、AGENTS 或 Skill 中至少一类防线。
+- 需要长期记忆时，写入根目录 `ERRORS.md`，并补测试、脚本、pre-commit、AGENTS 或 Skill 中至少一类防线；不得创建同职能副本。
 
 ## 分层边界（核心约束）
 

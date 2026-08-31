@@ -12,7 +12,7 @@ description: "【代码 Review 和修复时调用】芸熙烘焙 AI 客服洁净
 
 - 能机器检查的规则优先沉淀为测试、脚本或 pre-commit。
 - 只能靠 Agent 记忆的流程约束，沉淀到 `AGENTS.md` 或项目 Skill。
-- 值得防重犯的错误写入 `docs/harness-engineering/core/mistake-ledger.md`。
+- 值得防重犯的错误统一写入根目录 `ERRORS.md`，不得创建副本。
 
 ## 🚫 零硬编码原则
 

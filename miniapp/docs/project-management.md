@@ -22,7 +22,7 @@
 | Harness 入口 | `docs/harness-engineering/README.md` | 追溯、验证、证据、ADR、交接的入口 |
 | 验证矩阵 | `docs/harness-engineering/core/verification-matrix.md` | 按变更类型选择最低验证和加强验证 |
 | 证据索引 | `docs/harness-engineering/core/evidence-index.md` | 截图、报告、命令输出、发布记录的索引 |
-| 防重犯 | `docs/harness-engineering/core/mistake-ledger.md` | 记录复发风险高的错误和新增防线 |
+| 防重犯 | 根目录 `ERRORS.md` | 记录复发风险高的错误和新增防线（唯一正式账本） |
 | 交接 | `docs/harness-engineering/core/agent-handoff-template.md` | 长任务暂停或换 Agent 时的交接模板 |
 | 长期决策 | `docs/harness-engineering/adr/` | 项目边界、渲染基线、发布策略等长期决策 |
 | 发布验收 | `docs/release/manual-acceptance-checklist.md` | 自动化之外的体验版、真机、支付和审核材料 |
@@ -65,7 +65,7 @@ YYYYMMDD-topic
 - 改发布、真机、支付、审核要求：更新 `docs/release/manual-acceptance-checklist.md`。
 - 改验证标准：更新 `docs/harness-engineering/core/verification-matrix.md`。
 - 改交接要求：更新 `docs/harness-engineering/core/agent-handoff-template.md`。
-- 发生值得记住的错误：更新 `docs/harness-engineering/core/mistake-ledger.md`。
+- 发生值得记住的错误：更新根目录 `ERRORS.md`，不得创建副本。
 - 每个较大任务收口：更新 `LOGBOOK.md` 和证据索引。
 
 ## 验证分级

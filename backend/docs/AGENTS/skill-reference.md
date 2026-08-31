@@ -38,7 +38,7 @@ ______________________________________________________________________
 | Harness 文档导航 | [docs/harness-engineering/README.md](../harness-engineering/README.md) |
 | 任务追溯字段 | [docs/harness-engineering/core/traceability-model.md](../harness-engineering/core/traceability-model.md) |
 | 验证选择 | [docs/harness-engineering/core/verification-matrix.md](../harness-engineering/core/verification-matrix.md) |
-| 防重犯账本 | [docs/harness-engineering/core/mistake-ledger.md](../harness-engineering/core/mistake-ledger.md) |
+| 防重犯账本 | 根目录 `ERRORS.md`（唯一正式账本） |
 | 证据索引 | [docs/harness-engineering/core/evidence-index.md](../harness-engineering/core/evidence-index.md) |
 | 中文乱码处理 | [docs/AGENTS/encoding-and-terminal.md](encoding-and-terminal.md) |
 
@@ -59,4 +59,4 @@ ______________________________________________________________________
 
 - 任何较大任务先走 `AGENTS.md` → `docs/harness-engineering/README.md` → `traceability-model`。
 - 交接时优先补 `scripts/harness_snapshot.py`，不要把上下文只留在聊天里。
-- 证据、复盘和长期记忆分别落到 `core/evidence-index.md`、`LOGBOOK.md`、`core/mistake-ledger.md`。
+- 证据、复盘和长期记忆分别落到 `core/evidence-index.md`、`LOGBOOK.md`、根目录 `ERRORS.md`。

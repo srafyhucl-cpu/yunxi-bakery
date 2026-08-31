@@ -2,6 +2,30 @@
 
 本文件用于减少 Vibe Coding 收口时的随机性。每次变更完成后，先按变更类型选择最低验证；涉及生产、数据、跨层调用或高风险路径时，再执行加强验证。
 
+## 测试节奏与全量测试门禁
+
+1. **开发阶段**：默认运行与改动直接相关的定向测试；不因每次编辑、每个小提交或每轮文档调整重复运行全量测试。
+2. **上线候选收口**：每个功能或模块在进入上线候选版本时执行一次全量测试，作为该收口轮次的权威结果。
+3. **全量失败处理**：先用定向测试定位和修复；修复后允许一次最终全量复跑，并在 `LOGBOOK.md` 记录初次失败、修复范围、复跑原因和最终结果。
+4. **耗时评估**：全量测试记录命令、退出码、测试数量、开始时间、结束时间和总耗时。单次超过 10 分钟，或较最近基线增加 20% 以上，必须登记测试优化评估。
+5. **优化方向**：优先采用测试分片、并行执行、夹具隔离、缓存和 `slow` 标记；禁止通过删测、静默跳过失败或降低覆盖率阈值伪造提速。
+6. **纯文档/Harness 变更**：未触及代码行为时不要求全量测试，验证记录必须明确写出未运行原因和已执行的定向门禁。
+
+推荐的 Windows PowerShell 耗时记录方式：
+
+```powershell
+$startedAt = Get-Date
+$timer = [Diagnostics.Stopwatch]::StartNew()
+python -B -m pytest tests/ -q --no-cov
+$testExit = $LASTEXITCODE
+$timer.Stop()
+$finishedAt = Get-Date
+Write-Output "FULL_TEST_EXIT=$testExit"
+Write-Output "FULL_TEST_STARTED_AT=$startedAt"
+Write-Output "FULL_TEST_FINISHED_AT=$finishedAt"
+Write-Output "FULL_TEST_DURATION_SECONDS=$([math]::Round($timer.Elapsed.TotalSeconds, 2))"
+```
+
 ______________________________________________________________________
 
 ## 通用基线
@@ -14,6 +38,9 @@ ______________________________________________________________________
 | 全量测试 | `python -m pytest tests/ -q` |
 | Ruff 检查 | `python -m ruff check <paths>` |
 | Ruff 格式检查 | `python -m ruff format --check <paths>` |
+| Harness 运行契约 | 运行摘要包含 `run_id`、`task_id`、`as_of_commit`、`version`、策略摘要和 `replayable` |
+| Harness 自评 | 运行 Harness eval fixture，输出数据集版本、评估器版本、阈值、失败分类和与上一基线差异 |
+| Harness 中文治理（P0） | 权威状态、责任、阻塞、证据、交接和高风险用户可见路径有中文说明；机器字段保留稳定 ASCII；无裸机器状态码和关键模板缺字段 |
 
 ______________________________________________________________________
 
@@ -22,7 +49,7 @@ ______________________________________________________________________
 | 变更类型 | 最低验证 | 加强验证 |
 |---|---|---|
 | `app/api/` 路由 | `python -m pytest tests/api -q --no-cov` | `python scripts/check_project.py` |
-| `app/service/` 业务逻辑 | 对应 `tests/service` 文件 | 全量 `python -m pytest tests/ -q` |
+| `app/service/` 业务逻辑 | 对应 `tests/service` 文件 | 上线候选收口时执行一次全量 `python -m pytest tests/ -q`，并记录耗时 |
 | `app/repository/` 数据访问 | 对应 `tests/repository` 文件 | migration/preflight 相关测试 |
 | `app/models/` 模型 | 相关 service/repository 测试 | `python scripts/check_project.py` |
 | 数据库迁移 | `python -m pytest tests/migrations tests/scripts/test_apply_migrations.py -q --no-cov` | dry-run + JSON 报告 |
@@ -37,9 +64,11 @@ ______________________________________________________________________
 | 后台前端 | 对应前端 lint/build/test | `/ready` 和 smoke 校验 dist |
 | 文档 | `Test-Path` + `Select-String` 链接/关键词检查 | LOGBOOK 和进度清单同步检查 |
 | Harness 文档 | `Test-Path docs/harness-engineering/...` | 检查无未完成占位 |
-| Harness 脚本 | `python -m pytest tests/scripts/test_harness_snapshot.py tests/scripts/test_check_mistake_ledger.py tests/scripts/test_check_evidence_index.py -q --no-cov` | `python scripts/harness_snapshot.py --json` + `python scripts/check_mistake_ledger.py` + `python scripts/check_evidence_index.py --summary` + `pre-commit run check-mistake-ledger --all-files` + `pre-commit run check-evidence-index --all-files` |
+| Harness 脚本 | `python -B -m pytest backend/tests/scripts/test_harness_snapshot.py backend/tests/scripts/test_check_mistake_ledger.py backend/tests/scripts/test_check_evidence_index.py backend/tests/scripts/test_check_chinese_governance.py backend/tests/scripts/test_harness_policy.py backend/tests/scripts/test_harness_run_manifest.py backend/tests/scripts/test_harness_p0_gate.py -q --no-cov` | `python -B backend/scripts/harness_p0_gate.py --summary --json-out backend/reports/harness/p0-gate.json` + `pre-commit run --all-files` |
+| Harness P0 统一门禁 | `python -B backend/scripts/harness_p0_gate.py --summary` | 根级 CI `.github/workflows/harness-p0.yml` 上传 `reports/harness/p0-gate.json`；失败时保留报告并按 `failure_class` 归因 |
 | 文件体量与职责治理 | `python -m pytest tests/scripts/test_check_file_sizes.py -q --no-cov` + `python scripts/check_file_sizes.py` | 对超线目标记录职责、变化原因、候选边界、测试成本和 `split_by_responsibility / keep_cohesive_with_review / defer_with_boundary_plan` 结论 |
 | ADR / 证据索引 | `python scripts/check_evidence_index.py --summary` | 搜索 `trace_id`、`related_adr`、`evidence_type` 关键字段；证据条目不得缺必填字段、不得重复 ID |
+| Harness 全面评审 | `Test-Path docs/harness-engineering/HARNESS-MATURITY-REVIEW-20260830.md` + 入口链接检查 | 评审报告、PROJECT-STATE、LOGBOOK、证据索引四者一致 |
 
 ______________________________________________________________________
 
@@ -67,7 +96,17 @@ ______________________________________________________________________
 ```markdown
 - `python -m pytest tests/scripts/test_preflight_production.py -q --no-cov` 通过
 - `python scripts/preflight_production.py --json` 通过，报告显示 failed=0
-- 未运行全量测试：本轮仅修改文档，无代码行为变更
+- 未运行全量测试：本轮仅修改文档，无代码行为变更；已完成定向 Harness 门禁
+- 全量测试耗时记录：`FULL_TEST_DURATION_SECONDS=<seconds>`，与最近基线比较后决定是否建立优化事项
 ```
 
 没有运行的验证要明确写原因，不能写成“已验证”。
+
+## Agent / Harness 评估收口格式
+
+除通过数外，评估报告至少包含：
+
+- `dataset_version`、`evaluator_version`、`thresholds`；
+- `passed`、`failed`、`failure_class_counts`；
+- `latency_ms`、`cost`、`tool_call_count`、`human_intervention_count`；
+- 与上一基线的差异，以及是否存在“最终答案正确但过程越权/证据缺失”的幸运通过。

@@ -17,7 +17,7 @@ description: 代码 Review 工作流，针对芸熙烘焙 AI 客服项目的变�
 
 - 如果本轮是较大任务，先看 `docs/harness-engineering/core/traceability-model.md`
 - 如果有产物要留档，先看 `docs/harness-engineering/core/evidence-index.md`
-- 如果发现可复用教训，优先核对 `docs/harness-engineering/core/mistake-ledger.md`
+- 如果发现可复用教训，优先核对根目录 `ERRORS.md`；发现第二份账本时先停止并统一入口
 
 你是一位极其资深的 Python/FastAPI 后端工程师，正在对芸熙烘焙 AI 客服系统的代码变更进行深度 Review。
 

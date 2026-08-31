@@ -1,0 +1,73 @@
+name: Harness P0 Gate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  harness-p0:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    env:
+      PIP_CACHE_DIR: ${{ runner.temp }}\pip-cache
+      TMP: ${{ runner.temp }}\yunxi-tmp
+      TEMP: ${{ runner.temp }}\yunxi-tmp
+      TMPDIR: ${{ runner.temp }}\yunxi-tmp
+      PYTHONUTF8: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+      YUNXI_USE_FAKE_EMBEDDING: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install backend dependencies
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path $env:PIP_CACHE_DIR, $env:TMP | Out-Null
+          python -m pip install --upgrade pip --cache-dir $env:PIP_CACHE_DIR
+          python -m pip install -r backend/requirements.txt -r backend/requirements-dev.txt --cache-dir $env:PIP_CACHE_DIR
+
+      - name: Run Harness P0 gate
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path reports/harness | Out-Null
+          $head = "$env:GITHUB_SHA"
+          if ("$env:GITHUB_EVENT_NAME" -eq "pull_request") {
+            $base = "${{ github.event.pull_request.base.sha }}"
+            $head = "${{ github.event.pull_request.head.sha }}"
+          } else {
+            $base = "${{ github.event.before }}"
+          }
+          if ([string]::IsNullOrWhiteSpace($base) -or $base -match '^0+$') {
+            $parent = git rev-parse "$head^" 2>$null
+            if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($parent)) {
+              $base = $parent.Trim()
+            } else {
+              $base = ('0' * 40) -join ''
+            }
+          }
+          if ([string]::IsNullOrWhiteSpace($head)) {
+            throw "无法解析 Harness CI 目标提交 SHA"
+          }
+          python backend/scripts/harness_p0_gate.py --summary --json-out reports/harness/p0-gate.json --policy-base-sha $base --policy-head-sha $head
+
+      - name: Upload Harness P0 report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: harness-p0-report
+          path: reports/harness/p0-gate.json
+          if-no-files-found: error
+          retention-days: 14

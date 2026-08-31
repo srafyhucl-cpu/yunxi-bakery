@@ -8,7 +8,7 @@
   - docs/harness-engineering/specs/2026-06-11-vibe-coding-harness-engineering-design.md
   - docs/harness-engineering/README.md
   - docs/harness-engineering/core/traceability-model.md
-  - docs/harness-engineering/core/mistake-ledger.md
+  - ERRORS.md
   - docs/harness-engineering/core/verification-matrix.md
 
 ______________________________________________________________________

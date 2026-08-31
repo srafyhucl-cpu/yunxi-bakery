@@ -11,12 +11,12 @@ ______________________________________________________________________
 3. **更新 `项目进度与配置清单.md`**（修改"最后更新"日期 + 已完成功能 + 已知问题状态）
 3.5 **如本轮是中大型任务或需要交接**：先读 `docs/AGENTS/multi-agent-coordination.md`，再按 `docs/harness-engineering/core/traceability-model.md` 补 `trace_id` 和验证摘要，最后按 `docs/harness-engineering/core/evidence-index.md` 归档证据
 4. **检查代码注释语言**：凡本轮新增或修改的代码注释，必须统一为中文注释；英文注释需改写后再提交
-5. **检查工作区临时产物**：先执行 `git status --short`，确认不存在 `.tmp-*.log`、`.codex-server*.log`、`.superpowers/`、`.workbuddy/` 或缓存目录；如需清理，先运行 `.\scripts\cleanup-local-artifacts.ps1` 预览，获负责人授权后再逐文件执行 `-Execute`
-6. **运行验证**：按 `docs/harness-engineering/core/verification-matrix.md` 选择最低验证；文档变更至少完成 `Test-Path` / `Select-String` 之类的链接与关键词检查，代码变更再运行对应测试
+5. **检查工作区临时产物**：先执行 `git status --short`，确认不存在 `.tmp-*.log`、`.codex-server*.log`、`.superpowers/`、`.workbuddy/` 或缓存目录；如需清理，先运行 `.\scripts\cleanup-local-artifacts.ps1` 预览，核对白名单与保护边界后再在任务或用户已明确授权时使用 `-Execute` 递归批量清理
+6. **运行验证**：按 `docs/harness-engineering/core/verification-matrix.md` 选择最低验证；文档变更至少完成 `Test-Path` / `Select-String` 之类的链接与关键词检查，并运行 `python -B backend/scripts/check_project_development_register.py`；状态变更必须通过中文状态展示守卫，代码变更再运行对应测试
 7. **git add + commit**（pre-commit 会自动执行以下操作）：
    - **版本号自动递增**：根据提交信息自动递增 `backend/VERSION`，同步项目进度表头，并把两个文件加入同一次提交；未知表头会阻断（feat→minor, fix→patch, feat!→major）
    - **文档同步检查**：校验 LOGBOOK.md 和项目进度与配置清单.md 已暂存
-   - **质量门禁**：密钥扫描 + 文件体量 + 红线规则自测 + 全套测试
+   - **质量门禁**：密钥扫描 + 文件体量 + 红线规则自测 + 核心快速测试；全量测试不由每次提交触发，只在功能/模块上线候选收口时按验证矩阵执行一次并记录耗时
 8. **推送代码到版本远端**：仅在项目负责人批准后执行 `git push origin <branch>`。这一步只同步 Git，不代表生产发布完成；当前克隆默认只有 `origin`，不得凭空使用 `server` 远端。
    - **推送后必须回读验证（强制，2026-08-24 起生效）**：push 后执行 `git ls-remote origin <branch>` 并核对返回 SHA 与本地 `git rev-parse HEAD` 一致，才能在汇报中声明"已推送"。禁止用 `$?` 判断 native command 管道成败作为是否执行推送的依据——必须显式检查 `$LASTEXITCODE`；push 失败或被跳过时必须在汇报中显式报告，不允许静默。未推送 = 未备份，本地工作区不是可靠副本。
 9. **如本轮涉及生产同步**，且已取得明确批准，执行 `bash backend/scripts/deploy.sh`。该脚本通过 SSH Git Bundle 发布到 `/opt/apps/yunxibakebot`，由服务器端脚本执行安全预检、服务重启和 loopback 健康检查；完成后再验证 `https://yunxifood.cn/health`。

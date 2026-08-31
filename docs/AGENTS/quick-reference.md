@@ -119,13 +119,14 @@ api/ → service/ → repository/ → models/
 ## Harness 运行口径
 
 - 当前进度只读 `PROJECT-STATE.md` 的机器快照和主线任务总表；最小阅读集为 `AGENTS.md` + `PROJECT-STATE.md`，具体任务再读对应任务指令。
-- 开发总表守卫：`python -B backend/scripts/check_project_development_register.py`；项目总守卫 `python -B backend/scripts/check_project.py --skip-tests` 已包含该检查。
+- 开发总表守卫：`python -B backend/scripts/check_project_development_register.py`；项目总守卫 `python -B backend/scripts/check_project.py --skip-tests` 已包含该检查。守卫同时检查主表和任务指令的中文状态说明（`status_label`）与机器状态码一致，禁止中文叙述裸写状态码。
+- 测试节奏：开发中跑定向测试；上线候选收口时执行一次全量测试并记录耗时。全量超过 10 分钟或较最近基线增加 20% 以上，必须登记测试优化评估。
 
 - 中大型任务先分配 `trace_id`，再按 `docs/harness-engineering/core/verification-matrix.md` 选验证。
 - 并行任务先读 `docs/AGENTS/multi-agent-coordination.md`，统一 `PROJECT-STATE.md`、`backend/VERSION`、当前 Git HEAD 和任务路径边界。
 - 需要交接时优先用 `backend/scripts/harness_snapshot.py`，不要只留聊天记录。
-- 需要长期记忆的错误先写 `docs/harness-engineering/core/mistake-ledger.md`，再补测试、脚本、pre-commit、AGENTS 或 Skill 中至少一类防线。
-- 清理本机临时产物先预览：`.\scripts\cleanup-local-artifacts.ps1`；只有负责人明确授权时才使用 `-Execute`。脚本兼容 Windows PowerShell 5.1，并覆盖根目录、backend、miniapp 和 scripts 下的可重建缓存；质量门禁临时文件固定写入 D 盘一次性目录。
+- 需要长期记忆的错误先写根目录 `ERRORS.md`，再补测试、脚本、pre-commit、AGENTS 或 Skill 中至少一类防线；不要新建同职能副本。
+- 清理本机临时产物先预览：`.\scripts\cleanup-local-artifacts.ps1`；核对目标在白名单且不触碰受保护路径后，携带预览输出的 `-PreviewToken <令牌> -Execute` 递归批量清理。脚本兼容 Windows PowerShell 5.1，并覆盖根目录、backend、miniapp 和 scripts 下的可重建缓存；质量门禁临时文件固定写入 D 盘一次性目录。
 
 ---
 

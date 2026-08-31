@@ -87,7 +87,7 @@ Use these files:
 - Trace model: `docs/harness-engineering/core/traceability-model.md`
 - Verification matrix: `docs/harness-engineering/core/verification-matrix.md`
 - Evidence index: `docs/harness-engineering/core/evidence-index.md`
-- Mistake ledger: `docs/harness-engineering/core/mistake-ledger.md`
+- Mistake ledger: 根目录 `ERRORS.md`（唯一正式账本）
 - Handoff template: `docs/harness-engineering/core/agent-handoff-template.md`
 - ADR index: `docs/harness-engineering/adr/README.md`
 

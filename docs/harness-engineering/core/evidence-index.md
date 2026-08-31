@@ -6149,6 +6149,7 @@ backend/docs/harness-engineering/core/evidence-index.md 仅作为历史镜像。
 - repository_origin: monorepo
 - sha256: backend/scripts/check_evidence_index.py=7812fa61d6fc032fcf643af90ac7f4eca49c66cb2868f7b95a0b5562fd2d8a65；backend/tests/scripts/test_check_evidence_index.py=f5e2c8a36cd897d49531a04ebfaa5c30eba0b4a812a827072a0b226ce54b4747
 - commit_sha: 4ee06c8aa1506549bea52cfa6ac7168b85c73732
+
 - summary: 当当前仓与旧仓恰好存在相同 commit SHA 时，检查器按证据条目声明的 repository_origin 优先选择来源；回归测试、全量后端测试、小程序类型检查、pre-commit、项目总守卫、开发总表、错误账本、编码和差异检查全部通过。摘要为 total=363、retired=20、failed=0、verified_git_files=1606、current_repo_verified=2、legacy_repo_verified=1604、external_unverified=0、missing_repo_file=0、hash_mismatch=0。
 ## E-20260830-001：历史证据索引来源与摘要口径修正
 
@@ -6166,6 +6167,22 @@ backend/docs/harness-engineering/core/evidence-index.md 仅作为历史镜像。
 - repository_origin: monorepo
 - summary: 默认索引改为 Monorepo 根目录；repo 相对路径按索引根解析；git 提交同时在当前仓和已登记旧仓只读核验；摘要区分当前仓、旧仓、外部未验证、格式错误、仓内缺失和哈希不一致。历史旧仓条目不被伪造为当前仓通过。
 
+## E-20260830-004：错误账本唯一入口与重复 ID 守卫
+
+- trace_id: 20260830-errors-ledger-canonicalization
+- generated_at: 2026-08-30
+- evidence_type: governance/errors-ledger-canonicalization
+- file: `local:ERRORS.md`; `local:docs/harness-engineering/core/mistake-ledger.md`; `local:backend/scripts/check_mistake_ledger.py`; `local:backend/tests/scripts/test_check_mistake_ledger.py`; `local:backend/scripts/harness_snapshot.py`; `local:backend/tests/scripts/test_harness_snapshot.py`
+- command: `python -B -m pytest backend/tests/scripts/test_check_mistake_ledger.py backend/tests/scripts/test_harness_snapshot.py -q --no-cov`; `python -B backend/scripts/check_mistake_ledger.py`; `python -B backend/scripts/check_project_development_register.py`; `python -B backend/scripts/check_project.py --skip-tests`; `python -B backend/scripts/check_evidence_index.py --summary`; `python -B backend/scripts/check_text_encoding.py`; `python -B -m ruff check backend/scripts/check_mistake_ledger.py backend/scripts/harness_snapshot.py backend/tests/scripts/test_check_mistake_ledger.py backend/tests/scripts/test_harness_snapshot.py`; `python -B -m ruff format --check backend/scripts/check_mistake_ledger.py backend/scripts/harness_snapshot.py backend/tests/scripts/test_check_mistake_ledger.py backend/tests/scripts/test_harness_snapshot.py`; `git diff --check`
+- result: pass
+- related_logbook: 2026-08-30 - chore(harness): 错误账本唯一入口与重复 ID 守卫
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录错误账本入口迁移、重复 ID/解析回归、项目门禁和文档一致性检查；不含密钥、客户数据、订单明细、生产写入或全量测试输出。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 根目录 `ERRORS.md` 成为唯一正式错误账本，两个旧路径改为兼容说明；检查器默认解析 Monorepo 根、阻断重复 ID，并忽略非条目二级标题对条目字段的污染。专项测试 13/13、错误账本 22 条、开发总表、项目门禁、证据索引、编码、Ruff 和差异检查全部通过；本轮为 Harness/文档治理变更，按规则未运行全量测试。
+
 ## E-20260830-002：Harness 运行时临时目录与跨 PowerShell 清理收口
 
 - trace_id: 20260830-harness-runtime-cleanup-and-closeout
@@ -6182,3 +6199,169 @@ backend/docs/harness-engineering/core/evidence-index.md 仅作为历史镜像。
 - repository_origin: monorepo
 - commit_sha: 4ee06c8aa1506549bea52cfa6ac7168b85c73732
 - summary: 质量门禁将 TMP/TEMP/TMPDIR 固定到项目所在磁盘的一次性目录并禁止写入 Python 字节码；本机清理脚本使用 UTF-8 BOM 兼容 Windows PowerShell 5.1，覆盖根目录、backend、miniapp 和 scripts 的可重建缓存，且仅逐文件删除。专项测试、项目总守卫、开发总表、证据索引、错误账本、编码检查和双 PowerShell 预览及执行均通过；两次执行共逐文件删除 180 个可重建缓存文件，未写生产或客户数据。
+## E-20260830-005：Harness Engineering 全面评审与外部对标
+
+- trace_id: 20260830-harness-maturity-review
+- generated_at: 2026-08-30
+- evidence_type: governance/harness-maturity-review
+- file: `local:docs/harness-engineering/HARNESS-MATURITY-REVIEW-20260830.md`; `local:docs/harness-engineering/core/traceability-model.md`; `local:docs/harness-engineering/core/verification-matrix.md`; `local:backend/.agents/skills/yunxi-harness-engineering/SKILL.md`; `local:docs/AGENTS/multi-agent-coordination.md`; `local:PROJECT-STATE.md`
+- commit_sha: b4f25db
+- repository_origin: monorepo
+- command: `python -B backend/scripts/check_project_development_register.py`; `python -B backend/scripts/check_project.py --skip-tests`; `python -B backend/scripts/check_mistake_ledger.py`; `python -B backend/scripts/check_evidence_index.py --summary`; `python -B backend/scripts/check_text_encoding.py`; `git diff --check`
+- result: pass
+- related_logbook: 2026-08-30 - chore(harness): Harness Engineering 全面评审与外部对标
+- contains_sensitive_data: no
+- retention_note: 仅保留评审结论、外部方法对标、成熟度评分、后续任务和门禁命令；不含密钥、客户原文、订单明细、生产数据或外部服务凭证。
+- storage_scope: repository
+- summary: 现有 Harness 综合成熟度评估为 3.0/5，中文优先、单一权威入口、验证门禁和业务 Agent eval 已较完整；下一阶段需要优先补齐运行 manifest/episode、策略即代码、Harness 自评回归和文档园艺/CI 入口。评审结论已同步到启动规范、Harness Skill、追溯模型、协作规则、验证矩阵和唯一开发总表。
+## E-20260830-006：P1/P2 知识缺口枚举、发票验收与 FAQ 填写版
+
+- trace_id: 20260830-p1p2-continue
+- generated_at: 2026-08-30
+- evidence_type: local/p1-p2-invoice-acceptance-and-knowledge-gap-enumeration
+- file: `local:backend/tests/api/test_admin_invoice_api.py`; `local:docs/tasks/20260829-P1-4-知识缺口回填-指令.md`; `local:docs/tasks/20260829-P1-5-发票承接验收-指令.md`; `local:docs/tasks/20260830-P1-5-发票实现修复-指令.md`; `local:PROJECT-STATE.md`; `local:ERRORS.md`; `local:LOGBOOK.md`
+- commit_sha: b4f25db
+- repository_origin: monorepo
+- command: `python -B -m pytest tests/api/test_admin_invoice_api.py -q --no-cov --basetemp=D:/Project/.tmp-20260830-invoice/pytest-base`; `python -B scripts/check_knowledge.py`; `python -m ruff check backend/tests/api/test_admin_invoice_api.py`; `python -m ruff format --check backend/tests/api/test_admin_invoice_api.py`; `python -B backend/scripts/check_project_development_register.py`; `git diff --check`
+- result: partial-pass
+- related_logbook: 2026-08-30 - test(p1-p2): 继续推进 P1/P2 知识缺口枚举与发票验收
+- contains_sensitive_data: no
+- retention_note: 仅记录脱敏测试路径、知识条目数量和状态结论；不含客户原文、订单明细、密钥、生产数据或真实支付信息。
+- storage_scope: repository
+- summary: 当前 bot.db 的 knowledge_gaps 总数与未结数均为 0，与历史“5 条”口径不一致，P1-4 阻塞待确认；发票 API 专用测试 3 项核心流程通过，4 项严格预期失败暴露重复 issued 标记和三个必填字段缺失校验缺口，已拆出独立修复任务；P1-5 与 P2 E 项保持阻塞。FAQ 回收事项已被负责人否决，知识检查 342 条通过。
+
+## E-20260830-007：已否决事项复活回归校正
+
+- trace_id: 20260830-p1p2-state-correction
+- generated_at: 2026-08-30
+- evidence_type: governance/rejected-task-resurrection-correction
+- file: `local:PROJECT-STATE.md`; `local:ERRORS.md`; `local:docs/待办优先级清单_20260829.md`; `local:docs/AGENT-HANDOFF-20260829.md`; `local:docs/tasks/20260829-P1-7-FAQ回收-指令.md`; `local:docs/specs/faq-template-draft.md`
+- commit_sha: b4f25db
+- repository_origin: monorepo
+- command: `python -B backend/scripts/check_project_development_register.py`; `python -B backend/scripts/check_mistake_ledger.py`; `python -B backend/scripts/check_evidence_index.py --summary`; `git diff --check`
+- result: pass
+- related_logbook: 2026-08-30 - chore(harness): 校正已否决事项复活
+- contains_sensitive_data: no
+- retention_note: 仅记录负责人否决事项的状态校正、入口清理和防复活门禁；不含客户数据、店家业务事实、密钥或生产写入。
+- storage_scope: repository
+- summary: T-P1-7-FAQ 已改为历史（historical）并从未完成状态视图、待办顺序和交接活动列表移除；原始 FAQ 草案保留历史标记，误建填写版已删除。错误账本新增 M-20260830-005。
+
+## E-20260831-001：Harness P0 四项控制面本地执行收口
+
+- trace_id: 20260831-p0-execution
+- run_id: 20260831-p0-execution-r1
+- generated_at: 2026-08-31
+- evidence_type: governance/harness-p0-execution
+- file: `local:backend/reports/harness/20260831-p0-execution.run.json`; `local:backend/reports/harness/20260831-p0-execution.md`; `local:backend/reports/harness/p0-gate-20260831-p0-execution.json`; `local:backend/reports/harness/p0-gate-20260831-p0-final.json`; `local:.github/workflows/harness-p0.yml`; `local:PROJECT-STATE.md`; `local:docs/harness-engineering/README.md`; `local:docs/harness-engineering/core/verification-matrix.md`; `local:docs/AGENTS/skill-reference.md`; `local:docs/tasks/20260831-P0-Harness中文治理-指令.md`; `local:docs/tasks/20260831-P0-Harness运行契约-指令.md`; `local:docs/tasks/20260831-P0-Harness策略即代码-指令.md`; `local:docs/tasks/20260831-P0-Harness统一CI-指令.md`
+- command: `python -B -m pytest backend/tests/scripts/test_check_chinese_governance.py backend/tests/scripts/test_harness_policy.py backend/tests/scripts/test_harness_run_manifest.py backend/tests/scripts/test_harness_p0_gate.py -q --no-cov --basetemp=D:\\Project\\YunxiBakery\\.tmp-harness-p0\\pytest-base`; `python -B backend/scripts/harness_p0_gate.py --summary --json-out backend/reports/harness/p0-gate-20260831-p0-execution.json`; `python -B backend/scripts/check_harness_run_manifest.py --summary`; `python -B backend/scripts/check_project_development_register.py`; `python -B backend/scripts/check_chinese_governance.py --summary`; `python -B backend/scripts/check_harness_policy.py --git-diff --summary`; `python -B backend/scripts/check_project.py --skip-tests`; `python -B backend/scripts/check_mistake_ledger.py`; `python -B backend/scripts/check_text_encoding.py`; `python -B backend/scripts/check_evidence_index.py --summary`; `python -B -m ruff check ...`; `python -B -m ruff format --check ...`; `git diff --check`
+- result: pass
+- related_logbook: 2026-08-31 - chore(harness): 执行 Harness P0 四项控制面并完成本地收口
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅保留治理脚本、策略哈希、运行摘要、验证命令和脱敏风险说明；不含密钥、客户原文、订单明细、真实支付信息或生产写入。
+- storage_scope: local
+- repository_origin: monorepo
+- commit_sha: b4f25db822b5b4b70ab517609764aa9b99ea2ab0
+- summary: 中文治理、统一运行 manifest/episode、策略即代码和根级 Harness CI 四项 P0 控制面已在本地完成；定向合同测试 17 项通过；最终 P0 总门禁 8 项检查全部通过，耗时约 58.76 秒；策略哈希为 `f81b988ee35e5a6d3b8b36c49738e13301e79353b562546c130dc87cea3a0153`；运行 manifest 四项断言（结果正确、策略合规、证据完整、可回放）均为真。
+- failure_class: none
+- replayable: yes
+- residual_risks: GitHub Actions 云端 artifact 尚未触发核验；P2 真人执行仍受负责人批准、测试号和体验版条件约束；工作区仍有本轮之前的未提交修改。
+## E-20260831-002：临时与可重建产物递归清理规则收口
+
+- trace_id: 20260831-cleanup-policy
+- run_id: 20260831-045839-140531c67c4d
+- generated_at: 2026-08-31
+- evidence_type: governance/harness-cleanup-policy
+- file: `local:AGENTS.md`；`local:miniapp/AGENTS.md`；`local:docs/AGENTS/multi-agent-coordination.md`；`local:docs/AGENTS/commit-workflow.md`；`local:docs/AGENTS/quick-reference.md`；`local:docs/AGENTS/skill-reference.md`；`local:docs/harness-engineering/HARNESS-MATURITY-REVIEW-20260830.md`；`local:docs/harness-engineering/README.md`；`local:docs/harness-engineering/core/harness-policy.json`；`local:backend/.agents/skills/yunxi-harness-engineering/SKILL.md`；`local:scripts/cleanup-local-artifacts.ps1`；`local:backend/tests/scripts/test_cleanup_local_artifacts.py`；`local:backend/tests/scripts/test_harness_policy.py`；`local:docs/tasks/20260831-P0-Harness临时清理规则-指令.md`；`local:backend/reports/harness/20260831-cleanup-policy-final-v2.run.json`；`local:backend/reports/harness/20260831-cleanup-policy-final-v2.md`
+- command: `python -B -m pytest backend/tests/scripts/test_cleanup_local_artifacts.py backend/tests/scripts/test_harness_policy.py -q --tb=short --no-cov --basetemp=D:\Temp\pytest-cleanup-policy-v2`；`powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/cleanup-local-artifacts.ps1 -TemporaryPath .tmp-harness-p0 -OnlyTemporaryPath`；`powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/cleanup-local-artifacts.ps1 -TemporaryPath .tmp-harness-p0 -OnlyTemporaryPath -Execute`；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/check_harness_policy.py --git-diff --summary`；`python -B backend/scripts/check_harness_run_manifest.py --summary`；`python -B backend/scripts/check_project_development_register.py`；`python -B backend/scripts/check_evidence_index.py --summary`；`python -B backend/scripts/harness_p0_gate.py --summary`
+- repository_origin: monorepo
+- commit_sha: b4f25db822b5b4b70ab517609764aa9b99ea2ab0
+- result: pass
+- related_logbook: 2026-08-31 - chore(harness): 校正临时清理规则最终运行证据
+- contains_sensitive_data: no
+- retention_note: 只记录规则、保护边界、命令和门禁结论；清理目标不包含业务数据、生产环境或有效报告。
+- storage_scope: repository
+- summary: 已将临时/可重建产物清理从单文件删除调整为受控递归批量清理；专项合同测试补齐 `.env*` 保护场景后 11/11 通过，白名单、预览、授权、路径校验和受保护目录隔离均已同步，任意路径递归删除仍默认阻断。
+- failure_class: none
+- replayable: yes
+- residual_risks: 规则变更尚未提交；GitHub Actions 云端 artifact 未触发；旧历史材料中的原约束仅代表历史时点；默认清理脚本仍需执行前预览并明确授权。
+
+## E-20260831-003：Harness P1 自评、趋势基线、运行观测与恢复闭环
+
+- trace_id: 20260831-harness-eval-regression
+- run_id: 20260831-053324-6f048e5f42ce
+- generated_at: 2026-08-31
+- evidence_type: governance/harness-eval-and-observation
+- file: `local:docs/harness-engineering/evals/harness-eval-dataset.json`; `local:backend/scripts/harness_eval_regression.py`; `local:backend/scripts/observe_harness_runs.py`; `local:backend/tests/scripts/test_harness_eval_regression.py`; `local:backend/tests/scripts/test_observe_harness_runs.py`; `local:backend/reports/harness/harness-eval-baseline-20260831-v2.json`; `local:backend/reports/harness/harness-observation-baseline-20260831-v2.json`; `local:backend/reports/harness/harness-observation-20260831-v2.json`; `local:backend/reports/harness/20260831-harness-eval-regression.run.json`; `local:backend/reports/harness/20260831-harness-eval-regression.md`
+- command: `python -B -m pytest backend/tests/scripts/test_harness_eval_regression.py backend/tests/scripts/test_observe_harness_runs.py backend/tests/scripts/test_check_doc_garden.py -q --tb=short --no-cov --basetemp=D:\Temp\pytest-harness-p1p2-v2`; `python -B backend/scripts/harness_eval_regression.py --summary --output backend/reports/harness/harness-eval-baseline-20260831-v2.json`; `python -B backend/scripts/observe_harness_runs.py --summary --output backend/reports/harness/harness-observation-baseline-20260831-v2.json`; `python -B backend/scripts/observe_harness_runs.py --summary --baseline backend/reports/harness/harness-observation-baseline-20260831-v2.json --output backend/reports/harness/harness-observation-20260831-v2.json`
+- repository_origin: monorepo
+- commit_sha: b4f25db822b5b4b70ab517609764aa9b99ea2ab0
+- result: pass
+- related_logbook: 2026-08-31 - feat(harness): 建立 P1 自评观测与 P2 文档园艺闭环
+- contains_sensitive_data: no
+- retention_note: 仅保留评测用例、指标、失败分类、趋势基线和恢复点覆盖率；不含客户原文、生产数据或外部凭证。
+- storage_scope: repository
+- summary: Harness 自评数据集 8/8 通过（dataset_version=1.0.0，evaluator_version=1.0.0，threshold=1.0）；现有 4 个运行 manifest 的回放覆盖率和恢复点覆盖率均为 1.0，已输出可比较 baseline 与 delta 结构。
+- failure_class: none
+- replayable: yes
+- residual_risks: 当前运行样本量较小，尚未接入生产运行数据；GitHub Actions 周期 artifact 尚未触发。
+
+## E-20260831-004：P2 文档园艺与低风险中文维护闭环
+
+- trace_id: 20260831-doc-garden
+- run_id: 20260831-053739-f7dbb5cb748a
+- generated_at: 2026-08-31
+- evidence_type: governance/documentation-garden
+- file: `local:backend/scripts/check_doc_garden.py`; `local:backend/tests/scripts/test_check_doc_garden.py`; `local:.github/workflows/harness-p1-p2.yml`; `local:docs/tasks/20260831-P2-Harness文档园艺-指令.md`; `local:backend/reports/harness/doc-garden-20260831-v2.json`; `local:backend/reports/harness/20260831-doc-garden.run.json`; `local:backend/reports/harness/20260831-doc-garden.md`
+- command: `python -B -m pytest backend/tests/scripts/test_harness_eval_regression.py backend/tests/scripts/test_observe_harness_runs.py backend/tests/scripts/test_check_doc_garden.py -q --tb=short --no-cov --basetemp=D:\Temp\pytest-harness-p1p2-v2`; `python -B backend/scripts/check_doc_garden.py --summary --fail-on error --output backend/reports/harness/doc-garden-20260831-v2.json`
+- repository_origin: monorepo
+- commit_sha: b4f25db822b5b4b70ab517609764aa9b99ea2ab0
+- result: pass
+- related_logbook: 2026-08-31 - feat(harness): 建立 P1 自评观测与 P2 文档园艺闭环
+- contains_sensitive_data: no
+- retention_note: 扫描只读；历史归档断链降级为 warning，不删除审计证据，不改变 P0 高风险执行门禁。
+- storage_scope: repository
+- summary: 文档园艺扫描 135 个文件，当前错误级问题 0 个，历史归档断链和旧报告登记共 16 个低风险 warning；3 个当前文档路径已修正，P2 周期 CI 使用 continue-on-error，不阻断 P0。
+- failure_class: none
+- replayable: yes
+- residual_risks: 仍有 16 个 warning 需按周治理；历史镜像和旧报告不得直接删除。
+
+## E-20260831-005：Harness P1 四项控制面缺陷复核与修复
+
+- trace_id: 20260831-harness-p1-four-fixes
+- run_id: p0-gate-27955743ec6b4e24
+- generated_at: 2026-08-31
+- evidence_type: governance/harness-p1-defect-remediation
+- file: `local:.github/workflows/harness-p0.yml`; `local:backend/scripts/check_harness_policy.py`; `local:backend/scripts/harness_p0_gate.py`; `local:backend/scripts/harness_run_manifest.py`; `local:backend/scripts/check_chinese_governance.py`; `local:scripts/cleanup-local-artifacts.ps1`; `local:backend/tests/scripts/test_harness_policy.py`; `local:backend/tests/scripts/test_harness_run_manifest.py`; `local:backend/tests/scripts/test_check_chinese_governance.py`; `local:backend/tests/scripts/test_cleanup_local_artifacts.py`; `local:backend/tests/scripts/test_harness_p0_gate.py`; `local:PROJECT-STATE.md`; `local:LOGBOOK.md`
+- command: `python -B -m pytest backend/tests/scripts/test_harness_policy.py backend/tests/scripts/test_harness_run_manifest.py backend/tests/scripts/test_check_chinese_governance.py backend/tests/scripts/test_cleanup_local_artifacts.py backend/tests/scripts/test_harness_p0_gate.py -q --tb=short --no-cov`; `ruff check backend/scripts/check_harness_policy.py backend/scripts/harness_p0_gate.py backend/scripts/harness_run_manifest.py backend/scripts/check_chinese_governance.py backend/tests/scripts/test_harness_policy.py backend/tests/scripts/test_harness_run_manifest.py backend/tests/scripts/test_check_chinese_governance.py backend/tests/scripts/test_cleanup_local_artifacts.py`; `ruff format --check backend/scripts/check_harness_policy.py backend/scripts/harness_p0_gate.py backend/scripts/harness_run_manifest.py backend/scripts/check_chinese_governance.py backend/tests/scripts/test_harness_policy.py backend/tests/scripts/test_harness_run_manifest.py backend/tests/scripts/test_check_chinese_governance.py backend/tests/scripts/test_cleanup_local_artifacts.py`; `python -B backend/scripts/harness_p0_gate.py --summary`; `python -B backend/scripts/check_harness_policy.py --git-diff --summary`; `python -B backend/scripts/check_harness_run_manifest.py --summary`; `python -B backend/scripts/check_chinese_governance.py --summary`; `python -B backend/scripts/check_project_development_register.py`; `git diff --check`
+- repository_origin: monorepo
+- commit_sha: b4f25db822b5b4b70ab517609764aa9b99ea2ab0
+- result: pass
+- related_logbook: 2026-08-31 - fix(harness): 复核并修复四项 P1 控制面缺陷
+- contains_sensitive_data: no
+- retention_note: 仅记录缺陷复核、策略基线、预览令牌机制、Schema 约束、中文语义断言和验证命令；不含密钥、客户原文、生产数据或真实支付信息。
+- storage_scope: repository
+- summary: 四项 P1 缺陷均已确认并修复；定向合同测试 28/28 通过，后续边界加固测试 32/32 通过，P0 总门禁 8 项检查全部通过，策略当前变更路径检查 113 条通过，manifest 6/6 通过，中文治理覆盖率 1.0。
+- failure_class: none
+- replayable: yes
+- residual_risks: GitHub Actions 云端事件尚未实际触发；清理令牌仅在本地脚本内有效且不替代人工确认。
+
+## E-20260831-006：Harness 四项问题二次加固与提交基线核对
+
+- trace_id: 20260831-harness-p1-four-fixes-hardening
+- run_id: p0-gate-792011c9839042ae
+- generated_at: 2026-08-31
+- evidence_type: governance/harness-p1-hardening
+- file: `local:.github/workflows/harness-p0.yml`; `local:backend/scripts/harness_p0_gate.py`; `local:backend/scripts/check_harness_policy.py`; `local:backend/tests/scripts/test_harness_p0_gate.py`; `local:backend/tests/scripts/test_harness_policy.py`; `local:PROJECT-STATE.md`; `local:LOGBOOK.md`
+- command: `python -B -m pytest backend/tests/scripts/test_harness_policy.py backend/tests/scripts/test_harness_run_manifest.py backend/tests/scripts/test_check_chinese_governance.py backend/tests/scripts/test_cleanup_local_artifacts.py backend/tests/scripts/test_harness_p0_gate.py -q --tb=short --no-cov`; `ruff check ...`; `python -B backend/scripts/harness_p0_gate.py --summary`; `python -B backend/scripts/check_harness_policy.py --git-diff --summary`; `python -B backend/scripts/check_harness_run_manifest.py --summary`; `python -B backend/scripts/check_chinese_governance.py --summary`; `git diff --check`
+- repository_origin: monorepo
+- commit_sha: b4f25db822b5b4b70ab517609764aa9b99ea2ab0
+- result: pass
+- related_logbook: 2026-08-31 - fix(harness): 二次加固四项问题的提交基线与边界验证
+- contains_sensitive_data: no
+- retention_note: 记录工作区与提交快照差异、CI base/head 解析、策略范围和回归验证，不含密钥、客户原文、生产数据或真实支付信息。
+- storage_scope: repository
+- summary: 当前工作区四项问题不可复现；提交范围缺失或不完整会直接失败；定向测试 32/32、P0 门禁 8/8 通过。由于本轮变更尚未提交，远端 CI 仍需在提交流程完成后验证。
+- failure_class: none
+- replayable: yes
+- residual_risks: `HEAD=b4f25db` 仍是旧提交快照，代码修复尚未进入远端可见提交。

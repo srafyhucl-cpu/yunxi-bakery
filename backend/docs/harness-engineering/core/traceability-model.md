@@ -52,7 +52,7 @@ ______________________________________________________________________
   - docs/harness-engineering/README.md
   - docs/harness-engineering/core/traceability-model.md
   - docs/harness-engineering/core/verification-matrix.md
-  - docs/harness-engineering/core/mistake-ledger.md
+  - ERRORS.md
   - docs/harness-engineering/core/agent-handoff-template.md
 - verification:
   - Test-Path docs/harness-engineering/README.md

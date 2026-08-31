@@ -26,7 +26,7 @@ description: "【必须在动代码前调用】芸熙烘焙 AI 客服文件体�
 
 - 将本次文件体量风险绑定到 trace。
 - 把职责评审结论和验证命令写入 ADR、LOGBOOK 或 verification matrix。
-- 若属于重复错误，写入 `docs/harness-engineering/core/mistake-ledger.md` 并补机械防线。
+- 若属于重复错误，写入根目录 `ERRORS.md` 并补机械防线；不得新增同职能文件。
 
 ## 单文件体量阈值
 

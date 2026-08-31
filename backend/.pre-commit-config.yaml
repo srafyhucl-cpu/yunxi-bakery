@@ -69,7 +69,7 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
-        description: 检查 docs/harness-engineering/core/mistake-ledger.md 的空账本标记、必填字段和枚举值，避免防重犯记忆失效
+        description: 检查根目录 ERRORS.md 的空账本标记、必填字段、重复 ID 和枚举值，避免防重犯记忆失效
 
       - id: check-evidence-index
         name: Harness 证据索引结构检查

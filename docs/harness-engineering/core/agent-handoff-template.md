@@ -10,6 +10,8 @@ ______________________________________________________________________
 # Agent Handoff
 
 - trace_id:
+- run_id:
+- parent_run_id:
 - updated_at:
 - owner:
 - current_goal:

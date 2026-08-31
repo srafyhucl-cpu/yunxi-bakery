@@ -118,7 +118,7 @@ api/ → service/ → repository/ → models/
 
 - 中大型任务先分配 `trace_id`，再按 `docs/harness-engineering/core/verification-matrix.md` 选验证。
 - 需要交接时优先用 `scripts/harness_snapshot.py`，不要只留聊天记录。
-- 需要长期记忆的错误先写 `docs/harness-engineering/core/mistake-ledger.md`，再补测试、脚本、pre-commit、AGENTS 或 Skill 中至少一类防线。
+- 需要长期记忆的错误先写根目录 `ERRORS.md`，再补测试、脚本、pre-commit、AGENTS 或 Skill 中至少一类防线；不要新建同职能副本。
 
 ---
 

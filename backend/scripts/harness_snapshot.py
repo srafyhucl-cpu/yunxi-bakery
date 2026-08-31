@@ -15,7 +15,7 @@ try:
 except Exception:
     pass
 
-ROOT_DIR = Path(__file__).resolve().parent.parent
+ROOT_DIR = Path(__file__).resolve().parents[2]
 LOGBOOK_FILE = ROOT_DIR / "LOGBOOK.md"
 HARNESS_DOC = ROOT_DIR / "docs" / "harness-engineering" / "README.md"
 SPEC_DOC = (
@@ -121,7 +121,7 @@ def build_reference_entries(root_dir: Path = ROOT_DIR) -> tuple[str, ...]:
         root_dir / "LOGBOOK.md",
         root_dir / "docs" / "harness-engineering" / "README.md",
         root_dir / "docs" / "harness-engineering" / "core" / "verification-matrix.md",
-        root_dir / "docs" / "harness-engineering" / "core" / "mistake-ledger.md",
+        root_dir / "ERRORS.md",
         root_dir
         / "docs"
         / "harness-engineering"
@@ -193,7 +193,7 @@ def format_markdown(snapshot: HarnessSnapshot) -> str:
             "",
             "1. 对照 docs/harness-engineering/core/verification-matrix.md 选择验证命令。",
             "2. 更新 LOGBOOK.md 和项目进度与配置清单.md。",
-            "3. 若出现可复用教训，更新 docs/harness-engineering/core/mistake-ledger.md。",
+            "3. 若出现可复用教训，更新根目录 ERRORS.md。",
             "",
             "## 参考入口",
             "",

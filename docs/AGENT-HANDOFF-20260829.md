@@ -69,9 +69,9 @@
 
 ## 四、未完成 / 当前进行
 
-1. **P2 真人执行段启动**（P0 级，纯决策）：项目负责人确认 P1 关闭 + 批准启动 P2；执行手册 `docs/specs/2026-08-25-p2-manual.md`（模拟器 B/C/D/E 项走查在 `docs/tasks/20260829-P1-6-*.md`；`docs/tasks/` 共 5 份，其中 P0-1 为已完成历史指令，P1-4 至 P1-7 为当前活动指令）。
+1. **P2 真人执行段启动**（P0 级，纯决策）：项目负责人确认 P1 关闭 + 批准启动 P2；执行手册 `docs/specs/2026-08-25-p2-manual.md`（模拟器 B/C/D/E 项走查在 `docs/tasks/20260829-P1-6-*.md`；P1-4 至 P1-6 是当前活动指令，P1-7 已被否决，仅保留历史记录）。
 2. **体验版上传**：拆两问题——3a DevTools「project.config.json: Empty file」报错＝瞬时竞态（DevTools 自动重写配置与编译并发，commit ec1e9d5 相关），点「编译」Ctrl+B 重编译即消，磁盘文件本身合法；3b 测试号 wx4b59baadd9187a2e 硬阻塞，正式 AppID wxdd53813d16c27a6e 待商家确认后按「同壳换芯」切换（改 `backend/.env` 与 `miniapp/project.config.json` 两处）。
-3. **P1 级待办**（详见 `docs/待办优先级清单_20260829.md`）：④ 知识缺口回填（先枚举，清单在 `backend/app/migrations/v004_agent_foundation_tables.sql:40` 附近）⑤ 发票承接（代码已在 e2639d4 落地，缺测试与端到端验收；backend/tests 无 invoice 测试）⑥ 模拟器 BCDE 走查 ⑦ FAQ 10 条店家回收（卡点在人，AI 不得代填）。
+3. **P1 级待办**（详见 `docs/待办优先级清单_20260829.md`）：④ 知识缺口回填（先枚举，清单在 `backend/app/migrations/v004_agent_foundation_tables.sql:40` 附近）⑤ 发票承接（代码已在 e2639d4 落地，缺测试与端到端验收；backend/tests 无 invoice 测试）⑥ 模拟器 BCDE 走查；FAQ 回收已被否决，不再列入待办。
 4. **P2 级待办**：⑧ featured_products 精选 6 款无 DB 迁移（上线前必须）⑨ 支付商户号跟进 ⑩ 有赞 IP 白名单 NAT 出口确认 ⑪ 过期副本处置 ⑫ 里程碑计划重新基线化（计划书 5.1 时间线被 v1.2/v1.3/v1.4 三次修正绕开未回写）⑬ 生产部署状态复核（最新证据 2026-08-10 v0.109.16）。
 5. **P3 级**：商品搜索、FP-5 技术债、D1 冻结独立轨道（D1-A 不合入 master、D1-B 不放行，留旧仓）、Windows 4 项 skipif 测试、模拟器 timeout 根因。
 

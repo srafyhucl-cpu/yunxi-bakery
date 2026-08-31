@@ -75,6 +75,20 @@ def test_format_markdown_includes_trace_and_references() -> None:
     assert "docs/harness-engineering/README.md" in markdown
 
 
+def test_build_reference_entries_uses_root_errors_file(tmp_path: Path) -> None:
+    snapshot = load_snapshot_module()
+    (tmp_path / "AGENTS.md").write_text("规则", encoding="utf-8")
+    harness_dir = tmp_path / "docs" / "harness-engineering"
+    harness_dir.mkdir(parents=True)
+    (harness_dir / "README.md").write_text("入口", encoding="utf-8")
+    (tmp_path / "ERRORS.md").write_text("错误", encoding="utf-8")
+
+    references = snapshot.build_reference_entries(tmp_path)
+
+    assert "ERRORS.md" in references
+    assert "docs/harness-engineering/core/mistake-ledger.md" not in references
+
+
 def test_write_output_refuses_to_overwrite(tmp_path: Path) -> None:
     snapshot = load_snapshot_module()
     output = tmp_path / "handoff.md"

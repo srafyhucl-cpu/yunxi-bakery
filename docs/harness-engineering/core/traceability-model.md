@@ -1,5 +1,7 @@
 # Traceability Model
 
+> 中文治理属于 Harness P0 控制面：任务、运行、证据和交接的面向人说明使用中文，稳定机器字段保持 ASCII。
+
 本文件定义 YunxiBakery monorepo 的任务级追溯模型；后端代码位于 `backend/`，小程序位于 `miniapp/`，旧仓 `YunxiBakeBot` 仅作冻结历史。目标是让任何一次 Vibe Coding 变更都能回答：为什么改、改了什么、怎么证明、还剩什么风险。
 
 ______________________________________________________________________
@@ -27,12 +29,26 @@ ______________________________________________________________________
 | 字段 | 必填 | 说明 |
 |---|---|---|
 | `trace_id` | 是 | 任务级追踪号 |
+| `run_id` | 中大型任务必填 | 一次具体 Agent 执行的唯一标识；同一 `trace_id` 可以有多次运行 |
+| `parent_run_id` | 否 | 续跑、重试或换 Agent 时指向上一运行 |
+| `task_id` | 是 | 对应 `PROJECT-STATE.md` 的唯一任务 |
 | `source` | 是 | 需求、故障、用户请求或生产事件来源 |
 | `goal` | 是 | 本轮要达成的结果 |
+| `as_of_commit` | 是 | 开始执行时核对的代码快照 |
+| `version` | 是 | 开始执行时的 `backend/VERSION` |
+| `model_id` | 中大型 Agent 运行必填 | 实际使用的模型或人工执行标识 |
+| `tool_policy_hash` | 中大型 Agent 运行必填 | 允许路径、禁止路径、网络和生产开关策略摘要哈希 |
+| `input_artifact_hash` | 否 | 输入 fixture、任务包或外部资料的哈希 |
+| `output_artifact_hash` | 否 | 关键报告、快照或交付物的哈希 |
 | `decision_refs` | 否 | 设计文档、ADR、评估报告、关键讨论 |
 | `changed_files` | 是 | 核心改动文件或文档 |
 | `verification` | 是 | 执行过的检查命令和结果 |
 | `evidence` | 否 | JSON 报告、截图、日志、测试输出、链接 |
+| `failure_class` | 否 | 失败归因，如 `scope_drift`、`stale_snapshot`、`policy_violation`、`verification_failure` |
+| `latency_ms` | 否 | 运行耗时；长任务或 Agent eval 应记录 |
+| `cost` | 否 | 模型、工具或测试成本摘要；未知时写 `unknown` |
+| `human_intervention` | 否 | 是否发生人工批准、接管、纠偏或恢复 |
+| `replayable` | 是 | 是否能用固定输入、策略和依赖摘要重放到同一决策阶段 |
 | `logbook_entry` | 是 | LOGBOOK 对应条目标题 |
 | `residual_risks` | 否 | 未解决风险、人工确认项或未验证范围 |
 
@@ -56,7 +72,7 @@ ______________________________________________________________________
   - docs/harness-engineering/README.md
   - docs/harness-engineering/core/traceability-model.md
   - docs/harness-engineering/core/verification-matrix.md
-  - docs/harness-engineering/core/mistake-ledger.md
+  - ERRORS.md
   - docs/harness-engineering/core/agent-handoff-template.md
 - verification:
   - Test-Path docs/harness-engineering/README.md
@@ -71,14 +87,36 @@ ______________________________________________________________________
 
 ```markdown
 - trace_id:
+- run_id:
+- parent_run_id:
+- task_id:
 - source:
 - goal:
+- as_of_commit:
+- version:
+- model_id:
+- tool_policy_hash:
 - changed_files:
 - verification:
 - evidence:
+- failure_class:
+- latency_ms:
+- cost:
+- human_intervention:
+- replayable:
 - logbook_entry:
 - residual_risks:
 ```
+
+## 最小 Episode（运行回放包）
+
+中大型 Agent 任务应将一次运行视为可回放的 episode，而不是只保存最终回答。最小包包含任务输入、计划摘要、关键工具调用、策略摘要、验证命令、人工介入、最终状态和恢复点。
+
+规则：
+
+1. 事件只记录完成任务所需的最小摘要，不保存密钥、客户原文或未经批准的生产数据。
+2. 重试必须生成新的 `run_id` 并通过 `parent_run_id` 关联，禁止覆盖失败运行。
+3. “通过”至少拆成结果正确、策略合法、证据完整、可回放四个断言。
 
 ______________________________________________________________________
 

@@ -13,10 +13,8 @@ try:
 except Exception:
     pass
 
-ROOT_DIR = Path(__file__).resolve().parent.parent
-DEFAULT_LEDGER = (
-    ROOT_DIR / "docs" / "harness-engineering" / "core" / "mistake-ledger.md"
-)
+ROOT_DIR = Path(__file__).resolve().parents[2]
+DEFAULT_LEDGER = ROOT_DIR / "ERRORS.md"
 ENTRY_HEADING_RE = re.compile(r"^##\s+(M-\d{8}-\d{3})：(.+)$")
 FIELD_RE = re.compile(r"^-\s+([a-z_]+):\s*(.*)$")
 REQUIRED_FIELDS = (
@@ -68,6 +66,15 @@ def parse_entries(content: str) -> tuple[LedgerEntry, ...]:
             current_title = heading_match.group(2).strip()
             current_fields = {}
             continue
+        if raw_line.startswith("## "):
+            if current_id:
+                entries.append(
+                    LedgerEntry(current_id, current_title, dict(current_fields))
+                )
+                current_id = ""
+                current_title = ""
+                current_fields = {}
+            continue
         if not current_id:
             continue
         field_match = FIELD_RE.match(raw_line)
@@ -105,7 +112,11 @@ def check_ledger(path: Path = DEFAULT_LEDGER) -> LedgerCheckResult:
             ("ledger has no entries and no empty-ledger marker",),
         )
     issues: list[str] = []
+    seen_ids: set[str] = set()
     for entry in entries:
+        if entry.entry_id in seen_ids:
+            issues.append(f"{entry.entry_id}: duplicate entry id")
+        seen_ids.add(entry.entry_id)
         issues.extend(validate_entry(entry))
     return LedgerCheckResult(not issues, entries, tuple(issues))
 

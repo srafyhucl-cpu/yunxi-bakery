@@ -147,7 +147,7 @@ except Exception as exc:
 - [ ] 无硬编码密钥
 - [ ] 无裸 `print()` 调用
 - [ ] 若是较大任务，已记录 `trace_id` 或说明不需要
-- [ ] 若本轮有可复用教训，已更新 `core/mistake-ledger.md`
+- [ ] 若本轮有可复用教训，已更新根目录 `ERRORS.md`，且未创建同职能副本
 
 ## 🔗 联动 Skill
 
