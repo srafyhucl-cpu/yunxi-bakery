@@ -225,3 +225,21 @@ def test_snapshot_commit_must_be_current_or_parent(tmp_path: Path) -> None:
 
     assert not result.passed
     assert any("机器快照 as_of_commit 已过期" in issue for issue in result.issues)
+
+
+def test_external_track_commit_may_be_unresolved_in_ci(tmp_path: Path) -> None:
+    module = load_register_module()
+    original = Path(__file__).resolve().parents[3] / "PROJECT-STATE.md"
+    state = tmp_path / "PROJECT-STATE.md"
+    content = original.read_text(encoding="utf-8").replace(
+        "| T-D1-REVIEW | D1 账务核心独立审阅轨道 | deferred | 已暂缓（deferred） | P3 | 项目负责人 | external:D:\\Project\\YunxiBakeBot | 7afd44b |",
+        "| T-D1-REVIEW | D1 账务核心独立审阅轨道 | deferred | 已暂缓（deferred） | P3 | 项目负责人 | external:D:\\Project\\YunxiBakeBot | "
+        + "a" * 40
+        + " |",
+        1,
+    )
+    state.write_text(content, encoding="utf-8")
+
+    result = module.parse_register(state)
+
+    assert result.passed, result.issues

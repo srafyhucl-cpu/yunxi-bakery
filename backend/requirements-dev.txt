@@ -480,6 +480,10 @@ typing-inspection==0.4.2
     #   fastapi
     #   pydantic
     #   pydantic-settings
+tzdata==2026.3
+    # via
+    #   -c requirements.txt
+    #   -r requirements.in
 urllib3==2.7.0
     # via
     #   -c requirements.txt

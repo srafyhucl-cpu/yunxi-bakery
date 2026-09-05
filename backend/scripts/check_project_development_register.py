@@ -167,7 +167,13 @@ def _display_path(path: Path) -> str:
         return str(path)
 
 
-def _validate_commit(commit: str, label: str, issues: list[str]) -> None:
+def _validate_commit(
+    commit: str,
+    label: str,
+    issues: list[str],
+    *,
+    allow_unresolved_external: bool = False,
+) -> None:
     if not commit:
         return
     if not SHA_RE.fullmatch(commit):
@@ -193,6 +199,8 @@ def _validate_commit(commit: str, label: str, issues: list[str]) -> None:
                     legacy = None
                 if legacy is not None and legacy.returncode == 0:
                     return
+        if allow_unresolved_external:
+            return
         issues.append(f"{label}: as_of_commit 无法解析 {commit}")
 
 
@@ -285,7 +293,14 @@ def parse_register(path: Path = STATE_FILE) -> RegisterResult:
         for column in REQUIRED_TASK_COLUMNS:
             if not record.get(column, "").strip():
                 issues.append(f"{task_id}: 缺少字段 {column}")
-        _validate_commit(record.get("as_of_commit", "").strip(), task_id, issues)
+        _validate_commit(
+            record.get("as_of_commit", "").strip(),
+            task_id,
+            issues,
+            allow_unresolved_external=record.get("branch", "")
+            .strip()
+            .startswith("external:"),
+        )
         tasks[task_id] = record
 
     view_ids: dict[str, list[str]] = {}
@@ -428,7 +443,14 @@ def parse_task_metadata(path: Path) -> tuple[dict[str, str], list[str]]:
             f"{rel}: status_label 与 status 不一致: "
             f"应为 {expected_label}，实际为 {status_label}"
         )
-    _validate_commit(metadata.get("as_of_commit", ""), rel, issues)
+    _validate_commit(
+        metadata.get("as_of_commit", ""),
+        rel,
+        issues,
+        allow_unresolved_external=metadata.get("branch", "")
+        .strip()
+        .startswith("external:"),
+    )
     version = _read_version()
     if metadata.get("version") and metadata["version"] != version:
         issues.append(f"{rel}: version 与 backend/VERSION 不一致")

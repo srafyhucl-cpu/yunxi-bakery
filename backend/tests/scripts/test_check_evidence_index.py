@@ -666,12 +666,30 @@ def test_unresolved_commit_is_external_unverified(tmp_path, monkeypatch) -> None
         repo,
         _git_entry(
             unknown, "0" * 64, f"git:{unknown}:artifact.json", entry_commit=unknown
-        ),
+        ).replace("2026-08-15", "2026-08-18"),
     )
     report = evidence_check.build_json_report(result, repo / "evidence-index.md")
     assert result.passed is False
     assert report["external_unverified"] == 1
     assert any("当前仓和已登记旧仓均不可解析" in issue for issue in result.issues)
+
+
+def test_unresolved_pre_monorepo_history_is_non_blocking(tmp_path, monkeypatch) -> None:
+    repo, _, _ = _git_fixture(tmp_path)
+    monkeypatch.setattr(evidence_check, "ROOT_DIR", repo)
+    monkeypatch.setattr(evidence_check, "_legacy_repository_candidates", lambda: ())
+    unknown = "e" * 40
+    result = _run_git_index(
+        repo,
+        _git_entry(
+            unknown, "0" * 64, f"git:{unknown}:artifact.json", entry_commit=unknown
+        ),
+    )
+    report = evidence_check.build_json_report(result, repo / "evidence-index.md")
+    assert result.passed is True
+    assert report["external_unverified"] == 1
+    assert report["legacy_repo_verified"] == 0
+    assert not result.issues
 
 
 def test_post_monorepo_git_evidence_requires_current_origin(

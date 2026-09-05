@@ -584,9 +584,18 @@ def _collect_file_integrity(
                             break
                     break
                 if repository is None:
-                    issues.append(
-                        f"{entry.entry_id}: git 提交 `{commit[:12]}..` 在当前仓和已登记旧仓均不可解析"
+                    # 迁移前历史证据可能绑定冻结旧仓提交；CI 只检出当前
+                    # Monorepo 时无法取得旧仓对象，但不能把它伪装成当前仓
+                    # 已验证。保留 external_unverified 统计，只有当前仓证据
+                    # 或迁移后的新证据才阻断。
+                    generated_at = entry.fields.get("generated_at", "")
+                    is_legacy_history = generated_at < MONOREPO_MIGRATION_DATE and (
+                        not repository_origin or repository_origin.startswith("legacy:")
                     )
+                    if not is_legacy_history:
+                        issues.append(
+                            f"{entry.entry_id}: git 提交 `{commit[:12]}..` 在当前仓和已登记旧仓均不可解析"
+                        )
                     category_counts["external_unverified"] += 1
                     integrity.append(
                         {
