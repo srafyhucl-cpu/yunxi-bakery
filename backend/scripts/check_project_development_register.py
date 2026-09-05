@@ -152,6 +152,29 @@ def _git(*args: str) -> tuple[bool, str]:
     return completed.returncode == 0, output
 
 
+def _worktree_has_unstaged_changes() -> tuple[bool, str]:
+    """只判断工作区相对暂存区的未暂存或未跟踪污染。"""
+    try:
+        completed = subprocess.run(
+            ["git", "status", "--porcelain=v1"],
+            cwd=ROOT_DIR,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=False,
+        )
+    except OSError as exc:
+        return False, str(exc)
+    if completed.returncode != 0:
+        return False, completed.stderr.strip()
+    dirty = []
+    for line in completed.stdout.splitlines():
+        if len(line) >= 2 and (line[1] != " " or line[:2] == "??"):
+            dirty.append(line)
+    return True, "\n".join(dirty)
+
+
 def _read_version() -> str:
     try:
         return VERSION_FILE.read_text(encoding="utf-8-sig").strip()
@@ -348,7 +371,7 @@ def parse_register(path: Path = STATE_FILE) -> RegisterResult:
         issues.append(
             f"current_branch 与 Git 不一致: 文档={snapshot['current_branch']}，Git={actual_branch}"
         )
-    status_ok, porcelain = _git("status", "--porcelain")
+    status_ok, porcelain = _worktree_has_unstaged_changes()
     if status_ok and snapshot.get("workspace_state"):
         actual_workspace_state = "dirty" if porcelain else "clean"
         if snapshot["workspace_state"] != actual_workspace_state:

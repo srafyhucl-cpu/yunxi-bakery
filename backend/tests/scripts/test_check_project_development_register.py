@@ -7,6 +7,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 
 def load_register_module():
     script_path = (
@@ -191,8 +193,15 @@ def test_task_branch_must_match_register(tmp_path: Path) -> None:
     assert any("branch 与总表不一致" in issue for issue in result.issues)
 
 
-def test_workspace_state_must_match_git_status(tmp_path: Path) -> None:
+def test_workspace_state_must_match_git_status(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     module = load_register_module()
+    monkeypatch.setattr(
+        module,
+        "_worktree_has_unstaged_changes",
+        lambda: (True, " M simulated.py"),
+    )
     original = Path(__file__).resolve().parents[3] / "PROJECT-STATE.md"
     state = tmp_path / "PROJECT-STATE.md"
     content = original.read_text(encoding="utf-8").replace(
@@ -202,6 +211,19 @@ def test_workspace_state_must_match_git_status(tmp_path: Path) -> None:
     result = module.parse_register(state)
     assert not result.passed
     assert any("workspace_state 与 Git 不一致" in issue for issue in result.issues)
+
+
+def test_staged_changes_do_not_make_workspace_dirty(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = load_register_module()
+    monkeypatch.setattr(
+        module,
+        "_worktree_has_unstaged_changes",
+        lambda: (True, ""),
+    )
+    result = module.check_project_development_register()
+    assert result.passed, result.issues
 
 
 def test_snapshot_commit_must_be_current_or_parent(tmp_path: Path) -> None:

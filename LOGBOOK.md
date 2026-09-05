@@ -1,3 +1,16 @@
+## [2026-09-05] - fix(harness): 修正暂存提交期间的状态判定
+
+- 操作者: AI (Codex)
+- trace_id: `20260905-harness-evidence-error-loop`
+- run_id: `local-20260905-ci-workspace-state-contract`
+- 背景: 第一阶段 CI 隔离修复提交时，项目开发总表守卫仍把仅已暂存的提交内容判定为 dirty，阻断了合法提交和状态快照恢复。
+- implementation:
+  - `check_project_development_register.py` 改为只检查工作区相对暂存区的未暂存或未跟踪污染；仅 staged 的提交内容不再误报。
+  - 增加对应正向回归测试，并将原 dirty 测试改为显式模拟未暂存污染。
+- validation:
+  - `python -B -m pytest backend/tests/scripts/test_check_project_development_register.py backend/tests/scripts/test_harness_workflow_contract.py backend/tests/scripts/test_harness_eval_regression.py -q --no-cov --basetemp=D:\Temp\pytest-harness-state-fix-final` → EXIT=0（21 项）。
+- 结论四分法: 结果正确=是；策略合规=是；证据完整=本地定向证据完整、远端修复结果待推送后核验；可回放=是。
+
 ## [2026-09-05] - fix(harness): 隔离 CI 运行时产物避免工作区误报
 
 - 操作者: AI (Codex)
