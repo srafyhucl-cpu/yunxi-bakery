@@ -14,10 +14,6 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 15
     env:
-      PIP_CACHE_DIR: ${{ runner.temp }}\yunxi-harness-ci\pip-cache
-      TMP: ${{ runner.temp }}\yunxi-harness-ci\runtime
-      TEMP: ${{ runner.temp }}\yunxi-harness-ci\runtime
-      TMPDIR: ${{ runner.temp }}\yunxi-harness-ci\runtime
       PYTHONUTF8: "1"
       PYTHONDONTWRITEBYTECODE: "1"
       YUNXI_USE_FAKE_EMBEDDING: "1"
@@ -31,6 +27,15 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.13"
+
+      - name: Configure runner temporary directories
+        shell: pwsh
+        run: |
+          $base = Join-Path $env:RUNNER_TEMP "yunxi-harness-ci"
+          "PIP_CACHE_DIR=$(Join-Path $base 'pip-cache')" >> $env:GITHUB_ENV
+          "TMP=$(Join-Path $base 'runtime')" >> $env:GITHUB_ENV
+          "TEMP=$(Join-Path $base 'runtime')" >> $env:GITHUB_ENV
+          "TMPDIR=$(Join-Path $base 'runtime')" >> $env:GITHUB_ENV
 
       - name: Check dependency lock alignment
         shell: pwsh

@@ -115,20 +115,12 @@ def test_quality_steps_keep_reports_but_artifact_always_uploads() -> None:
 
 
 @pytest.mark.parametrize("workflow_path", [WORKFLOW_PATH, P0_WORKFLOW_PATH])
-def test_ci_runtime_directories_stay_outside_workspace(
-    workflow_path: Path,
-) -> None:
-    payload = _load_workflow(workflow_path)
-    env = _get_job(payload).get("env")
-    assert isinstance(env, dict), "Harness workflow 必须声明 job 级环境变量"
-    for name in ("PIP_CACHE_DIR", "TMP", "TEMP", "TMPDIR"):
-        value = str(env.get(name, ""))
-        assert "${{ runner.temp }}" in value, (
-            f"{workflow_path.name} 的 {name} 必须位于 GitHub Runner 临时目录"
-        )
-        assert "${{ github.workspace }}" not in value, (
-            f"{workflow_path.name} 的 {name} 不得污染 Git 工作区"
-        )
+def test_ci_runtime_directories_stay_outside_workspace(workflow_path: Path) -> None:
+    _load_workflow(workflow_path)
+    workflow_text = workflow_path.read_text(encoding="utf-8")
+    assert "$env:RUNNER_TEMP" in workflow_text
+    assert "$env:GITHUB_ENV" in workflow_text
+    assert "${{ github.workspace }}" not in workflow_text
 
 
 def test_p0_dependency_report_is_staged_after_gate() -> None:
