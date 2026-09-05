@@ -1,3 +1,24 @@
+## [2026-09-05] - fix(harness): 收口远端 P0 与 P1/P2 自评偏差（trace: 20260831-harness-p0-hardening）
+
+- 操作者: AI (Codex)
+- trace_id: `20260831-harness-p0-hardening`
+- run_id: `20260905-harness-remote-closeout-r1`
+- 背景: GitHub 授权完成后，继续核验 Harness P0 和 P1/P2 远端工作流。P0 在提交 `5524406` 上已通过，但 P1/P2 工作流虽然显示成功，artifact 内 Harness 自评仍失败，不能直接视为质量闭环完成。
+- implementation:
+  - P1/P2 workflow checkout 增加 `fetch-depth: 0`，确保 CI runner 能解析 PROJECT-STATE、任务指令和证据索引里的历史 `as_of_commit`。
+  - PROJECT-STATE 机器快照更新到 `c7b139a`，并将 `T-HARNESS-P0-HARDENING` 从进行中（active）收口为已完成（completed）；中文治理继续作为 Harness P0 控制面。
+  - 保留 P2 真人执行、发票修复、知识缺口和模拟器走查原有阻塞/待处理状态，不因 Harness P0 完成而自动放行。
+- validation:
+  - `gh run download 33943107364 --repo srafyhucl-cpu/yunxi-bakery --name harness-p0-report`：`p0-gate.json` 为 `status=passed`、`failed=0`，远端 SHA `552440653a53bf859e76bdb05f522c6cb22e09ee`。
+  - `gh run download 33943107387 --repo srafyhucl-cpu/yunxi-bakery --name harness-p1-p2-quality-loop`：发现 artifact 内 Harness 自评 6/8，根因是浅克隆无法解析历史提交和证据引用。
+  - `c7b139a` 修复浅克隆后，P1/P2 run `33943579936` artifact 提升为 7/8，仅剩 PROJECT-STATE 快照旧于 HEAD；P0 run `33943579875` 同因快照旧于 HEAD 失败 2 项，已由本次状态收口修正。
+  - `python -B backend/scripts/harness_eval_regression.py --summary`：本地 8/8 通过。
+  - `python -B backend/scripts/harness_p0_gate.py --summary`：本地 P0 统一门禁 9/9 通过，run_id `p0-gate-73369b0fe5e64f13`；本状态提交后需复核最新远端 P0 与 P1/P2 artifact。
+- 证据: `E-20260905-003`；提交 `c7b139a7f50ef2bab25ba680867821a38b2d0257`；GitHub Actions run `33943107364`、`33943107387`、`33943579936`、`33943579875`。
+- 未运行全量业务测试: 本轮只改 Harness CI 配置和治理状态文档，未修改业务逻辑；按验证矩阵执行 Harness 定向门禁。
+- 结论四分法: 结果正确=本地是、远端最终收口待本提交后复核；策略合规=是；证据完整=已记录偏差和修复依据；可回放=是。
+- 临时文件: `.tmp-harness-p0-r6` 继续保留为本轮下载的 CI artifact 与 pytest 临时目录；目录包含多文件，未按项目规则获得清理令牌前不递归删除。
+
 ## [2026-08-31] - chore(harness): 最终提交前质量循环核验（trace: 20260831-harness-p0-hardening）
 
 - 操作者: AI (Codex)

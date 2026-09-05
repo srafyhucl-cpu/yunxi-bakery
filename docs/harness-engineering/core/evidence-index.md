@@ -1,3 +1,24 @@
+## E-20260905-003：Harness P0 远端闭环与 P1/P2 自评浅克隆修复
+
+- trace_id: 20260831-harness-p0-hardening
+- generated_at: 2026-09-05
+- evidence_type: governance/harness-remote-ci-closeout
+- file: `git:c7b139a7f50ef2bab25ba680867821a38b2d0257:.github/workflows/harness-p1-p2.yml`；`external:github-actions/run/33943107364`；`external:github-actions/run/33943107387`；`external:github-actions/run/33943579936`；`external:github-actions/run/33943579875`
+- commit_sha: c7b139a7f50ef2bab25ba680867821a38b2d0257
+- command: `gh run download 33943107364 --repo srafyhucl-cpu/yunxi-bakery --name harness-p0-report`；`gh run download 33943107387 --repo srafyhucl-cpu/yunxi-bakery --name harness-p1-p2-quality-loop`；`gh run download 33943579936 --repo srafyhucl-cpu/yunxi-bakery --name harness-p1-p2-quality-loop`；`gh run download 33943579875 --repo srafyhucl-cpu/yunxi-bakery --name harness-p0-report`；`python -B backend/scripts/harness_eval_regression.py --summary`；`python -B backend/scripts/harness_p0_gate.py --summary`
+- result: pass
+- related_logbook: 2026-09-05 - fix(harness): 收口远端 P0 与 P1/P2 自评偏差
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录 GitHub Actions 运行号、治理脚本输出和 workflow 配置修复；不含密钥、客户原文、订单明细、真实支付信息或生产写入。
+- storage_scope: repository
+- repository_origin: monorepo
+- sha256: .github/workflows/harness-p1-p2.yml=e0126a4a39590983df36b196e64621de55be581cc99e1c8b8b83dfa842c8ae94
+- summary: GitHub 授权后，远端 P0 run 33943107364 在提交 5524406 上通过，artifact 内 `p0-gate.json` 为 `status=passed`、`failed=0`，中文治理 P0 为 16/16、六维 coverage=1.0。P1/P2 run 33943107387 的工作流结论为成功，但 artifact 中 Harness 自评只有 6/8，根因是默认浅克隆无法解析历史 `as_of_commit` 和证据提交；提交 c7b139a 将 P1/P2 checkout 改为 `fetch-depth: 0` 后，P1/P2 自评恢复到 7/8，仅剩 PROJECT-STATE 快照仍指向旧父提交；本轮状态收口把机器快照和 `T-HARNESS-P0-HARDENING` 更新到 c7b139a 父快照，并在本地确认 Harness 自评 8/8、P0 总门禁 9/9（run_id `p0-gate-73369b0fe5e64f13`），用于关闭剩余状态新鲜度偏差。
+- failure_class: none
+- replayable: yes
+- residual_risks: 本状态收口提交推送后仍需重新核验最新 P0 与 P1/P2 artifact；P2 真人执行、发票修复、知识缺口和模拟器走查仍按 PROJECT-STATE 保持阻塞或待处理，不因 Harness P0 完成而自动启动。
+
 ## E-20260905-002：RAG 观测缺库降级与状态快照同步
 
 - trace_id: 20260831-harness-p0-hardening
