@@ -1,3 +1,21 @@
+## E-20260905-001：Harness P0 CI 外部证据与时区依赖修复
+
+- trace_id: 20260831-harness-p0-hardening
+- generated_at: 2026-09-05
+- evidence_type: governance/harness-p0-ci-fix
+- file: `git:6a55fb5410d6b461f447372f8bf6eb4d345a8294:backend/scripts/check_evidence_index.py`；`git:6a55fb5410d6b461f447372f8bf6eb4d345a8294:backend/scripts/check_project_development_register.py`；`git:6a55fb5410d6b461f447372f8bf6eb4d345a8294:backend/requirements.in`；`git:6a55fb5410d6b461f447372f8bf6eb4d345a8294:backend/requirements.txt`；`git:6a55fb5410d6b461f447372f8bf6eb4d345a8294:backend/requirements-dev.txt`；`local:reports/harness/p0-gate-20260905-ci-fix.json`
+- commit_sha: 6a55fb5410d6b461f447372f8bf6eb4d345a8294
+- command: `python -B -m pytest backend/tests/scripts/test_check_project_development_register.py backend/tests/scripts/test_check_evidence_index.py backend/tests/scripts/test_check_requirements_lock_alignment.py -q --no-cov`；`python -B backend/scripts/check_requirements_lock_alignment.py --summary`；`python -B backend/scripts/check_project_development_register.py`；`python -B backend/scripts/check_evidence_index.py --summary`；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/harness_p0_gate.py --summary --json-out backend/reports/harness/p0-gate-20260905-ci-fix.json`；`pre-commit run`
+- result: pass
+- related_logbook: 2026-09-05 - fix(harness): 关闭 CI 外部证据与时区依赖缺口
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录 CI 门禁、依赖锁和证据来源口径；不含密钥、客户数据、订单明细或生产写入。
+- storage_scope: repository
+- repository_origin: monorepo
+- sha256: backend/scripts/check_evidence_index.py=e58c1527dec2572ac731d0824931fc35926434cd688c3d75e86644c4869a12dc；backend/scripts/check_project_development_register.py=cf7ff25ffd37a0c8e8a500a41b952c81a0d8a6af7b38c5bd8207fd3ab59feb2d；backend/requirements.in=0ce99bd7becaa45801f7b325c2efe8d74cb9b3ba375133db03714abde6519e7a；backend/requirements.txt=ee571d590682c9c61431949290c109d658491b7fad67294910b9942c34fa51b9；backend/requirements-dev.txt=2323859bed5ac4e1918b0062b5cbbffa33bc70e20e76d6f77de6591966cc8849
+- summary: 修复 Harness P0 在无旧仓 CI runner 上的三类失败：明确外部冻结轨道提交可在无旧仓环境保留为不可解析引用；迁移前历史证据在无法取得旧仓时统计为 `external_unverified` 但不冒充当前仓通过，迁移后新证据仍保持 fail-closed；生产和开发依赖锁补入 `tzdata`。本地 P0 门禁 9/9，锁一致性 91/91，中文治理六维覆盖率 1.0，pre-commit 全部通过；GitHub Actions artifact 待推送后核验。
+
 ## E-20260815-009：B3.5 账务核心合同冻结整改治理校验
 
 - trace_id: 20260815-member-loyalty-accounting-contract-b35

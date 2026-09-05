@@ -16654,3 +16654,14 @@ ______________________________________________________________________
 - human_intervention: 无；未进行提交、推送、生产部署或真实支付操作。
 - replayable: 是；可按本条命令和 `run_id` 重放。
 - residual_risks: 变更尚未提交，因此远端 CI 和基于提交的评审仍会看到旧快照；需要项目负责人按提交流程收口后，云端验证才会覆盖本次修复。
+## [2026-09-05] - fix(harness): 关闭 CI 外部证据与时区依赖缺口（trace: 20260831-harness-p0-hardening）
+
+- 操作者: AI (Codex)
+- trace_id: `20260831-harness-p0-hardening`
+- run_id: `p0-gate-ee56f1ec8fe3457d`
+- 背景: GitHub Actions P0 在干净 Windows runner 上暴露三类环境差异：外部冻结轨道提交无法解析、迁移前旧仓证据无法取得、`Asia/Shanghai` 缺少 `tzdata`。
+- 修复: 外部 `external:` 轨道允许在无旧仓环境下保留不可解析提交；迁移前历史 Git 证据记为 `external_unverified` 但不伪装为当前仓通过，迁移后当前仓证据仍 fail-closed；生产与开发锁文件补入 `tzdata`。
+- validation: 定向 Harness 测试通过；依赖锁一致性 `91/91`；开发总表 PASS；证据索引本地 PASS；中文治理 PASS；本地 P0 门禁 `9/9`，run_id=`p0-gate-ee56f1ec8fe3457d`；pre-commit 全部通过。
+- 证据: `E-20260905-001`；提交 `6a55fb5410d6b461f447372f8bf6eb4d345a8294`。
+- 结论四分法: 结果正确=是；策略合规=是；证据完整=本地是、云端待复核；可回放=是。任务 `T-HARNESS-P0-HARDENING` 继续保持进行中（active），等待远端 SHA 与 GitHub Actions P0/P1 artifact。
+- 未运行全量业务测试: 本轮仅涉及 Harness 检查器、依赖锁和定向测试，未修改业务逻辑；按验证矩阵执行定向门禁。
