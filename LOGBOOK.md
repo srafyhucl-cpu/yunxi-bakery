@@ -1,3 +1,25 @@
+## [2026-09-05] - fix(harness): 隔离 CI 运行时产物避免工作区误报
+
+- 操作者: AI (Codex)
+- trace_id: `20260905-harness-evidence-error-loop`
+- run_id: `local-20260905-ci-workspace-fix`
+- 背景: 远端 P0 run `33966091260` 的“项目开发总表”和“项目红线”因 GitHub Actions 在工作区创建 `.tmp-harness-ci` 而失败；同一远端 P1/P2 run `33966091243` 的 `harness_eval` 也报告 `workspace_state` 与 Git 不一致。依赖锁报告在 P0 门禁前写入工作区，进一步放大了污染窗口。
+- implementation:
+  - `.github/workflows/harness-p0.yml` 将 `PIP_CACHE_DIR`、`TMP`、`TEMP`、`TMPDIR` 迁移到 `${{ runner.temp }}`。
+  - P0 依赖锁报告先写入 Runner 临时目录，门禁完成后再复制到 artifact 目录，避免门禁检查时自污染工作区。
+  - `.github/workflows/harness-p1-p2.yml` 同步迁移运行时目录到 `${{ runner.temp }}`。
+  - `test_harness_workflow_contract.py` 增加 P0/P1/P2 运行目录不污染工作区和依赖锁报告延后落盘的回归合同。
+- validation:
+  - `python -B -m pytest backend/tests/scripts/test_harness_workflow_contract.py -q --no-cov --basetemp=D:\Temp\yunxi-harness-ci-fix-pytest` → EXIT=0（9 项）。
+  - `python -B -m ruff check backend/tests/scripts/test_harness_workflow_contract.py` → EXIT=0。
+  - `python -B -m ruff format --check backend/tests/scripts/test_harness_workflow_contract.py` → EXIT=0。
+  - YAML 解析 → EXIT=0（P0/P1/P2 两个 workflow）。
+  - 扩展定向套件中依赖当前工作区为 staged dirty 的状态测试失败，属于提交前状态契约，不是实现回归；待第一阶段提交后在 clean 工作区复跑。
+- 证据: 远端 artifact `D:\Temp\yunxi-harness-remote-33966091260\p0-gate.json`、`D:\Temp\yunxi-harness-remote-33966091243\harness-eval-latest.json`；本地合同测试。
+- 未运行全量业务测试: 本轮仅修改 Harness workflow 和合同测试，未触及 `backend/app/**` 业务逻辑。
+- 结论四分法: 结果正确=本地合同验证通过；策略合规=是；证据完整=远端失败原因已解析，修复后的远端结果待推送后验证；可回放=是。
+- 残余风险: 新提交推送后必须重新核验 P0/P1/P2 workflow 的最终结论、artifact index 和中文 Summary；错误候选保持 `pending`，不自动写入 `ERRORS.md`。
+
 ## [2026-09-05] - fix(harness): Harness 证据完整性与错误候选闭环
 
 - 操作者: AI (OpenCode)

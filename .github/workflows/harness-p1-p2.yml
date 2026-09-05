@@ -52,10 +52,10 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 15
     env:
-      PIP_CACHE_DIR: ${{ github.workspace }}\.tmp-harness-ci\pip-cache
-      TMP: ${{ github.workspace }}\.tmp-harness-ci\runtime
-      TEMP: ${{ github.workspace }}\.tmp-harness-ci\runtime
-      TMPDIR: ${{ github.workspace }}\.tmp-harness-ci\runtime
+      PIP_CACHE_DIR: ${{ runner.temp }}\yunxi-harness-ci\pip-cache
+      TMP: ${{ runner.temp }}\yunxi-harness-ci\runtime
+      TEMP: ${{ runner.temp }}\yunxi-harness-ci\runtime
+      TMPDIR: ${{ runner.temp }}\yunxi-harness-ci\runtime
       PYTHONUTF8: "1"
       PYTHONDONTWRITEBYTECODE: "1"
       YUNXI_USE_FAKE_EMBEDDING: "1"

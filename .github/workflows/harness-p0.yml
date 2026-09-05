@@ -14,10 +14,10 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 15
     env:
-      PIP_CACHE_DIR: ${{ github.workspace }}\.tmp-harness-ci\pip-cache
-      TMP: ${{ github.workspace }}\.tmp-harness-ci\runtime
-      TEMP: ${{ github.workspace }}\.tmp-harness-ci\runtime
-      TMPDIR: ${{ github.workspace }}\.tmp-harness-ci\runtime
+      PIP_CACHE_DIR: ${{ runner.temp }}\yunxi-harness-ci\pip-cache
+      TMP: ${{ runner.temp }}\yunxi-harness-ci\runtime
+      TEMP: ${{ runner.temp }}\yunxi-harness-ci\runtime
+      TMPDIR: ${{ runner.temp }}\yunxi-harness-ci\runtime
       PYTHONUTF8: "1"
       PYTHONDONTWRITEBYTECODE: "1"
       YUNXI_USE_FAKE_EMBEDDING: "1"
@@ -35,8 +35,9 @@ jobs:
       - name: Check dependency lock alignment
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path reports/harness | Out-Null
-          python backend/scripts/check_requirements_lock_alignment.py --summary --json-out reports/harness/requirements-lock-alignment.json
+          $report = Join-Path $env:RUNNER_TEMP "yunxi-harness-ci\requirements-lock-alignment.json"
+          New-Item -ItemType Directory -Force -Path (Split-Path -Parent $report) | Out-Null
+          python backend/scripts/check_requirements_lock_alignment.py --summary --json-out $report
 
       - name: Install backend dependencies
         shell: pwsh
@@ -68,6 +69,14 @@ jobs:
             throw "无法解析 Harness CI 目标提交 SHA"
           }
           python backend/scripts/harness_p0_gate.py --summary --json-out reports/harness/p0-gate.json --policy-base-sha $base --policy-head-sha $head
+
+      - name: Stage dependency lock report
+        if: always()
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path reports/harness | Out-Null
+          $report = Join-Path $env:RUNNER_TEMP "yunxi-harness-ci\requirements-lock-alignment.json"
+          Copy-Item -LiteralPath $report -Destination reports/harness/requirements-lock-alignment.json -ErrorAction Stop
 
       - name: Upload Harness P0 report
         if: always()

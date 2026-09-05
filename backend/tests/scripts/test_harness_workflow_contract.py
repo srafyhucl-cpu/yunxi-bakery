@@ -8,15 +8,19 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 import yaml
 
 WORKFLOW_PATH = (
     Path(__file__).resolve().parents[3] / ".github" / "workflows" / "harness-p1-p2.yml"
 )
+P0_WORKFLOW_PATH = (
+    Path(__file__).resolve().parents[3] / ".github" / "workflows" / "harness-p0.yml"
+)
 
 
-def _load_workflow() -> dict:
-    text = WORKFLOW_PATH.read_text(encoding="utf-8")
+def _load_workflow(path: Path = WORKFLOW_PATH) -> dict:
+    text = path.read_text(encoding="utf-8")
     payload = yaml.safe_load(text)
     assert isinstance(payload, dict), "workflow 根节点必须是对象"
     assert "jobs" in payload, "workflow 缺少 jobs"
@@ -108,6 +112,49 @@ def test_quality_steps_keep_reports_but_artifact_always_uploads() -> None:
     assert quality_steps, "质量步骤应通过 continue-on-error 保留后续报告"
     upload = _find_step(steps, uses_contains="actions/upload-artifact")
     assert upload.get("if") == "always()", "失败路径仍必须上传 artifact"
+
+
+@pytest.mark.parametrize("workflow_path", [WORKFLOW_PATH, P0_WORKFLOW_PATH])
+def test_ci_runtime_directories_stay_outside_workspace(
+    workflow_path: Path,
+) -> None:
+    payload = _load_workflow(workflow_path)
+    env = _get_job(payload).get("env")
+    assert isinstance(env, dict), "Harness workflow 必须声明 job 级环境变量"
+    for name in ("PIP_CACHE_DIR", "TMP", "TEMP", "TMPDIR"):
+        value = str(env.get(name, ""))
+        assert "${{ runner.temp }}" in value, (
+            f"{workflow_path.name} 的 {name} 必须位于 GitHub Runner 临时目录"
+        )
+        assert "${{ github.workspace }}" not in value, (
+            f"{workflow_path.name} 的 {name} 不得污染 Git 工作区"
+        )
+
+
+def test_p0_dependency_report_is_staged_after_gate() -> None:
+    payload = _load_workflow(P0_WORKFLOW_PATH)
+    steps = _get_steps(_get_job(payload))
+    alignment = next(
+        step
+        for step in steps
+        if "check_requirements_lock_alignment.py" in str(step.get("run", ""))
+    )
+    alignment_run = str(alignment["run"])
+    assert "RUNNER_TEMP" in alignment_run
+    assert "reports/harness/requirements-lock-alignment.json" not in alignment_run
+
+    gate_index = next(
+        index
+        for index, step in enumerate(steps)
+        if "harness_p0_gate.py" in str(step.get("run", ""))
+    )
+    stage_index = next(
+        index
+        for index, step in enumerate(steps)
+        if step.get("name") == "Stage dependency lock report"
+    )
+    assert stage_index > gate_index
+    assert "requirements-lock-alignment.json" in str(steps[stage_index].get("run", ""))
 
 
 def test_failure_candidate_generation_step_contract() -> None:
