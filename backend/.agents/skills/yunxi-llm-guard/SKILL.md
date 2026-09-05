@@ -11,7 +11,7 @@ description: "【必须在动代码前调用】芸熙烘焙 AI 客服 LLM 集成
 如果本次 LLM 问题涉及幻觉、意图误判、工具循环失控、兜底缺失、转人工遗漏或 Prompt 规则回归，先联动 `yunxi-harness-engineering`：
 
 - 把失败案例沉淀为可复现测试或评估样本。
-- 在 `docs/harness-engineering/core/mistake-ledger.md` 记录根因和新增防线。
+- 在根目录 `ERRORS.md` 记录根因和新增防线，不得复制到其他账本。
 - 上线前按 `docs/harness-engineering/core/verification-matrix.md` 选择 LLM/客服链路验证。
 
 ## DeepSeek 调用规范

@@ -3,7 +3,7 @@
   "$id": "https://yunxi-bakery.local/schemas/chinese-governance.json",
   "schema_version": "1.0",
   "model_id": "yunxi-chinese-governance",
-  "updated_at": "2026-08-31",
+  "updated_at": "2026-09-05",
   "description": "Harness 中文治理六维度机器契约；机器字段保留 ASCII，人类可读内容优先使用中文。",
   "dimensions": [
     {
@@ -72,6 +72,7 @@
         "docs/harness-engineering/core/delivery-artifact-template.md",
         "docs/harness-engineering/core/evidence-index.md",
         "docs/harness-engineering/core/run-manifest.schema.json",
+        "docs/harness-engineering/core/failure-candidate.schema.json",
         "docs/harness-engineering/core/traceability-model.md"
       ],
       "required_markers": ["结果正确", "策略合规", "证据完整", "可回放"]

@@ -67,8 +67,13 @@ ______________________________________________________________________
 - `backend/scripts/harness_run_manifest.py` / `backend/scripts/check_harness_run_manifest.py`：生成并校验运行 manifest 与 episode。
 - `backend/scripts/harness_policy.py` / `backend/scripts/check_harness_policy.py`：读取策略快照、校验敏感路径和高风险操作；CI 传入 `--base/--head` 按提交范围检查，避免干净工作区漏检。
 - `backend/scripts/harness_p0_gate.py`：串联上述 P0 检查并输出不可覆盖的 JSON 门禁报告。
-- `backend/scripts/harness_eval_regression.py`：运行八项 Harness 自评回归集并生成趋势基线。
+- `backend/scripts/harness_eval_regression.py`：运行 Harness 自评回归集（18 项）并生成趋势基线。
 - `backend/scripts/observe_harness_runs.py`：汇总运行 manifest 的失败分类、延迟、工具调用、回放和恢复点指标。
+- `backend/scripts/harness_ci_summary.py`：汇总 P1/P2 CI 步骤与报告，向 GitHub Summary/annotation 显式暴露失败。
+- `backend/scripts/build_harness_artifact_index.py`：为 Harness CI 报告目录生成带 SHA-256 的 artifact 索引，并校验必需证据集合（含 `.run.json`、候选目录和 summary）。
+- `backend/scripts/harness_failure_candidate.py`：从 CI 失败生成错误候选（稳定 fingerprint 去重，默认 pending，不修改 `ERRORS.md`）。
+- `backend/scripts/review_failure_candidate.py`：人工 review 错误候选；只有 accept 才写入根目录 `ERRORS.md`，reject/defer 只生成 review 记录。
+- `docs/harness-engineering/core/failure-candidate.schema.json`：错误候选结构契约（候选字段、状态机和 fingerprint 约束）。
 - `backend/scripts/check_doc_garden.py`：只读扫描文档断链、任务入口漂移和低风险中文覆盖；不作为 P0 阻断。
 
 ______________________________________________________________________
@@ -156,6 +161,31 @@ python -B backend/scripts/harness_p0_gate.py --summary --json-out backend/report
 
 清理脚本必须先预览再执行：预览输出目标清单授权令牌，执行时使用 `-PreviewToken <令牌> -Execute`；目标路径或文件状态变化会导致令牌失效并拒绝删除。
 
+### 错误候选闭环（trace: 20260905-harness-evidence-error-loop）
+
+CI 失败自动生成错误候选，人工确认后才进入正式账本；状态机固定为：
+
+```text
+pending → accepted / rejected / deferred
+```
+
+- 生成：P1/P2 CI 失败时（`harness_failure_candidate.py --from-ci`）自动生成 `pending` 候选到 `backend/reports/harness/failure-candidates/`；CI 成功且报告内部无明确 `failed` 时只写结构化空报告，不生成候选。
+- fingerprint：`failure_class + 规范化 summary + 规范化 evidence_files` 的 SHA-256；不含时间戳、绝对路径或随机 ID，重复计算必须一致。同一 fingerprint 只保留一个 `pending` 候选，后续运行在生成报告中记录 `duplicate_of`。
+- 查重：`discover_duplicate` 同时检查候选目录和根目录 `ERRORS.md`（通过正式条目的 `- fingerprint:` 行）。
+- 边界：候选生成绝不修改 `ERRORS.md`；`reject`/`defer` 只生成 `<candidate_id>.review.json`，不修改 `ERRORS.md`；只有 `accept`（`review_failure_candidate.py`，必须提供 root_cause/impact/fix/new_guardrail/verification/next_time_signal）经临时内容校验后一次性写入 `ERRORS.md`，生成新的 `M-YYYYMMDD-NNN` 条目并运行 `check_mistake_ledger.py`。候选文件本身不可覆盖，review 记录写新文件。
+- 契约：候选字段与状态机见 [core/failure-candidate.schema.json](core/failure-candidate.schema.json)。
+
+### P1/P2 CI 证据包（artifact index）
+
+P1/P2 workflow 失败时仍上传完整证据包（上传路径 `backend/reports/harness/**`，`if-no-files-found: error`）。必需证据集合由 `build_harness_artifact_index.DEFAULT_REQUIRED_PATTERNS` 固定：
+
+```text
+harness-eval-*.json、harness-observation-*.json、doc-garden-*.json、
+ci-quality-loop*.run.json、artifact-index*.json、failure-candidates/*.json
+```
+
+artifact index 对目录内全部文件计算 SHA-256 并列出 `required_files`/`missing_files`；缺少必需文件时输出 `status=failed` 的索引报告，由汇总步骤（`harness_ci_summary.py`）将失败写入 GitHub Summary 与 annotation 并使 job 失败。索引文件自身以自引用条目计入（不计算哈希）。汇总 Markdown 双写 `GITHUB_STEP_SUMMARY` 与 `ci-summary-<run_id>.md`，固定包含失败分类、证据路径和未验证范围三个中文区段。
+
 ______________________________________________________________________
 
 ## P1 机器辅助工具
@@ -173,7 +203,10 @@ ______________________________________________________________________
 | `python -B backend/scripts/check_harness_policy.py --git-diff --summary` | 检查当前变更路径与高风险操作策略 |
 | `python -B backend/scripts/check_harness_run_manifest.py --summary` | 批量校验运行 manifest 与 episode |
 | `python -B backend/scripts/harness_p0_gate.py --summary` | 执行仓库级 Harness P0 统一门禁 |
-| `python -B backend/scripts/harness_eval_regression.py --summary` | 执行 Harness 八项自评回归并输出通过比例、失败分类和数据集版本 |
+| `python -B backend/scripts/harness_eval_regression.py --summary` | 执行 Harness 18 项自评回归并输出通过比例、失败分类和数据集版本 |
+| `python -B backend/scripts/build_harness_artifact_index.py --report-dir backend/reports/harness --run-id <run_id> --summary` | 为报告目录生成带 SHA-256 的 artifact 索引并校验必需证据集合 |
+| `python -B backend/scripts/harness_failure_candidate.py --validate <候选文件>` | 校验错误候选结构与 fingerprint 一致性 |
+| `python -B backend/scripts/review_failure_candidate.py --candidate <候选> --decision accept\|reject\|defer --operator <负责人> --reason <理由>` | 人工 review 错误候选；只有 accept 会写入根目录 `ERRORS.md` |
 | `python -B backend/scripts/observe_harness_runs.py --summary` | 汇总运行 manifest 的趋势、回放、恢复点、延迟和工具调用指标 |
 | `python -B backend/scripts/check_doc_garden.py --summary --fail-on error` | 扫描文档园艺问题；历史归档断链可降级为 warning，不阻断 P0 |
 | `.\scripts\enable_utf8_console.ps1` | 修复当前 Windows PowerShell 会话的中文输入输出乱码 |

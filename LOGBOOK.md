@@ -1,3 +1,37 @@
+## [2026-09-05] - fix(harness): Harness 证据完整性与错误候选闭环
+
+- 操作者: AI (OpenCode)
+- trace_id: `20260905-harness-evidence-error-loop`
+- run_id: `local-20260905-a1`；task_id: `T-HARNESS-CI-EVIDENCE-COMPLETE`、`T-HARNESS-ERROR-CANDIDATE-LOOP`
+- 背景: 远端 P1/P2 workflow 的上传步骤 `uses:` 缩进错误导致 YAML 不可解析、失败时证据包不完整（仅 `*latest.json`、`if-no-files-found: warn`）；同时错误只有人工随手写入 `ERRORS.md` 的路径，缺少"自动生成候选 → 人工确认 → 正式入账"的可回放闭环。
+- implementation:
+  - workflow 合同测试先行（`test_harness_workflow_contract.py` 6 项：可解析、`fetch-depth: 0`、上传步骤 if/uses/with 同级、汇总步骤不得 continue-on-error、`if-no-files-found: error`、上传路径 `backend/reports/harness/**`），修复 `.github/workflows/harness-p1-p2.yml`。
+  - 新增 `build_harness_artifact_index.py`：扫描报告目录生成带 SHA-256 的索引，必需集合含 `harness-eval-*`、`harness-observation-*`、`doc-garden-*`、`ci-quality-loop*.run.json`、`artifact-index*`、`failure-candidates/*.json`；缺必需文件输出 `status=failed` 索引并使汇总失败；拒绝目录穿越与覆盖。
+  - `harness_ci_summary.py` 扩展：run manifest 缺失/非法与 artifact index 失败计入 failures；中文 Summary 固定"失败分类/证据路径/未验证范围"三区段；`--summary-output` 双写 `ci-summary-<run_id>-a<attempt>.md`（拒绝覆盖）。
+  - workflow 新增候选生成步骤（`if: always()` + `continue-on-error: true`，失败标记 `failure_candidate_generation`，不掩盖原始 CI 失败）与 artifact index 步骤；run_id 带 `-a<attempt>` 防 re-run 覆盖。
+  - 新增 `harness_failure_candidate.py`：候选默认 `pending`，fingerprint=`failure_class+规范化 summary+规范化 evidence_files` 的 SHA-256（不含时间/绝对路径/随机 ID）；`discover_duplicate` 同时查候选目录与 `ERRORS.md`（`- fingerprint:` 行）；成功且无失败分类时只写结构化空报告；绝不修改 `ERRORS.md`。
+  - 新增 `review_failure_candidate.py`：reject/defer 只写 `<candidate_id>.review.json`；accept 必须提供 root_cause/impact/fix/new_guardrail/verification/next_time_signal，临时内容校验通过后一次性写入新 `M-YYYYMMDD-NNN` 条目（含 `- fingerprint:` 回链），已 `duplicate_of` 默认拒绝除非 `--override-duplicate`；候选文件不可覆盖。`check_mistake_ledger.py` 仅新增 fingerprint 64 位十六进制一致性检查。
+  - P0 workflow 不接入候选生成：P0 是门禁型工作流，不产出质量循环报告语料（无 eval/observation/doc-garden/.run.json 报告目录口径），候选闭环仅接入 P1/P2。
+  - 审查修复轮（同 trace）：①workflow 在汇总步骤后新增"最终 artifact index"步骤（无 continue-on-error，失败直接使 job 失败），使索引覆盖并哈希校验最终 `ci-summary-*.md`（本地 a2 索引 64 文件验证，summary md 哈希 e83c9de2…）；②accept 入账改为原子顺序——`prepare_accept_entry` 先完成全部校验与临时内容检查（此时账本与 review 均未动）→ 先写 review 记录（已存在则整体失败）→ 再提交账本，账本写入失败时回滚本轮新建的 review 记录（`commit_accept`），杜绝"命令失败但账本已变更"；③删除 `harness_failure_candidate.py` 未使用的 `timezone` 导入（Ruff F401），并补 CLI 选项冲突防回归测试。
+  - 自评数据集升级 1.2.0（12→18 项）：workflow YAML 可解析、artifact index 覆盖 `.run.json`、候选不触碰账本、accept 才入账、reject/defer 不入账、中文 Summary 三区段；中文治理模型 delivery 维度纳入 `failure-candidate.schema.json`。
+- validation:
+  - 定向 pytest 八套件 73 项 → EXIT=0（含 review 原子性回归 2 项与 CLI 选项冲突防回归 1 项）。
+  - `python -m ruff check`（本轮 5 个 Harness 脚本）→ EXIT=0。
+  - `check_chinese_governance.py --summary` → EXIT=0（16/16，coverage=1.0，dimensions=1.0）。
+  - `check_mistake_ledger.py` → EXIT=0（entries=26，未新增正式条目，演练候选以 reject 关闭）。
+  - `check_project_development_register.py` → EXIT=0（tasks=32）。
+  - `harness_eval_regression.py --summary` → EXIT=0（18/18，数据集 1.2.0）。
+  - `harness_p0_gate.py --summary` → EXIT=0（9/9，run_id `p0-gate-7788e47fb0114e42`；审查修复后复跑）。
+  - `check_doc_garden.py --summary --fail-on error` → EXIT=0（142 文件，0 errors，18 warnings）。
+  - `check_evidence_index.py --summary` → EXIT=0（384 条，failed=0，E-20260905-005）。
+  - `build_harness_artifact_index.py` 本地 run `local-20260905-a1` → 62 文件 0 缺失，status=passed；审查修复后 run `local-20260905-a2` → 64 文件 0 缺失，且包含 `ci-summary-local-20260905-a2.md` 的真实 SHA-256（覆盖最终 Summary）；另按 workflow 同名口径生成 `local-20260905-a2-final` 索引（65 文件 0 缺失，status=passed），供推送前直接核验最终 index 内容。
+  - 本地演练：生成 `pending` 候选 `cand-d362ee3f3b9149cb`（fingerprint=efa3418d…8408）→ reject → `ERRORS.md` 保持 26 条不变；审查修复轮复现"review 文件已存在时 accept"场景，确认命令整体失败且账本不变。
+  - `git diff --check` → EXIT=0（仅 CRLF 提示）。
+- 证据: `E-20260905-005`；`backend/reports/harness/artifact-index-local-20260905-a1.json`；`backend/reports/harness/ci-quality-loop-local-20260905-a1.run.json`（run_id `20260905-074517-972b41df0748`）；`backend/reports/harness/harness-eval-20260905-evidence-loop.json`；`backend/reports/harness/harness-observation-20260905-evidence-loop.json`（13 runs）；`backend/reports/harness/doc-garden-20260905-evidence-loop.json`；`backend/reports/harness/failure-candidates/local-20260905-a1-demo.json` 与对应 `.review.json`。
+- 未运行全量业务测试: 本轮只改 Harness CI 配置、Harness 脚本/测试与治理文档，未触及 `backend/app/**` 业务逻辑；按验证矩阵执行定向门禁与 P0 统一门禁。
+- 结论四分法: 结果正确=是（本地全部门禁通过，远端 CI 待提交推送后核验）；策略合规=是（未访问生产/真实支付/客户数据/旧仓，未越界 `backend/app/**`）；证据完整=本地是、远端未验证；可回放=是（候选 fingerprint、artifact index 哈希与 manifest episode 均可重放）。
+- 残余风险: workflow/候选闭环为首个实施周期，无多周期趋势样本，成熟度维持 3.0/5；远端 P0 与 P1/P2 run 的 artifact index、候选生成报告和中文 Summary 需推送后用 `gh run download` 复核；错误候选真实入账（accept）需下一次真实失败由项目负责人人工确认。
+
 ## [2026-09-05] - fix(harness): 收口远端 P0 与 P1/P2 自评偏差（trace: 20260831-harness-p0-hardening）
 
 - 操作者: AI (Codex)
@@ -16696,3 +16730,10 @@ ______________________________________________________________________
 - validation: RAG 观测定向测试 16 项通过；`check_project.py --skip-tests` 本地通过；pre-commit 全部通过。上一次远端 P0 run `33942725954` 的失败仅剩快照过期，待本提交重跑。
 - 证据: `E-20260905-002`；提交 `dd94f7e2b1292477f8325833a7561d0d55780c5b`。
 - 结论四分法: 结果正确=是；策略合规=是；证据完整=本地是、云端待复核；可回放=是。任务 `T-HARNESS-P0-HARDENING` 继续保持进行中（active），等待远端 P0/P1 artifact。
+# 20260905-harness-p1-p2-quality-loop
+
+- trace_id: `20260905-harness-p1-p2-quality-loop`
+- 目标：修正 P1/P2 CI 结果表达，接入真实运行观测样本，扩展 Harness 回归集并同步成熟度/P2 文档口径。
+- 结果：新增 CI 汇总脚本与最终失败门禁；CI 记录 `.run.json` 并刷新观测；回归集从 8 项扩展为 12 项；成熟度维持 3.0/5，明确趋势证据尚在积累。
+- 验证：定向 pytest 6/6；`harness_eval_regression.py --summary` 为 12/12；`observe_harness_runs.py --summary` 为 12 runs；doc garden 0 errors/17 warnings。
+- 策略：未访问生产、支付或客户数据；未删除有效报告；临时目录按白名单清理流程处理。

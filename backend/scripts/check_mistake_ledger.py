@@ -34,6 +34,8 @@ REQUIRED_FIELDS = (
 ALLOWED_STATUS = frozenset({"open", "guarded", "verified"})
 ALLOWED_SEVERITY = frozenset({"low", "medium", "high", "critical"})
 EMPTY_LEDGER_MARKER = "暂无正式条目"
+# 候选关联字段：错误候选 accept 入账时可携带 fingerprint，便于查重回链。
+FINGERPRINT_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
 @dataclass(frozen=True)
@@ -97,6 +99,9 @@ def validate_entry(entry: LedgerEntry) -> list[str]:
     severity = entry.fields.get("severity")
     if severity and severity not in ALLOWED_SEVERITY:
         issues.append(f"{entry.entry_id}: invalid severity `{severity}`")
+    fingerprint = entry.fields.get("fingerprint")
+    if fingerprint and not FINGERPRINT_RE.fullmatch(fingerprint):
+        issues.append(f"{entry.entry_id}: invalid fingerprint `{fingerprint}`")
     return issues
 
 

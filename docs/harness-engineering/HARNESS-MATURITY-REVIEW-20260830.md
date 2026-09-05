@@ -130,6 +130,16 @@
 2. Harness 自评数据集、趋势基线和运行观测持续产出。
 3. 文档园艺和低风险中文维护形成周期任务。
 
+### 2026-09-05 复核口径
+
+本轮完成 P1/P2 质量循环加固：CI 汇总会将 artifact 失败写入 job summary 和 annotation，并以汇总步骤失败结束；Harness 自评扩展为 12 项且本地通过 12/12；运行观测已接入 CI manifest，当前本地样本为 12 个运行。上述证据仍属于初始趋势样本，不满足“持续周期趋势”门槛，因此成熟度评级继续保持 **3.0/5**。后续至少需要多个周期的非零 CI/local manifest、可比较 baseline 与失败分类趋势，再评估升级。
+
+P2 维护项：历史归档断链继续按 warning 保留并标注“历史不可复原引用”；低风险中文文案、日志、脚本输出和术语表建立量化基线；GitHub Actions 的 checkout/setup-python/upload-artifact Node 24 兼容主版本已升级，后续仅需跟踪平台弃用通知。
+
+### 2026-09-05 增补（trace: 20260905-harness-evidence-error-loop）
+
+本轮修复 P1/P2 workflow YAML 可解析性并补齐 CI 证据包：artifact index（`build_harness_artifact_index.py`）对报告目录全部文件计算 SHA-256 并校验必需证据集合（含 `.run.json`、候选目录与 summary），失败时仍上传 `backend/reports/harness/**` 且汇总步骤显式失败；同时建立错误候选闭环（`harness_failure_candidate.py` + `review_failure_candidate.py`），候选默认 `pending`、稳定 fingerprint 去重、只有人工 accept 写入根目录 `ERRORS.md`。Harness 自评数据集升级到 1.2.0（18 项）。新增能力仍处于首个实施周期，无多周期趋势样本，成熟度评级继续保持 **3.0/5**；中文治理区分四类口径——静态中文治理覆盖率、CI/运行输出中文可读性、证据包完整性、人工批准与错误入账，其中前两类已量化（coverage=1.0、Summary 固定中文区段），后两类由 artifact index 与 review 记录承担。
+
 ## 七、来源与可复核性
 
 - 评审入口： [OpenAI Harness Engineering](https://openai.com/index/harness-engineering/)

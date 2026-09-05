@@ -56,6 +56,24 @@ ______________________________________________________________________
 证据保留原始提交并由检查器标记 `legacy:YunxiBakeBot`；无法读取来源时标记为
 `external`/`external_unverified`，不得把旧仓证据改写成当前仓证据。
 
+### 错误候选追溯字段（trace: 20260905-harness-evidence-error-loop）
+
+错误候选（`docs/harness-engineering/core/failure-candidate.schema.json`）是运行级失败
+事实到正式错误账本之间的候选层，必须绑定任务追溯字段：
+
+| 字段 | 说明 |
+|---|---|
+| `candidate_id` | 随机生成的候选标识，只用于候选与 review 记录，不得复用为 `ERRORS.md` 条目 ID |
+| `fingerprint` | `failure_class + 规范化 summary + 规范化 evidence_files` 的 SHA-256，可重复计算 |
+| `status` | `pending → accepted / rejected / deferred`；生成时必须为 `pending` |
+| `run_id` / `trace_id` / `task_id` / `as_of_commit` / `version` | 绑定生成时的运行与代码快照 |
+| `evidence_files` | 证据相对路径列表，进入 artifact index 哈希校验 |
+| `duplicate_of` | 重复候选指向已有候选 ID 或 `ERRORS.md` 条目 |
+| `review.operator / reviewed_at / decision / reason` | 人工 review 记录；accept 后写入 `ERRORS.md` 并回填 `- fingerprint:` 行 |
+
+候选生成与 `reject`/`defer` 不得修改根目录 `ERRORS.md`；只有 `accept` 经临时内容校验
+后一次性写入新 `M-YYYYMMDD-NNN` 条目，并运行 `check_mistake_ledger.py`。
+
 ______________________________________________________________________
 
 ## 推荐记录模板

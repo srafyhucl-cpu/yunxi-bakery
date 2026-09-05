@@ -1,5 +1,5 @@
 {
-  "dataset_version": "1.0.0",
+  "dataset_version": "1.2.0",
   "description": "Harness 控制面回归评测最小数据集",
   "cases": [
     {
@@ -49,6 +49,16 @@
       "category": "策略稳定性",
       "evaluator": "policy_hash_stability",
       "description": "同一策略快照重复计算的哈希必须稳定"
-    }
+    },
+    {"case_id": "HE-009", "category": "历史可解析性", "evaluator": "shallow_clone_history_contract", "description": "CI 必须获取完整历史以解析状态快照提交"},
+    {"case_id": "HE-010", "category": "CI 语料库", "evaluator": "ci_corpus_contract", "description": "CI 必须引用仓内本地 Harness 评测语料库"},
+    {"case_id": "HE-011", "category": "状态快照", "evaluator": "state_snapshot_parent_contract", "description": "状态快照中的 as_of_commit 必须可解析"},
+    {"case_id": "HE-012", "category": "结果表达", "evaluator": "artifact_failure_visibility_contract", "description": "artifact 失败时 workflow 必须在汇总中显式失败"},
+    {"case_id": "HE-013", "category": "CI 证据", "evaluator": "workflow_yaml_parseable", "description": "Harness workflow YAML 必须可被解析"},
+    {"case_id": "HE-014", "category": "证据完整性", "evaluator": "artifact_index_coverage", "description": "artifact index 必需集合必须覆盖 .run.json 运行 manifest"},
+    {"case_id": "HE-015", "category": "错误候选", "evaluator": "candidate_ledger_isolation", "description": "错误候选默认不得修改 ERRORS.md"},
+    {"case_id": "HE-016", "category": "错误候选", "evaluator": "review_accept_updates_ledger", "description": "只有人工 accept 才能把候选写入 ERRORS.md"},
+    {"case_id": "HE-017", "category": "错误候选", "evaluator": "review_reject_defer_preserve_ledger", "description": "reject/defer 不得修改 ERRORS.md"},
+    {"case_id": "HE-018", "category": "中文治理", "evaluator": "chinese_summary_contract", "description": "中文 Summary 必须包含失败分类、证据路径和未验证范围"}
   ]
 }

@@ -1,0 +1,87 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://yunxi-bakery.local/schemas/harness/failure-candidate.schema.json",
+  "title": "Harness 错误候选（failure candidate）",
+  "description": "CI 失败自动生成的错误候选；候选不是正式错误条目，只有人工 accept 后才写入根目录 ERRORS.md。fingerprint 只使用稳定字段（failure_class、summary、normalized_files），不得包含生成时间、绝对路径或随机 ID。",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "candidate_id",
+    "fingerprint",
+    "status",
+    "source",
+    "created_at",
+    "failure_class",
+    "summary",
+    "symptom",
+    "root_cause",
+    "impact",
+    "suggested_guardrail",
+    "run_id",
+    "trace_id",
+    "task_id",
+    "as_of_commit",
+    "version",
+    "evidence_files",
+    "duplicate_of",
+    "review"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "candidate_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{7,127}$",
+      "description": "随机生成的候选标识，仅用于追踪候选文件，不得复用为 ERRORS.md 条目 ID"
+    },
+    "fingerprint": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "基于 failure_class + 规范化 summary + 规范化 evidence_files 的 SHA-256，重复计算必须一致"
+    },
+    "status": {
+      "enum": ["pending", "accepted", "rejected", "deferred"],
+      "description": "候选状态机：pending → accepted / rejected / deferred；生成时必须为 pending"
+    },
+    "source": { "type": "string", "minLength": 1 },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "RFC3339 时间戳；不参与 fingerprint"
+    },
+    "failure_class": { "type": "string", "minLength": 1 },
+    "summary": { "type": "string", "minLength": 1 },
+    "symptom": { "type": "string" },
+    "root_cause": { "type": "string" },
+    "impact": { "type": "string" },
+    "suggested_guardrail": { "type": "string", "minLength": 1 },
+    "run_id": { "type": ["string", "null"] },
+    "trace_id": { "type": ["string", "null"] },
+    "task_id": { "type": ["string", "null"] },
+    "as_of_commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "version": { "type": "string", "minLength": 1 },
+    "evidence_files": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "相对路径、正斜杠分隔；仅作证据引用，不参与绝对路径指纹"
+    },
+    "duplicate_of": {
+      "type": ["string", "null"],
+      "description": "重复候选指向已有候选 ID 或 ERRORS.md 条目"
+    },
+    "review": {
+      "type": "object",
+      "required": ["operator", "reviewed_at", "decision", "reason"],
+      "properties": {
+        "operator": { "type": ["string", "null"] },
+        "reviewed_at": { "type": ["string", "null"], "format": "date-time" },
+        "decision": {
+          "type": ["string", "null"],
+          "enum": [null, "accept", "reject", "defer"]
+        },
+        "reason": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

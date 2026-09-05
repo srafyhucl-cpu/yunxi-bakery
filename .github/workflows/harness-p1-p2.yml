@@ -51,7 +51,6 @@ jobs:
   harness-p1-p2:
     runs-on: windows-latest
     timeout-minutes: 15
-    continue-on-error: true
     env:
       PIP_CACHE_DIR: ${{ github.workspace }}\.tmp-harness-ci\pip-cache
       TMP: ${{ github.workspace }}\.tmp-harness-ci\runtime
@@ -62,12 +61,13 @@ jobs:
       YUNXI_USE_FAKE_EMBEDDING: "1"
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        id: checkout
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.13"
 
@@ -79,30 +79,112 @@ jobs:
           python -m pip install -r backend/requirements.txt -r backend/requirements-dev.txt --cache-dir $env:PIP_CACHE_DIR
 
       - name: Run P1 P2 contract tests
+        id: contract_tests
         shell: pwsh
         continue-on-error: true
         run: |
           python -B -m pytest backend/tests/scripts/test_harness_eval_regression.py backend/tests/scripts/test_observe_harness_runs.py backend/tests/scripts/test_check_doc_garden.py backend/tests/scripts/test_harness_p0_gate.py backend/tests/scripts/test_check_requirements_lock_alignment.py -q --no-cov
 
       - name: Generate Harness evaluation and observation reports
+        id: harness_eval
         shell: pwsh
         continue-on-error: true
         run: |
           New-Item -ItemType Directory -Force -Path backend/reports/harness | Out-Null
           python backend/scripts/harness_eval_regression.py --summary --output backend/reports/harness/harness-eval-latest.json
-          python backend/scripts/observe_harness_runs.py --summary --output backend/reports/harness/harness-observation-latest.json
 
       - name: Run documentation garden scan
+        id: doc_garden
         shell: pwsh
         continue-on-error: true
         run: |
           python backend/scripts/check_doc_garden.py --summary --fail-on error --output backend/reports/harness/doc-garden-latest.json
 
+      - name: Record CI run manifest and refresh observation
+        id: record_observation
+        if: always()
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          $status = if ('${{ steps.contract_tests.outcome }}' -eq 'success' -and '${{ steps.harness_eval.outcome }}' -eq 'success' -and '${{ steps.doc_garden.outcome }}' -eq 'success') { 'completed' } else { 'failed' }
+          $failure = if ($status -eq 'completed') { 'none' } else { 'verification_failure' }
+          $qualityFlags = if ($status -eq 'completed') { @('--result-correct', '--policy-compliant', '--evidence-complete') } else { @() }
+          python backend/scripts/harness_run_manifest.py --task-id T-HARNESS-P1-P2-QUALITY-LOOP --trace-id 20260905-harness-p1-p2-quality-loop --goal '记录 P1/P2 CI 质量循环运行' --status $status --model-id github-actions --failure-class $failure --replayable @qualityFlags --plan-summary '执行合同测试、自评、文档园艺和运行观测' --recovery-point '从 CI 汇总步骤继续' --verification 'GitHub Actions P1/P2 quality loop' --evidence 'backend/reports/harness/harness-eval-latest.json' --output backend/reports/harness/ci-quality-loop.run.json
+          python backend/scripts/observe_harness_runs.py --summary --manifest backend/reports/harness/ci-quality-loop.run.json --output backend/reports/harness/harness-observation-latest.json
+
+      - name: Generate failure candidates
+        id: failure_candidates
+        if: always()
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          python backend/scripts/harness_failure_candidate.py `
+            --from-ci `
+            --eval-report backend/reports/harness/harness-eval-latest.json `
+            --observation-report backend/reports/harness/harness-observation-latest.json `
+            --doc-garden-report backend/reports/harness/doc-garden-latest.json `
+            --run-manifest backend/reports/harness/ci-quality-loop.run.json `
+            --outcome contract_tests=${{ steps.contract_tests.outcome }} `
+            --outcome harness_eval=${{ steps.harness_eval.outcome }} `
+            --outcome doc_garden=${{ steps.doc_garden.outcome }} `
+            --outcome record_observation=${{ steps.record_observation.outcome }} `
+            --run-id ci-${{ github.run_id }}-a${{ github.run_attempt }} `
+            --trace-id 20260905-harness-evidence-error-loop `
+            --task-id T-HARNESS-ERROR-CANDIDATE-LOOP `
+            --candidate-dir backend/reports/harness/failure-candidates `
+            --ledger ERRORS.md `
+            --print-summary
+
+      - name: Build artifact index
+        id: artifact_index
+        if: always()
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          python backend/scripts/build_harness_artifact_index.py `
+            --report-dir backend/reports/harness `
+            --run-id ci-${{ github.run_id }}-a${{ github.run_attempt }} `
+            --index-name artifact-index-${{ github.run_id }}-a${{ github.run_attempt }}.json `
+            --output backend/reports/harness/artifact-index-${{ github.run_id }}-a${{ github.run_attempt }}.json `
+            --summary
+
+      - name: Summarize Harness P1 P2 results
+        id: summary
+        if: always()
+        shell: pwsh
+        run: |
+          python backend/scripts/harness_ci_summary.py `
+            --eval-report backend/reports/harness/harness-eval-latest.json `
+            --observation-report backend/reports/harness/harness-observation-latest.json `
+            --doc-garden-report backend/reports/harness/doc-garden-latest.json `
+            --run-manifest backend/reports/harness/ci-quality-loop.run.json `
+            --artifact-index backend/reports/harness/artifact-index-${{ github.run_id }}-a${{ github.run_attempt }}.json `
+            --candidates-report backend/reports/harness/failure-candidates/candidates-ci-${{ github.run_id }}-a${{ github.run_attempt }}.json `
+            --outcome contract_tests=${{ steps.contract_tests.outcome }} `
+            --outcome harness_eval=${{ steps.harness_eval.outcome }} `
+            --outcome doc_garden=${{ steps.doc_garden.outcome }} `
+            --outcome record_observation=${{ steps.record_observation.outcome }} `
+            --outcome failure_candidate_generation=${{ steps.failure_candidates.outcome }} `
+            --outcome artifact_index=${{ steps.artifact_index.outcome }} `
+            --summary-output backend/reports/harness/ci-summary-${{ github.run_id }}-a${{ github.run_attempt }}.md
+
+      - name: Build final artifact index
+        id: artifact_index_final
+        if: always()
+        shell: pwsh
+        run: |
+          python backend/scripts/build_harness_artifact_index.py `
+            --report-dir backend/reports/harness `
+            --run-id ci-${{ github.run_id }}-a${{ github.run_attempt }}-final `
+            --index-name artifact-index-${{ github.run_id }}-a${{ github.run_attempt }}-final.json `
+            --output backend/reports/harness/artifact-index-${{ github.run_id }}-a${{ github.run_attempt }}-final.json `
+            --summary
+
       - name: Upload P1 P2 reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: harness-p1-p2-quality-loop
-          path: backend/reports/harness/*latest.json
-          if-no-files-found: warn
+          path: backend/reports/harness/**
+          if-no-files-found: error
           retention-days: 14

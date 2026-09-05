@@ -1,3 +1,23 @@
+## E-20260905-005：Harness CI 证据完整性与错误候选闭环本地验证
+
+- trace_id: 20260905-harness-evidence-error-loop
+- generated_at: 2026-09-05
+- evidence_type: governance/harness-evidence-and-candidate-loop
+- file: `local:backend/reports/harness/artifact-index-local-20260905-a1.json`；`local:backend/reports/harness/artifact-index-local-20260905-a2.json`；`local:backend/reports/harness/artifact-index-local-20260905-a2-final.json`；`local:backend/reports/harness/ci-quality-loop-local-20260905-a1.run.json`；`local:backend/reports/harness/harness-eval-20260905-evidence-loop.json`；`local:backend/reports/harness/harness-observation-20260905-evidence-loop.json`；`local:backend/reports/harness/doc-garden-20260905-evidence-loop.json`；`local:backend/reports/harness/ci-summary-local-20260905-a2.md`；`local:backend/reports/harness/failure-candidates/local-20260905-a1-demo.json`；`local:backend/reports/harness/failure-candidates/cand-d362ee3f3b9149cb.review.json`
+- commit_sha: d0af4dfd5a6ce98cf3903cae1516793ed2a96d4c
+- command: `python -B -m pytest backend/tests/scripts/test_harness_workflow_contract.py backend/tests/scripts/test_build_harness_artifact_index.py backend/tests/scripts/test_harness_ci_summary.py backend/tests/scripts/test_harness_failure_candidate.py backend/tests/scripts/test_review_failure_candidate.py backend/tests/scripts/test_harness_eval_regression.py backend/tests/scripts/test_check_chinese_governance.py backend/tests/scripts/test_check_mistake_ledger.py -q --no-cov -p no:cacheprovider`；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/check_mistake_ledger.py`；`python -B backend/scripts/check_project_development_register.py`；`python -B backend/scripts/harness_eval_regression.py --summary`；`python -B backend/scripts/harness_p0_gate.py --summary`；`python -B backend/scripts/check_doc_garden.py --summary --fail-on error`；`python -B backend/scripts/build_harness_artifact_index.py --report-dir backend/reports/harness --run-id local-20260905-a1 --summary`
+- result: pass
+- related_logbook: 2026-09-05 - fix(harness): Harness 证据完整性与错误候选闭环
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录 workflow 合同、artifact 索引、错误候选演练 fixture 和定向门禁输出；候选与 review 均为合成演练数据，不含密钥、客户数据、订单明细、真实支付信息或生产写入。本轮脚本为未提交工作区改动，不使用 git: 固定引用；提交后再以提交 SHA 复核。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: P1/P2 workflow YAML 修复为可解析结构（if/uses/with 同级、上传路径 `backend/reports/harness/**` + `if-no-files-found: error`）；汇总后新增"最终 artifact index"步骤，索引覆盖并哈希校验最终 `ci-summary-*.md`（a2 索引 64 文件、与 workflow 同名口径的 `local-20260905-a2-final` 索引 65 文件均 0 缺失，本地可直接核验 Summary/候选/manifest 的 SHA-256）；错误候选闭环含原子 accept（先 review 记录后账本，账本失败回滚 review）——审查复现"review 文件已存在时 accept"确认整体失败且 `ERRORS.md` 保持 26 条不变；候选演练生成 `pending` 候选（fingerprint=efa3418d…8408）并以 reject 关闭。定向 pytest 73 项通过；Ruff 通过；中文治理 coverage=1.0、dimension_ratio=1.0；自评 18/18（数据集 1.2.0）；P0 门禁 9/9（run_id `p0-gate-7788e47fb0114e42`）；开发总表 PASS tasks=32；doc garden 142 文件 0 errors。远端 CI run 待提交推送后核验。
+- failure_class: none
+- replayable: yes
+- residual_risks: workflow 与候选生成为首个实施周期，尚无远端 CI artifact 趋势样本；提交推送后需核验远端 P0 与 P1/P2 run 的 artifact index 与候选生成报告；错误候选正式入账流程需下一次真实失败由项目负责人人工 accept 验证。
+
 ## E-20260905-003：Harness P0 远端闭环与 P1/P2 自评浅克隆修复
 
 - trace_id: 20260831-harness-p0-hardening
@@ -6543,3 +6563,22 @@ backend/docs/harness-engineering/core/evidence-index.md 仅作为历史镜像。
 - failure_class: none
 - replayable: yes
 - residual_risks: 远端 SHA 与 GitHub Actions artifact 尚未核验；提交前 pre-commit 尚未执行。
+## E-20260905-004：P1/P2 CI 结果可见性与运行观测扩展
+
+- trace_id: 20260905-harness-p1-p2-quality-loop
+- generated_at: 2026-09-05
+- evidence_type: governance/harness-p1-p2-quality-loop
+- file: `local:.github/workflows/harness-p1-p2.yml`; `local:backend/scripts/harness_ci_summary.py`; `local:backend/scripts/harness_eval_regression.py`; `local:docs/harness-engineering/evals/harness-eval-dataset.json`; `local:docs/harness-engineering/HARNESS-MATURITY-REVIEW-20260830.md`; `local:docs/superpowers/plans/2026-09-05-harness-p1-p2-quality-loop.md`
+- commit_sha: c7b139a7f50ef2bab25ba680867821a38b2d0257
+- command: `python -B -m pytest backend/tests/scripts/test_harness_ci_summary.py backend/tests/scripts/test_harness_eval_regression.py backend/tests/scripts/test_observe_harness_runs.py -q --no-cov`; `python -B backend/scripts/harness_eval_regression.py --summary`; `python -B backend/scripts/observe_harness_runs.py --summary`; `python -B backend/scripts/check_doc_garden.py --summary --fail-on error`; `scripts/cleanup-local-artifacts.ps1 -OnlyTemporaryPath -TemporaryPath .tmp-harness-p0-r6 -PreviewToken <token> -Execute`
+- result: pass
+- related_logbook: 20260905-harness-p1-p2-quality-loop
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录 CI 汇总、回归集、运行观测和文档治理证据；不含密钥、客户原文、订单明细、真实支付信息或生产写入。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: CI 保留 continue-on-error 以产出完整 artifact，但新增汇总步骤将报告/步骤失败写入 Summary 与 annotation 并使 job 失败；回归集扩展至 12 项且本地 12/12；观测已消费 CI manifest，当前本地汇总 12 runs；成熟度继续保持 3.0/5。清理预览确认 `.tmp-harness-p0-r6` 698 个文件，已按令牌执行并删除。
+- failure_class: none
+- replayable: yes
+- residual_risks: 仍需后续多个 CI 周期积累趋势样本后再评估成熟度升级；历史归档断链继续以 warning 维护。

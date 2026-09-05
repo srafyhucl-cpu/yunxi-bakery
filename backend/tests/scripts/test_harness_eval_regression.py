@@ -7,10 +7,11 @@ from pathlib import Path
 from scripts import harness_eval_regression
 
 
-def test_dataset_has_eight_registered_cases() -> None:
+def test_dataset_version_and_registered_cases() -> None:
     dataset = harness_eval_regression.load_dataset()
 
-    assert len(dataset["cases"]) == 8
+    assert dataset["dataset_version"] == "1.2.0"
+    assert len(dataset["cases"]) == 18
     assert all(
         case["evaluator"] in harness_eval_regression.EVALUATORS
         for case in dataset["cases"]
@@ -23,10 +24,23 @@ def test_regression_evaluation_passes() -> None:
     )
 
     assert report["status"] == "passed", report["results"]
-    assert report["summary"]["passed"] == 8
-    assert report["summary"]["total"] == 8
+    assert report["summary"]["passed"] == 18
+    assert report["summary"]["total"] == 18
     assert report["summary"]["ratio"] == 1.0
-    assert report["summary"]["failure_classes"] == {"none": 8}
+    assert report["summary"]["failure_classes"] == {"none": 18}
+
+
+def test_real_incident_contracts_pass() -> None:
+    root = Path(__file__).resolve().parents[2]
+    for evaluator_name in (
+        "shallow_clone_history_contract",
+        "ci_corpus_contract",
+        "state_snapshot_parent_contract",
+        "artifact_failure_visibility_contract",
+    ):
+        assert (
+            harness_eval_regression.EVALUATORS[evaluator_name](root)["passed"] is True
+        )
 
 
 def test_p0_gate_evaluator_matches_nine_required_checks() -> None:
