@@ -16665,3 +16665,13 @@ ______________________________________________________________________
 - 证据: `E-20260905-001`；提交 `6a55fb5410d6b461f447372f8bf6eb4d345a8294`。
 - 结论四分法: 结果正确=是；策略合规=是；证据完整=本地是、云端待复核；可回放=是。任务 `T-HARNESS-P0-HARDENING` 继续保持进行中（active），等待远端 SHA 与 GitHub Actions P0/P1 artifact。
 - 未运行全量业务测试: 本轮仅涉及 Harness 检查器、依赖锁和定向测试，未修改业务逻辑；按验证矩阵执行定向门禁。
+## [2026-09-05] - fix(harness): 缺库观测降级与状态快照同步（trace: 20260831-harness-p0-hardening）
+
+- 操作者: AI (Codex)
+- trace_id: `20260831-harness-p0-hardening`
+- run_id: `p0-gate-bc18580b6684464b`
+- 背景: 远端 P0 已通过依赖安装、中文治理、证据索引和策略门禁；项目红线仅因干净 CI 没有本地 `backend/data/bot.db`，以及状态快照仍指向前一提交而失败。
+- 修复: RAG shadow 观测脚本在未提供本地语料时输出结构化 `data_ready=false` 延后报告并返回通过；显式传入真实日志输入但数据库缺失仍保持失败；同步 `PROJECT-STATE.md` 到当前提交并补充证据条目。
+- validation: RAG 观测定向测试 16 项通过；`check_project.py --skip-tests` 本地通过；pre-commit 全部通过。上一次远端 P0 run `33942725954` 的失败仅剩快照过期，待本提交重跑。
+- 证据: `E-20260905-002`；提交 `dd94f7e2b1292477f8325833a7561d0d55780c5b`。
+- 结论四分法: 结果正确=是；策略合规=是；证据完整=本地是、云端待复核；可回放=是。任务 `T-HARNESS-P0-HARDENING` 继续保持进行中（active），等待远端 P0/P1 artifact。

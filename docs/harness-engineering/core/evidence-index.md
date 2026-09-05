@@ -1,3 +1,21 @@
+## E-20260905-002：RAG 观测缺库降级与状态快照同步
+
+- trace_id: 20260831-harness-p0-hardening
+- generated_at: 2026-09-05
+- evidence_type: governance/harness-p0-rag-readiness
+- file: `git:dd94f7e2b1292477f8325833a7561d0d55780c5b:backend/scripts/report_rag_shadow_observability.py`；`git:dd94f7e2b1292477f8325833a7561d0d55780c5b:backend/scripts/report_rag_shadow_log_observability.py`；`git:dd94f7e2b1292477f8325833a7561d0d55780c5b:backend/tests/scripts/test_report_rag_shadow_observability.py`；`git:dd94f7e2b1292477f8325833a7561d0d55780c5b:backend/tests/scripts/test_report_rag_shadow_log_observability.py`；`local:reports/harness/p0-gate-20260905-ci-fix.json`
+- commit_sha: dd94f7e2b1292477f8325833a7561d0d55780c5b
+- command: `python -B -m pytest backend/tests/scripts/test_report_rag_shadow_observability.py backend/tests/scripts/test_report_rag_shadow_log_observability.py -q --no-cov`；`python -B backend/scripts/check_project.py --skip-tests`；`pre-commit run`
+- result: pass
+- related_logbook: 2026-09-05 - fix(harness): 缺库观测降级与状态快照同步
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录缺库场景的结构化延后报告、项目红线和状态快照同步；不含语料库内容、客户查询、密钥或生产写入。
+- storage_scope: repository
+- repository_origin: monorepo
+- sha256: backend/scripts/report_rag_shadow_observability.py=b752d6dc6072db0edd9ab786618abb05f22e7a70b5e26575ef38327661a631e5；backend/scripts/report_rag_shadow_log_observability.py=325e59edd3b94f0517d994e50cd080211aa08ef941bda85a4c3016290624f623；backend/tests/scripts/test_report_rag_shadow_observability.py=36d2b1d70daba58e0ecb11cb2d5c2d1b45e37f94c3e1e33912b8170fcacf61a3；backend/tests/scripts/test_report_rag_shadow_log_observability.py=a3c2017cd6e08fec8b864fb69ce16ffd5a6cecce3e4cddac2d29661c0cfdeacd
+- summary: 干净 CI runner 不包含本地业务语料库，RAG shadow 观测改为输出 `status=passed`、`data_ready=false`、`shadow_log_ready=false` 的结构化延后报告，不把缺少本地产物误报为代码失败；显式真实输入仍要求数据库存在并保持 fail-closed。同步项目状态快照到提交 `dd94f7e`，等待新的云端 P0/P1 结果。
+
 ## E-20260905-001：Harness P0 CI 外部证据与时区依赖修复
 
 - trace_id: 20260831-harness-p0-hardening
