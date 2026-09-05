@@ -155,3 +155,21 @@ def test_shadow_observability_cli_writes_json(monkeypatch, tmp_path: Path) -> No
     assert exit_code == 0
     assert payload["status"] == "passed"
     assert payload["candidates"][1]["decision"]["hot_path_action"] == "keep_shadow_only"
+
+
+def test_shadow_observability_missing_database_is_deferred(
+    monkeypatch, tmp_path: Path
+) -> None:
+    output_path = tmp_path / "missing.json"
+    missing_db = tmp_path / "missing" / "bot.db"
+    monkeypatch.setattr(
+        observability.eval_retrieval, "resolve_db_path", lambda _db: missing_db
+    )
+
+    exit_code = observability.main(["--json-out", str(output_path), "--summary"])
+
+    payload = json.loads(output_path.read_text(encoding="utf-8"))
+    assert exit_code == 0
+    assert payload["status"] == "passed"
+    assert payload["data_ready"] is False
+    assert payload["baseline"]["name"] == "unavailable"

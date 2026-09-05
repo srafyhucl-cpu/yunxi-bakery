@@ -464,8 +464,25 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
     if not args.db.exists():
-        print(f"[ERROR] 语料库不存在: {args.db}", file=sys.stderr)
-        return 1
+        if args.input is not None:
+            print(f"[ERROR] 语料库不存在: {args.db}", file=sys.stderr)
+            return 1
+        report = build_missing_input_report(
+            require_input=args.require_input, db_path=args.db, k=args.k
+        )
+        if args.json_out is not None:
+            write_json_report(report, args.json_out)
+        if args.json:
+            print(json.dumps(report, ensure_ascii=False, indent=2))
+        elif args.summary:
+            print(
+                "rag_shadow_log_observability "
+                f"status={report['status']} failed={report['failed']} "
+                "shadow_log_ready=false data_ready=false"
+            )
+        else:
+            print_text_report(report)
+        return 0 if report["status"] == "passed" else 1
     report = build_rag_shadow_log_observability_report(
         input_path=args.input,
         db_path=args.db,

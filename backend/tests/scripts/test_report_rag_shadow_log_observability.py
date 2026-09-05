@@ -239,3 +239,19 @@ def test_shadow_log_cli_writes_json(monkeypatch, tmp_path: Path) -> None:
     assert exit_code == 0
     assert payload["status"] == "passed"
     assert payload["shadow_log_ready"] is True
+
+
+def test_shadow_log_cli_missing_database_without_input_is_deferred(
+    tmp_path: Path,
+) -> None:
+    output_path = tmp_path / "missing.json"
+    missing_db = tmp_path / "missing" / "bot.db"
+
+    exit_code = log_observability.main(
+        ["--db", str(missing_db), "--json-out", str(output_path), "--summary"]
+    )
+
+    payload = json.loads(output_path.read_text(encoding="utf-8"))
+    assert exit_code == 0
+    assert payload["status"] == "passed"
+    assert payload["shadow_log_ready"] is False
