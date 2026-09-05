@@ -1,3 +1,13 @@
+## [2026-09-05] - fix(harness): 同步最终状态快照提交
+
+- 操作者: AI (Codex)
+- trace_id: `20260905-harness-evidence-error-loop`
+- run_id: `local-20260905-harness-state-snapshot`
+- 背景: 远端 P0 在提交 `09a3084` 上仅因 `PROJECT-STATE.md` 的 `as_of_commit` 仍指向中间提交 `66dcb30` 而失败。
+- implementation: 将状态快照同步到当前代码提交 `09a3084`，保持 `workspace_state: clean`。
+- validation: 远端 P0 artifact `D:\Temp\yunxi-harness-remote-33968722344\harness-p0-report\p0-gate.json` 已确认其余检查通过；同步后需重新核验远端 P0/P1/P2。
+- 结论四分法: 结果正确=是；策略合规=是；证据完整=待最终远端复跑；可回放=是。
+
 ## [2026-09-05] - fix(harness): 修正暂存提交期间的状态判定
 
 - 操作者: AI (Codex)
