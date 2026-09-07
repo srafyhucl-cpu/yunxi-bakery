@@ -29,7 +29,8 @@
 
 .filter-tab-active {
   color: #ffffff;
-  background: linear-gradient(180deg, #8bbf74 0%, #3f7a42 100%);
+  background: linear-gradient(180deg, var(--yunxi-accent) 0%, var(--yunxi-accent-deep) 100%);
+  border-color: transparent;
   font-weight: 700;
 }
 
@@ -90,10 +91,21 @@
   color: var(--yunxi-text-primary);
 }
 
-.order-status,
-.order-total {
-  color: var(--yunxi-accent-deep);
+.order-status {
+  padding: 4rpx 12rpx;
+  border-radius: 999rpx;
+  background: var(--yunxi-accent-deep);
+  color: #ffffff;
+  font-size: 22rpx;
   font-weight: 800;
+  white-space: nowrap;
+}
+
+.order-total {
+  color: var(--yunxi-price);
+  font-size: 30rpx;
+  font-weight: 900;
+  white-space: nowrap;
 }
 
 .order-status-group {
@@ -145,7 +157,7 @@
 
 .order-action-primary {
   color: #ffffff;
-  background: linear-gradient(180deg, #8bbf74 0%, #3f7a42 100%);
+  background: linear-gradient(180deg, var(--yunxi-accent) 0%, var(--yunxi-accent-deep) 100%);
 }
 
 .order-action-secondary {

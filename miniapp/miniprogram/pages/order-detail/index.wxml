@@ -26,7 +26,7 @@
       <view wx:elif="{{loading && !order}}" class="empty">订单加载中...</view>
 
       <block wx:elif="{{order}}">
-        <view class="order-card order-card--status bakery-panel">
+        <view class="order-card order-card--status yunxi-card">
           <view>
             <text class="order-label">订单状态</text>
             <text class="order-status">{{order.statusText}}</text>
@@ -40,7 +40,7 @@
           >刷新</button>
         </view>
 
-        <view class="order-card bakery-panel">
+        <view class="order-card yunxi-card">
           <text class="section-title">订单进度</text>
           <text class="progress-hint">{{order.progressText}}</text>
           <view class="progress-list">
@@ -60,7 +60,7 @@
           </view>
         </view>
 
-        <view class="order-card bakery-panel">
+        <view class="order-card yunxi-card">
           <view class="order-row">
             <text class="order-label">订单号</text>
             <text>{{order.id}}</text>
@@ -87,7 +87,7 @@
           </view>
         </view>
 
-        <view class="order-card bakery-panel">
+        <view class="order-card yunxi-card">
           <text class="section-title">商品明细</text>
           <view wx:for="{{order.itemsView}}" wx:key="productId" class="product-row">
             <view>
@@ -102,7 +102,7 @@
           </view>
         </view>
 
-        <view class="order-card bakery-panel">
+        <view class="order-card yunxi-card">
           <text class="section-title">履约信息</text>
           <view class="order-row">
             <text class="order-label">方式</text>

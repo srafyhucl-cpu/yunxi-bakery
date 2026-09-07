@@ -29,13 +29,26 @@
   </view>
 
   <view class="page-scroll products-scroll-region">
+    <view wx:if="{{loadFailed}}" class="yunxi-state">
+      <view class="yunxi-state__icon">📡</view>
+      <text class="yunxi-state__title">商品加载失败</text>
+      <text class="yunxi-state__hint">网络开小差了，重试一下吧</text>
+      <button class="primary-button yunxi-state__action" bindtap="retryLoad">重新加载</button>
+    </view>
+    <view wx:elif="{{loading && !loaded}}" class="products-skeleton">
+      <view wx:for="{{[1, 2, 3, 4, 5, 6]}}" wx:key="*this" class="products-skeleton__card yunxi-card">
+        <view class="products-skeleton__image yunxi-skeleton"></view>
+        <view class="products-skeleton__line yunxi-skeleton"></view>
+        <view class="products-skeleton__line--short yunxi-skeleton"></view>
+      </view>
+    </view>
     <!-- 全局搜索结果列表 -->
-    <scroll-view 
-      class="products-global-search" 
-      scroll-y 
-      enhanced 
+    <scroll-view
+      class="products-global-search"
+      scroll-y
+      enhanced
       show-scrollbar="{{false}}"
-      hidden="{{!searchText}}"
+      hidden="{{!searchText || loadFailed || (loading && !loaded)}}"
     >
       <view class="products-global-search__inner">
         <view class="products-grid">
@@ -43,24 +56,29 @@
             wx:for="{{globalSearchResults}}"
             wx:key="id"
             wx:for-item="product"
-            class="product-card glass-panel hover-scale stagger-fade-in"
+            class="product-card yunxi-card hover-scale stagger-fade-in"
             data-id="{{product.id}}"
             bindtap="openProduct"
           >
-            <view class="product-image bakery-photo {{product.imageClass}}">
-              <text class="product-tag">{{product.badgeText}}</text>
+            <view class="product-image">
+              <text class="yunxi-badge {{product.badgeClass}} product-badge">{{product.badgeText}}</text>
               <image
-                wx:if="{{product.imageUrl}}"
+                wx:if="{{product.imageUrl && !product.imageFailed}}"
                 class="product-cover"
                 src="{{product.imageUrl}}"
                 mode="aspectFill"
                 webp="{{true}}"
+                data-id="{{product.id}}"
+                binderror="onProductImageError"
               />
+              <view wx:else class="yunxi-image-fallback">
+                <text class="yunxi-image-fallback__mark">芸</text>
+              </view>
             </view>
             <view class="product-info">
               <text class="product-title">{{product.title}}</text>
               <view class="product-info__bottom">
-                <text class="product-price">{{product.priceText}}<text class="product-price__unit">起</text></text>
+                <text class="product-price yunxi-price">{{product.priceText}}<text class="yunxi-price__unit">起</text></text>
                 <view class="product-action-btn hover-scale">+</view>
               </view>
             </view>
@@ -75,7 +93,10 @@
     </scroll-view>
 
     <!-- 常规分类侧栏与内容布局（保持缓存） -->
-    <view class="products-layout" hidden="{{!!searchText}}">
+    <view wx:if="{{categoriesDegraded && !loadFailed && !(loading && !loaded)}}" class="products-degraded" bindtap="retryLoad">
+      <text>分类加载失败，已展示全部商品，点击重试</text>
+    </view>
+    <view class="products-layout" hidden="{{!!searchText || loadFailed || (loading && !loaded)}}">
       <scroll-view class="products-sidebar" scroll-y enhanced show-scrollbar="{{false}}">
         <view
           wx:for="{{categorySections}}"
@@ -107,25 +128,30 @@
                 wx:for="{{section.products}}"
                 wx:key="id"
                 wx:for-item="product"
-                class="product-card glass-panel hover-scale stagger-fade-in"
+                class="product-card yunxi-card hover-scale stagger-fade-in"
                 style="animation-delay: {{index * 0.03}}s"
                 data-id="{{product.id}}"
                 bindtap="openProduct"
               >
-                <view class="product-image bakery-photo {{product.imageClass}}">
-                  <text class="product-tag">{{product.badgeText}}</text>
+                <view class="product-image">
+                  <text class="yunxi-badge {{product.badgeClass}} product-badge">{{product.badgeText}}</text>
                   <image
-                    wx:if="{{product.imageUrl}}"
+                    wx:if="{{product.imageUrl && !product.imageFailed}}"
                     class="product-cover"
                     src="{{product.imageUrl}}"
                     mode="aspectFill"
                     webp="{{true}}"
+                    data-id="{{product.id}}"
+                    binderror="onProductImageError"
                   />
+                  <view wx:else class="yunxi-image-fallback">
+                    <text class="yunxi-image-fallback__mark">芸</text>
+                  </view>
                 </view>
                 <view class="product-info">
                   <text class="product-title">{{product.title}}</text>
                   <view class="product-info__bottom">
-                    <text class="product-price">{{product.priceText}}<text class="product-price__unit">起</text></text>
+                    <text class="product-price yunxi-price">{{product.priceText}}<text class="yunxi-price__unit">起</text></text>
                     <view class="product-action-btn hover-scale">+</view>
                   </view>
                 </view>

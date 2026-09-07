@@ -8,10 +8,10 @@ import { syncCustomTabBar } from "../../utils/tab-bar";
 
 Page({
   data: {
-    items: [] as Array<CartItem & { priceText: string; imageClass: string }>,
+    items: [] as Array<CartItem & { priceText: string; imageClass: string; imageFailed: boolean }>,
     hasItems: false,
     totalText: "¥0.00",
-    recommendedProducts: [] as Array<{ id: string; title: string; priceText: string; soldText: string; imageClass: string }>,
+    recommendedProducts: [] as Array<{ id: string; title: string; priceText: string; soldText: string; imageClass: string; imageUrl: string; imageFailed: boolean }>,
     layoutStyle: getMiniappLayoutMetrics().pageShellStyle
   },
   onShow() {
@@ -24,15 +24,33 @@ Page({
         imageUrl: product.imageUrl,
         priceText: formatFen(product.priceFen),
         soldText: product.soldText,
-        imageClass: getProductImageClass(product)
+        imageClass: getProductImageClass(product),
+        imageFailed: false
       }))
     });
+  },
+  onCartImageError(event: WechatMiniprogram.TouchEvent) {
+    // 购物车行图加载失败：切换占位，保持固定宽高
+    const productId = event.currentTarget.dataset.id as string;
+    const index = this.data.items.findIndex((item) => item.productId === productId);
+    if (productId && index !== -1 && !this.data.items[index].imageFailed) {
+      this.setData({ [`items[${index}].imageFailed`]: true });
+    }
+  },
+  onRecommendImageError(event: WechatMiniprogram.TouchEvent) {
+    // 推荐位图片加载失败：切换占位，保持固定宽高
+    const productId = event.currentTarget.dataset.id as string;
+    const index = this.data.recommendedProducts.findIndex((item) => item.id === productId);
+    if (productId && index !== -1 && !this.data.recommendedProducts[index].imageFailed) {
+      this.setData({ [`recommendedProducts[${index}].imageFailed`]: true });
+    }
   },
   refreshCartData() {
     const items = getCartItems().map((item) => ({
       ...item,
       priceText: formatFen(item.priceFen),
-      imageClass: item.imageUrl ? "" : getBakeryPattern(item.productId)
+      imageClass: item.imageUrl ? "" : getBakeryPattern(item.productId),
+      imageFailed: false
     }));
     const totalFen = items.reduce((sum, item) => sum + item.priceFen * item.quantity, 0);
     this.setData({

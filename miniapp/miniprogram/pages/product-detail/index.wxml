@@ -11,15 +11,17 @@
       <view wx:if="{{product}}" class="detail-content fade-in">
         <view class="detail-hero">
           <view class="detail-image immersive-image">
-            <image wx:if="{{product.imageUrl}}" class="detail-cover" src="{{product.imageUrl}}" mode="aspectFill" />
-            <text wx:elif="{{product.tags.length > 0}}" class="detail-tag">{{product.tags[0]}}</text>
+            <image wx:if="{{product.imageUrl && !product.imageFailed}}" class="detail-cover" src="{{product.imageUrl}}" mode="aspectFill" binderror="onDetailImageError" />
+            <view wx:else class="yunxi-image-fallback">
+              <text class="yunxi-image-fallback__mark">芸</text>
+            </view>
           </view>
           <view wx:if="{{product.tags.length > 0}}" class="detail-tags">
             <text wx:for="{{product.tags}}" wx:key="*this" wx:for-item="tag" class="detail-chip">{{tag}}</text>
           </view>
         </view>
 
-        <view class="detail-main glass-panel">
+        <view class="detail-main yunxi-card">
           <view class="detail-title-row">
             <text class="detail-title">{{product.title}}</text>
             <text class="detail-status">{{product.isActive ? "在售" : "暂不可售"}}</text>
@@ -31,31 +33,31 @@
           </view>
         </view>
 
-        <view class="detail-card glass-panel">
+        <view class="detail-card yunxi-card">
           <text class="detail-card-title">商品说明</text>
           <text class="detail-description">{{product.description}}</text>
           <view wx:if="{{product.specs.length > 0}}" class="detail-specs">
-            <view wx:for="{{product.specs}}" wx:key="*this" wx:for-item="spec" class="detail-spec">
-              <text class="detail-spec__label">规格</text>
-              <text class="detail-spec__value">{{spec}}</text>
-            </view>
+            <text wx:for="{{product.specs}}" wx:key="*this" wx:for-item="spec" class="yunxi-chip">{{spec}}</text>
           </view>
         </view>
 
-        <view class="detail-card glass-panel">
+        <view class="detail-card yunxi-card">
           <text class="detail-card-title">购买须知</text>
           <view class="notice-list">
             <text wx:for="{{product.notices}}" wx:key="*this" wx:for-item="notice" class="notice-item">{{notice}}</text>
           </view>
         </view>
       </view>
-      <view wx:else class="empty">
-        <text>商品不存在</text>
+      <view wx:else class="yunxi-state">
+        <view class="yunxi-state__icon">🍰</view>
+        <text class="yunxi-state__title">{{unavailableText}}</text>
+        <text wx:if="{{loadFailed}}" class="yunxi-state__hint">网络开小差了，重试一下吧</text>
+        <button wx:if="{{loadFailed}}" class="primary-button yunxi-state__action" bindtap="retryLoad">重新加载</button>
       </view>
     </view>
   </scroll-view>
 
-  <view class="detail-actions glass-panel">
+  <view class="detail-actions">
     <button
       class="ghost-button"
       bindtap="addToCart"

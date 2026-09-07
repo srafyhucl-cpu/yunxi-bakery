@@ -18,9 +18,10 @@
 }
 
 .checkout-total {
-  color: var(--yunxi-accent-deep);
+  color: var(--yunxi-price);
   font-size: 34rpx;
   font-weight: 900;
+  white-space: nowrap;
 }
 
 .delivery-tab {
@@ -111,7 +112,7 @@
   align-items: center;
   min-height: 88rpx;
   padding: 0 24rpx;
-  background: rgba(255, 255, 255, 0.45);
+  background: var(--yunxi-surface-alt);
   border: none;
   border-radius: 18rpx;
   font-size: 26rpx;
@@ -130,7 +131,7 @@ textarea {
   width: 100%;
   min-height: 88rpx;
   padding: 0 24rpx;
-  background: rgba(255, 255, 255, 0.45);
+  background: var(--yunxi-surface-alt);
   border: none;
   border-radius: 18rpx;
   font-size: 28rpx;
@@ -185,8 +186,39 @@ textarea {
   font-weight: 700;
 }
 
-.submit-button {
-  margin-top: 32rpx;
+.checkout-footer {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  padding: 18rpx 28rpx calc(env(safe-area-inset-bottom) + 18rpx);
+  background: #ffffff;
+  border-top: 1rpx solid var(--yunxi-border);
+  box-shadow: 0 -8rpx 24rpx rgba(44, 37, 32, 0.06);
+}
+
+.checkout-footer__total {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4rpx;
+  min-width: 0;
+}
+
+.checkout-footer__amount {
+  color: var(--yunxi-price);
+  font-size: 38rpx;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.checkout-footer__submit {
+  flex: 0 0 250rpx;
+  min-width: 250rpx;
 }
 
 .benefit-panel,
@@ -268,8 +300,8 @@ textarea {
 }
 .amount-row.amount-total {
   font-size: 30rpx;
-  font-weight: 700;
-  color: #2d2a26;
+  font-weight: 900;
+  color: var(--yunxi-price);
   border-top: 1rpx solid #f0ece6;
   margin-top: 8rpx;
 }

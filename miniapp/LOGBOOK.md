@@ -2,6 +2,14 @@
 
 本文件记录 YunxiBakeMiniApp 的关键推进。每次较大变更、设计决策、验证收口或上线动作，都要在顶部追加一条。
 
+## 2026-09-07 - 展示整改一期实现（商品浏览/购物车结算/订单）
+
+- trace_id: `20260907-miniapp-display-polish`
+- task_id: `T-MINIAPP-DISPLAY-POLISH-01`
+- 变更: 全局新增 yunxi-card/badge/price/chip/占位/骨架/空态复用；列表徽标四类本地映射与 1:1 白底卡；详情图片失败占位与规格展示 chips；购物车统一圆形步进；结算提交常驻底部；订单首次失败整页重试；逻辑与契约不动，规格选择拆前置任务。
+- 验证: `typecheck` 0 error；`check:miniapp` 全绿（15 pages / 15 routes）；`check:page-api-coverage` pass（33 terms / 8 boundaries）；中文治理 passed。
+- 待办: DevTools 本地联调与真机走查；会员客服与品牌页放二期；窄屏与键盘遮挡随真机验收。
+
 ## 2026-08-14 - 固化正式上线前开发测试边界
 
 - trace_id: `20260814-miniapp-prelaunch-boundary`

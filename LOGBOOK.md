@@ -1,3 +1,23 @@
+## [2026-09-07] - feat(miniapp): 展示整改一期实现（商品浏览/购物车结算/订单）
+
+task_id: T-MINIAPP-DISPLAY-POLISH-01
+trace_id: 20260907-miniapp-display-polish
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+as_of_commit: b738ecf8192e4dc30a5a3f829158ba6d337fe1f1
+version: 0.133.0-p2trial.3
+scope: S1-S5 一期实现；P1 评审三项已核验并修订入设计；首页与会员客服不动
+changed_files:
+  - miniapp/miniprogram/app.wxss（共享 yunxi-card/badge/price/chip/占位/骨架/空态，新增价格与金色变量）
+  - miniapp/miniprogram/pages/products/（徽标四类本地映射、图片失败态、加载失败与分类降级状态机、1:1 白底卡）
+  - miniapp/miniprogram/pages/product-detail/（图片失败占位、规格展示 chips、失败重试、白底卡与底部白条）
+  - miniapp/miniprogram/pages/cart/（白底卡、统一圆形步进、推荐位同语言、空态复用全局）
+  - miniapp/miniprogram/pages/checkout/（卡片统一、输入底色、实付黑粗、提交常驻底部；逻辑与实付估算语义不动）
+  - miniapp/miniprogram/pages/orders/ 与 order-detail/（首次失败整页重试、白底卡、状态 pill、合计黑粗；分页与支付取消逻辑不动）
+reproduction: npm run typecheck 通过；npm run check:miniapp 通过（15 pages / 15 routes）；npm run check:page-api-coverage 通过（33 terms / 8 boundaries）；check_chinese_governance passed
+implementation: 只动展示层与本地派生状态，未新增后端字段，未改 api-contract；规格选择移出并拆独立前置任务
+
 ## [2026-09-06] - fix(audit): 最终上线收口计划执行（No-Go）
 
 task_id: T-AUDIT-GO-LIVE-20260906

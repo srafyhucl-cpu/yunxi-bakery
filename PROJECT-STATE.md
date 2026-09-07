@@ -63,6 +63,7 @@ state_owner: 项目负责人＋AI 员工
 | T-AUDIT-REMEDIATION-20260906 | 审计整改执行（P0-A/B→P1→P2） | active | 进行中（active） | P0 | OpenCode | main | 220a8fe0dcd1126dfe43e3745667a3f7f58fc262 | T-AUDIT-20260905-COMPREHENSIVE | trace: 20260906-audit-remediation-final；run_id: 20260906-audit-remediation-final5；E-20260906-015；收口计划执行中 | 复核收口计划执行中，保持 No-Go；M-20260906-003 关闭前禁止上线 |
 | T-AUDIT-CLOSEOUT-20260906 | 审计复核收口执行（部署恢复/全量前置/凭证审计） | active | 进行中（active） | P0 | OpenCode | main | 220a8fe0dcd1126dfe43e3745667a3f7f58fc262 | T-AUDIT-REMEDIATION-20260906 | trace: 20260906-audit-remediation-final；run_id: 20260906-audit-remediation-final5；E-20260906-015；收口计划执行中 | 按计划 Task 1→5 执行并收口证据，保持 No-Go 直至门禁与负责人动作完成 |
 | T-AUDIT-GO-LIVE-20260906 | 最终上线收口执行（三态识别/测试治理/凭证与验收） | active | 进行中（active） | P0 | OpenCode | main | 220a8fe0dcd1126dfe43e3745667a3f7f58fc262 | T-AUDIT-CLOSEOUT-20260906 | trace: 20260906-audit-remediation-final；run_id: 20260906-audit-remediation-final6；E-20260906-016；全量 1854 项退出码 0 | 三态识别与测试治理已代码完成但负责人动作缺失，保持 No-Go；M-20260906-003 关闭前禁止上线 |
+| T-MINIAPP-DISPLAY-POLISH-01 | MiniApp 展示整改一期（商品浏览/购物车结算/订单） | active | 进行中（active） | P1 | AI 员工 | main | b738ecf8192e4dc30a5a3f829158ba6d337fe1f1 | — | trace: 20260907-miniapp-display-polish；设计 docs/superpowers/specs/2026-09-07-miniapp-display-polish-design.md | 按 S1-S5 实现并收口验证；会员客服与品牌页放二期 |
 
 ## 状态视图（只引用主表 task_id）
 
@@ -72,7 +73,7 @@ state_owner: 项目负责人＋AI 员工
 
 ### 进行中（active）
 
-`T-AUDIT-REMEDIATION-20260906`、`T-AUDIT-CLOSEOUT-20260906`、`T-AUDIT-GO-LIVE-20260906`
+`T-AUDIT-REMEDIATION-20260906`、`T-AUDIT-CLOSEOUT-20260906`、`T-AUDIT-GO-LIVE-20260906`、`T-MINIAPP-DISPLAY-POLISH-01`
 
 ### 未完成（pending / blocked / deferred）
 

@@ -170,7 +170,8 @@
 .order-total-row {
   padding-top: 18rpx;
   border-top: 1rpx solid rgba(75, 129, 72, 0.1);
-  color: var(--yunxi-accent-deep);
+  color: var(--yunxi-price);
+  font-weight: 900;
 }
 
 .compact-button {

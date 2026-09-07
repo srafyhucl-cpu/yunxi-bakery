@@ -7,6 +7,7 @@ import type { CatalogProduct } from "../../types/catalog";
 
 interface ProductDetailView extends CatalogProduct {
   priceText: string;
+  imageFailed: boolean;
 }
 
 function canPurchaseProduct(product: CatalogProduct | null): boolean {
@@ -30,6 +31,8 @@ Page({
   data: {
     product: null as ProductDetailView | null,
     loading: true,
+    loadFailed: false,
+    lastProductId: "",
     addingToCart: false,
     buyingNow: false,
     canPurchase: false,
@@ -39,9 +42,23 @@ Page({
   onLoad(query) {
     void this.loadProduct(query);
   },
+  retryLoad() {
+    // 加载失败重试：用进入时记录的商品复位后重新加载
+    if (this.data.loading) {
+      return;
+    }
+    this.setData({ loadFailed: false });
+    void this.loadProduct({ id: this.data.lastProductId });
+  },
+  onDetailImageError() {
+    // 详情大图运行时加载失败：切换暖米占位，保持固定宽高
+    if (this.data.product && !this.data.product.imageFailed) {
+      this.setData({ "product.imageFailed": true });
+    }
+  },
   async loadProduct(query: Record<string, string | undefined>) {
     const productId = typeof query.id === "string" ? query.id.trim() : "";
-    this.setData({ loading: true, unavailableText: "商品加载中", canPurchase: false });
+    this.setData({ loading: true, loadFailed: false, lastProductId: productId, unavailableText: "商品加载中", canPurchase: false });
     if (!productId) {
       this.setData({ loading: false, product: null, unavailableText: "商品不存在", canPurchase: false });
       wx.showToast({ title: "商品不存在", icon: "none" });
@@ -53,6 +70,7 @@ Page({
     } catch {
       this.setData({
         loading: false,
+        loadFailed: true,
         product: null,
         unavailableText: "商品加载失败",
         canPurchase: false
@@ -67,10 +85,12 @@ Page({
     }
     this.setData({
       loading: false,
+      loadFailed: false,
       canPurchase: canPurchaseProduct(product),
       unavailableText: getUnavailableText(product),
       product: {
         ...product,
+        imageFailed: false,
         priceText: formatFen(product.priceFen)
       }
     });

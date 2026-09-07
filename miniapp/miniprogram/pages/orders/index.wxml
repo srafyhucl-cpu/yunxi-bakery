@@ -37,11 +37,17 @@
           </button>
         </view>
       </scroll-view>
-      <view wx:if="{{filteredOrders.length === 0}}" class="empty">
+      <view wx:if="{{loadFailed && filteredOrders.length === 0}}" class="yunxi-state">
+        <view class="yunxi-state__icon">📡</view>
+        <text class="yunxi-state__title">订单加载失败</text>
+        <text class="yunxi-state__hint">网络开小差了，重试一下吧</text>
+        <button class="primary-button yunxi-state__action" bindtap="retryLoad">重新加载</button>
+      </view>
+      <view wx:elif="{{filteredOrders.length === 0}}" class="empty">
         <text>{{loading ? '订单加载中...' : emptyText}}</text>
       </view>
       <view wx:else class="order-list">
-        <view wx:for="{{filteredOrders}}" wx:key="id" class="order-card bakery-panel" data-id="{{item.id}}" bindtap="openOrder">
+        <view wx:for="{{filteredOrders}}" wx:key="id" class="order-card yunxi-card" data-id="{{item.id}}" bindtap="openOrder">
           <view class="order-header">
             <text class="order-id">{{item.id}}</text>
             <view class="order-status-group">

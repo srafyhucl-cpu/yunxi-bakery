@@ -67,6 +67,7 @@ Thumbs.db
 
 # 本机 Agent 记忆（不属于项目事实源）
 .workbuddy/
+.superpowers/
 
 # Coverage
 .coverage.*

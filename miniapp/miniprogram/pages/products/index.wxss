@@ -119,13 +119,61 @@
 
 .products-scroll-region {
   display: flex;
+  flex-direction: column;
   min-height: 0;
   overflow: hidden;
   background: #fdfcf9;
 }
 
+.products-degraded {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 88rpx;
+  padding: 0 28rpx;
+  color: #8A5A1E;
+  background: #FDF3E3;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.products-skeleton {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 32rpx 20rpx;
+  width: 100%;
+  padding: 24rpx 22rpx;
+  box-sizing: border-box;
+}
+
+.products-skeleton__card {
+  flex: 0 0 calc((100% - 20rpx) / 2);
+  width: calc((100% - 20rpx) / 2);
+  min-width: 0;
+  padding-bottom: 20rpx;
+  overflow: hidden;
+}
+
+.products-skeleton__image {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 24rpx 24rpx 0 0;
+}
+
+.products-skeleton__line,
+.products-skeleton__line--short {
+  height: 26rpx;
+  margin: 16rpx 18rpx 0;
+  border-radius: 8rpx;
+}
+
+.products-skeleton__line--short {
+  width: 55%;
+}
+
 .products-layout {
   display: flex;
+  flex: 1;
   align-items: stretch;
   width: 100%;
   min-height: 0;
@@ -263,27 +311,27 @@
   min-width: 0;
   min-height: 410rpx;
   overflow: hidden;
-  border-radius: 24rpx;
-  background: rgba(255, 255, 255, 0.85);
-  border: 1rpx solid rgba(255, 255, 255, 0.7);
-  box-shadow: 0 10rpx 30rpx rgba(108, 154, 99, 0.04);
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .product-card:active {
   transform: scale(0.98);
-  background: rgba(255, 255, 255, 0.95);
 }
 
 .product-image {
   position: relative;
   width: 100%;
-  height: 230rpx;
+  aspect-ratio: 1 / 1;
   overflow: hidden;
   border-radius: 24rpx 24rpx 0 0;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0) 100%),
-    linear-gradient(135deg, #f7f9f6 0%, #eef3eb 100%);
+  background: #F4F1EB;
+}
+
+.product-badge {
+  position: absolute;
+  left: 16rpx;
+  top: 16rpx;
+  z-index: 2;
 }
 
 .product-cover {
@@ -297,9 +345,7 @@
   transform: scale(1.05);
 }
 
-.product-tag {
-  display: none;
-}
+/* 价格单位改走全局 yunxi-price__unit */
 
 .product-info {
   padding: 16rpx 18rpx 18rpx 18rpx;
@@ -315,11 +361,11 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
-  min-height: 72rpx;
-  color: #263729;
-  font-size: 26rpx;
-  line-height: 1.4;
-  font-weight: 700;
+  min-height: 76rpx;
+  color: var(--yunxi-text-primary);
+  font-size: 28rpx;
+  line-height: 1.35;
+  font-weight: 800;
 }
 
 .product-info__bottom {
@@ -331,17 +377,11 @@
 
 .product-price {
   display: block;
-  color: #3f7a42;
-  font-size: 32rpx;
-  font-weight: 800;
+  font-size: 38rpx;
+  white-space: nowrap;
 }
 
-.product-price__unit {
-  margin-left: 2rpx;
-  font-size: 20rpx;
-  font-weight: 600;
-  color: #728073;
-}
+/* 价格单位改走全局 yunxi-price__unit */
 
 .product-action-btn {
   display: flex;

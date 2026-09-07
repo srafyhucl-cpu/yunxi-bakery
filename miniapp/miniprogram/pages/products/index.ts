@@ -16,10 +16,14 @@ interface CategorySection {
   products: CatalogProduct[];
 }
 
+type BadgeKind = "" | "flagship" | "new" | "hot" | "limited";
+
 interface ProductView extends CatalogProduct {
   priceText: string;
   imageClass: string;
   badgeText: string;
+  badgeClass: string;
+  imageFailed: boolean;
   isSearchResult?: boolean;
 }
 
@@ -38,6 +42,8 @@ interface ProductsPageData {
   deliveryMode: "delivery" | "pickup";
   loaded: boolean;
   loading: boolean;
+  loadFailed: boolean;
+  categoriesDegraded: boolean;
   allProducts: CatalogProduct[];
   categorySections: CategorySectionView[];
   branchName: string;
@@ -176,12 +182,42 @@ function buildSectionsFromProducts(products: CatalogProduct[]): CategorySectionV
 
 
 
-function toProductView(product: CatalogProduct): ProductView {
+function getBadgeKind(product: CatalogProduct, isFirst: boolean): BadgeKind {
+  // 徽标四类本地映射：分区首位为招牌，标签含新品或限量关键字跟随标签，其余走热卖
+  if (isFirst) {
+    return "flagship";
+  }
+  if (product.tags.some((tag) => tag.includes("新品"))) {
+    return "new";
+  }
+  if (product.tags.some((tag) => tag.includes("限量"))) {
+    return "limited";
+  }
+  return "hot";
+}
+
+function getBadgeText(kind: BadgeKind): string {
+  if (kind === "flagship") {
+    return "招牌";
+  }
+  if (kind === "new") {
+    return "新品";
+  }
+  if (kind === "limited") {
+    return "限量";
+  }
+  return "热卖";
+}
+
+function toProductView(product: CatalogProduct, isFirst = false): ProductView {
+  const badgeKind = getBadgeKind(product, isFirst);
   return {
     ...product,
     priceText: formatFen(product.priceFen),
     imageClass: getProductImageClass(product),
-    badgeText: product.tags[0] ?? "现做"
+    badgeText: getBadgeText(badgeKind),
+    badgeClass: badgeKind ? `is-${badgeKind}` : "",
+    imageFailed: false
   };
 }
 
@@ -189,7 +225,7 @@ function buildSectionView(section: CategorySection): CategorySectionView {
   return {
     ...section,
     countLabel: String(section.products.length),
-    products: section.products.map(toProductView),
+    products: section.products.map((product, index) => toProductView(product, index === 0)),
     loaded: true
   };
 }
@@ -289,6 +325,8 @@ Page<ProductsPageData, WechatMiniprogram.IAnyObject>({
     deliveryMode: "delivery",
     loaded: false,
     loading: false,
+    loadFailed: false,
+    categoriesDegraded: false,
     allProducts: [] as CatalogProduct[],
     categorySections: [] as CategorySectionView[],
     globalSearchResults: [] as ProductView[],
@@ -316,12 +354,32 @@ Page<ProductsPageData, WechatMiniprogram.IAnyObject>({
     if (this.data.loaded || this.data.loading) {
       return;
     }
-    this.setData({ loading: true });
+    this.setData({ loading: true, loadFailed: false });
     try {
-      const [products, categories] = await Promise.all([
+      // 商品与分类独立结算：主列表失败整页可重试，分类失败降级为本地分区分组
+      const [productsResult, categoriesResult] = await Promise.allSettled([
         listProducts({ limit: FULL_CATALOG_LIMIT }),
         listProductCategories()
       ]);
+      if (productsResult.status === "rejected") {
+        this.setData({ loadFailed: true });
+        return;
+      }
+      const products = productsResult.value;
+      if (categoriesResult.status === "rejected") {
+        const fallbackSections = refineCategorySections(buildSectionsFromProducts(products));
+        this.setData({
+          allProducts: products,
+          categorySections: fallbackSections,
+          categoriesDegraded: true,
+          loaded: true
+        });
+        if (fallbackSections.length) {
+          this.applyActiveCategory(fallbackSections[0]);
+        }
+        return;
+      }
+      const categories = categoriesResult.value;
       
       const remoteSections = categories.map((category) => {
         let subtitle = "匠心推荐";
@@ -355,7 +413,7 @@ Page<ProductsPageData, WechatMiniprogram.IAnyObject>({
           id: ALL_PRODUCTS_CATEGORY_ID,
           title: "全部商品",
           subtitle: "人气汇聚",
-          products: products.map(toProductView),
+          products: products.map((product, index) => toProductView(product, index === 0)),
           loaded: true,
           countLabel: String(products.length),
           hasMatches: products.length > 0
@@ -371,6 +429,20 @@ Page<ProductsPageData, WechatMiniprogram.IAnyObject>({
     } finally {
       this.setData({ loading: false });
     }
+  },
+  retryLoad() {
+    // 失败重试：复位加载态后重新走完整加载链路
+    if (this.data.loading) {
+      return;
+    }
+    this.setData({
+      loaded: false,
+      loadFailed: false,
+      categoriesDegraded: false,
+      categorySections: [],
+      globalSearchResults: []
+    });
+    void this.loadProducts();
   },
   async refreshStoreDistance() {
     try {
@@ -405,7 +477,7 @@ Page<ProductsPageData, WechatMiniprogram.IAnyObject>({
     );
 
     this.setData({
-      globalSearchResults: matchedProducts.map(toProductView)
+      globalSearchResults: matchedProducts.map((product, index) => toProductView(product, index === 0))
     });
   },
   onSearchInput(event: WechatMiniprogram.Input) {
@@ -437,7 +509,7 @@ Page<ProductsPageData, WechatMiniprogram.IAnyObject>({
       this.setData({ loading: true });
       try {
         const products = await listProducts({ categoryId: section.id });
-        const productViews = products.map(toProductView);
+        const productViews = products.map((product, index) => toProductView(product, index === 0));
 
         // 将新商品合并到 allProducts 和“全部商品”分区
         const { allProducts, categorySections } = this.data;
@@ -450,7 +522,7 @@ Page<ProductsPageData, WechatMiniprogram.IAnyObject>({
           
           if (allSectionIndex !== -1) {
             const allSection = categorySections[allSectionIndex];
-            const updatedAllSectionProducts = [...allSection.products, ...newProducts.map(toProductView)];
+            const updatedAllSectionProducts = [...allSection.products, ...newProducts.map((product) => toProductView(product))];
             
             this.setData({
               allProducts: updatedAllProducts,
@@ -470,6 +542,10 @@ Page<ProductsPageData, WechatMiniprogram.IAnyObject>({
             hasMatches: productViews.length > 0
           }
         });
+      } catch {
+        // 分类懒加载失败：保留全部商品并标记降级，不清空当前内容
+        this.setData({ categoriesDegraded: true });
+        wx.showToast({ title: "分类加载失败，已展示全部商品", icon: "none" });
       } finally {
         this.setData({ loading: false });
       }
@@ -506,6 +582,29 @@ Page<ProductsPageData, WechatMiniprogram.IAnyObject>({
     });
     prefetchProductImages(activeProducts.slice(Math.max(0, visibleProductCount - PRODUCTS_PAGE_SIZE)));
     this.setData({ loadingMore: false });
+  },
+  onProductImageError(event: WechatMiniprogram.TouchEvent) {
+    // 图片运行时加载失败：按商品定位全部命中项并切换占位，保持固定宽高
+    const productId = event.currentTarget.dataset.id as string;
+    if (!productId) {
+      return;
+    }
+    const updates: Record<string, boolean> = {};
+    this.data.categorySections.forEach((section, sectionIndex) => {
+      section.products.forEach((product, productIndex) => {
+        if (product.id === productId && !product.imageFailed) {
+          updates[`categorySections[${sectionIndex}].products[${productIndex}].imageFailed`] = true;
+        }
+      });
+    });
+    this.data.globalSearchResults.forEach((product, resultIndex) => {
+      if (product.id === productId && !product.imageFailed) {
+        updates[`globalSearchResults[${resultIndex}].imageFailed`] = true;
+      }
+    });
+    if (Object.keys(updates).length > 0) {
+      this.setData(updates);
+    }
   },
   openProduct(event: WechatMiniprogram.TouchEvent) {
     const productId = event.currentTarget.dataset.id as string;
