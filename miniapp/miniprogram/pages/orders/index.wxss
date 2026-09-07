@@ -165,3 +165,17 @@
   min-height: 360rpx;
   color: var(--yunxi-text-secondary);
 }
+
+.list-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24rpx 0 48rpx;
+  color: var(--yunxi-text-secondary);
+  font-size: 24rpx;
+}
+
+.retry-link {
+  color: var(--yunxi-accent);
+  text-decoration: underline;
+}

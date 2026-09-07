@@ -26,6 +26,32 @@ TOKEN_REFRESH_MARGIN = 300  # 提前 5 分钟刷新（秒）
 DEFAULT_TOKEN_EXPIRES_SECONDS = 172_800  # 有赞 token 默认有效期（48 小时）
 MOCK_TOKEN_EXPIRES_SECONDS = 86_400  # Mock 模式 token 有效期（24 小时）
 USER_QUERY_RESULT_TYPE_MINIAPP = 2  # 用户查询返回结果类型：微信小程序
+TOKEN_REDACTED = "***"
+
+
+def sanitize_credential_text(text: object) -> str:
+    """脱敏可能含 access_token 的异常与日志文本。"""
+    import re
+
+    redacted = re.sub(
+        r"access_token=[^&\s'\"]+",
+        f"access_token={TOKEN_REDACTED}",
+        str(text),
+    )
+    return re.sub(
+        r"['\"]access_token['\"]\s*:\s*['\"][^'\"]+['\"]",
+        f"'access_token': '{TOKEN_REDACTED}'",
+        redacted,
+    )
+
+
+def build_api_url(api_name: str, version: str, token: str) -> str:
+    """构造有赞 OpenAPI 地址，凭证只能经此函数进入查询参数。
+
+    有赞云协议要求 access_token 走 URL 查询参数，无法改用请求头；
+    调用方禁止自行拼接凭证，异常与日志必须经脱敏后输出。
+    """
+    return f"{settings.YOUZAN_API_BASE}/{api_name}/{version}?access_token={token}"
 
 
 class YouzanClient:
@@ -68,7 +94,9 @@ class YouzanClient:
             )
             data: dict = resp.json()
         except httpx.HTTPError as exc:
-            raise APIError(f"有赞 token 请求失败: {exc}") from exc
+            raise APIError(
+                f"有赞 token 请求失败: {sanitize_credential_text(exc)}"
+            ) from exc
 
         auth_data = data.get("data") if isinstance(data, dict) else None
         token = ""
@@ -154,12 +182,14 @@ class YouzanClient:
         token = await self.get_token()
         try:
             resp = await self._client.post(
-                f"{settings.YOUZAN_API_BASE}/{api_name}/{version}?access_token={token}",
+                build_api_url(api_name, version, token),
                 json=params,
             )
             result: dict = resp.json()
         except httpx.HTTPError as exc:
-            raise APIError(f"有赞 API 调用失败 [{api_name}]: {exc}") from exc
+            raise APIError(
+                f"有赞 API 调用失败 [{api_name}]: {sanitize_credential_text(exc)}"
+            ) from exc
 
         if resp.status_code != 200:
             raise APIError(f"有赞 API 响应异常 [{api_name}]: {result}")

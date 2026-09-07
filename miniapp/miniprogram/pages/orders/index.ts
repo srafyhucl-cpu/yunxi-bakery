@@ -86,12 +86,31 @@ Page({
     loginStateText: "订单需要真实登录后查看",
     canUseOrders: false,
     loading: false,
+    loadingMore: false,
+    loadFailed: false,
+    hasMore: false,
+    currentPage: 0,
     payingOrderId: "",
     cancellingOrderId: "",
     layoutStyle: getMiniappLayoutMetrics().pageShellStyle
   },
   onShow() {
-    void this.loadOrders();
+    void this.loadOrders(true);
+  },
+  onPullDownRefresh() {
+    void this.loadOrders(true).finally(() => wx.stopPullDownRefresh());
+  },
+  loadMore() {
+    if (this.data.loading || this.data.loadingMore || !this.data.hasMore || this.data.loadFailed) {
+      return;
+    }
+    void this.loadOrders(false);
+  },
+  retryLoad() {
+    if (this.data.loading || this.data.loadingMore) {
+      return;
+    }
+    void this.loadOrders(this.data.allOrders.length === 0);
   },
   goBack() {
     if (this.data.payingOrderId || this.data.cancellingOrderId) {
@@ -99,7 +118,7 @@ Page({
     }
     goBackOrHome();
   },
-  async loadOrders() {
+  async loadOrders(refresh: boolean) {
     const session = getMiniappSession();
     if (!isMiniappLoggedIn(session)) {
       this.setData({
@@ -111,23 +130,37 @@ Page({
         sessionView: buildMiniappSessionView(session),
         loginStateText: "请先登录后查看订单",
         canUseOrders: false,
-        loading: false
+        loading: false,
+        loadingMore: false,
+        loadFailed: false,
+        hasMore: false,
+        currentPage: 0
       });
       return;
     }
-    this.setData({ loading: true });
+    const nextPage = refresh ? 1 : this.data.currentPage + 1;
+    this.setData({ loading: refresh, loadingMore: !refresh, loadFailed: false });
     try {
-      const allOrders = (await listOrders()).map(buildOrderView);
+      const page = await listOrders(nextPage);
+      const pageOrders = page.items.map(buildOrderView);
+      const mergedOrders = refresh ? pageOrders : [...this.data.allOrders, ...pageOrders];
       this.setData({
         sessionView: buildMiniappSessionView(session),
         loginStateText: "已使用真实登录态加载订单",
-        canUseOrders: true
+        canUseOrders: true,
+        hasMore: page.hasMore,
+        currentPage: page.page
       });
-      this.applyOrderFilter(allOrders, this.data.activeFilter);
+      this.applyOrderFilter(mergedOrders, this.data.activeFilter);
     } catch {
-      wx.showToast({ title: "订单加载失败", icon: "none" });
+      if (refresh) {
+        wx.showToast({ title: "订单加载失败", icon: "none" });
+      } else {
+        wx.showToast({ title: "加载更多失败，可重试", icon: "none" });
+      }
+      this.setData({ loadFailed: true });
     } finally {
-      this.setData({ loading: false });
+      this.setData({ loading: false, loadingMore: false });
     }
   },
   applyOrderFilter(allOrders: OrderView[], activeFilter: OrderListFilterKey) {

@@ -7,6 +7,11 @@ from pathlib import Path
 
 from scripts import prepare_real_conversation_replay_pool_entry as prepare_entry
 
+_TESTS_DIR = Path(__file__).resolve().parents[1]
+COVERAGE_SAMPLE_FIXTURE = (
+    _TESTS_DIR / "fixtures" / "customer_real_replay_coverage_sample.json"
+)
+
 
 def test_prepare_pool_entry_draft_passes_for_reviewed_real_fixture(
     tmp_path: Path,
@@ -33,7 +38,7 @@ def test_prepare_pool_entry_draft_passes_for_reviewed_real_fixture(
 
 def test_prepare_pool_entry_draft_rejects_synthetic_fixture() -> None:
     report = prepare_entry.build_pool_entry_draft_report(
-        fixture_path=Path("tests/fixtures/customer_real_replay_coverage_sample.json"),
+        fixture_path=COVERAGE_SAMPLE_FIXTURE,
         name="synthetic-sample",
         evidence_id="E-UNIT-SYNTHETIC",
         redaction_method="manual_redaction_v1",
@@ -103,11 +108,7 @@ def test_prepare_pool_entry_draft_cli_writes_json(tmp_path: Path) -> None:
 
 
 def write_real_redacted_fixture(fixture_path: Path) -> None:
-    payload = json.loads(
-        Path("tests/fixtures/customer_real_replay_coverage_sample.json").read_text(
-            encoding="utf-8"
-        )
-    )
+    payload = json.loads(COVERAGE_SAMPLE_FIXTURE.read_text(encoding="utf-8"))
     payload["metadata"]["source"] = "unit_test_real_redacted_entry"
     payload["metadata"]["redaction"] = "manual_redaction_v1"
     fixture_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")

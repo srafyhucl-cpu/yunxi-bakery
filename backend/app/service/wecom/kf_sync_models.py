@@ -32,6 +32,7 @@ class SyncEvent:
     change_type: int
     staff_id: str
     event_code: str = ""
+    msg_id: str = ""
 
 
 @dataclass(frozen=True)
@@ -47,10 +48,12 @@ class CollectedMessages:
     active_handoff_users: set[str]
     ended_handoff_users: set[str]
     total_count: int
+    ledger_pendings: list[dict] | None = None
+    handoff_sessions_to_close: dict[str, str] | None = None
 
 
 def empty_collected() -> CollectedMessages:
-    return CollectedMessages({}, [], [], [], [], [], set(), set(), 0)
+    return CollectedMessages({}, [], [], [], [], [], set(), set(), 0, [], {})
 
 
 def merge_collected_messages(
@@ -74,6 +77,11 @@ def merge_collected_messages(
         active_handoff_users=right.active_handoff_users,
         ended_handoff_users=right.ended_handoff_users,
         total_count=left.total_count + right.total_count,
+        ledger_pendings=[*(left.ledger_pendings or []), *(right.ledger_pendings or [])],
+        handoff_sessions_to_close={
+            **(left.handoff_sessions_to_close or {}),
+            **(right.handoff_sessions_to_close or {}),
+        },
     )
 
 
@@ -114,6 +122,7 @@ def build_sync_event(item: dict) -> SyncEvent | None:
         change_type=change_type,
         staff_id=str(event.get("servicer_userid") or ""),
         event_code=str(event.get("welcome_code") or event.get("code") or ""),
+        msg_id=str(item.get("msgid", "") or ""),
     )
 
 

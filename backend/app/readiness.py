@@ -151,7 +151,36 @@ def build_channel_readiness_checks() -> dict[str, bool]:
         or _is_configured_secret(settings.WECOM_ENCODING_AES_KEY),
         "handoff_staff_userid_ready": _is_configured_secret(settings.WECOM_STAFF_ID)
         or _is_configured_secret(settings.WECOM_KF_SERVICER_USERID),
+        "wecom_employee_auth_ready": bool(settings.WECOM_EMPLOYEE_AUTH_REQUIRED)
+        and _is_configured_secret(settings.WECOM_EMPLOYEE_ALLOWED_USERS)
+        and _is_configured_secret(settings.WECOM_EMPLOYEE_CORP_ID)
+        and _is_configured_secret(settings.WECOM_EMPLOYEE_OPS_USERS),
+        "mock_payment_disabled": not settings.ALLOW_MOCK_PAYMENT,
+        "wechat_pay_configured": _is_wechat_pay_configured(),
+        "edge_protection_shared_ready": _is_edge_protection_ready(),
     }
+
+
+def _is_edge_protection_ready() -> bool:
+    """边缘防护生产判定，与预检/启动共用同一函数，不各自解释。"""
+    from app.service.edge_protection import is_edge_protection_shared
+
+    if not bool(settings.EDGE_REQUIRE_SHARED):
+        return True
+    return is_edge_protection_shared()
+
+
+def _is_wechat_pay_configured() -> bool:
+    """微信支付上线配置是否完整，与集成服务就绪判定同源。"""
+    return bool(
+        settings.WECHAT_PAY_ENABLED
+        and _is_configured_secret(settings.WECHAT_MINIAPP_APP_ID)
+        and _is_configured_secret(settings.WECHAT_PAY_MCH_ID)
+        and _is_configured_secret(settings.WECHAT_PAY_NOTIFY_URL)
+        and _is_configured_secret(settings.WECHAT_PAY_PRIVATE_KEY_PATH)
+        and _is_configured_secret(settings.WECHAT_PAY_CERT_SERIAL_NO)
+        and _is_configured_secret(settings.WECHAT_PAY_API_V3_KEY)
+    )
 
 
 def _database_schema_ready(database_path: Path) -> bool:

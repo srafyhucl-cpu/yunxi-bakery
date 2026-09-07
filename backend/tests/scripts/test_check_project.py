@@ -208,10 +208,16 @@ def test_payment_notify_migration_chain_present() -> None:
     import app.service.order.application as app_mod
     import app.service.order.payment_notification as notif_mod
     import app.service.order.payment_runtime as runtime_mod
+    import app.service.order.refund_notification as refund_mod
 
     assert hasattr(api_mod, "create_storefront_payments_router")
     assert hasattr(app_mod.OrderApplicationService, "handle_wechat_payment_notify")
+    assert hasattr(app_mod.OrderApplicationService, "handle_wechat_refund_notify")
     assert hasattr(
         runtime_mod.OrderPaymentRuntimeService, "handle_wechat_payment_notify"
     )
+    assert hasattr(
+        runtime_mod.OrderPaymentRuntimeService, "handle_wechat_refund_notify"
+    )
+    assert hasattr(refund_mod.WechatRefundNotificationService, "apply_refund_notify")
     assert hasattr(notif_mod.WechatPaymentNotificationService, "mark_paid")

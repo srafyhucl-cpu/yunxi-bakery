@@ -32,6 +32,7 @@ class WecomKfSyncRepo(BaseRepository):
         return WecomKfSyncState(open_kfid=open_kfid)
 
     async def mark_syncing(self, open_kfid: str) -> None:
+        """标记同步中，由调用方外层事务统一提交。"""
         now = _now()
         await self._db.execute(
             "INSERT INTO wecom_kf_sync_states "
@@ -40,9 +41,10 @@ class WecomKfSyncRepo(BaseRepository):
             "status = 'syncing', updated_at = excluded.updated_at",
             (open_kfid, now, now),
         )
-        await self._db.commit()
+        # 事务由调用方外层统一提交，本仓储不自提交。
 
     async def mark_success(self, open_kfid: str, cursor: str) -> None:
+        """推进同步游标，由调用方外层事务统一提交。"""
         now = _now()
         await self._db.execute(
             "INSERT INTO wecom_kf_sync_states "
@@ -56,9 +58,10 @@ class WecomKfSyncRepo(BaseRepository):
             "updated_at = excluded.updated_at",
             (open_kfid, cursor, now, now, now),
         )
-        await self._db.commit()
+        # 事务由调用方外层统一提交，本仓储不自提交。
 
     async def mark_failed(self, open_kfid: str, error: str) -> None:
+        """标记同步失败，由调用方外层事务统一提交。"""
         now = _now()
         await self._db.execute(
             "INSERT INTO wecom_kf_sync_states "
@@ -69,7 +72,7 @@ class WecomKfSyncRepo(BaseRepository):
             "retry_count = retry_count + 1, updated_at = excluded.updated_at",
             (open_kfid, error[:500], now, now),
         )
-        await self._db.commit()
+        # 事务由调用方外层统一提交，本仓储不自提交。
 
     async def add_message_if_new(
         self,
@@ -99,7 +102,7 @@ class WecomKfSyncRepo(BaseRepository):
                 _now(),
             ),
         )
-        await self._db.commit()
+        # 事务由调用方外层统一提交，本仓储不自提交。
         return bool(cursor.rowcount > 0)
 
 

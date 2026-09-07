@@ -101,7 +101,8 @@ class CouponPaymentService:
         )
         if updated is None:
             raise ValueError("订单支付状态更新冲突")
-        await self._order_repo._db.commit()
+        # 快照写入不自提交，由调用方事务统一提交，禁止关键路径内部 commit
+        # 破坏外层退款/支付 UoW 原子性。
         return {
             "orderId": order.id,
             "status": status_value(updated),

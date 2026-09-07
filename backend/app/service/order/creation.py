@@ -13,6 +13,7 @@ from app.service.order.inventory import NormalizedOrderItem, OrderInventoryServi
 from app.service.order.payment_runtime import build_initial_payment
 from app.service.order.schedule import OrderScheduleService
 from app.service.order.timeline import OrderTimelineService
+from app.utils import fen_to_yuan_str
 
 TIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 ORDER_ID_PREFIX = "mp"
@@ -89,7 +90,7 @@ class OrderCreationService:
             products=json.dumps(
                 [item.__dict__ for item in order_items], ensure_ascii=False
             ),
-            total_amount=self._total_fen(order_items) / 100,
+            total_amount=float(fen_to_yuan_str(self._total_fen(order_items))),
             delivery=json.dumps(delivery, ensure_ascii=False),
             payment=json.dumps(build_initial_payment(now), ensure_ascii=False),
             status=OrderStatus.PENDING,

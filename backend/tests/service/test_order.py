@@ -80,8 +80,10 @@ async def test_admin_order_status_chain_updates_miniapp_reads(
         await service.update_admin_order_status(order_id, "cancelled")
 
     user_orders = await service.list_user_orders(user_id=user_id)
+    assert user_orders["total"] >= 1
     assert any(
-        order["id"] == order_id and order["status"] == "done" for order in user_orders
+        order["id"] == order_id and order["status"] == "done"
+        for order in user_orders["items"]
     )
     final_detail = await service.get_user_order(order_id, user_id=user_id)
     assert [event["status"] for event in final_detail["timeline"]] == [

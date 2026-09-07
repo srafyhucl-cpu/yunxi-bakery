@@ -47,6 +47,10 @@ RECOVERY_PLAN_CONFIG_KEYS = frozenset(
         "wecom_intelligent_bot_callback_token_configured",
         "wecom_intelligent_bot_encoding_aes_key_configured",
         "handoff_staff_userid_ready",
+        "wecom_employee_auth_ready",
+        "mock_payment_disabled",
+        "wechat_pay_configured",
+        "edge_protection_shared_ready",
     }
 )
 DATABASE_PLAN_KEYS = frozenset(
@@ -119,6 +123,9 @@ READINESS_ACTIONS = {
     "wecom_intelligent_bot_encoding_aes_key_configured": "设置 WECOM_INTELLIGENT_BOT_ENCODING_AES_KEY，或复用 WECOM_ENCODING_AES_KEY。",
     "handoff_staff_userid_ready": "设置 WECOM_STAFF_ID 或 WECOM_KF_SERVICER_USERID。",
     "wecom_employee_auth_ready": "生产必须开启 WECOM_EMPLOYEE_AUTH_REQUIRED，并配置员工用户、企业 ID 和运营用户白名单。",
+    "mock_payment_disabled": "生产必须关闭 ALLOW_MOCK_PAYMENT，mock 只允许显式测试环境。",
+    "wechat_pay_configured": "设置 WECHAT_PAY_ENABLED 并补齐商户号、回调地址、证书与 APIv3 密钥。",
+    "edge_protection_shared_ready": "生产要求共享防护时设置 EDGE_PROTECTION_BACKEND=redis 并配置 EDGE_REDIS_URL；单机本地保持 sqlite 并明确不用于多机。",
     "admin_frontend_index_exists": "在 web/admin 执行 npm run build:production。",
     "admin_frontend_assets_exist": "在 web/admin 执行 npm run build:production。",
     "admin_frontend_observability_summary_built": "重新构建或同步最新 web/admin/dist。",
@@ -231,16 +238,6 @@ def build_readiness_preflight_checks(
         checks["database_schema_ready"] = not get_missing_database_tables(database_path)
     if index_path is not None:
         checks["embedding_index_path_exists"] = embedding_index_files_exist(index_path)
-    if any(
-        str(value).strip()
-        for value in (settings.WECOM_TOKEN, settings.WECOM_INTELLIGENT_BOT_TOKEN)
-    ):
-        checks["wecom_employee_auth_ready"] = (
-            settings.WECOM_EMPLOYEE_AUTH_REQUIRED
-            and bool(settings.WECOM_EMPLOYEE_ALLOWED_USERS.strip())
-            and bool(settings.WECOM_EMPLOYEE_CORP_ID.strip())
-            and bool(settings.WECOM_EMPLOYEE_OPS_USERS.strip())
-        )
     return [
         PreflightCheck(
             key=key,
@@ -424,6 +421,32 @@ def _business_contract_label(result_name: str) -> str:
     return result_name
 
 
+def build_edge_backend_availability_check() -> PreflightCheck:
+    """共享防护后端存活探测：配置共享才探测，不可用直接失败。"""
+    from app.service.edge_protection import is_edge_protection_shared, ping_edge_backend
+
+    if not is_edge_protection_shared():
+        return PreflightCheck(
+            key="edge_protection_backend_available",
+            title="共享防护后端可用性",
+            passed=True,
+            detail="local_mode",
+            action="",
+        )
+    import asyncio as asyncio_lib
+
+    available = asyncio_lib.run(ping_edge_backend(timeout_seconds=2.0))
+    return PreflightCheck(
+        key="edge_protection_backend_available",
+        title="共享防护后端可用性",
+        passed=available,
+        detail="ready" if available else "unreachable",
+        action=""
+        if available
+        else "检查 EDGE_REDIS_URL 指向的 Redis 是否可达；不可达时生产不得上线。",
+    )
+
+
 def build_preflight_checks(
     db_path_value: str | None = None,
     index_path_value: str | None = None,
@@ -435,6 +458,7 @@ def build_preflight_checks(
             database_path=database_path,
             index_path=index_path,
         ),
+        build_edge_backend_availability_check(),
         build_database_detail_check(db_path_value),
         build_database_columns_detail_check(db_path_value),
         build_knowledge_detail_check(db_path_value),
@@ -679,6 +703,25 @@ def build_recovery_plan(
                 verify_command=verify_command,
                 related_keys=business_contract_keys,
                 apply_mutates_state=False,
+            )
+        )
+
+    edge_backend_keys = _matching_failed_keys(
+        failed_keys, frozenset({"edge_protection_backend_available"})
+    )
+    if edge_backend_keys:
+        steps.append(
+            PreflightPlanStep(
+                order=len(steps) + 1,
+                key="edge_backend",
+                severity="critical",
+                title="恢复共享防护后端",
+                reason="共享限流与登录防护后端不可达，生产流量将无统一防护。",
+                command="检查 EDGE_REDIS_URL 指向的 Redis 服务状态与网络可达性。",
+                apply_command="恢复 Redis 服务后重新预检；未恢复前不得上线。",
+                verify_command=verify_command,
+                related_keys=edge_backend_keys,
+                apply_mutates_state=True,
             )
         )
 

@@ -52,8 +52,16 @@ class YouzanWebhookDispatcher:
         self,
         message_key: str,
         payload: dict,
+        db=None,
     ) -> bool:
-        """将 webhook payload 写入 inbox。"""
+        """将消息载荷写入收件箱，调用方传入连接时共用外层事务。"""
+        if db is not None:
+            # 调用方已持有外层事务，直接复用同一连接提交。
+            return await InboxRepo(db).enqueue(
+                "youzan_webhook",
+                f"youzan_webhook:{message_key}",
+                json.dumps(payload, ensure_ascii=False),
+            )
         for delay in (0.0, *DB_LOCK_RETRY_DELAYS):
             if delay:
                 await asyncio.sleep(delay)

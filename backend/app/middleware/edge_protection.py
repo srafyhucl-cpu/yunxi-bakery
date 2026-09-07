@@ -1,7 +1,6 @@
 """请求体、并发、限流和安全响应头边界。"""
 
 import asyncio
-import time
 from collections.abc import Awaitable, Callable
 
 from fastapi import Request
@@ -9,12 +8,15 @@ from fastapi.responses import JSONResponse
 from starlette.responses import Response
 
 from app.config import settings
+from app.logger import setup_logger
+from app.service.edge_protection import is_request_rate_limited
+
+logger = setup_logger()
 
 REQUEST_REJECTION_BODY = {"code": 41300, "message": "请求体超过服务端限制"}
 CONCURRENCY_REJECTION_BODY = {"code": 50300, "message": "服务繁忙，请稍后重试"}
 RATE_LIMIT_EXEMPT_PREFIXES = ("/health", "/ready", "/favicon.ico", "/static/")
 _request_semaphore = asyncio.Semaphore(settings.MAX_CONCURRENT_REQUESTS)
-_request_rate_limits: dict[str, tuple[int, float]] = {}
 
 
 class RequestBodyTooLargeError(Exception):
@@ -39,7 +41,14 @@ async def edge_protection_middleware(
         return message
 
     request._receive = limited_receive
-    if _is_rate_limited(request):
+    try:
+        rate_limited = await _is_rate_limited(request)
+    except Exception as exc:
+        if _is_shared_backend_mode():
+            _log_backend_error(exc)
+            return _edge_backend_unavailable_response(request)
+        raise
+    if rate_limited:
         return _security_headers(
             request,
             JSONResponse(
@@ -82,22 +91,83 @@ async def edge_protection_middleware(
     return _security_headers(request, response)
 
 
-def _is_rate_limited(request: Request) -> bool:
-    """按客户端地址执行单进程请求窗口限流。"""
+def extract_client_ip(request: Request) -> str:
+    """提取客户端地址，默认只信连接地址，防止伪造转发头绕过。
+
+    仅当运维显式配置受信代理数量，且直连地址落入受信代理网段时，
+    才按层级取转发链对应位置；头缺失、位置不足、格式非法、非合法 IP、
+    直连非受信代理一律回退到连接地址。
+    """
+    import ipaddress
+
+    direct_host = request.client.host if request.client else "unknown"
+    trusted_count = max(0, int(settings.TRUSTED_PROXY_COUNT or 0))
+    if trusted_count <= 0:
+        return direct_host
+    if not _direct_host_is_trusted_proxy(direct_host):
+        return direct_host
+    forwarded = request.headers.get("x-forwarded-for", "")
+    chain = [part.strip() for part in forwarded.split(",") if part.strip()]
+    position = len(chain) - trusted_count
+    if position < 0 or not chain:
+        return direct_host
+    candidate = chain[position]
+    try:
+        ipaddress.ip_address(candidate)
+    except ValueError:
+        return direct_host
+    return candidate or direct_host
+
+
+def _direct_host_is_trusted_proxy(direct_host: str) -> bool:
+    """直连地址是否属于运维配置的受信代理网段。"""
+    import ipaddress
+
+    networks = [
+        item.strip()
+        for item in str(settings.TRUSTED_PROXY_NETWORKS or "").split(",")
+        if item.strip()
+    ]
+    if not networks:
+        return False
+    try:
+        address = ipaddress.ip_address(direct_host)
+    except ValueError:
+        return False
+    for network in networks:
+        try:
+            if address in ipaddress.ip_network(network, strict=False):
+                return True
+        except ValueError:
+            continue
+    return False
+
+
+async def _is_rate_limited(request: Request) -> bool:
+    """按客户端地址执行共享存储请求窗口限流。"""
     if request.url.path.startswith(RATE_LIMIT_EXEMPT_PREFIXES):
         return False
-    client_host = request.client.host if request.client else "unknown"
-    request_count, reset_at = _request_rate_limits.get(client_host, (0, 0.0))
-    current_time = time.monotonic()
-    if current_time >= reset_at:
-        _request_rate_limits[client_host] = (
-            1,
-            current_time + settings.REQUEST_RATE_LIMIT_WINDOW_SECONDS,
-        )
-        return False
-    request_count += 1
-    _request_rate_limits[client_host] = (request_count, reset_at)
-    return request_count > settings.REQUEST_RATE_LIMIT_MAX_REQUESTS
+    return await is_request_rate_limited(f"ratelimit:{extract_client_ip(request)}")
+
+
+def _edge_backend_unavailable_response(request: Request) -> Response:
+    """共享防护后端异常时的受控降级响应。"""
+    return _security_headers(
+        request,
+        JSONResponse(
+            status_code=503, content={"code": 50300, "message": "防护后端暂不可用"}
+        ),
+    )
+
+
+def _is_shared_backend_mode() -> bool:
+    """当前是否运行于共享防护后端模式。"""
+    return str(settings.EDGE_PROTECTION_BACKEND or "").strip().lower() == "redis"
+
+
+def _log_backend_error(exc: Exception) -> None:
+    """记录共享防护后端异常，不泄露连接细节到响应。"""
+    logger.error("共享边缘防护后端异常，已返回受控 503: %s", type(exc).__name__)
 
 
 def _security_headers(request: Request, response: Response) -> Response:
@@ -111,4 +181,4 @@ def _security_headers(request: Request, response: Response) -> Response:
     return response
 
 
-__all__ = ["_request_rate_limits", "edge_protection_middleware"]
+__all__ = ["edge_protection_middleware", "extract_client_ip"]

@@ -66,7 +66,12 @@ def test_employee_authorizer_allows_ops_user_tools(monkeypatch) -> None:
     monkeypatch.setattr(
         employee_authorization.settings, "WECOM_EMPLOYEE_OPS_USERS", "staff-1"
     )
-    actor = EmployeeActorAuthorizer().authorize({"from": {"userid": "staff-1"}})
+    monkeypatch.setattr(
+        employee_authorization.settings, "WECOM_EMPLOYEE_CORP_ID", "corp-1"
+    )
+    actor = EmployeeActorAuthorizer().authorize(
+        {"from": {"userid": "staff-1"}, "corpid": "corp-1"}
+    )
 
     EmployeeActorAuthorizer().authorize_tool(actor, "customer_lookup")
     assert "customer_lookup" in EmployeeActorAuthorizer().allowed_agent_tools(actor)

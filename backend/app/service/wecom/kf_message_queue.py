@@ -49,11 +49,20 @@ class KfMessageQueue(BaseWeComMessageQueue[KfIncomingMessage]):
         super().__init__(QUEUE_MAX_SIZE, "微信客服消息队列")
         self._persistent_mode = True
 
-    async def enqueue(self, msg: KfIncomingMessage) -> bool:
+    async def enqueue(self, msg: KfIncomingMessage, db=None) -> bool:
         """
         入队（非阻塞）。
         返回 True 表示入队成功，False 表示队列已满。
+        调用方传入连接时共用外层事务，否则自建短事务。
         """
+        if db is not None:
+            # 调用方已持有外层事务，直接复用同一连接提交。
+            await InboxRepo(db).enqueue(
+                "wecom_kf",
+                self._persistent_message_key(msg),
+                json.dumps(msg.__dict__, ensure_ascii=False),
+            )
+            return True
         async with db_session_scope():
             await InboxRepo().enqueue(
                 "wecom_kf",
@@ -162,21 +171,40 @@ class KfMessageQueue(BaseWeComMessageQueue[KfIncomingMessage]):
         # 解析 UMP 标记，分离纯文本和卡片/图片
         clean_text, ump_tags = parse_ump_tags(reply)
 
-        # 发送纯文本（如果解析后还有内容）
-        if clean_text:
-            result = await client.send_kf_text(msg.external_userid, clean_text)
-            if result.get("errcode") != 0:
-                logger.error(
-                    "客服文本回复发送失败 user=%s err=%s",
-                    msg.external_userid,
-                    result.get("errmsg"),
-                )
+        from app.service.wecom.kf_outbound_sender import send_text_guarded
 
-        # 发送 UMP 卡片（type=card 用 link 图文链接消息）
+        # 发送纯文本（如果解析后还有内容），走幂等投递合同。
+        if clean_text:
+            text_status = await send_text_guarded(
+                client,
+                msg.external_userid,
+                msg.msg_id,
+                clean_text,
+                part="text",
+                open_kfid=msg.open_kfid,
+            )
+            if text_status == "unknown":
+                logger.warning(
+                    "客服文本回复结果未知 user=%s，转人工确认", msg.external_userid
+                )
+            elif text_status != "sent":
+                logger.error("客服文本回复发送失败 user=%s", msg.external_userid)
+
+        # 发送 UMP 卡片（type=card 用 link 图文链接消息），每卡独立幂等键。
+        card_seq = 0
         for ump in ump_tags:
             ump_type = ump.get("type", "")
             if ump_type == "card":
-                await send_kf_card(client, msg.external_userid, ump)
+                card_seq += 1
+                await send_kf_card(
+                    client,
+                    msg.external_userid,
+                    ump,
+                    db=True,
+                    inbound_msg_id=msg.msg_id,
+                    part=f"card{card_seq}",
+                    open_kfid=msg.open_kfid,
+                )
             elif ump_type == "image":
                 logger.debug("UMP image 暂不单独发送（图片已内置在 card 中）")
 

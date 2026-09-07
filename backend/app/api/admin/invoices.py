@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from app.api.admin import verify_token
-from app.service.invoice.admin import AdminInvoiceService
+from app.service.invoice.admin import AdminInvoiceService, InvoiceStateError
 
 
 class InvoiceCreatePayload(BaseModel):
@@ -18,9 +18,9 @@ class InvoiceCreatePayload(BaseModel):
 
     orderNo: str | None = None
     customerName: str = ""
-    companyTitle: str = ""
-    taxNo: str = ""
-    email: str = ""
+    companyTitle: str
+    taxNo: str
+    email: str
     amountFen: int | None = None
 
 
@@ -62,6 +62,8 @@ def create_admin_invoices_router(service: AdminInvoiceService) -> APIRouter:
             record = await service.mark_issued(invoice_id, payload.issueNote)
         except KeyError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except InvoiceStateError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
         return {"code": 0, "data": record}
 
     return router

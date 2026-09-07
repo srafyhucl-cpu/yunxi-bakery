@@ -73,6 +73,8 @@ def test_cli_json_stdout_is_parseable(tmp_path) -> None:
         check=True,
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
     )
 
     payload = json.loads(result.stdout)

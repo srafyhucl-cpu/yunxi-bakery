@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from app.utils import fen_to_yuan_str, yuan_to_fen
+
 
 @dataclass
 class ParsedOrderData:
@@ -48,13 +50,10 @@ def parse_youzan_order_response(raw_order: dict) -> ParsedOrderData | None:
     addr_info = foi.get("address_info", {})
 
     status = order_info.get("status", "WAIT_BUYER_PAY")
-    payment_fen = int(float(pay_info.get("payment", 0)) * 100)
-    total_fee = float(pay_info.get("total_fee", 0))
-    post_fee = float(pay_info.get("post_fee", 0))
-    post_fee_fen = int(post_fee * 100)
-    discount_fen = max(
-        0, int((total_fee + post_fee - float(pay_info.get("payment", 0))) * 100)
-    )
+    payment_fen = yuan_to_fen(pay_info.get("payment", 0))
+    total_fee_fen = yuan_to_fen(pay_info.get("total_fee", 0))
+    post_fee_fen = yuan_to_fen(pay_info.get("post_fee", 0))
+    discount_fen = max(0, total_fee_fen + post_fee_fen - payment_fen)
     buyer_id = str(buyer_info.get("buyer_id", "") or buyer_info.get("open_id", ""))
     outer_user_id = str(buyer_info.get("outer_user_id", ""))
 
@@ -87,7 +86,7 @@ def parse_youzan_order_response(raw_order: dict) -> ParsedOrderData | None:
         addr_info=addr_info,
         status=status,
         payment_fen=payment_fen,
-        post_fee=post_fee,
+        post_fee=float(fen_to_yuan_str(post_fee_fen)),
         post_fee_fen=post_fee_fen,
         discount_fen=discount_fen,
         buyer_id=buyer_id,

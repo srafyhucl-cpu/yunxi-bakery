@@ -58,12 +58,14 @@ class InvoiceRepo(BaseRepository):
             + " FROM invoice_requests ORDER BY created_at DESC, id DESC"
         )
 
-    async def mark_issued(self, invoice_id: int, issue_note: str = "") -> dict | None:
-        """标记为已开发票（issued），带回最新记录。"""
-        await self._db.execute(
+    async def mark_issued(
+        self, invoice_id: int, issue_note: str = ""
+    ) -> tuple[bool, dict | None]:
+        """仅更新待开票记录，返回是否成功及最新记录。"""
+        cursor = await self._db.execute(
             "UPDATE invoice_requests SET status = 'issued', issue_note = ?, "
-            "updated_at = datetime('now') WHERE id = ? AND status != 'issued'",
+            "updated_at = datetime('now') WHERE id = ? AND status = 'applied'",
             (issue_note, invoice_id),
         )
         await self._db.commit()
-        return await self.get(invoice_id)
+        return cursor.rowcount == 1, await self.get(invoice_id)

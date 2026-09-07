@@ -13,6 +13,25 @@ def _script_text() -> str:
     return SCRIPT_PATH.read_bytes().decode("utf-8-sig")
 
 
+def _decode_console_output(raw: bytes) -> str:
+    """解码 PowerShell 控制台输出，UTF-8 优先，失败回退系统编码。"""
+    try:
+        return raw.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        return raw.decode("mbcs", errors="replace")
+
+
+def _run_powershell(argv: list[str], cwd: Path) -> "subprocess.CompletedProcess[str]":
+    """执行清理脚本并按控制台实际编码解码输出。"""
+    completed = subprocess.run(argv, cwd=cwd, capture_output=True, check=False)
+    return subprocess.CompletedProcess(
+        completed.args,
+        completed.returncode,
+        _decode_console_output(completed.stdout),
+        _decode_console_output(completed.stderr),
+    )
+
+
 def test_cleanup_script_is_utf8_bom_for_windows_powershell_51() -> None:
     raw = SCRIPT_PATH.read_bytes()
 
@@ -47,7 +66,7 @@ def test_cleanup_script_covers_project_level_caches_and_allows_scoped_recursive_
     reason="当前环境没有 Windows PowerShell 5.1",
 )
 def test_cleanup_script_parses_in_windows_powershell_51() -> None:
-    completed = subprocess.run(
+    completed = _run_powershell(
         [
             "powershell.exe",
             "-NoProfile",
@@ -56,12 +75,7 @@ def test_cleanup_script_parses_in_windows_powershell_51() -> None:
             "-File",
             str(SCRIPT_PATH),
         ],
-        cwd=ROOT_DIR,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        check=False,
+        ROOT_DIR,
     )
 
     assert completed.returncode == 0, completed.stdout + completed.stderr
@@ -90,7 +104,7 @@ def test_cleanup_script_recursively_removes_explicit_tmp_directory(
     duplicate_report.parent.mkdir(parents=True)
     duplicate_report.write_text("keep", encoding="utf-8")
 
-    preview = subprocess.run(
+    preview = _run_powershell(
         [
             "powershell.exe",
             "-NoProfile",
@@ -104,12 +118,7 @@ def test_cleanup_script_recursively_removes_explicit_tmp_directory(
             ".tmp-cleanup-test",
             "-OnlyTemporaryPath",
         ],
-        cwd=ROOT_DIR,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        check=False,
+        ROOT_DIR,
     )
     assert preview.returncode == 0, preview.stdout + preview.stderr
     assert target.exists()
@@ -120,7 +129,7 @@ def test_cleanup_script_recursively_removes_explicit_tmp_directory(
         if line.startswith("预览授权令牌:")
     )
 
-    executed = subprocess.run(
+    executed = _run_powershell(
         [
             "powershell.exe",
             "-NoProfile",
@@ -137,12 +146,7 @@ def test_cleanup_script_recursively_removes_explicit_tmp_directory(
             preview_token,
             "-Execute",
         ],
-        cwd=ROOT_DIR,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        check=False,
+        ROOT_DIR,
     )
     assert executed.returncode == 0, executed.stdout + executed.stderr
     assert not target.exists()
@@ -160,7 +164,7 @@ def test_cleanup_script_requires_preview_token(tmp_path: Path) -> None:
     target.mkdir(parents=True)
     (target / "artifact.txt").write_text("rebuildable", encoding="utf-8")
 
-    completed = subprocess.run(
+    completed = _run_powershell(
         [
             "powershell.exe",
             "-NoProfile",
@@ -175,12 +179,7 @@ def test_cleanup_script_requires_preview_token(tmp_path: Path) -> None:
             "-OnlyTemporaryPath",
             "-Execute",
         ],
-        cwd=ROOT_DIR,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        check=False,
+        ROOT_DIR,
     )
 
     assert completed.returncode != 0
@@ -198,7 +197,7 @@ def test_cleanup_script_rejects_unscoped_custom_directory(tmp_path: Path) -> Non
     unsafe = workspace / "not-a-temp-directory"
     unsafe.mkdir()
 
-    completed = subprocess.run(
+    completed = _run_powershell(
         [
             "powershell.exe",
             "-NoProfile",
@@ -211,12 +210,7 @@ def test_cleanup_script_rejects_unscoped_custom_directory(tmp_path: Path) -> Non
             "-TemporaryPath",
             "not-a-temp-directory",
         ],
-        cwd=ROOT_DIR,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        check=False,
+        ROOT_DIR,
     )
 
     assert completed.returncode != 0
@@ -236,7 +230,7 @@ def test_cleanup_script_preserves_env_file_in_temporary_directory(
     secret = target / ".env.local"
     secret.write_text("DO_NOT_DELETE=1", encoding="utf-8")
 
-    preview = subprocess.run(
+    preview = _run_powershell(
         [
             "powershell.exe",
             "-NoProfile",
@@ -250,12 +244,7 @@ def test_cleanup_script_preserves_env_file_in_temporary_directory(
             ".tmp-cleanup-test",
             "-OnlyTemporaryPath",
         ],
-        cwd=ROOT_DIR,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        check=False,
+        ROOT_DIR,
     )
     assert preview.returncode == 0, preview.stdout + preview.stderr
     preview_token = next(
@@ -264,7 +253,7 @@ def test_cleanup_script_preserves_env_file_in_temporary_directory(
         if line.startswith("预览授权令牌:")
     )
 
-    completed = subprocess.run(
+    completed = _run_powershell(
         [
             "powershell.exe",
             "-NoProfile",
@@ -281,12 +270,7 @@ def test_cleanup_script_preserves_env_file_in_temporary_directory(
             preview_token,
             "-Execute",
         ],
-        cwd=ROOT_DIR,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        check=False,
+        ROOT_DIR,
     )
 
     assert completed.returncode != 0

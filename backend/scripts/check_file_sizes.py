@@ -102,6 +102,10 @@ OVERSIZE_REVIEW_NOTES: dict[str, str] = {
         "存量职责评审：应用入口集中管理 lifespan、repository/service 装配和运行时路由，"
         "本轮仅增加 readiness Response 注入，不新增独立业务职责；禁止为单行超线机械拆分。"
     ),
+    "app/service/wecom/kf_callback_processor.py": (
+        "本轮职责评审：回调处理保持单同步命令编排内聚——拉取、分类、账本、人工落库、收件箱暂存、游标推进共享同一事务边界；"
+        "持久化原语已拆至 kf_sync_persist.py，继续拆分只会把事务顺序分散到多文件并增加游标超前风险。保留当前内聚边界，禁止新增无关职责。"
+    ),
 }
 
 UNREVIEWED_OVERSIZE_GUIDANCE = (

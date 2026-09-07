@@ -151,6 +151,17 @@ class Settings(BaseSettings):
     ADMIN_LOGIN_WINDOW_SECONDS: int = 300
     REQUEST_RATE_LIMIT_MAX_REQUESTS: int = 300
     REQUEST_RATE_LIMIT_WINDOW_SECONDS: int = 60
+    # 边缘防护后端：sqlite=明确的本地/单机模式（默认），redis=多机共享模式。
+    EDGE_PROTECTION_BACKEND: str = "sqlite"
+    EDGE_REDIS_URL: str = ""
+    # 生产要求共享防护时置 true：未配置可用共享存储则启动/预检失败。
+    EDGE_REQUIRE_SHARED: bool = False
+    # 受信代理数量：0 表示直连，只用连接地址，忽略 X-Forwarded-For；
+    # 经 N 层受信代理后取值需运维按拓扑显式配置。
+    TRUSTED_PROXY_COUNT: int = 0
+    # 受信代理网段（CIDR，逗号分隔）：直连地址不在其中时忽略转发头，
+    # 防止直连攻击者伪造 X-Forwarded-For 绕过限流或污染审计。
+    TRUSTED_PROXY_NETWORKS: str = ""
     ADMIN_AI_FAILURE_THRESHOLD: int = 3
     ADMIN_AI_COOLDOWN_SECONDS: int = 60
 
@@ -167,7 +178,7 @@ class Settings(BaseSettings):
     WECOM_INTELLIGENT_BOT_ENCODING_AES_KEY: str = (
         ""  # 企微智能机器人 API URL 回调 AESKey
     )
-    WECOM_EMPLOYEE_AUTH_REQUIRED: bool = False
+    WECOM_EMPLOYEE_AUTH_REQUIRED: bool = True
     WECOM_EMPLOYEE_ALLOWED_USERS: str = ""
     WECOM_EMPLOYEE_ALLOWED_CHATS: str = ""
     WECOM_EMPLOYEE_CORP_ID: str = ""

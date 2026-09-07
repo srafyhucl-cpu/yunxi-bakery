@@ -9,8 +9,8 @@ from starlette.responses import Response
 from fastapi.responses import FileResponse, JSONResponse
 
 from app import main
+from app.database import close_db, init_db
 from app.exceptions import AppError
-from app.middleware.edge_protection import _request_rate_limits
 
 
 class FakeAlertService:
@@ -61,12 +61,28 @@ def test_startup_safety_warns_for_missing_optional_secrets(monkeypatch) -> None:
     monkeypatch.setattr(main.settings, "YOUZAN_CLIENT_SECRET", "secret")
     monkeypatch.setattr(main.settings, "WECOM_CORP_ID", "corp")
     monkeypatch.setattr(main.settings, "WECOM_SECRET", "")
+    monkeypatch.setattr(main.settings, "ALLOW_MOCK_PAYMENT", False)
     monkeypatch.setattr(main, "logger", fake_logger)
 
     main._check_startup_safety()  # noqa: SLF001
 
     warning_names = [record[1][1] for record in fake_logger.records]
     assert warning_names == ["MIMO_API_KEY", "YOUZAN_CLIENT_ID", "WECOM_SECRET"]
+
+
+def test_startup_safety_warns_for_mock_payment(monkeypatch) -> None:
+    fake_logger = FakeLogger()
+    monkeypatch.setattr(main.settings, "ADMIN_API_TOKEN", "strong-token")
+    monkeypatch.setattr(main.settings, "ADMIN_SESSION_SECRET", "secret")
+    monkeypatch.setattr(main.settings, "ALLOW_MOCK_PAYMENT", True)
+    monkeypatch.setattr(main, "logger", fake_logger)
+
+    main._check_startup_safety()  # noqa: SLF001
+
+    assert any(
+        record[0] == "warning" and "ALLOW_MOCK_PAYMENT" in str(record[1])
+        for record in fake_logger.records
+    )
 
 
 def test_startup_safety_blocks_missing_admin_session_secret(monkeypatch) -> None:
@@ -87,7 +103,16 @@ def test_api_docs_are_disabled_by_default(monkeypatch) -> None:
     assert main.app.openapi_url is None
 
 
-async def test_edge_protection_rejects_oversized_request_and_adds_headers() -> None:
+async def test_edge_protection_rejects_oversized_request_and_adds_headers(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    monkeypatch.setattr(
+        "app.middleware.edge_protection.settings.DB_PATH",
+        str(tmp_path / "edge.db"),
+    )
+    connection = await init_db(str(tmp_path / "edge.db"))
+    await close_db(connection)
+
     async def return_ok(_request: Request) -> Response:
         return Response("ok")
 
@@ -119,9 +144,16 @@ async def test_edge_protection_rejects_oversized_request_and_adds_headers() -> N
     assert accepted.headers["strict-transport-security"].startswith("max-age=")
 
 
-async def test_edge_protection_preserves_request_body_receive() -> None:
+async def test_edge_protection_preserves_request_body_receive(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
     """请求体限制包装后仍应把原始 body 交给下游。"""
-    _request_rate_limits.clear()
+    monkeypatch.setattr(
+        "app.middleware.edge_protection.settings.DB_PATH",
+        str(tmp_path / "edge.db"),
+    )
+    connection = await init_db(str(tmp_path / "edge.db"))
+    await close_db(connection)
     body = b'{"token":"test-token"}'
     scope = {
         "type": "http",
@@ -147,10 +179,15 @@ async def test_edge_protection_preserves_request_body_receive() -> None:
 
 
 async def test_edge_protection_limits_requests_per_client(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, tmp_path
 ) -> None:
     """同一客户端超过窗口阈值时应被边缘层拒绝。"""
-    _request_rate_limits.clear()
+    monkeypatch.setattr(
+        "app.middleware.edge_protection.settings.DB_PATH",
+        str(tmp_path / "edge.db"),
+    )
+    connection = await init_db(str(tmp_path / "edge.db"))
+    await close_db(connection)
     monkeypatch.setattr(main.settings, "REQUEST_RATE_LIMIT_MAX_REQUESTS", 1)
     monkeypatch.setattr(main.settings, "REQUEST_RATE_LIMIT_WINDOW_SECONDS", 300)
     scope = {

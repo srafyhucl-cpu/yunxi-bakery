@@ -1,3 +1,346 @@
+## E-20260906-016：最终上线收口计划执行
+
+- trace_id: 20260906-audit-remediation-final
+- parent_run_id: 20260906-audit-remediation-final5
+- generated_at: 2026-09-06
+- evidence_type: remediation/go-live-closeout
+- file: `local:docs/tasks/20260906-项目负责人最终上线收口计划-OpenCode.md`
+- commit_sha: 220a8fe0dcd1126dfe43e3745667a3f7f58fc262
+- command: 收口计划 Task 1 演练 10 路；Task 2 全量与治理；Task 5 门禁、定向、全量（退出码 0）、预检（命令与退出码见 LOGBOOK 本轮条目）
+- result: partial
+- related_logbook: 2026-09-06 - fix(audit): 最终上线收口计划执行（No-Go）
+- related_adr: docs/harness-engineering/adr/0008-accounting-core-consistency.md
+- contains_sensitive_data: no
+- retention_note: 只记录命令结果、失败分类和裁决结论，不保存真实凭证、客户原文、订单明细或真实支付数据。原始输出保留在 `D:\Temp\yunxi-audit-final-20260906`。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 三态识别加演练 10；skip/xfail 逐项说明加耗时事项；凭证轮换待负责人；全量 1854 项退出码 0（4 跳过 4 预期失败均有说明）；最终裁决 No-Go。
+- failure_class: none
+- replayable: yes
+- residual_risks: 负责人动作（轮换、真实验收）未完成；No-Go。
+
+## E-20260906-015：审计复核收口计划执行
+
+- trace_id: 20260906-audit-remediation-final
+- parent_run_id: 20260906-audit-remediation-final4
+- generated_at: 2026-09-06
+- evidence_type: remediation/closeout-plan
+- file: `local:docs/tasks/20260906-审计复核收口执行计划-OpenCode.md`
+- commit_sha: 220a8fe0dcd1126dfe43e3745667a3f7f58fc262
+- command: 收口计划 Task 1 演练；Task 2 fixture 测试；Task 3 代码扫描；Task 5 门禁、定向、全量（退出码 0）、预检
+- result: partial
+- related_logbook: 2026-09-06 - fix(audit): 审计复核收口计划执行（No-Go）
+- related_adr: docs/harness-engineering/adr/0008-accounting-core-consistency.md
+- contains_sensitive_data: no
+- retention_note: 只记录命令结果、失败分类和裁决结论，不保存真实凭证、客户原文、订单明细或真实支付数据。原始输出保留在 `D:\Temp\yunxi-audit-final-20260906`。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 部署按发布前状态恢复加 10 路演练；fixture 去 CWD 依赖加脏测试临时仓库化；凭证代码侧通过、轮换待负责人；全量 1854 项退出码 0（4 跳过 4 预期失败均有说明）；最终裁决 No-Go。
+- failure_class: none（最终全量退出码 0）
+- replayable: yes
+- residual_risks: 负责人动作（轮换、真实验收）未完成；No-Go。
+
+## E-20260906-014：P0/P1 复核第四轮 3 项修复
+
+- trace_id: 20260906-audit-remediation-final
+- generated_at: 2026-09-06
+- evidence_type: remediation/review-round-4
+- file: `local:docs/audit/20260906-p0-p1-final-code-review.md`
+- commit_sha: 220a8fe0dcd1126dfe43e3745667a3f7f58fc262
+- command: 新测试 3 项；部署演练 8 路；受影响定向套件；`python -B -m ruff check backend/`；`python -B -m ruff format --check backend/`；治理门禁加 Harness P0；`python -B backend/scripts/preflight_production.py --json`；`python -B -m pytest backend/tests -q --no-cov -p no:cacheprovider`
+- result: partial
+- related_logbook: 2026-09-06 - fix(audit): P0/P1 复核第四轮 3 项修复（No-Go）
+- related_adr: docs/harness-engineering/adr/0008-accounting-core-consistency.md
+- contains_sensitive_data: no
+- retention_note: 只记录命令结果、失败分类和裁决结论，不保存真实凭证、客户原文、订单明细或真实支付数据。原始输出保留在 `D:\Temp\yunxi-audit-final-20260906`。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 支付快照全等加同连接固化、部署工作区保护加结构化标记加 8 路演练、凭证残留排查；业务定向测试通过，全量未通过系环境前置；最终裁决 No-Go。
+- failure_class: 环境与数据前提类，无业务逻辑失败
+- replayable: yes
+- residual_risks: 真实验收全部缺失；No-Go。
+
+## E-20260906-013：P0/P1 复核第三轮 3 项修复
+
+- trace_id: 20260906-audit-remediation-final
+- generated_at: 2026-09-06
+- evidence_type: remediation/review-round-3
+- file: `local:docs/audit/20260906-p0-p1-final-code-review.md`
+- commit_sha: 220a8fe0dcd1126dfe43e3745667a3f7f58fc262
+- command: 新测试 1 项；部署演练 6 路；受影响定向套件；`python -B -m ruff check backend/`；`python -B -m ruff format --check backend/`；治理门禁加 Harness P0；`python -B backend/scripts/preflight_production.py --json`；`python -B -m pytest backend/tests -q --no-cov -p no:cacheprovider`
+- result: partial
+- related_logbook: 2026-09-06 - fix(audit): P0/P1 复核第三轮 3 项修复（No-Go）
+- related_adr: docs/harness-engineering/adr/0008-accounting-core-consistency.md
+- contains_sensitive_data: no
+- retention_note: 只记录命令结果、失败分类和裁决结论，不保存真实凭证、客户原文、订单明细或真实支付数据。原始输出保留在 `D:\Temp\yunxi-audit-final-20260906`。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 组合支付事务内重算比对、部署统一失败恢复加 6 路演练、凭证轮换保持负责人动作、全量口径采用复核原文；业务定向测试通过，全量未通过系环境前置；最终裁决 No-Go。
+- failure_class: 环境与数据前提类，无业务逻辑失败
+- replayable: yes
+- residual_risks: 真实验收全部缺失；No-Go。
+
+## E-20260906-012：P0/P1 复核第二轮 8 项修复
+
+- trace_id: 20260906-audit-remediation-final
+- generated_at: 2026-09-06
+- evidence_type: remediation/review-round-2
+- file: `local:docs/audit/20260906-p0-p1-final-code-review.md`
+- commit_sha: 220a8fe0dcd1126dfe43e3745667a3f7f58fc262
+- command: 新测试 16 项；受影响定向套件；`python -B -m ruff check backend/`；`python -B -m ruff format --check backend/`；治理门禁加 Harness P0；`npm run typecheck`；`npm run check:page-api-coverage`；`bash backend/scripts/drill_deploy_rollback.sh`；`python -B backend/scripts/preflight_production.py --json`；`python -B -m pytest backend/tests -q --no-cov -p no:cacheprovider`
+- result: partial
+- related_logbook: 2026-09-06 - fix(audit): P0/P1 复核第二轮 8 项修复（No-Go）
+- related_adr: docs/harness-engineering/adr/0008-accounting-core-consistency.md
+- contains_sensitive_data: no
+- retention_note: 只记录命令结果、失败分类和裁决结论，不保存真实凭证、客户原文、订单明细或真实支付数据。凭证扫描只记录路径与指纹。原始输出保留在 `D:\Temp\yunxi-audit-final-20260906`。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 复核 8 项逐项先失败测试后实现 16 项；业务定向测试通过；全量测试未通过（环境前置缺失）；密钥轮换等真实验收待负责人；最终裁决 No-Go。
+- failure_class: 环境与数据前提类，无业务逻辑失败
+- replayable: yes
+- residual_risks: 真实验收全部缺失；No-Go。
+
+## E-20260906-011：P0/P1 新规最终整改与复核
+
+- trace_id: 20260906-audit-remediation-final
+- generated_at: 2026-09-06
+- evidence_type: remediation/p0-p1-final-round
+- file: `local:docs/audit/20260906-p0-p1-final-code-review.md`
+- commit_sha: 220a8fe0dcd1126dfe43e3745667a3f7f58fc262
+- command: 新测试 27 项；受影响定向套件；`python -B -m ruff check backend/`；`python -B -m ruff format --check backend/`；治理四门禁加 Harness P0；`npm run typecheck`；`npm run check:page-api-coverage`；`bash backend/scripts/drill_deploy_rollback.sh`；`python -B backend/scripts/preflight_production.py --json`；`python -B -m pytest backend/tests -q --no-cov -p no:cacheprovider`
+- result: partial
+- related_logbook: 2026-09-06 - fix(audit): P0/P1 新规最终整改与复核（No-Go）
+- related_adr: docs/harness-engineering/adr/0008-accounting-core-consistency.md
+- contains_sensitive_data: no
+- retention_note: 只记录命令结果、失败分类和裁决结论，不保存真实凭证、客户原文、订单明细或真实支付数据。凭证扫描只记录路径与指纹。原始输出保留在 `D:\Temp\yunxi-audit-final-20260906`。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 按 P0-1..P1-5 新规重验并先失败测试后实现 27 项；定向与治理门禁全过；全量 1836 项中 15 项环境前提失败（13 真实 fixture 缺失加 2 连锁，1 脏树）；预检开发配置 4 项预期阻断；新发现已入库硬编码有赞密钥 M-20260906-003 待负责人轮换；最终裁决 No-Go。
+- failure_class: 环境与数据前提类 15 项，无业务逻辑失败
+- replayable: yes
+- residual_risks: 真实验收全部缺失；No-Go。
+
+## E-20260906-010：审计整改复核收口与最终报告
+
+- trace_id: 20260906-audit-remediation
+- generated_at: 2026-09-06
+- evidence_type: remediation/final-review-closeout
+- file: `local:docs/audit/20260906-audit-remediation-final-review.md`
+- commit_sha: 220a8fe0dcd1126dfe43e3745667a3f7f58fc262
+- command: 复核定向套件；`python -B -m ruff check`；`python -B -m ruff format --check`；`python -B backend/scripts/preflight_production.py --json`；`python -B -m pytest backend/tests`
+- result: pass
+- related_logbook: 2026-09-06 - review(audit): 整改结果复核与收口
+- related_adr: docs/harness-engineering/adr/0008-accounting-core-consistency.md
+- contains_sensitive_data: no
+- retention_note: 只记录命令结果、失败分类和裁决结论，不保存真实凭证、客户原文或订单明细。原始输出保留在 `D:\Temp\yunxi-audit-remediation-20260906`。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 以工作区与退出码为准复核全部整改，双维度状态如实记录，修复编码子进程等 5 项测试问题，真实运行验收全部标记未验证，最终裁决 No-Go，任务保持进行中待负责人评审。
+- failure_class: none
+- replayable: yes
+- residual_risks: 真实验收缺失；No-Go。
+
+## E-20260906-009：审计整改最终回归与上线裁决
+
+- trace_id: 20260906-audit-remediation
+- generated_at: 2026-09-06
+- evidence_type: remediation/final-regression-verdict
+- file: `local:LOGBOOK.md`；`local:PROJECT-STATE.md`；`local:docs/tasks/20260906-审计整改执行手册-OpenCode.md`
+- commit_sha: 220a8fe0dcd1126dfe43e3745667a3f7f58fc262
+- command: `python -B backend/scripts/check_project_development_register.py`；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/check_project.py --skip-tests`；`python -B backend/scripts/check_evidence_index.py --summary`；`python -B backend/scripts/check_mistake_ledger.py`；`python -B backend/scripts/harness_p0_gate.py --summary`；`python -B -m ruff check`；`python -B -m ruff format --check`；`npm run typecheck`；`npm run check:page-api-coverage`；`bash backend/scripts/drill_deploy_rollback.sh`；`python -B -m pytest backend/tests -q --no-cov -p no:cacheprovider`；`python -B backend/scripts/preflight_production.py --json`
+- result: pass
+- related_logbook: 2026-09-06 - fix(audit): 最终回归与上线裁决（No-Go）
+- related_adr: docs/harness-engineering/adr/0008-accounting-core-consistency.md
+- contains_sensitive_data: no
+- retention_note: 只记录命令结果、失败分类和裁决结论，不保存真实凭证、客户原文、订单明细或真实支付数据。全量与预检原始输出保留在 `D:\Temp\yunxi-audit-remediation-20260906`，任务结束按白名单清理。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: P0-A/P0-B/P1/P2 代码测试运行证据齐备，定向门禁全过，全量 1802 项中 20 项非业务环境失败（基线对照确认），预检在开发配置下精确拦截 4 项生产门。逐项状态见 LOGBOOK 收口条目，最终裁决正式公开生产上线 No-Go，待负责人评审与受控验收批准。
+- failure_class: none
+- replayable: yes
+- residual_risks: 真实受控验收未执行；门禁通过不等于上线通过；No-Go。
+
+## E-20260906-008：审计整改 P2 小程序订单分页与治理复核
+
+- trace_id: 20260906-audit-remediation
+- generated_at: 2026-09-06
+- evidence_type: remediation/p2-miniapp-pagination
+- file: `local:backend/app/repository/order_repo.py`；`local:backend/app/service/order/application.py`；`local:backend/app/api/channels/storefront/orders.py`；`local:miniapp/miniprogram/services/orders.ts`；`local:miniapp/miniprogram/pages/orders/index.ts`；`local:miniapp/miniprogram/pages/orders/index.wxml`；`local:miniapp/docs/api-contract.md`
+- commit_sha: 220a8fe0dcd1126dfe43e3745667a3f7f58fc262
+- command: 后端分页 35 项通过；`npm run typecheck`；`npm run check:page-api-coverage`；`python -B -m ruff check`；`python -B -m ruff format --check`
+- result: pass
+- related_logbook: 2026-09-06 - fix(audit): 小程序订单分页与治理复核（P2）
+- related_adr: docs/harness-engineering/adr/0008-accounting-core-consistency.md
+- contains_sensitive_data: no
+- retention_note: 只记录代码路径、命令结果和分页合同结论，不保存真实凭证、客户原文或订单明细。原始命令输出保留在 `D:\Temp\yunxi-audit-remediation-20260906`，任务结束按白名单清理。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 用户订单列表改为页码分页合同并钳制页大小，小程序实现触底续加载与失败重试，契约同步分单位与分页语义。治理复核确认每项均有代码测试运行三类证据，门禁通过不冒充上线通过。
+- failure_class: none
+- replayable: yes
+- residual_risks: 真实受控验收待负责人批准；正式上线保持 No-Go。
+
+## E-20260906-007：审计整改 P1 生产安全与恢复
+
+- trace_id: 20260906-audit-remediation
+- generated_at: 2026-09-06
+- evidence_type: remediation/p1-security-recovery
+- file: `local:backend/app/middleware/edge_protection.py`；`local:backend/app/service/edge_protection.py`；`local:backend/app/repository/edge_protection_repo.py`；`local:backend/app/migrations/v030_edge_protection.sql`；`local:backend/app/service/youzan/client.py`；`local:backend/app/api/admin/assets.py`；`local:backend/app/service/security/image_validation.py`；`local:backend/app/service/llm/prompt.py`；`local:backend/app/service/agents/customer/prompts.py`；`local:backend/docker-compose.yml`；`local:backend/scripts/deploy_server.sh`；`local:backend/scripts/deploy.sh`；`local:backend/scripts/drill_deploy_rollback.sh`
+- commit_sha: 220a8fe0dcd1126dfe43e3745667a3f7f58fc262
+- command: P1 定向套件 179 项通过；`python -B backend/scripts/check_project.py --skip-tests`；`python -B backend/scripts/check_mistake_ledger.py`；`python -B -m ruff check`；`python -B -m ruff format --check`；`bash -n`；`bash backend/scripts/drill_deploy_rollback.sh`
+- result: pass
+- related_logbook: 2026-09-06 - fix(audit): 生产安全与恢复 P1 收口
+- related_adr: docs/harness-engineering/adr/0008-accounting-core-consistency.md
+- contains_sensitive_data: no
+- retention_note: 只记录代码路径、命令结果和安全恢复结论，不保存真实凭证、客户原文或订单明细。原始命令输出保留在 `D:\Temp\yunxi-audit-remediation-20260906`，任务结束按白名单清理。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 限流与登录防护迁入共享原子存储，受信代理默认零信任；有赞凭证单点构造与异常脱敏；上传做魔数维度预算校验；端口回环绑定；发布失败自动回滚且演练三路通过；提示词建立不可信边界与红队回归。P1 相关 179 项通过。
+- failure_class: none
+- replayable: yes
+- residual_risks: P2 未验证；多机存储、凭证轮换、真实红队需负责人决策；正式上线保持 No-Go。
+
+## E-20260906-006：审计整改 P0-B 支付身份门禁与通知退款闭环
+
+- trace_id: 20260906-audit-remediation
+- generated_at: 2026-09-06
+- evidence_type: remediation/p0b-pay-identity-refund
+- file: `local:backend/app/readiness.py`；`local:backend/scripts/preflight_production.py`；`local:backend/app/service/integrations/wechat_pay.py`；`local:backend/app/service/order/notify_intake.py`；`local:backend/app/service/order/payment_runtime.py`；`local:backend/app/service/order/refund_notification.py`；`local:backend/app/service/order/application.py`；`local:backend/app/service/order/payment.py`；`local:backend/app/api/channels/storefront/payments.py`；`local:backend/app/repository/wechat_refund_event_repo.py`；`local:backend/app/repository/order_repo.py`；`local:backend/app/migrations/v029_wechat_refund_events.sql`；`local:backend/scripts/check_project.py`；`local:backend/tests/service/test_payment_config_matrix.py`；`local:backend/tests/service/order/test_pay_notify_freshness_intake.py`；`local:backend/tests/service/order/test_refund_notification.py`
+- commit_sha: 220a8fe0dcd1126dfe43e3745667a3f7f58fc262
+- command: `python -B -m pytest backend/tests/service/order/ backend/tests/api/test_miniapp_payment_api.py backend/tests/test_health_ready.py backend/tests/scripts/test_preflight_production.py backend/tests/scripts/test_check_project.py backend/tests/service/test_payment_config_matrix.py backend/tests/service/test_wechat_normalizers.py -q --no-cov -p no:cacheprovider`；`python -B backend/scripts/check_project.py --skip-tests`；`python -B -m ruff check`；`python -B -m ruff format --check`
+- result: pass
+- related_logbook: 2026-09-06 - fix(audit): 支付身份上线门禁与通知退款闭环（P0-B）
+- related_adr: docs/harness-engineering/adr/0008-accounting-core-consistency.md
+- contains_sensitive_data: no
+- retention_note: 只记录代码路径、命令结果和门禁闭环结论，不保存真实凭证、客户原文、订单明细或真实支付数据。原始命令输出保留在 `D:\Temp\yunxi-audit-remediation-20260906`，任务结束按白名单清理。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 就绪与预检共享 mock 禁用、微信支付配置、员工鉴权门禁并覆盖配置矩阵；支付通知先归档后消费且时间戳超差拒绝；退款通知查询共用幂等键，全额自动三腿补偿，部分与超额记账建案，失信无事件行只建案。P0-B 相关 121 项通过。
+- failure_class: none
+- replayable: yes
+- residual_risks: P1、P2 未验证；真实支付退款需负责人批准；正式上线保持 No-Go。
+
+## E-20260906-005：审计整改 A-05 金额模型统一
+
+- trace_id: 20260906-audit-remediation
+- generated_at: 2026-09-06
+- evidence_type: remediation/p0a-money-contract
+- file: `local:backend/app/utils.py`；`local:backend/app/service/youzan/order_parser.py`；`local:backend/app/service/youzan/event_trade.py`；`local:backend/app/service/youzan/member_helpers.py`；`local:backend/app/service/order/creation.py`；`local:backend/app/service/order/payment_notification.py`；`local:backend/tests/service/test_money_contract.py`；`local:miniapp/docs/api-contract.md`
+- commit_sha: 220a8fe0dcd1126dfe43e3745667a3f7f58fc262
+- command: `python -B -m pytest backend/tests/service/test_money_contract.py backend/tests/service/test_order.py backend/tests/service/test_coupon_payment.py backend/tests/service/test_wechat_normalizers.py backend/tests/service/youzan/ -q --no-cov -p no:cacheprovider`；`python -B backend/scripts/check_project.py --skip-tests`；`python -B -m ruff check`；`python -B -m ruff format --check`
+- result: pass
+- related_logbook: 2026-09-06 - fix(audit): 金额模型统一（A-05）
+- related_adr: docs/harness-engineering/adr/0008-accounting-core-consistency.md
+- contains_sensitive_data: no
+- retention_note: 只记录代码路径、命令结果和金额合同结论，不保存真实凭证、客户原文或订单明细。原始命令输出保留在 `D:\Temp\yunxi-audit-remediation-20260906`，任务结束按白名单清理。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 分为唯一记账单位，元分换算收敛到半向上舍入的统一函数，非法拒绝，有赞解析全整数分运算，关键路径静态守卫禁止裸浮点换算，历史 8 单核验零违规，小程序契约明确分单位。
+- failure_class: none
+- replayable: yes
+- residual_risks: P0-B、P1、P2 未验证；真实支付与真实用户开放继续禁止。
+
+## E-20260906-004：审计整改 A-04 储值积分账务原子幂等
+
+- trace_id: 20260906-audit-remediation
+- generated_at: 2026-09-06
+- evidence_type: remediation/p0a-asset-atomic-idempotent
+- file: `local:backend/app/service/stored_value/member.py`；`local:backend/app/service/points/ledger.py`；`local:backend/app/repository/balance_ledger_repo.py`；`local:backend/app/repository/points_ledger_repo.py`；`local:backend/tests/service/test_asset_atomic_idempotent.py`
+- commit_sha: 220a8fe0dcd1126dfe43e3745667a3f7f58fc262
+- command: `python -B -m pytest backend/tests/service/test_coupon_payment.py backend/tests/service/test_member_accounting.py backend/tests/service/test_asset_atomic_idempotent.py backend/tests/service/test_stored_value.py backend/tests/service/test_points_payment.py -q --no-cov -p no:cacheprovider`；`python -B backend/scripts/check_project.py --skip-tests`；`python -B -m ruff check`；`python -B -m ruff format --check`
+- result: pass
+- related_logbook: 2026-09-06 - fix(audit): 储值积分账务原子幂等（A-04）
+- related_adr: docs/harness-engineering/adr/0008-accounting-core-consistency.md
+- contains_sensitive_data: no
+- retention_note: 只记录代码路径、命令结果和账务合同结论，不保存真实凭证、客户原文或订单明细。原始命令输出保留在 `D:\Temp\yunxi-audit-remediation-20260906`，任务结束按白名单清理。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 储值与积分记账改为幂等占位先行、余额变更与流水补写同一事务提交，同键异额拒绝，余额不足无痕迹。新增 9 项测试，关联账务 72 项通过，双连接并发扣款仅一笔成功且无负余额。
+- failure_class: none
+- replayable: yes
+- residual_risks: A-05、P0-B、P1、P2 未验证；真实支付与真实用户开放继续禁止。
+
+## E-20260906-003：审计整改 A-03 企微外发投递合同
+
+- trace_id: 20260906-audit-remediation
+- generated_at: 2026-09-06
+- evidence_type: remediation/p0a-wecom-outbound-delivery
+- file: `local:backend/app/migrations/v028_wecom_kf_outbound_ledger.sql`；`local:backend/app/repository/wecom_kf_outbound_repo.py`；`local:backend/app/service/wecom/kf_outbound_sender.py`；`local:backend/app/service/wecom/kf_message_queue.py`；`local:backend/app/service/wecom/kf_card_sender.py`；`local:backend/app/service/wecom/kf_message_preprocessor.py`；`local:backend/tests/service/wecom/test_kf_outbound_delivery.py`
+- commit_sha: 220a8fe0dcd1126dfe43e3745667a3f7f58fc262
+- command: `python -B -m pytest backend/tests/service/wecom/ -q --no-cov -p no:cacheprovider`；`python -B backend/scripts/check_project.py --skip-tests`；`python -B -m ruff check`；`python -B -m ruff format --check`
+- result: pass
+- related_logbook: 2026-09-06 - fix(audit): 企微外发投递合同（A-03）
+- related_adr: docs/harness-engineering/adr/0008-accounting-core-consistency.md
+- contains_sensitive_data: no
+- retention_note: 只记录代码路径、命令结果和投递合同结论，不保存真实凭证、客户原文或订单明细。原始命令输出保留在 `D:\Temp\yunxi-audit-remediation-20260906`，任务结束按白名单清理。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 新增外发投递账本与状态机，稳定幂等键作为供应商消息标识，超时与响应丢失记未知态不重发，明确拒绝记失败态不重发，重复消费与发送中重入转人工确认，人工确认后可重排。新增 8 项测试，wecom 全域 58 项通过。
+- failure_class: none
+- replayable: yes
+- residual_risks: A-04/A-05、P0-B、P1、P2 未验证；欢迎语仍即发即忘；真实企微与真实用户开放继续禁止。
+
+## E-20260906-002：审计整改 A-02 企微同步游标与入队原子性
+
+- trace_id: 20260906-audit-remediation
+- generated_at: 2026-09-06
+- evidence_type: remediation/p0a-wecom-sync-uow
+- file: `local:backend/app/repository/wecom_kf_sync_repo.py`；`local:backend/app/service/wecom/kf_callback_processor.py`；`local:backend/app/service/wecom/kf_sync_persist.py`；`local:backend/app/service/wecom/kf_handoff_sync.py`；`local:backend/app/service/wecom/kf_servicer_sync.py`；`local:backend/app/service/wecom/kf_handoff_checker.py`；`local:backend/app/service/wecom/kf_message_classifier.py`；`local:backend/app/service/wecom/kf_message_queue.py`；`local:backend/tests/service/wecom/test_kf_sync_atomicity.py`
+- commit_sha: 220a8fe0dcd1126dfe43e3745667a3f7f58fc262
+- command: `python -B -m pytest backend/tests/service/wecom/test_kf_callback_processor.py backend/tests/service/wecom/test_kf_sync_atomicity.py backend/tests/repository/test_wecom_kf_sync_repo.py -q --no-cov -p no:cacheprovider`；`python -B backend/scripts/check_project.py --skip-tests`；`python -B backend/scripts/check_mistake_ledger.py`；`python -B -m ruff check`；`python -B -m ruff format --check`
+- result: pass
+- related_logbook: 2026-09-06 - fix(audit): 企微同步游标与入队原子性（A-02）
+- related_adr: docs/harness-engineering/adr/0008-accounting-core-consistency.md
+- contains_sensitive_data: no
+- retention_note: 只记录代码路径、命令结果和事务一致性结论，不保存真实凭证、客户原文或订单明细。原始命令输出保留在 `D:\Temp\yunxi-audit-remediation-20260906`，任务结束按白名单清理。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 移除企微同步仓储四处内部自提交，同步命令单事务提交账本、人工落库、收件箱暂存、游标推进，游标最后推进且失败整体回滚。新增静态守卫与故障注入测试 6 项，存量 19 项，合计 25 项通过。测试隔离事故（补丁撤销污染开发库）已清理并记入 M-20260906-001。
+- failure_class: none
+- replayable: yes
+- residual_risks: A-03/A-04/A-05、P0-B、P1、P2 未验证；拉取网络仍在事务内；真实企微与真实用户开放继续禁止。
+
+## E-20260906-001：审计整改 A-01 通知审计事务属主
+
+- trace_id: 20260906-audit-remediation
+- generated_at: 2026-09-06
+- evidence_type: remediation/p0a-webhook-audit-uow
+- file: `local:backend/app/repository/youzan_webhook_event_repo.py`；`local:backend/app/api/integrations/youzan_audit.py`；`local:backend/app/api/integrations/youzan_webhook.py`；`local:backend/app/service/youzan/webhook_dispatcher.py`；`local:backend/tests/service/youzan/test_webhook_uow_atomicity.py`
+- commit_sha: 220a8fe0dcd1126dfe43e3745667a3f7f58fc262
+- command: `python -B backend/scripts/check_project_development_register.py`；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/check_project.py --skip-tests`；`python -B -m pytest backend/tests/repository/test_youzan_webhook_event_repo.py backend/tests/service/youzan/test_webhook_dispatcher.py backend/tests/service/youzan/test_webhook_uow_atomicity.py -q --no-cov -p no:cacheprovider`；`python -B backend/scripts/harness_p0_gate.py --summary`；`python -B -m ruff check`；`python -B -m ruff format --check`
+- result: pass
+- related_logbook: 2026-09-06 - fix(audit): 有赞通知审计事务属主整改（A-01）
+- related_adr: docs/harness-engineering/adr/0008-accounting-core-consistency.md
+- contains_sensitive_data: no
+- retention_note: 只记录代码路径、命令结果和事务一致性结论，不保存真实凭证、客户原文、订单明细或真实支付数据。原始命令输出保留在 `D:\Temp\yunxi-audit-remediation-20260906`，任务结束按白名单清理。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 移除有赞通知审计仓储三处内部自提交，审计写入失败直接抛出触发外层回滚，收件入口审计与收件箱共用请求事务，工作器业务、审计、收件箱完成标记保持同一事务。新增静态守卫与故障注入测试 6 项，存量定向测试 4 项，合计 10 项通过。审计基线其余项（A-02 起）仍未整改，整体保持 No-Go。
+- failure_class: none
+- replayable: yes
+- residual_risks: A-02 企微游标、A-03 外发重复、A-04 账务原子幂等、A-05 金额统一、P0-B 支付身份门禁、P1 安全恢复、P2 分页运营均未验证；真实支付、退款、企微身份、多实例、回滚演练继续禁止。
+
+## E-20260905-006：项目负责人视角代码库全面审计
+
+- trace_id: 20260905-comprehensive-project-audit
+- generated_at: 2026-09-05
+- evidence_type: audit/project-comprehensive
+- file: `local:docs/audit/20260905-project-comprehensive-audit.md`
+- commit_sha: 220a8fe0dcd1126dfe43e3745667a3f7f58fc262
+- command: `git status --short --branch`；`git rev-parse HEAD`；`python -B backend/scripts/preflight_production.py --json --output D:\Temp\yunxi-audit-20260905\preflight.json`；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/check_project_development_register.py`；定向后端测试 22/23；小程序 `npm run typecheck`；根目录全量测试约 363.6s
+- result: pass
+- related_logbook: 2026-09-05 - audit: 项目负责人视角代码库全面审计
+- related_adr: docs/harness-engineering/adr/0008-accounting-core-consistency.md
+- contains_sensitive_data: no
+- retention_note: 报告只保存代码路径、行号、命令结果和风险摘要，不保存本地 `.env` 的真实值、客户原文、订单明细或真实支付数据。生产预检 JSON 保留在 D 盘临时目录，任务结束按白名单清理。
+- storage_scope: repository
+- repository_origin: monorepo
+- sha256: docs/audit/20260905-project-comprehensive-audit.md=b5ab1a2d9c6ec10604a63ac5fa084451ef8a2a81d2a6d73caac02d4826872386
+- summary: 对当前提交 220a8fe0dcd1126dfe43e3745667a3f7f58fc262 做项目负责人视角的架构、账务、支付、外部集成、AI 安全、小程序、部署和治理审计。结论为正式公开生产上线 No-Go；开发、调试和受控测试可继续。已确认高风险包括账务与审计自提交、企微游标提前推进、外部回复重复窗口、金额类型混用、mock 支付与真实支付关闭、人工承接和员工鉴权配置缺口、通知新鲜度、进程内限流、token URL 泄露、上传内容校验、端口暴露、人工回滚、Prompt Injection 和小程序订单 50 条截断。
+- failure_class: none
+- replayable: yes
+- residual_risks: 真实支付/退款、真实企微身份、多实例防护、部署回滚和恶意输入红队均未执行；报告完成不代表业务完成或负责人批准上线。
+
 ## E-20260905-005：Harness CI 证据完整性与错误候选闭环本地验证
 
 - trace_id: 20260905-harness-evidence-error-loop
@@ -6582,3 +6925,32 @@ backend/docs/harness-engineering/core/evidence-index.md 仅作为历史镜像。
 - failure_class: none
 - replayable: yes
 - residual_risks: 仍需后续多个 CI 周期积累趋势样本后再评估成熟度升级；历史归档断链继续以 warning 维护。
+## E-20260906-017：发票状态与必填校验代码修复
+
+- trace_id: 20260906-invoice-fix
+- generated_at: 2026-09-06
+- evidence_type: remediation/invoice-validation-and-state-transition
+- file: `local:backend/app/api/admin/invoices.py`; `local:backend/app/service/invoice/admin.py`; `local:backend/app/repository/invoice_repo.py`; `local:backend/tests/api/test_admin_invoice_api.py`; `local:docs/tasks/20260830-P1-5-发票实现修复-指令.md`
+- commit_sha: 220a8fe0dcd1126dfe43e3745667a3f7f58fc262
+- command: `python -B -m pytest backend/tests/api/test_admin_invoice_api.py -q --no-cov -p no:cacheprovider`; 相关 Ruff check 与 format check；`git diff --check`
+- result: pass
+- related_logbook: 2026-09-06 - fix(invoice): 发票状态与必填校验收口
+- contains_sensitive_data: no
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 4 个严格 xfail 已移除；7 项发票 API 专用测试通过；缺失、非字符串和空白必填字段不再写入；applied 到 issued 使用条件更新，重复或非 applied 状态返回 409
+- failure_class: none
+- replayable: yes
+- retention_note: 仅记录代码修复、测试结果和未完成的真实验收，不保存真实凭证、客户原文或生产数据。
+- residual_risks: E1-E4 真实客服、后台和联动验收尚未执行；不代表真实验收或生产上线
+## E-20260907-001：企微客服同步事务原子性修复
+
+- trace_id: 20260907-wecom-sync-uow-atomicity
+- run_id: 20260907-wecom-sync-uow-atomicity-r1
+- generated_at: 2026-09-07
+- evidence_type: p1-fix-targeted-verification
+- file: local:LOGBOOK.md
+- commit_sha: 220a8fe0dcd1126dfe43e3745667a3f7f58fc262
+- command: pytest targeted wecom callback, sync atomicity, and session repository tests
+- result: passed (31/31)
+- related_logbook: 2026-09-07 - fix(wecom): 收紧客服同步分类与持久化原子性

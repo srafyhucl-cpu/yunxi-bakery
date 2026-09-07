@@ -98,6 +98,20 @@ def _check_startup_safety() -> None:
                 "启动安全检查警告：%s 未设置，相关功能可能无法正常工作", name
             )
 
+    if settings.ALLOW_MOCK_PAYMENT:
+        logger.warning(
+            "启动安全检查警告：ALLOW_MOCK_PAYMENT 已开启，mock 支付只允许显式测试环境，"
+            "生产上线前必须关闭并通过生产预检"
+        )
+
+    try:
+        from app.service.edge_protection import assert_edge_protection_ready
+
+        assert_edge_protection_ready()
+    except Exception as exc:
+        logger.critical("启动安全检查失败：%s", exc)
+        raise SystemExit(1) from exc
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
@@ -113,6 +127,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # ── 启动 ──
     # 0. 启动安全检查
     _check_startup_safety()
+    await _check_shared_backend_availability()
 
     bg_tasks = await _init_lifespan_services(app)
 
@@ -120,6 +135,23 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # ── 关闭 ──
     await _shutdown_lifespan_services(app, bg_tasks)
+
+
+async def _check_shared_backend_availability() -> None:
+    """生产要求共享防护时做存活探测，不可用直接拒绝启动。"""
+    if not bool(settings.EDGE_REQUIRE_SHARED):
+        return
+    from app.service.edge_protection import (
+        is_edge_protection_shared,
+        ping_edge_backend,
+    )
+
+    if not is_edge_protection_shared():
+        logger.critical("启动安全检查失败：生产要求共享边缘防护但后端未配置")
+        raise SystemExit(1)
+    if not await ping_edge_backend(timeout_seconds=2.0):
+        logger.critical("启动安全检查失败：共享边缘防护后端不可达")
+        raise SystemExit(1)
 
 
 async def _init_lifespan_services(app: FastAPI) -> set[asyncio.Task[None]]:
@@ -398,9 +430,30 @@ async def health() -> dict[str, str]:
 
 @app.get("/ready")
 async def ready(response: Response = None) -> dict:  # type: ignore[assignment]
-    return build_ready_payload(
+    payload = build_ready_payload(
         app,
         checks_builder=build_readiness_checks,
         feature_builder=build_runtime_feature_flags,
         response=response,
     )
+    checks = payload.get("checks")
+    if isinstance(checks, dict) and _edge_shared_backend_configured():
+        from app.service.edge_protection import ping_edge_backend
+
+        available = await ping_edge_backend(timeout_seconds=1.0)
+        checks["edge_protection_backend_available"] = available
+        if not available:
+            payload["status"] = "degraded"
+            if response is not None:
+                response.status_code = 503
+    return payload
+
+
+def _edge_shared_backend_configured() -> bool:
+    """共享后端是否已配置（配置完整才做存活探测，避免拖慢本地探针）。"""
+    from app.service.edge_protection import is_edge_protection_shared
+
+    try:
+        return bool(is_edge_protection_shared())
+    except Exception:
+        return False

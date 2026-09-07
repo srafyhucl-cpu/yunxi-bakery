@@ -214,16 +214,44 @@ def test_workspace_state_must_match_git_status(
 
 
 def test_staged_changes_do_not_make_workspace_dirty(
-    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """暂存区变更不计入工作区污染：在独立临时仓库用真实 git 验证。"""
+    import subprocess
+
     module = load_register_module()
-    monkeypatch.setattr(
-        module,
-        "_worktree_has_unstaged_changes",
-        lambda: (True, ""),
-    )
-    result = module.check_project_development_register()
-    assert result.passed, result.issues
+    repo = tmp_path / "worktree"
+    repo.mkdir()
+    staged = repo / "staged.py"
+    staged.write_text("print('staged')\n", encoding="utf-8")
+    tracked = repo / "tracked.py"
+    tracked.write_text("print('v1')\n", encoding="utf-8")
+
+    def _git(*args: str) -> None:
+        subprocess.run(
+            ["git", *args],
+            cwd=repo,
+            check=True,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+
+    _git("init")
+    _git("config", "user.email", "test@example.com")
+    _git("config", "user.name", "test")
+    _git("add", "tracked.py")
+    _git("commit", "-qm", "init")
+    _git("add", "staged.py")
+    monkeypatch.setattr(module, "ROOT_DIR", repo)
+    status_ok, porcelain = module._worktree_has_unstaged_changes()
+    assert status_ok
+    assert porcelain == ""
+    tracked.write_text("print('v2')\n", encoding="utf-8")
+    status_ok, porcelain = module._worktree_has_unstaged_changes()
+    assert status_ok
+    assert porcelain != ""
 
 
 def test_snapshot_commit_must_be_current_or_parent(tmp_path: Path) -> None:

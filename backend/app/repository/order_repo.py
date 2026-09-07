@@ -38,15 +38,26 @@ class OrderRepo(BaseRepository):
             ),
         )
 
-    async def list_by_user(self, user_id: str, *, limit: int = 50) -> list[Order]:
-        """按用户读取订单。"""
+    async def list_by_user(
+        self, user_id: str, *, limit: int = 50, offset: int = 0
+    ) -> list[Order]:
+        """按用户分页读取订单，创建时间倒序并以主键决胜保证稳定排序。"""
         rows = await self._db.execute_fetchall(
             "SELECT id, session_id, channel, user_id, products, total_amount, "
             "delivery, payment, status, remark, created_at, updated_at "
-            "FROM orders WHERE user_id = ? ORDER BY created_at DESC LIMIT ?",
-            (user_id, limit),
+            "FROM orders WHERE user_id = ? "
+            "ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?",
+            (user_id, limit, offset),
         )
         return [Order(**dict(row)) for row in rows]
+
+    async def count_by_user(self, user_id: str) -> int:
+        """统计用户订单总数。"""
+        rows = await self._db.execute_fetchall(
+            "SELECT COUNT(*) AS total FROM orders WHERE user_id = ?",
+            (user_id,),
+        )
+        return int(rows[0]["total"]) if rows else 0
 
     async def get_order(self, order_id: str) -> Order | None:
         """按订单号读取订单。"""
@@ -88,6 +99,19 @@ class OrderRepo(BaseRepository):
             "UPDATE orders SET payment = ?, updated_at = ? WHERE id = ?",
             (payment, updated_at, order_id),
         )
+        return await self.get_order(order_id)
+
+    async def update_payment_cas(
+        self, order_id: str, expected_payment: str, payment: str, updated_at: str
+    ) -> Order | None:
+        """比较并交换支付快照，期望值不一致返回空，由调用方重读重试。"""
+        cursor = await self._db.execute(
+            "UPDATE orders SET payment = ?, updated_at = ? "
+            "WHERE id = ? AND payment = ?",
+            (payment, updated_at, order_id, expected_payment),
+        )
+        if cursor.rowcount != 1:
+            return None
         return await self.get_order(order_id)
 
     async def update_payment_if_unpaid_active(

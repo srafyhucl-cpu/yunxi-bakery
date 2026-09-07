@@ -33,7 +33,10 @@ class YouzanWebhookAuditRecorder:
         event_type: str,
         buyer_id: str,
     ) -> int | None:
-        """创建有赞 Webhook 审计事件，返回审计 ID。"""
+        """创建有赞 Webhook 审计事件，返回审计标识。
+
+        审计写入与业务写入、收件箱状态由调用方同一事务提交，失败直接抛出。
+        """
         if not hasattr(self._chat_service, "create_youzan_webhook_audit"):
             return None
         business_type, business_key = extract_business_fields(
@@ -56,10 +59,10 @@ class YouzanWebhookAuditRecorder:
             )
         except Exception as exc:
             logger.error("有赞 webhook 审计收件写入失败 [msg_id=%s]: %s", msg_id, exc)
-            return None
+            raise
 
     async def mark_processing(self, audit_id: int | None, stage: str) -> None:
-        """标记审计事件进入处理阶段。"""
+        """标记审计事件进入处理阶段，失败直接抛出以触发外层回滚。"""
         if audit_id is None or not hasattr(
             self._chat_service, "mark_youzan_webhook_processing"
         ):
@@ -72,6 +75,7 @@ class YouzanWebhookAuditRecorder:
                 audit_id,
                 exc,
             )
+            raise
 
     async def mark_result(
         self,
@@ -81,7 +85,7 @@ class YouzanWebhookAuditRecorder:
         error_type: str = "",
         error_message: str = "",
     ) -> None:
-        """标记审计事件处理结果。"""
+        """标记审计事件处理结果，失败直接抛出以触发外层回滚。"""
         if audit_id is None or not hasattr(
             self._chat_service, "mark_youzan_webhook_result"
         ):
@@ -100,6 +104,7 @@ class YouzanWebhookAuditRecorder:
             logger.error(
                 "有赞 webhook 审计结果写入失败 [audit_id=%s]: %s", audit_id, exc
             )
+            raise
 
     async def mark_failed(
         self, audit_id: int | None, stage: str, exc: Exception

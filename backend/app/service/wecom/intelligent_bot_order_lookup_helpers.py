@@ -53,7 +53,7 @@ def compact_live_order(order: dict[str, Any], order_no: str) -> dict[str, Any]:
         "source": str(order.get("source", "youzan_live")),
         "orderNo": str(order.get("order_no") or order_no),
         "status": str(order.get("status") or order.get("status_str") or ""),
-        "amountFen": yuan_to_fen(order.get("amount_yuan")),
+        "amountFen": yuan_to_fen(order.get("amount_yuan") or 0),
         "productTitles": str(order.get("product_titles", "")),
         "payTime": str(order.get("pay_time", "")),
         "deliveryArea": join_area(

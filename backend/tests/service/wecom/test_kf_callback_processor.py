@@ -624,7 +624,13 @@ async def test_start_event_sends_welcome_event_text(
         {"Token": "token-1", "OpenKfId": "kf-1"}
     )
 
-    assert client.event_texts == [("welcome-code-1", "已接入智能助手", "")]
+    assert client.event_texts == [
+        (
+            "welcome-code-1",
+            "已接入智能助手",
+            "wecom_kf:out:event-start-welcome:welcome:welcome-code-1",
+        )
+    ]
 
 
 @pytest.mark.asyncio

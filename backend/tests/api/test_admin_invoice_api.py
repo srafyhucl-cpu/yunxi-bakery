@@ -104,10 +104,6 @@ async def test_invoice_api_marks_applied_record_issued(app: FastAPI) -> None:
     assert issued["issue_note"] == "电子发票已发送"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="当前实现对 issued 重复标记仍返回 200，待补状态流转阻断",
-)
 @pytest.mark.asyncio
 async def test_invoice_api_rejects_marking_issued_record_again(
     app: FastAPI,
@@ -143,10 +139,6 @@ async def test_invoice_api_rejects_marking_issued_record_again(
 
 
 @pytest.mark.parametrize("missing_field", ["companyTitle", "taxNo", "email"])
-@pytest.mark.xfail(
-    strict=True,
-    reason="当前请求模型将必填字段缺失归一为空字符串，待补 API 校验",
-)
 @pytest.mark.asyncio
 async def test_invoice_api_rejects_missing_required_field(
     app: FastAPI,

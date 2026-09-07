@@ -48,7 +48,12 @@ class TransferRepo(BaseRepository):
         return [HumanTransfer(**dict(r)) for r in rows]
 
     async def update_status(
-        self, transfer_id: str, status: TransferStatus, staff_id: str = ""
+        self,
+        transfer_id: str,
+        status: TransferStatus,
+        staff_id: str = "",
+        *,
+        commit: bool = True,
     ) -> None:
         """更新工单状态，接单时记录客服 ID 和接单时间。"""
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -63,13 +68,16 @@ class TransferRepo(BaseRepository):
                 "UPDATE human_transfers SET status = ?, closed_at = ? WHERE id = ?",
                 (status.value, now, transfer_id),
             )
-        await self._db.commit()
+        if commit:
+            await self._db.commit()
 
     async def mark_latest_for_session(
         self,
         session_id: str,
         status: TransferStatus,
         staff_id: str = "",
+        *,
+        commit: bool = True,
     ) -> None:
         """按会话更新最近一条未关闭转人工工单。"""
         rows = await self._db.execute_fetchall(
@@ -80,4 +88,4 @@ class TransferRepo(BaseRepository):
         )
         if not rows:
             return
-        await self.update_status(str(rows[0]["id"]), status, staff_id)
+        await self.update_status(str(rows[0]["id"]), status, staff_id, commit=commit)

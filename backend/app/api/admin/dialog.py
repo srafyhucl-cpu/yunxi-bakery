@@ -9,14 +9,13 @@ from fastapi.responses import JSONResponse
 
 from app.api.admin import (
     ADMIN_SESSION_COOKIE,
-    admin_login_is_allowed,
+    attempt_admin_login,
     clear_admin_login_failures,
     has_admin_api_access,
     is_allowed_admin_origin,
     is_valid_admin_session,
     is_valid_admin_token,
     issue_admin_session,
-    record_admin_login_failure,
     set_admin_session_cookie,
     verify_token,
 )
@@ -73,14 +72,14 @@ def create_dialog_router(
     async def auth_login(request: Request) -> JSONResponse:
         if not is_allowed_admin_origin(request):
             raise HTTPException(status_code=403, detail="请求来源不受信任")
-        if not admin_login_is_allowed(request):
+        # 原子占用一次尝试：检查与计数同一操作完成，并发不超发。
+        if not await attempt_admin_login(request):
             raise HTTPException(status_code=429, detail="登录尝试过于频繁")
         body = await request.json()
         token = str(body.get("token", "")).strip()
         if not is_valid_admin_token(token):
-            record_admin_login_failure(request)
             raise HTTPException(status_code=401, detail="Token 无效")
-        clear_admin_login_failures(request)
+        await clear_admin_login_failures(request)
         response = JSONResponse(
             {
                 "ok": True,

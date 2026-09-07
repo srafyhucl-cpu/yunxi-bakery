@@ -11,7 +11,7 @@
     <view class="page-fixed-safe__title">我的订单</view>
   </view>
   <view class="page-pinned page-pinned--empty"></view>
-  <scroll-view class="page-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+  <scroll-view class="page-scroll" scroll-y enhanced show-scrollbar="{{false}}" bindscrolltolower="loadMore" lower-threshold="120">
     <view class="page">
       <view class="section-title">我的订单</view>
       <session-notice
@@ -84,6 +84,11 @@
             </button>
           </view>
         </view>
+      </view>
+      <view wx:if="{{filteredOrders.length > 0}}" class="list-footer">
+        <text wx:if="{{loadingMore}}">正在加载更多订单...</text>
+        <text wx:elif="{{loadFailed}}">加载失败，<text bindtap="retryLoad" class="retry-link">点击重试</text></text>
+        <text wx:elif="{{!hasMore}}">没有更多订单</text>
       </view>
     </view>
   </scroll-view>

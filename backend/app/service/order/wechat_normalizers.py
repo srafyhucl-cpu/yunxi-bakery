@@ -38,17 +38,62 @@ def _require_str(transaction: dict, path: str, label: str) -> str:
 
 
 def _require_amount_fen(amount: dict, path: str, label: str) -> int:
-    """读取并校验金额字段（微信 v3 金额为整数分，拒绝小数 / 非数字）。"""
+    """读取并校验金额字段（微信 v3 金额为整数分，拒绝小数 / 非数字）。
+
+    布尔值与带小数浮点一律拒绝，防止 int() 静默截断。
+    """
     if not isinstance(amount, dict):
         raise WechatProtocolError(f"微信报文缺少金额对象 amount（{label}）")
     raw = amount.get(path)
+    if isinstance(raw, bool):
+        raise WechatProtocolError(f"微信报文 {label}（amount.{path}）无效")
+    if isinstance(raw, float):
+        if not raw.is_integer():
+            raise WechatProtocolError(f"微信报文 {label}（amount.{path}）无效")
+        raw = int(raw)
     try:
         value = int(raw)
     except (TypeError, ValueError):
         raise WechatProtocolError(f"微信报文 {label}（amount.{path}）无效") from None
+    if isinstance(raw, str) and str(raw).strip() != str(value):
+        raise WechatProtocolError(f"微信报文 {label}（amount.{path}）无效")
     if value < 0:
         raise WechatProtocolError(f"微信报文 {label}（amount.{path}）为负")
     return value
+
+
+def _require_refund_amount_contract(
+    amount: dict, label: str, *, require_payer: bool = True
+) -> tuple[int, int, int, int]:
+    """统一退款金额合同：非负且满足 refund<=total、payer_refund<=payer_total、payer_refund<=refund。
+
+    用户退款不得超过本次退款，本次退款不得超过原支付，任一越界直接拒绝。
+    查询报文无 payer 口径时只校验 total/refund，调用方按自身语义补齐。
+    """
+    total_fen = _require_amount_fen(amount, "total", "原支付金额")
+    refund_fen = _require_amount_fen(amount, "refund", "本次退款金额")
+    if not require_payer:
+        if total_fen <= 0 or refund_fen <= 0:
+            raise WechatProtocolError(f"微信报文退款金额必须为正（{label}）")
+        if refund_fen > total_fen:
+            raise WechatProtocolError(f"微信报文退款金额超过原支付（{label}）")
+        return total_fen, refund_fen, 0, 0
+    payer_total_fen = _require_amount_fen(amount, "payer_total", "用户实付金额")
+    payer_refund_fen = _require_amount_fen(amount, "payer_refund", "用户退款金额")
+    if (
+        total_fen <= 0
+        or refund_fen <= 0
+        or payer_total_fen <= 0
+        or payer_refund_fen <= 0
+    ):
+        raise WechatProtocolError(f"微信报文退款金额必须为正（{label}）")
+    if refund_fen > total_fen:
+        raise WechatProtocolError(f"微信报文退款金额超过原支付（{label}）")
+    if payer_refund_fen > payer_total_fen:
+        raise WechatProtocolError(f"微信报文用户退款超过用户实付（{label}）")
+    if payer_refund_fen > refund_fen:
+        raise WechatProtocolError(f"微信报文用户退款超过本次退款（{label}）")
+    return total_fen, refund_fen, payer_total_fen, payer_refund_fen
 
 
 def _require_amount_obj(transaction: dict, label: str) -> dict:
@@ -128,19 +173,19 @@ class RefundNotifyNormalizer:
         out_refund_no = _require_str(transaction, "out_refund_no", "商户退款单号")
         refund_id = _require_str(transaction, "refund_id", "微信退款单号")
         refund_status = _require_str(transaction, "refund_status", "退款状态")
+        transaction_id = _require_str(transaction, "transaction_id", "微信支付交易号")
         success_time = str(transaction.get("success_time", "") or "").strip()
         amount = _require_amount_obj(transaction, "退款通知")
-        total_fen = _require_amount_fen(amount, "total", "原支付金额")
-        refund_fen = _require_amount_fen(amount, "refund", "本次退款金额")
-        payer_total_fen = _require_amount_fen(amount, "payer_total", "用户实付金额")
-        payer_refund_fen = _require_amount_fen(amount, "payer_refund", "用户退款金额")
+        total_fen, refund_fen, payer_total_fen, payer_refund_fen = (
+            _require_refund_amount_contract(amount, "退款通知")
+        )
         user_received_account = str(
             transaction.get("user_received_account", "") or ""
         ).strip()
         return RefundNotify(
             mchid=mchid,
             out_trade_no=out_trade_no,
-            transaction_id=str(transaction.get("transaction_id", "") or "").strip(),
+            transaction_id=transaction_id,
             out_refund_no=out_refund_no,
             refund_id=refund_id,
             refund_status=refund_status,
@@ -217,14 +262,16 @@ class RefundQueryNormalizer:
         out_refund_no = _require_str(transaction, "out_refund_no", "商户退款单号")
         refund_id = _require_str(transaction, "refund_id", "微信退款单号")
         refund_status = _require_str(transaction, "refund_status", "退款状态")
+        transaction_id = _require_str(transaction, "transaction_id", "微信支付交易号")
         success_time = str(transaction.get("success_time", "") or "").strip()
         amount = _require_amount_obj(transaction, "退款查询")
-        total_fen = _require_amount_fen(amount, "total", "原支付金额")
-        refund_fen = _require_amount_fen(amount, "refund", "本次退款金额")
+        total_fen, refund_fen, _, _ = _require_refund_amount_contract(
+            amount, "退款查询", require_payer=False
+        )
         return RefundQueryResult(
             mchid=mchid,
             out_trade_no=out_trade_no,
-            transaction_id=str(transaction.get("transaction_id", "") or "").strip(),
+            transaction_id=transaction_id,
             out_refund_no=out_refund_no,
             refund_id=refund_id,
             refund_status=refund_status,

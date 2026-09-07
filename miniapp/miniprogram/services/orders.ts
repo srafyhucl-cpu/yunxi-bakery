@@ -89,9 +89,19 @@ export async function createOrder(payload: CreateOrderPayload): Promise<{ orderI
   return unwrapResponse(response);
 }
 
-export async function listOrders(): Promise<OrderSummary[]> {
-  const response = await request<WrappedApiResponse<OrderSummary[]> | OrderSummary[]>({
-    path: "/api/v1/miniapp/orders"
+export interface PagedOrders {
+  items: OrderSummary[];
+  total: number;
+  page: number;
+  pageSize: number;
+  hasMore: boolean;
+}
+
+const ORDER_PAGE_SIZE = 20;
+
+export async function listOrders(page = 1, pageSize: number = ORDER_PAGE_SIZE): Promise<PagedOrders> {
+  const response = await request<WrappedApiResponse<PagedOrders> | PagedOrders>({
+    path: `/api/v1/miniapp/orders?page=${page}&pageSize=${pageSize}`
   });
   return unwrapResponse(response);
 }

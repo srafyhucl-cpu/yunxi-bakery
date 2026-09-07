@@ -99,6 +99,22 @@ def test_build_readiness_checks_reports_configured_paths(
     monkeypatch.setattr(main.settings, "WECOM_BOT_PLUGIN_API_KEY", "plugin-key")
     monkeypatch.setattr(main.settings, "WECOM_STAFF_ID", "")
     monkeypatch.setattr(main.settings, "WECOM_KF_SERVICER_USERID", "servicer-user")
+    monkeypatch.setattr(main.settings, "WECOM_EMPLOYEE_AUTH_REQUIRED", True)
+    monkeypatch.setattr(main.settings, "WECOM_EMPLOYEE_ALLOWED_USERS", "staff-1")
+    monkeypatch.setattr(main.settings, "WECOM_EMPLOYEE_CORP_ID", "corp-id")
+    monkeypatch.setattr(main.settings, "WECOM_EMPLOYEE_OPS_USERS", "ops-1")
+    monkeypatch.setattr(main.settings, "ALLOW_MOCK_PAYMENT", False)
+    monkeypatch.setattr(main.settings, "WECHAT_PAY_ENABLED", True)
+    monkeypatch.setattr(main.settings, "WECHAT_MINIAPP_APP_ID", "wx-app-id")
+    monkeypatch.setattr(main.settings, "WECHAT_PAY_MCH_ID", "mch-id")
+    monkeypatch.setattr(
+        main.settings, "WECHAT_PAY_NOTIFY_URL", "https://pay.example/notify"
+    )
+    monkeypatch.setattr(
+        main.settings, "WECHAT_PAY_PRIVATE_KEY_PATH", "/keys/apiclient_key.pem"
+    )
+    monkeypatch.setattr(main.settings, "WECHAT_PAY_CERT_SERIAL_NO", "serial-no")
+    monkeypatch.setattr(main.settings, "WECHAT_PAY_API_V3_KEY", "v3-key")
     monkeypatch.setattr(readiness, "ADMIN_DIST_DIR", dist_dir)
 
     checks = readiness.build_readiness_checks()
@@ -123,6 +139,10 @@ def test_build_readiness_checks_reports_configured_paths(
         "wecom_intelligent_bot_callback_token_configured": True,
         "wecom_intelligent_bot_encoding_aes_key_configured": True,
         "handoff_staff_userid_ready": True,
+        "wecom_employee_auth_ready": True,
+        "mock_payment_disabled": True,
+        "wechat_pay_configured": True,
+        "edge_protection_shared_ready": True,
         "admin_frontend_index_exists": True,
         "admin_frontend_assets_exist": True,
         "admin_frontend_observability_summary_built": True,
@@ -165,6 +185,8 @@ def test_build_readiness_checks_rejects_defaults(monkeypatch, tmp_path) -> None:
     assert checks["wecom_intelligent_bot_callback_token_configured"] is False
     assert checks["wecom_intelligent_bot_encoding_aes_key_configured"] is False
     assert checks["handoff_staff_userid_ready"] is False
+    assert checks["wecom_employee_auth_ready"] is False
+    assert checks["wechat_pay_configured"] is False
     assert checks["admin_frontend_index_exists"] is False
     assert checks["admin_frontend_assets_exist"] is False
     assert checks["admin_frontend_observability_summary_built"] is False
@@ -186,6 +208,22 @@ def test_build_channel_readiness_checks_accepts_production_channels(
     monkeypatch.setattr(main.settings, "WECOM_BOT_PLUGIN_API_KEY", "plugin-key")
     monkeypatch.setattr(main.settings, "WECOM_STAFF_ID", "")
     monkeypatch.setattr(main.settings, "WECOM_KF_SERVICER_USERID", "servicer-user")
+    monkeypatch.setattr(main.settings, "WECOM_EMPLOYEE_AUTH_REQUIRED", True)
+    monkeypatch.setattr(main.settings, "WECOM_EMPLOYEE_ALLOWED_USERS", "staff-1")
+    monkeypatch.setattr(main.settings, "WECOM_EMPLOYEE_CORP_ID", "corp-id")
+    monkeypatch.setattr(main.settings, "WECOM_EMPLOYEE_OPS_USERS", "ops-1")
+    monkeypatch.setattr(main.settings, "ALLOW_MOCK_PAYMENT", False)
+    monkeypatch.setattr(main.settings, "WECHAT_PAY_ENABLED", True)
+    monkeypatch.setattr(main.settings, "WECHAT_MINIAPP_APP_ID", "wx-app-id")
+    monkeypatch.setattr(main.settings, "WECHAT_PAY_MCH_ID", "mch-id")
+    monkeypatch.setattr(
+        main.settings, "WECHAT_PAY_NOTIFY_URL", "https://pay.example/notify"
+    )
+    monkeypatch.setattr(
+        main.settings, "WECHAT_PAY_PRIVATE_KEY_PATH", "/keys/apiclient_key.pem"
+    )
+    monkeypatch.setattr(main.settings, "WECHAT_PAY_CERT_SERIAL_NO", "serial-no")
+    monkeypatch.setattr(main.settings, "WECHAT_PAY_API_V3_KEY", "v3-key")
 
     checks = readiness.build_channel_readiness_checks()
 
@@ -204,6 +242,10 @@ def test_build_channel_readiness_checks_accepts_production_channels(
         "wecom_intelligent_bot_callback_token_configured": True,
         "wecom_intelligent_bot_encoding_aes_key_configured": True,
         "handoff_staff_userid_ready": True,
+        "wecom_employee_auth_ready": True,
+        "mock_payment_disabled": True,
+        "wechat_pay_configured": True,
+        "edge_protection_shared_ready": True,
     }
 
 
@@ -406,6 +448,22 @@ async def test_ready_returns_ready_when_all_checks_pass(monkeypatch, tmp_path) -
     monkeypatch.setattr(main.settings, "WECOM_BOT_PLUGIN_API_KEY", "plugin-key")
     monkeypatch.setattr(main.settings, "WECOM_STAFF_ID", "staff-user")
     monkeypatch.setattr(main.settings, "WECOM_KF_SERVICER_USERID", "")
+    monkeypatch.setattr(main.settings, "WECOM_EMPLOYEE_AUTH_REQUIRED", True)
+    monkeypatch.setattr(main.settings, "WECOM_EMPLOYEE_ALLOWED_USERS", "staff-user")
+    monkeypatch.setattr(main.settings, "WECOM_EMPLOYEE_CORP_ID", "corp-id")
+    monkeypatch.setattr(main.settings, "WECOM_EMPLOYEE_OPS_USERS", "ops-user")
+    monkeypatch.setattr(main.settings, "ALLOW_MOCK_PAYMENT", False)
+    monkeypatch.setattr(main.settings, "WECHAT_PAY_ENABLED", True)
+    monkeypatch.setattr(main.settings, "WECHAT_MINIAPP_APP_ID", "wx-app-id")
+    monkeypatch.setattr(main.settings, "WECHAT_PAY_MCH_ID", "mch-id")
+    monkeypatch.setattr(
+        main.settings, "WECHAT_PAY_NOTIFY_URL", "https://pay.example/notify"
+    )
+    monkeypatch.setattr(
+        main.settings, "WECHAT_PAY_PRIVATE_KEY_PATH", "/keys/apiclient_key.pem"
+    )
+    monkeypatch.setattr(main.settings, "WECHAT_PAY_CERT_SERIAL_NO", "serial-no")
+    monkeypatch.setattr(main.settings, "WECHAT_PAY_API_V3_KEY", "v3-key")
     monkeypatch.setattr(main.settings, "ENABLE_REPLY_GUARD", True)
     monkeypatch.setattr(readiness, "ADMIN_DIST_DIR", dist_dir)
 

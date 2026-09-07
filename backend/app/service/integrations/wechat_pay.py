@@ -17,6 +17,24 @@ PAYMENT_SIGN_TYPE = "RSA"
 TIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 WECHAT_PAY_SUCCESS_STATE = "SUCCESS"
 WECHAT_JSAPI_REQUEST_PATH = "/v3/pay/transactions/jsapi"
+# 通知时间戳最大允许偏差（秒），超出直接拒绝，防止截获重放。
+NOTIFY_MAX_AGE_SECONDS = 300
+NOTIFY_FUTURE_SKEW_SECONDS = 60
+
+
+def _is_notify_timestamp_fresh(
+    timestamp: str, *, now_seconds: int | None = None
+) -> bool:
+    """通知时间戳必须在允许偏差内，过旧或超前均拒绝。"""
+    import time
+
+    try:
+        notified_at = int(timestamp)
+    except (TypeError, ValueError):
+        return False
+    now = int(time.time()) if now_seconds is None else int(now_seconds)
+    age = now - notified_at
+    return -NOTIFY_FUTURE_SKEW_SECONDS <= age <= NOTIFY_MAX_AGE_SECONDS
 
 
 @dataclass(frozen=True)
@@ -42,8 +60,14 @@ class WechatPayIntegrationService:
             and settings.WECHAT_PAY_API_V3_KEY
         )
 
-    def verify_notify_signature(self, raw_body: bytes, headers: dict[str, str]) -> bool:
-        """校验微信支付通知签名。"""
+    def verify_notify_signature(
+        self,
+        raw_body: bytes,
+        headers: dict[str, str],
+        *,
+        now_seconds: int | None = None,
+    ) -> bool:
+        """校验微信支付通知签名与时间戳新鲜度。"""
         if not settings.WECHAT_PAY_PLATFORM_CERT_PATH:
             return False
         timestamp = headers.get("wechatpay-timestamp", "")
@@ -51,6 +75,8 @@ class WechatPayIntegrationService:
         signature = headers.get("wechatpay-signature", "")
         serial = headers.get("wechatpay-serial", "")
         if not timestamp or not nonce or not signature or not serial:
+            return False
+        if not _is_notify_timestamp_fresh(timestamp, now_seconds=now_seconds):
             return False
         cert_path = Path(settings.WECHAT_PAY_PLATFORM_CERT_PATH)
         if not cert_path.exists():

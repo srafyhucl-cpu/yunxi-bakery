@@ -11,6 +11,7 @@ Webhook API 路由。
 from fastapi import APIRouter, HTTPException, Request
 
 from app.config import settings
+from app.database import db_conn_var
 from app.logger import setup_logger
 from app.service.alerting import alert_service
 from app.service.chat import ChatService
@@ -87,6 +88,11 @@ def create_webhook_router(chat_service: ChatService) -> APIRouter:
             return {"code": 0, "msg": "success"}
 
         buyer_id = payload.get("buyer_id", "")
+        # 审计收件与收件箱入队共用请求中间件的外层事务，一起提交或回滚。
+        try:
+            current_db = db_conn_var.get()
+        except LookupError:
+            current_db = None
         audit_id = await audit_recorder.create_event(
             payload, raw_body, msg_id, trace_id, event_type, buyer_id
         )
@@ -100,6 +106,7 @@ def create_webhook_router(chat_service: ChatService) -> APIRouter:
                 "audit_id": audit_id,
                 "body": payload,
             },
+            db=current_db,
         )
         if not queued:
             logger.info(

@@ -442,6 +442,7 @@ D1_MATRIX_LEGACY_WRITE_MODULES: tuple[str, ...] = (
     "app/service/order/expiration.py",
     "app/service/order/payment_notification.py",
     "app/service/order/payment_runtime.py",
+    "app/service/order/refund_notification.py",
     "app/service/order/status_flow.py",
     "app/service/points/ledger.py",
     "app/service/points/payment.py",
@@ -469,6 +470,7 @@ D1_MATRIX_ALLOWED_WRITE_FUNCTIONS: dict[str, frozenset[str]] = {
     "app/service/order/payment_runtime.py": frozenset(
         {"_mark_wechat_payment_paid", "confirm_mock_payment"}
     ),
+    "app/service/order/refund_notification.py": frozenset({"_open_case"}),
     "app/service/order/status_flow.py": frozenset({"_cancel_order"}),
     "app/service/points/ledger.py": frozenset({"credit", "deduct"}),
     "app/service/points/payment.py": frozenset(

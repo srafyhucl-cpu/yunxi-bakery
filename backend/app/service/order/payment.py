@@ -43,6 +43,30 @@ class OrderPaymentService:
             headers=headers,
         )
 
+    async def handle_wechat_refund_notify(
+        self,
+        *,
+        raw_body: bytes,
+        headers: dict[str, str],
+    ) -> dict:
+        """处理微信退款结果通知。"""
+        return await self._payment_service.handle_wechat_refund_notify(
+            raw_body=raw_body,
+            headers=headers,
+        )
+
+    async def reconcile_pay_from_query(self, query: dict) -> dict:
+        """由支付查询恢复。"""
+        return await self._payment_service.reconcile_pay_from_query(query)
+
+    async def reconcile_refund_from_query(
+        self, query: dict, *, payer_total_fen: int
+    ) -> dict:
+        """由退款查询恢复。"""
+        return await self._payment_service.reconcile_refund_from_query(
+            query, payer_total_fen=payer_total_fen
+        )
+
     def _serialize_session(self, session: PaymentSession) -> dict:
         return {
             "mode": session.mode,

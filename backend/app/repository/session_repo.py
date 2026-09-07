@@ -76,7 +76,9 @@ class SessionRepo(BaseRepository):
             updated_at=now,
         )
 
-    async def update_status(self, session_id: str, status: SessionStatus) -> None:
+    async def update_status(
+        self, session_id: str, status: SessionStatus, *, commit: bool = True
+    ) -> None:
         """更新会话状态并记录时间戳。"""
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         val = status.value
@@ -84,16 +86,18 @@ class SessionRepo(BaseRepository):
             "UPDATE sessions SET status = ?, updated_at = ? WHERE id = ?",
             (val, now, session_id),
         )
-        await self._db.commit()
+        if commit:
+            await self._db.commit()
 
-    async def touch(self, session_id: str) -> None:
+    async def touch(self, session_id: str, *, commit: bool = True) -> None:
         """刷新会话更新时间，用于空闲超时判断。"""
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         await self._db.execute(
             "UPDATE sessions SET updated_at = ? WHERE id = ?",
             (now, session_id),
         )
-        await self._db.commit()
+        if commit:
+            await self._db.commit()
 
     async def get_all_active(self) -> list[Session]:
         """获取所有活跃会话。"""
@@ -113,14 +117,17 @@ class SessionRepo(BaseRepository):
         )
         return [Session(**dict(r)) for r in rows]
 
-    async def update_extra(self, session_id: str, extra_info: str) -> None:
+    async def update_extra(
+        self, session_id: str, extra_info: str, *, commit: bool = True
+    ) -> None:
         """更新会话的 extra_info 字段。"""
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         await self._db.execute(
             "UPDATE sessions SET extra_info = ?, updated_at = ? WHERE id = ?",
             (extra_info, now, session_id),
         )
-        await self._db.commit()
+        if commit:
+            await self._db.commit()
 
     async def get_all_by_channel(self, channel: str, limit: int = 100) -> list[Session]:
         """获取指定渠道所有未关闭的会话，按更新时间降序排列。"""

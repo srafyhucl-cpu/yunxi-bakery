@@ -110,7 +110,37 @@ class StoredValueOrderPaymentService:
         user_id: str,
         balance_fen: int,
     ) -> dict:
-        """组合支付：先扣储值余额，再返回差额支付会话。"""
+        """组合支付：先扣储值余额，再返回差额支付会话。
+
+        剩余支付会话在扣款事务外预先构造：预下单失败时不扣款、
+        不写部分支付快照，整体回滚语义由“先会话后扣款”保证。
+        """
+        order = await self._owned_order(order_id, user_id)
+        if status_value(order) == OrderStatus.CANCELLED.value:
+            raise ValueError("订单已取消")
+        payment = loads_payment(order.payment)
+        payment_status = str(payment.get("status", PAYMENT_STATUS_UNPAID))
+        if payment_status == PAYMENT_STATUS_PAID:
+            raise ValueError("订单已支付")
+        if (
+            payment_status == PAYMENT_STATUS_PARTIAL
+            and int(payment.get("balanceFen", 0) or 0) > 0
+        ):
+            raise ValueError("订单已部分支付，请完成剩余支付")
+        total_fen = self._total_fen(order)
+        coupon_fen = int(payment.get("couponFen", 0) or 0)
+        points_fen = int(payment.get("pointsFen", 0) or 0)
+        remain_before_balance = compute_remain_fen(total_fen, coupon_fen, 0, points_fen)
+        if balance_fen <= 0 or balance_fen >= remain_before_balance:
+            raise ValueError(
+                "组合支付余额部分必须大于 0 且小于订单总额（券/积分后以剩余应付为准）"
+            )
+        remain_fen = compute_remain_fen(total_fen, coupon_fen, balance_fen, points_fen)
+        outer_payment = dict(payment)
+        # 扣款提交前先构造剩余支付会话：微信预下单、openid、配置任一失败
+        # 都直接抛错，此时余额未动、订单仍为未支付，可自然重试。
+        # 微信预下单以订单号为幂等键，中止后重发起可复用或由微信侧去重。
+        remainder = await self._build_remainder_session(order, remain_fen)
         async with self._order_repo.transaction():
             order = await self._owned_order(order_id, user_id)
             if status_value(order) == OrderStatus.CANCELLED.value:
@@ -124,19 +154,37 @@ class StoredValueOrderPaymentService:
                 and int(payment.get("balanceFen", 0) or 0) > 0
             ):
                 raise ValueError("订单已部分支付，请完成剩余支付")
-            total_fen = self._total_fen(order)
-            coupon_fen = int(payment.get("couponFen", 0) or 0)
-            points_fen = int(payment.get("pointsFen", 0) or 0)
-            remain_before_balance = compute_remain_fen(
-                total_fen, coupon_fen, 0, points_fen
+            # 并发快照一致性：事务内按最新订单重算全部金额，会话金额
+            # 与重算不一致说明券/积分快照在会话生成后发生变化，
+            # 必须回滚本次扣款并要求重新发起，禁止写入旧快照。
+            # 支付快照整体亦做全等比对：任何并发改动（状态/方式/腿）
+            # 都触发中止；微信预下单按订单号幂等，重发起可复用。
+            if dumps_payment(payment) != dumps_payment(outer_payment):
+                raise ValueError("订单支付快照发生变化，请重新发起支付")
+            fresh_total_fen = self._total_fen(order)
+            fresh_coupon_fen = int(payment.get("couponFen", 0) or 0)
+            fresh_points_fen = int(payment.get("pointsFen", 0) or 0)
+            fresh_remain_before = compute_remain_fen(
+                fresh_total_fen, fresh_coupon_fen, 0, fresh_points_fen
             )
-            if balance_fen <= 0 or balance_fen >= remain_before_balance:
+            fresh_remain_fen = compute_remain_fen(
+                fresh_total_fen, fresh_coupon_fen, balance_fen, fresh_points_fen
+            )
+            if (
+                fresh_total_fen != total_fen
+                or fresh_coupon_fen != coupon_fen
+                or fresh_points_fen != points_fen
+                or fresh_remain_fen != remain_fen
+            ):
+                raise ValueError("订单支付金额发生变化，请重新发起支付")
+            if balance_fen <= 0 or balance_fen >= fresh_remain_before:
                 raise ValueError(
                     "组合支付余额部分必须大于 0 且小于订单总额（券/积分后以剩余应付为准）"
                 )
-            remain_fen = compute_remain_fen(
-                total_fen, coupon_fen, balance_fen, points_fen
-            )
+            # 同连接固化：余额扣款必须复用订单仓储当前事务连接，
+            # 否则扣款与订单更新不在同一事务，回滚无法覆盖扣款。
+            if self._member_service.db_handle is not self._order_repo._db:
+                raise ValueError("储值服务与订单仓储不在同一事务连接，拒绝扣款")
             mobile = await self._member_service.resolve_mobile(user_id)
             deducted = await self._member_service.deduct(
                 user_id=user_id,
@@ -162,7 +210,6 @@ class StoredValueOrderPaymentService:
             )
             if updated is None:
                 raise ValueError("订单支付状态更新冲突")
-        remainder = await self._build_remainder_session(order, remain_fen)
         return {
             "orderId": order.id,
             "payment": {

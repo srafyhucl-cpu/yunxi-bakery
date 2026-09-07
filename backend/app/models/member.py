@@ -60,6 +60,7 @@ class PointsLedgerEntry:
     mobile: str = ""
     yz_open_id: str = ""
     occurred_at: str = ""
+    request_fingerprint: str = ""
 
 
 @dataclass

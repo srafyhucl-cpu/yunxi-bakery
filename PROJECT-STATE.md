@@ -5,7 +5,7 @@
 > 中文优先：人类可读内容使用中文；`task_id`、`trace_id`、`status`、`owner`、`branch`、`as_of_commit`、`version` 和路径保持稳定机器字段。
 > 最小阅读集：所有 Agent 先读 `AGENTS.md` 与本文件；执行具体任务时再读对应 `docs/tasks/*.md`，按需读取专业契约。
 
-**最后更新**：2026-09-05（as_of_commit: `09a3084`；version: `0.133.0-p2trial.3`）
+**最后更新**：2026-09-06（as_of_commit: `220a8fe0dcd1126dfe43e3745667a3f7f58fc262`；version: `0.133.0-p2trial.3`）
 
 > 当前状态口径：P1 承接验证已于 2026-08-30 经项目负责人确认正式关闭；P2 准备段已完成，真人执行段已阻塞（blocked），尚未启动。Harness P0 与中文治理控制面已完成，版本号以 `backend/VERSION` 为准，代码快照以当前 `git rev-parse HEAD` 为准。
 
@@ -13,8 +13,8 @@
 ## 机器快照（当前事实）
 
 ```yaml
-updated_at: 2026-09-05
-as_of_commit: 09a308499549f803e853c93f33fd6473fd2c8ae2
+updated_at: 2026-09-07
+as_of_commit: 220a8fe0dcd1126dfe43e3745667a3f7f58fc262
 version: 0.133.0-p2trial.3
 current_branch: main
 workspace_state: clean
@@ -33,8 +33,8 @@ state_owner: 项目负责人＋AI 员工
 | T-P2-PREP | P2 试运行准备段 | completed | 已完成（completed） | P0 | AI 员工 | main | 4ee06c8 | T-P1-ACCEPTANCE | LOGBOOK: 20260826-p2trial-sim-fixes | 维持真人执行前门禁 |
 | T-P2-RUN | P2 真人执行段（B/C/D/E） | blocked | 已阻塞（blocked） | P0 | 项目负责人＋AI 员工 | main | 4ee06c8 | T-P1-ACCEPTANCE,T-P2-PREP | docs/specs/2026-08-25-p2-manual.md | 获负责人批准后按手册执行 |
 | T-P1-4-KNOWLEDGE | 知识缺口枚举与回填 | blocked | 已阻塞（blocked） | P1 | AI 员工＋项目负责人 | main | b4f25db | T-P2-RUN | docs/tasks/20260829-P1-4-知识缺口回填-指令.md | 当前 bot.db 为 0 条，待确认历史“5 条”来源或关闭 |
-| T-P1-5-INVOICE | 发票承接专用测试与 E2E 验收 | blocked | 已阻塞（blocked） | P1 | AI 员工 | main | b4f25db | T-P2-PREP | docs/tasks/20260829-P1-5-发票承接验收-指令.md | 由 T-P1-5-INVOICE-FIX 修复后移除 xfail，再完成 E1-E4 |
-| T-P1-5-INVOICE-FIX | 发票状态与必填校验修复 | pending | 待处理（pending） | P1 | AI 员工＋项目负责人 | main | b4f25db | T-P1-5-INVOICE | docs/tasks/20260830-P1-5-发票实现修复-指令.md；ERRORS: M-20260830-004 | 负责人确认字段规则和 409 语义后，修改业务实现并重跑专用测试 |
+| T-P1-5-INVOICE | 发票承接专用测试与 E2E 验收 | blocked | 已阻塞（blocked） | P1 | AI 员工 | main | 220a8fe | T-P2-PREP | docs/tasks/20260829-P1-5-发票承接验收-指令.md；E-20260906-017 | 代码测试已完成；E1-E4 真实客服、后台和联动验收仍未执行，完成前保持阻塞 |
+| T-P1-5-INVOICE-FIX | 发票状态与必填校验修复 | completed | 已完成（completed） | P1 | 项目负责人＋AI 员工 | main | 220a8fe | T-P1-5-INVOICE | docs/tasks/20260830-P1-5-发票实现修复-指令.md；E-20260906-017；ERRORS: M-20260830-004 | 代码修复与定向测试已完成；真实 E1-E4 由 T-P1-5-INVOICE 继续承接 |
 | T-P1-6-SIMULATOR | 模拟器 B/C/D/E 走查 | blocked | 已阻塞（blocked） | P1 | AI 员工＋项目负责人 | main | b4f25db | T-P2-RUN | docs/tasks/20260829-P1-6-模拟器BCDE走查-指令.md | 等真人授权和测试号条件 |
 | T-P1-7-FAQ | FAQ 10 条店家事实回收（已否决） | historical | 历史（historical） | P1 | 项目负责人 | main | b4f25db | — | docs/tasks/20260829-P1-7-FAQ回收-指令.md；LOGBOOK: 20260830-p1p2-state-correction | 已被项目负责人否决，不再执行，不进入当前待办 |
 | T-P3-SEARCH | 商品搜索入口增强 | deferred | 已暂缓（deferred） | P3 | 项目负责人 | main | 4ee06c8 | T-P2-RUN | PROJECT-STATE 风险记录 | P2 稳定后重新排期 |
@@ -59,20 +59,24 @@ state_owner: 项目负责人＋AI 员工
 | T-HARNESS-P1-P2-QUALITY-LOOP | P1/P2 CI 结果表达、运行观测与回归扩展 | completed | 已完成（completed） | P1 | AI 员工 | main | c7b139a | T-HARNESS-P0-HARDENING | trace: 20260905-harness-p1-p2-quality-loop；定向 pytest 6/6；自评 12/12；观测 12 runs；doc garden 0 errors/17 warnings；清理预览令牌执行完成 | 后续按周期积累 CI manifest 趋势样本，成熟度维持 3.0/5 |
 | T-HARNESS-CI-EVIDENCE-COMPLETE | Harness CI 证据包完整性修复 | completed | 已完成（completed） | P1 | AI 员工 | main | d0af4dfd5a6ce98cf3903cae1516793ed2a96d4c | T-HARNESS-P1-P2-QUALITY-LOOP | trace: 20260905-harness-evidence-error-loop；E-20260905-005；定向 pytest 73 项通过；P0 门禁 9/9；最终 artifact index 覆盖含 Summary 共 64 文件 0 缺失 | 远端 CI 推送后核验 P1/P2 artifact index 与中文 Summary |
 | T-HARNESS-ERROR-CANDIDATE-LOOP | 错误候选生成与人工确认闭环 | completed | 已完成（completed） | P1 | AI 员工 | main | d0af4dfd5a6ce98cf3903cae1516793ed2a96d4c | T-HARNESS-CI-EVIDENCE-COMPLETE | trace: 20260905-harness-evidence-error-loop；E-20260905-005；候选/review/账本定向测试 24 项通过；ERRORS.md 保持 26 条 | 下一次真实 CI 失败由项目负责人人工 accept 验证正式入账 |
+| T-AUDIT-20260905-COMPREHENSIVE | 项目负责人视角代码库全面审计 | completed | 已完成（completed） | P0 | 项目负责人＋AI 员工 | main | 220a8fe0dcd1126dfe43e3745667a3f7f58fc262 | — | `docs/audit/20260905-project-comprehensive-audit.md`；`LOGBOOK.md`：20260905-comprehensive-project-audit；`evidence-index.md`：E-20260905-006 | 保持 No-Go，按报告 P0/P1/P2 整改并重新申请上线评审 |
+| T-AUDIT-REMEDIATION-20260906 | 审计整改执行（P0-A/B→P1→P2） | active | 进行中（active） | P0 | OpenCode | main | 220a8fe0dcd1126dfe43e3745667a3f7f58fc262 | T-AUDIT-20260905-COMPREHENSIVE | trace: 20260906-audit-remediation-final；run_id: 20260906-audit-remediation-final5；E-20260906-015；收口计划执行中 | 复核收口计划执行中，保持 No-Go；M-20260906-003 关闭前禁止上线 |
+| T-AUDIT-CLOSEOUT-20260906 | 审计复核收口执行（部署恢复/全量前置/凭证审计） | active | 进行中（active） | P0 | OpenCode | main | 220a8fe0dcd1126dfe43e3745667a3f7f58fc262 | T-AUDIT-REMEDIATION-20260906 | trace: 20260906-audit-remediation-final；run_id: 20260906-audit-remediation-final5；E-20260906-015；收口计划执行中 | 按计划 Task 1→5 执行并收口证据，保持 No-Go 直至门禁与负责人动作完成 |
+| T-AUDIT-GO-LIVE-20260906 | 最终上线收口执行（三态识别/测试治理/凭证与验收） | active | 进行中（active） | P0 | OpenCode | main | 220a8fe0dcd1126dfe43e3745667a3f7f58fc262 | T-AUDIT-CLOSEOUT-20260906 | trace: 20260906-audit-remediation-final；run_id: 20260906-audit-remediation-final6；E-20260906-016；全量 1854 项退出码 0 | 三态识别与测试治理已代码完成但负责人动作缺失，保持 No-Go；M-20260906-003 关闭前禁止上线 |
 
 ## 状态视图（只引用主表 task_id）
 
 ### 已完成（completed）
 
-`T-P0-MONOREPO`、`T-P05-ASSET-MIGRATION`、`T-P1-ACCEPTANCE`、`T-P2-PREP`、`T-HARNESS-REGISTER`、`T-HARNESS-STATUS-LABEL-GUARD`、`T-HARNESS-TEST-CADENCE`、`T-HARNESS-EVIDENCE-INDEX`、`T-HARNESS-RUNTIME-CLEANUP`、`T-HARNESS-CLEANUP-POLICY`、`T-HARNESS-ERRORS-LEDGER`、`T-HARNESS-MATURITY-REVIEW`、`T-HARNESS-CHINESE-GOVERNANCE`、`T-HARNESS-RUN-MANIFEST`、`T-HARNESS-POLICY-AS-CODE`、`T-HARNESS-CI-ENTRY`、`T-HARNESS-EVAL-REGRESSION`、`T-HARNESS-DOC-GARDEN`、`T-HARNESS-P1-FOUR-FIXES`、`T-HARNESS-P0-HARDENING`、`T-HARNESS-P1-P2-QUALITY-LOOP`、`T-HARNESS-CI-EVIDENCE-COMPLETE`、`T-HARNESS-ERROR-CANDIDATE-LOOP`
+`T-P0-MONOREPO`、`T-P05-ASSET-MIGRATION`、`T-P1-ACCEPTANCE`、`T-P2-PREP`、`T-P1-5-INVOICE-FIX`、`T-HARNESS-REGISTER`、`T-HARNESS-STATUS-LABEL-GUARD`、`T-HARNESS-TEST-CADENCE`、`T-HARNESS-EVIDENCE-INDEX`、`T-HARNESS-RUNTIME-CLEANUP`、`T-HARNESS-CLEANUP-POLICY`、`T-HARNESS-ERRORS-LEDGER`、`T-HARNESS-MATURITY-REVIEW`、`T-HARNESS-CHINESE-GOVERNANCE`、`T-HARNESS-RUN-MANIFEST`、`T-HARNESS-POLICY-AS-CODE`、`T-HARNESS-CI-ENTRY`、`T-HARNESS-EVAL-REGRESSION`、`T-HARNESS-DOC-GARDEN`、`T-HARNESS-P1-FOUR-FIXES`、`T-HARNESS-P0-HARDENING`、`T-HARNESS-P1-P2-QUALITY-LOOP`、`T-HARNESS-CI-EVIDENCE-COMPLETE`、`T-HARNESS-ERROR-CANDIDATE-LOOP`、`T-AUDIT-20260905-COMPREHENSIVE`
 
 ### 进行中（active）
 
-暂无进行中任务。
+`T-AUDIT-REMEDIATION-20260906`、`T-AUDIT-CLOSEOUT-20260906`、`T-AUDIT-GO-LIVE-20260906`
 
 ### 未完成（pending / blocked / deferred）
 
-`T-P2-RUN`（已阻塞（blocked），待负责人批准及测试号/体验版条件）、`T-P1-4-KNOWLEDGE`（已阻塞（blocked），当前数据库为 0 条，待确认历史口径）、`T-P1-5-INVOICE`（已阻塞（blocked），测试暴露实现缺口）、`T-P1-5-INVOICE-FIX`（待处理（pending），待负责人确认后修复）、`T-P1-6-SIMULATOR`（已阻塞（blocked），真人授权/测试号）、`T-P3-SEARCH`（已暂缓（deferred），P2 后排期）、`T-D1-REVIEW`（已暂缓（deferred），外部冻结轨道）。`
+`T-P2-RUN`（已阻塞（blocked），待负责人批准及测试号/体验版条件）、`T-P1-4-KNOWLEDGE`（已阻塞（blocked），当前数据库为 0 条，待确认历史口径）、`T-P1-5-INVOICE`（已阻塞（blocked），代码测试已完成，E1-E4 真实客服、后台和联动验收尚未执行）、`T-P1-6-SIMULATOR`（已阻塞（blocked），真人授权/测试号）、`T-P3-SEARCH`（已暂缓（deferred），P2 后排期）、`T-D1-REVIEW`（已暂缓（deferred），外部冻结轨道）。`
 
 ### 历史（historical）
 
@@ -191,7 +195,7 @@ P0 整合 ✅ → P0.5 资产迁移 ✅ → P1 承接验证 ✅（2026-08-30 负
 ## 状态记录（v22，2026-08-30，P1/P2 继续推进）
 
 - P1-4：当前 `backend/data/bot.db` 的 `knowledge_gaps` 总数与未结数均为 0；历史“5 条”来源仍待负责人确认，未猜测回填。
-- P1-5：专用 API 测试已固化 3 项通过和 4 项严格预期失败；已单独建立 `T-P1-5-INVOICE-FIX`，未越权修改 `backend/app/**`。
+- P1-5：专用 API 测试已固化，发票状态与必填字段代码修复已完成；E1-E4 真实客服、后台和联动验收尚未执行，未将代码测试写成真实验收。
 - P1-7：已被项目负责人否决；不再回收 FAQ、不再发送填写版、不再入库。
 - P2：真人 B/C/D/E 未启动，负责人批准、授权测试号和体验版条件仍是硬阻塞。
 

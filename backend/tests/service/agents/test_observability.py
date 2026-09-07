@@ -183,6 +183,9 @@ def test_get_agent_tracing_config_reads_current_settings_by_default(
 
 
 def test_observability_import_does_not_load_langchain_heavy_modules() -> None:
+    from pathlib import Path
+
+    backend_dir = Path(__file__).resolve().parents[3]
     command = (
         "import sys; "
         "import app.service.agents.observability; "
@@ -195,6 +198,7 @@ def test_observability_import_does_not_load_langchain_heavy_modules() -> None:
         check=True,
         capture_output=True,
         text=True,
+        cwd=backend_dir,
     )
 
     assert result.stdout.strip() == (

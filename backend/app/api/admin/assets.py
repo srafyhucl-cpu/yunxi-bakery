@@ -6,6 +6,7 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
 from app.api.admin import verify_token
+from app.service.security.image_validation import validate_decoration_image
 
 MAX_DECORATION_ASSET_BYTES = 2 * 1024 * 1024
 ALLOWED_DECORATION_IMAGE_TYPES = {
@@ -38,11 +39,26 @@ def create_admin_assets_router() -> APIRouter:
             raise HTTPException(status_code=400, detail="图片文件不能为空")
         if len(content) > MAX_DECORATION_ASSET_BYTES:
             raise HTTPException(status_code=400, detail="图片不能超过 2MB")
+        try:
+            validate_decoration_image(content, suffix)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
         STATIC_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
         filename = f"decoration-{uuid4().hex}{suffix}"
         file_path = STATIC_UPLOAD_DIR / filename
-        file_path.write_bytes(content)
+        tmp_path = STATIC_UPLOAD_DIR / f".{filename}.tmp"
+        try:
+            tmp_path.write_bytes(content)
+            tmp_path.replace(file_path)
+        except OSError as exc:
+            for stale in (tmp_path, file_path):
+                try:
+                    if stale.exists() and stale.stat().st_size != len(content):
+                        stale.unlink()
+                except OSError:
+                    break
+            raise HTTPException(status_code=500, detail="图片保存失败") from exc
         image_url = f"/static/uploads/decoration/{filename}"
         return {"code": 0, "data": {"imageUrl": image_url}}
 

@@ -59,3 +59,4 @@ class BalanceLedgerEntry:
     biz_id: str = ""
     source: str = BalanceSource.RECHARGE
     occurred_at: str = ""
+    request_fingerprint: str = ""

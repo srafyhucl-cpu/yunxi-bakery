@@ -1,7 +1,5 @@
 """微信支付交易通知的业务校验与入账。"""
 
-from decimal import Decimal, InvalidOperation
-
 from app.config import settings
 from app.models.order import Order, OrderEvent, OrderStatus
 from app.repository.order_event_repo import OrderEventRepo
@@ -22,6 +20,7 @@ from app.service.order.wechat_normalizers import (
     PayNotifyNormalizer,
     WechatProtocolError,
 )
+from app.utils import yuan_to_fen
 
 
 class WechatPaymentNotificationService:
@@ -59,8 +58,8 @@ class WechatPaymentNotificationService:
         if order is None:
             raise ValueError("订单不存在")
         try:
-            total_order_fen = int(Decimal(str(order.total_amount)) * 100)
-        except (InvalidOperation, ValueError):
+            total_order_fen = yuan_to_fen(order.total_amount)
+        except ValueError:
             raise ValueError("订单金额无效") from None
         payment = loads_payment(order.payment)
         coupon_fen = int(payment.get("couponFen", 0) or 0)

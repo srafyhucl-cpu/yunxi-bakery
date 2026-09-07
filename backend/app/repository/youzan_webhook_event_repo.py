@@ -15,6 +15,7 @@ class YouzanWebhookEventRepo(BaseRepository):
     """存储每个接收到的有赞 Webhook 的持久审计追踪。"""
 
     async def create_received(self, event: YouzanWebhookEventCreate) -> int:
+        """写入收件审计事实，由调用方外层事务统一提交。"""
         now = now_str()
         await self._db.execute(
             "INSERT INTO youzan_webhook_events ("
@@ -47,7 +48,7 @@ class YouzanWebhookEventRepo(BaseRepository):
                 YouzanWebhookStatus.DUPLICATE,
             ),
         )
-        await self._db.commit()
+        # 事务由调用方外层统一提交，本仓储不自提交。
         row = await self._db.execute_fetchall(
             "SELECT id FROM youzan_webhook_events WHERE msg_id = ?",
             (event.msg_id,),
@@ -61,6 +62,7 @@ class YouzanWebhookEventRepo(BaseRepository):
         business_type: str | None = None,
         business_key: str = "",
     ) -> None:
+        """标记审计事件进入处理阶段，由调用方外层事务统一提交。"""
         now = now_str()
         await self._db.execute(
             "UPDATE youzan_webhook_events SET status = ?, process_stage = ?, "
@@ -78,11 +80,12 @@ class YouzanWebhookEventRepo(BaseRepository):
                 event_id,
             ),
         )
-        await self._db.commit()
+        # 事务由调用方外层统一提交，本仓储不自提交。
 
     async def mark_result(
         self, event_id: int, update: YouzanWebhookEventUpdate
     ) -> None:
+        """标记审计事件处理结果，由调用方外层事务统一提交。"""
         now = now_str()
         rows = await self._db.execute_fetchall(
             "SELECT process_started_at FROM youzan_webhook_events WHERE id = ?",
@@ -111,7 +114,7 @@ class YouzanWebhookEventRepo(BaseRepository):
                 event_id,
             ),
         )
-        await self._db.commit()
+        # 事务由调用方外层统一提交，本仓储不自提交。
 
     async def get_by_msg_id(self, msg_id: str) -> dict | None:
         rows = await self._db.execute_fetchall(

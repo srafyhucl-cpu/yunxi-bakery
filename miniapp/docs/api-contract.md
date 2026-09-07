@@ -98,6 +98,12 @@ MVP block 类型：
 }
 ```
 
+### 金额单位（A-05 统一）
+
+- 所有金额字段以整数分为 canonical 单位：`balanceFen`、`totalFen`、`priceFen`、`price_fen`、`amountFen` 均为分。
+- 小程序展示元时自行除以 100 并保留两位小数；不得向后端发送浮点元。
+- 后端 `orders.total_amount` 浮点列仅为传输形态，账务判定一律以分为准；非法金额后端直接拒绝。
+
 ### 会员资产（M5 修订）
 
 - 我的页资产数字（余额/积分/可用券数）必须来自真实 API，不得从 `memberSummary` 装修配置读取：
@@ -432,33 +438,43 @@ Query：
 
 ### GET `/api/v1/miniapp/orders`
 
-返回当前微信用户的订单列表。
+返回当前微信用户的订单列表（分页）。
+
+查询参数：`page`（默认 1，小于 1 按 1 处理）、`pageSize`（默认 20，范围 1~50）。
+排序：创建时间倒序，同时间按主键倒序，保证翻页稳定。
+`hasMore` 为假时停止续加载；空页返回空数组。
 
 ```json
 {
   "code": 0,
-  "data": [
-    {
-      "id": "o_001",
-      "status": "pending",
-      "paymentStatus": "unpaid",
-      "paymentMethod": "",
-      "paymentPaidAt": "",
-      "paymentExpiredAt": "",
-      "paymentExpiredReason": "",
-      "totalFen": 19800,
-      "createdAt": "2026-06-16T00:00:00+08:00",
-      "updatedAt": "2026-06-16T00:00:00+08:00",
-      "itemTitle": "草莓奶油蛋糕",
-      "itemCount": 1,
-      "receiverName": "大海",
-      "receiverPhone": "18800000000",
-      "deliveryType": "pickup",
-      "deliveryAddress": "",
-      "expectTime": "2026-06-18 18:00",
-      "remark": "少糖"
-    }
-  ]
+  "data": {
+    "items": [
+      {
+        "id": "o_001",
+        "status": "pending",
+        "paymentStatus": "unpaid",
+        "paymentMethod": "",
+        "paymentPaidAt": "",
+        "paymentExpiredAt": "",
+        "paymentExpiredReason": "",
+        "totalFen": 19800,
+        "createdAt": "2026-06-16T00:00:00+08:00",
+        "updatedAt": "2026-06-16T00:00:00+08:00",
+        "itemTitle": "草莓奶油蛋糕",
+        "itemCount": 1,
+        "receiverName": "大海",
+        "receiverPhone": "18800000000",
+        "deliveryType": "pickup",
+        "deliveryAddress": "",
+        "expectTime": "2026-06-18 18:00",
+        "remark": "少糖"
+      }
+    ],
+    "total": 1,
+    "page": 1,
+    "pageSize": 20,
+    "hasMore": false
+  }
 }
 ```
 

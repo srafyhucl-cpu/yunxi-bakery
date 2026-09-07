@@ -18,7 +18,7 @@ from app.models.youzan_webhook_event import (
 from app.repository.youzan_webhook_event_repo import YouzanWebhookEventRepo
 from app.service.youzan.audit_helper import mark_audit
 from app.service.youzan.order_parser import parse_youzan_order_response
-from app.utils import now_str
+from app.utils import now_str, yuan_to_fen
 
 logger = setup_logger()
 
@@ -177,7 +177,7 @@ async def handle_trade_event(
                             {
                                 "product_title": item.get("title", ""),
                                 "product_alias": alias,
-                                "amount_fen": int(float(item.get("payment", 0)) * 100),
+                                "amount_fen": yuan_to_fen(item.get("payment", 0)),
                                 "lookback": "24_hours",
                             },
                             ensure_ascii=False,

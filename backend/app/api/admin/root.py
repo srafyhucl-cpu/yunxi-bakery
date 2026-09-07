@@ -8,12 +8,24 @@
 """
 
 import hmac
-import time
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Header, HTTPException, Request
 from jose import JWTError, jwt
 
 from app.config import settings
+from app.middleware.edge_protection import extract_client_ip
+from app.service.edge_protection import (
+    attempt_admin_login as _attempt_admin_login,
+)
+from app.service.edge_protection import (
+    clear_admin_login_failures as _clear_admin_login_failures,
+)
+from app.service.edge_protection import (
+    record_admin_login_failure as _record_admin_login_failure,
+)
+from app.service.edge_protection import (
+    is_admin_login_allowed as _is_admin_login_allowed,
+)
 from app.service.admin import AdminService
 from app.service.chat import ChatService
 from app.service.transfer_manager import TransferManager
@@ -21,7 +33,6 @@ from app.service.transfer_manager import TransferManager
 ADMIN_SESSION_COOKIE = "admin_session"
 ADMIN_SESSION_ALGORITHM = "HS256"
 ADMIN_SESSION_MAX_AGE_SECONDS = 1800
-_admin_login_attempts: dict[str, tuple[int, float]] = {}
 
 
 def is_valid_admin_token(token: str | None) -> bool:
@@ -75,31 +86,24 @@ def set_admin_session_cookie(response, token: str) -> None:
     )
 
 
-def admin_login_is_allowed(request: Request) -> bool:
-    """检查当前来源是否超过后台登录失败阈值。"""
-    client_host = request.client.host if request.client else "unknown"
-    attempts, reset_at = _admin_login_attempts.get(client_host, (0, 0.0))
-    if time.monotonic() >= reset_at:
-        _admin_login_attempts.pop(client_host, None)
-        return True
-    return attempts < settings.ADMIN_LOGIN_MAX_ATTEMPTS
+async def admin_login_is_allowed(request: Request) -> bool:
+    """检查当前来源是否超过后台登录失败阈值，状态多 worker 共享。"""
+    return await _is_admin_login_allowed(f"admin:{extract_client_ip(request)}")
 
 
-def record_admin_login_failure(request: Request) -> None:
-    """记录一次后台登录失败。"""
-    client_host = request.client.host if request.client else "unknown"
-    attempts, reset_at = _admin_login_attempts.get(client_host, (0, 0.0))
-    current_time = time.monotonic()
-    if current_time >= reset_at:
-        attempts = 0
-        reset_at = current_time + settings.ADMIN_LOGIN_WINDOW_SECONDS
-    _admin_login_attempts[client_host] = (attempts + 1, reset_at)
+async def attempt_admin_login(request: Request) -> bool:
+    """原子占用一次后台登录尝试，检查与计数同一操作完成。"""
+    return await _attempt_admin_login(f"admin:{extract_client_ip(request)}")
 
 
-def clear_admin_login_failures(request: Request) -> None:
+async def record_admin_login_failure(request: Request) -> None:
+    """记录一次后台登录失败，状态多 worker 共享。"""
+    await _record_admin_login_failure(f"admin:{extract_client_ip(request)}")
+
+
+async def clear_admin_login_failures(request: Request) -> None:
     """清理成功登录后的失败计数。"""
-    client_host = request.client.host if request.client else "unknown"
-    _admin_login_attempts.pop(client_host, None)
+    await _clear_admin_login_failures(f"admin:{extract_client_ip(request)}")
 
 
 def verify_token(

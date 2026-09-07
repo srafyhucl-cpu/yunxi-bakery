@@ -27,7 +27,14 @@ STALE_MESSAGE_MAX_DELAY_SECONDS = 120
 
 
 class HandoffSessionChecker(Protocol):
-    async def is_handoff_user(self, external_userid: str) -> bool:
+    async def is_handoff_user(
+        self,
+        external_userid: str,
+        db=None,
+        *,
+        read_only: bool = False,
+        sessions_to_close: dict[str, str] | None = None,
+    ) -> bool:
         """判断用户当前是否处于人工接管状态。"""
 
 
@@ -41,9 +48,11 @@ class KfMessageClassifier:
         self,
         msg_list: list[dict],
         open_kfid: str,
-        sync_repo: WecomKfSyncRepo,
+        sync_repo: WecomKfSyncRepo | None,
         active_handoff_users: set[str] | None = None,
         ended_handoff_users: set[str] | None = None,
+        db=None,
+        dry_run: bool = False,
     ) -> CollectedMessages:
         user_messages: dict[str, dict[str, dict]] = {}
         nontext_processed_users: set[str] = set()
@@ -54,11 +63,15 @@ class KfMessageClassifier:
         end_events = []
         active_users = set(active_handoff_users or set())
         ended_users = set(ended_handoff_users or set())
+        ledger_pendings: list[dict] = []
+        sessions_to_close: dict[str, str] = {}
 
         for item in msg_list:
             if _is_stale_message(item):
                 continue
-            if not await _mark_message_if_new(item, open_kfid, sync_repo):
+            if not await _mark_message_if_new(
+                item, open_kfid, sync_repo, ledger_pendings, dry_run=dry_run
+            ):
                 continue
 
             event = build_sync_event(item)
@@ -81,7 +94,12 @@ class KfMessageClassifier:
             external_userid = item.get("external_userid", "")
             if external_userid in active_users or (
                 external_userid not in ended_users
-                and await self._handoff_checker.is_handoff_user(external_userid)
+                and await self._handoff_checker.is_handoff_user(
+                    external_userid,
+                    db=db,
+                    read_only=dry_run,
+                    sessions_to_close=sessions_to_close,
+                )
             ):
                 active_users.add(external_userid)
                 handoff_message = _build_handoff_customer_message(item)
@@ -107,23 +125,32 @@ class KfMessageClassifier:
             active_handoff_users=active_users,
             ended_handoff_users=ended_users,
             total_count=len(msg_list),
+            ledger_pendings=ledger_pendings,
+            handoff_sessions_to_close=sessions_to_close,
         )
 
 
 async def _mark_message_if_new(
     item: dict,
     open_kfid: str,
-    sync_repo: WecomKfSyncRepo,
+    sync_repo: WecomKfSyncRepo | None,
+    ledger_pendings: list[dict],
+    *,
+    dry_run: bool = False,
 ) -> bool:
-    return await sync_repo.add_message_if_new(
-        msg_id=item.get("msgid", ""),
-        open_kfid=open_kfid,
-        external_userid=item.get("external_userid", ""),
-        origin=int(item.get("origin", 0) or 0),
-        msgtype=item.get("msgtype", ""),
-        event_type=extract_event_type(item),
-        process_action=_classify_process_action(item),
-    )
+    pending = {
+        "msg_id": item.get("msgid", ""),
+        "open_kfid": open_kfid,
+        "external_userid": item.get("external_userid", ""),
+        "origin": int(item.get("origin", 0) or 0),
+        "msgtype": item.get("msgtype", ""),
+        "event_type": extract_event_type(item),
+        "process_action": _classify_process_action(item),
+    }
+    if dry_run or sync_repo is None:
+        ledger_pendings.append(pending)
+        return True
+    return await sync_repo.add_message_if_new(**pending)
 
 
 def _classify_process_action(item: dict) -> str:

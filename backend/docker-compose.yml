@@ -12,8 +12,9 @@ services:
       dockerfile: Dockerfile
     container_name: yunxi-bakebot
     restart: unless-stopped
+    # 生产仅回环暴露，公网经本机反向代理进入；健康检查同样走回环。
     ports:
-      - "7001:7001"
+      - "127.0.0.1:7001:7001"
     user: "10001:10001"
     env_file:
       - .env

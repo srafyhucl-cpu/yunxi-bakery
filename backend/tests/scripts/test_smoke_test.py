@@ -353,6 +353,22 @@ def test_check_channel_readiness_passes_when_channels_are_configured(
     monkeypatch.setattr(smoke_test.settings, "WECOM_BOT_PLUGIN_API_KEY", "plugin-key")
     monkeypatch.setattr(smoke_test.settings, "WECOM_STAFF_ID", "")
     monkeypatch.setattr(smoke_test.settings, "WECOM_KF_SERVICER_USERID", "servicer")
+    monkeypatch.setattr(smoke_test.settings, "WECOM_EMPLOYEE_AUTH_REQUIRED", True)
+    monkeypatch.setattr(smoke_test.settings, "WECOM_EMPLOYEE_ALLOWED_USERS", "staff")
+    monkeypatch.setattr(smoke_test.settings, "WECOM_EMPLOYEE_CORP_ID", "corp-id")
+    monkeypatch.setattr(smoke_test.settings, "WECOM_EMPLOYEE_OPS_USERS", "ops")
+    monkeypatch.setattr(smoke_test.settings, "ALLOW_MOCK_PAYMENT", False)
+    monkeypatch.setattr(smoke_test.settings, "WECHAT_PAY_ENABLED", True)
+    monkeypatch.setattr(smoke_test.settings, "WECHAT_MINIAPP_APP_ID", "wx-app-id")
+    monkeypatch.setattr(smoke_test.settings, "WECHAT_PAY_MCH_ID", "mch-id")
+    monkeypatch.setattr(
+        smoke_test.settings, "WECHAT_PAY_NOTIFY_URL", "https://pay.example/notify"
+    )
+    monkeypatch.setattr(
+        smoke_test.settings, "WECHAT_PAY_PRIVATE_KEY_PATH", "/keys/apiclient_key.pem"
+    )
+    monkeypatch.setattr(smoke_test.settings, "WECHAT_PAY_CERT_SERIAL_NO", "serial")
+    monkeypatch.setattr(smoke_test.settings, "WECHAT_PAY_API_V3_KEY", "v3-key")
 
     result = smoke_test.check_channel_readiness()
 
@@ -389,6 +405,9 @@ def test_check_channel_readiness_reports_missing_channel_settings(
     assert "WECOM_KF_ID" in result.detail
     assert "WECOM_BOT_PLUGIN_API_KEY" in result.detail
     assert "WECOM_STAFF_ID_OR_WECOM_KF_SERVICER_USERID" in result.detail
+    assert "WECOM_EMPLOYEE_AUTH_AND_ALLOWLISTS" in result.detail
+    assert "ALLOW_MOCK_PAYMENT_FALSE" in result.detail
+    assert "WECHAT_PAY_CREDENTIALS" in result.detail
 
 
 def test_check_admin_dist_observability_summary_passes_when_bundle_contains_marker(

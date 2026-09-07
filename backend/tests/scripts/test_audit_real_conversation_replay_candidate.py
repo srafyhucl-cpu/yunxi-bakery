@@ -7,6 +7,11 @@ from pathlib import Path
 
 from scripts import audit_real_conversation_replay_candidate as candidate_audit
 
+_TESTS_DIR = Path(__file__).resolve().parents[1]
+COVERAGE_SAMPLE_FIXTURE = (
+    _TESTS_DIR / "fixtures" / "customer_real_replay_coverage_sample.json"
+)
+
 
 def test_missing_fixture_passes_readiness_without_claiming_ready() -> None:
     report = candidate_audit.build_real_replay_candidate_audit_report()
@@ -29,7 +34,7 @@ def test_missing_fixture_fails_when_required() -> None:
 
 def test_synthetic_fixture_is_rejected_as_real_candidate() -> None:
     report = candidate_audit.build_real_replay_candidate_audit_report(
-        fixture_path=Path("tests/fixtures/customer_real_replay_coverage_sample.json"),
+        fixture_path=COVERAGE_SAMPLE_FIXTURE,
         source_type="real_customer_conversation",
         redaction_method="manual_redaction_v1",
         redaction_reviewer="qa-owner",
@@ -123,11 +128,7 @@ def test_cli_writes_json(tmp_path: Path) -> None:
 
 
 def write_candidate_fixture(fixture_path: Path) -> None:
-    payload = json.loads(
-        Path("tests/fixtures/customer_real_replay_coverage_sample.json").read_text(
-            encoding="utf-8"
-        )
-    )
+    payload = json.loads(COVERAGE_SAMPLE_FIXTURE.read_text(encoding="utf-8"))
     payload["metadata"]["source"] = "unit_test_real_redacted_candidate"
     payload["metadata"]["redaction"] = "manual_redaction_v1"
     fixture_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")

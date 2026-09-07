@@ -1,5 +1,7 @@
 """会员账务域共享解析助手。"""
 
+from app.utils import yuan_to_fen
+
 
 def to_int(value) -> int:
     """容忍转换整数（支持字符串/浮点），失败返回 0。"""
@@ -36,4 +38,4 @@ def to_fen(value) -> int:
         return 0
     if numeric == int(numeric):
         return int(numeric)
-    return int(round(numeric * 100))
+    return yuan_to_fen(str(value))

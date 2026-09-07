@@ -7,12 +7,16 @@ from pathlib import Path
 
 from scripts import check_real_conversation_replay_coverage
 
+_TESTS_DIR = Path(__file__).resolve().parents[1]
+COVERAGE_SAMPLE_FIXTURE = (
+    _TESTS_DIR / "fixtures" / "customer_real_replay_coverage_sample.json"
+)
+REPLAY_SAMPLE_FIXTURE = _TESTS_DIR / "fixtures" / "customer_real_replay_sample.json"
+
 
 def test_real_conversation_replay_coverage_sample_passes() -> None:
     report = check_real_conversation_replay_coverage.build_real_replay_coverage_report(
-        replay_fixture_path=Path(
-            "tests/fixtures/customer_real_replay_coverage_sample.json"
-        ),
+        replay_fixture_path=COVERAGE_SAMPLE_FIXTURE,
     )
 
     assert report["status"] == "passed"
@@ -32,7 +36,7 @@ def test_real_conversation_replay_coverage_sample_passes() -> None:
 
 def test_real_conversation_replay_coverage_fails_when_below_threshold() -> None:
     report = check_real_conversation_replay_coverage.build_real_replay_coverage_report(
-        replay_fixture_path=Path("tests/fixtures/customer_real_replay_sample.json"),
+        replay_fixture_path=REPLAY_SAMPLE_FIXTURE,
         min_per_scenario=5,
     )
 
@@ -47,7 +51,7 @@ def test_real_conversation_replay_coverage_cli_writes_json(tmp_path: Path) -> No
     exit_code = check_real_conversation_replay_coverage.main(
         [
             "--fixture",
-            "tests/fixtures/customer_real_replay_coverage_sample.json",
+            str(COVERAGE_SAMPLE_FIXTURE),
             "--json-out",
             str(output_path),
             "--summary",

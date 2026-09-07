@@ -53,13 +53,20 @@ async def preprocess_kf_message(
     logger.info(
         "非文本消息返回兜底提示 type=%s user=%s", msg.msgtype, msg.external_userid
     )
-    result = await client.send_kf_text(msg.external_userid, fallback)
-    if result.get("errcode") != 0:
-        logger.error(
-            "兜底提示发送失败 user=%s err=%s",
-            msg.external_userid,
-            result.get("errmsg"),
-        )
+    from app.service.wecom.kf_outbound_sender import send_text_guarded
+
+    fallback_status = await send_text_guarded(
+        client,
+        msg.external_userid,
+        msg.msg_id,
+        fallback,
+        part="nontext-fallback",
+        open_kfid=msg.open_kfid,
+    )
+    if fallback_status == "unknown":
+        logger.warning("兜底提示结果未知 user=%s，转人工确认", msg.external_userid)
+    elif fallback_status != "sent":
+        logger.error("兜底提示发送失败 user=%s", msg.external_userid)
     return None
 
 

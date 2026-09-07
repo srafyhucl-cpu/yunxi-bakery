@@ -43,12 +43,19 @@ def create_storefront_orders_router(
 
     @router.get("")
     async def list_orders(
+        page: int = 1,
+        pageSize: int = 20,
         x_miniapp_user_id: str | None = Header(default=None, alias="x-miniapp-user-id"),
     ) -> dict[str, Any]:
-        orders = await service.list_user_orders(
-            user_id=require_storefront_user_id(x_miniapp_user_id),
-        )
-        return {"code": 0, "data": orders}
+        try:
+            result = await service.list_user_orders(
+                user_id=require_storefront_user_id(x_miniapp_user_id),
+                page=page,
+                page_size=pageSize,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return {"code": 0, "data": result}
 
     @router.get("/{order_id}")
     async def get_order(

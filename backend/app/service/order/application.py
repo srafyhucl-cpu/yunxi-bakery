@@ -33,6 +33,8 @@ if TYPE_CHECKING:
 
 
 DEFAULT_PAGE_SIZE = 30
+DEFAULT_STOREFRONT_PAGE_SIZE = 20
+MAX_STOREFRONT_PAGE_SIZE = 50
 
 
 class OrderApplicationService:
@@ -101,10 +103,28 @@ class OrderApplicationService:
         self,
         *,
         user_id: str = STOREFRONT_DEMO_USER_ID,
-    ) -> list[dict]:
-        """读取当前小程序用户订单。"""
-        orders = await self._order_repo.list_by_user(user_id)
-        return [self._serialization_service.serialize(order) for order in orders]
+        page: int = 1,
+        page_size: int = DEFAULT_STOREFRONT_PAGE_SIZE,
+    ) -> dict:
+        """分页读取当前小程序用户订单，返回续加载合同。"""
+        safe_page = max(int(page or 1), 1)
+        safe_size = min(
+            max(int(page_size or DEFAULT_STOREFRONT_PAGE_SIZE), 1),
+            MAX_STOREFRONT_PAGE_SIZE,
+        )
+        orders = await self._order_repo.list_by_user(
+            user_id,
+            limit=safe_size,
+            offset=(safe_page - 1) * safe_size,
+        )
+        total = await self._order_repo.count_by_user(user_id)
+        return {
+            "items": [self._serialization_service.serialize(order) for order in orders],
+            "total": total,
+            "page": safe_page,
+            "pageSize": safe_size,
+            "hasMore": safe_page * safe_size < total,
+        }
 
     async def get_user_order(
         self,
@@ -167,6 +187,33 @@ class OrderApplicationService:
             return await self._payment_service.handle_wechat_payment_notify(
                 raw_body=raw_body,
                 headers=headers,
+            )
+
+    async def handle_wechat_refund_notify(
+        self,
+        *,
+        raw_body: bytes,
+        headers: dict[str, str],
+    ) -> dict:
+        """由订单领域接管微信退款通知链路。"""
+        async with self._order_repo.transaction():
+            return await self._payment_service.handle_wechat_refund_notify(
+                raw_body=raw_body,
+                headers=headers,
+            )
+
+    async def reconcile_pay_from_query(self, query: dict) -> dict:
+        """由订单领域接管支付查询恢复链路。"""
+        async with self._order_repo.transaction():
+            return await self._payment_service.reconcile_pay_from_query(query)
+
+    async def reconcile_refund_from_query(
+        self, query: dict, *, payer_total_fen: int
+    ) -> dict:
+        """由订单领域接管退款查询恢复链路。"""
+        async with self._order_repo.transaction():
+            return await self._payment_service.reconcile_refund_from_query(
+                query, payer_total_fen=payer_total_fen
             )
 
     async def expire_unpaid_order(self, order_id: str) -> dict:

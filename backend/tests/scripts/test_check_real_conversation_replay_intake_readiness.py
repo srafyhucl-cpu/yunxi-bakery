@@ -7,6 +7,11 @@ from pathlib import Path
 
 from scripts import check_real_conversation_replay_intake_readiness as readiness
 
+_TESTS_DIR = Path(__file__).resolve().parents[1]
+COVERAGE_SAMPLE_FIXTURE = (
+    _TESTS_DIR / "fixtures" / "customer_real_replay_coverage_sample.json"
+)
+
 
 def test_intake_readiness_passes_for_default_synthetic_contract_pool() -> None:
     report = readiness.build_real_replay_intake_readiness_report()
@@ -65,11 +70,7 @@ def test_intake_readiness_cli_writes_json(tmp_path: Path) -> None:
 
 
 def write_real_redacted_fixture(fixture_path: Path) -> None:
-    payload = json.loads(
-        Path("tests/fixtures/customer_real_replay_coverage_sample.json").read_text(
-            encoding="utf-8"
-        )
-    )
+    payload = json.loads(COVERAGE_SAMPLE_FIXTURE.read_text(encoding="utf-8"))
     payload["metadata"]["source"] = "unit_test_real_redacted_intake"
     payload["metadata"]["redaction"] = "manual_redaction_v1"
     fixture_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")

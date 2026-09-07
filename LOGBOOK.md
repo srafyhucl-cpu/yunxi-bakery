@@ -1,3 +1,691 @@
+## [2026-09-06] - fix(audit): 最终上线收口计划执行（No-Go）
+
+task_id: T-AUDIT-GO-LIVE-20260906
+trace_id: 20260906-audit-remediation-final
+run_id: 20260906-audit-remediation-final6
+parent_run_id: 20260906-audit-remediation-final5
+owner: OpenCode
+status: active
+status_label: 进行中（active）
+as_of_commit: 220a8fe0dcd1126dfe43e3745667a3f7f58fc262
+version: 0.133.0-p2trial.3
+scope: 最终收口计划 Task 1→5；三态识别、skip/xfail 治理、耗时事项、凭证与验收边界；任务保持进行中
+changed_files:
+  - backend/scripts/deploy_server.sh（三态查询与发布前拒绝）
+  - backend/scripts/drill_deploy_rollback.sh（三态桩与演练 10）
+  - backend/tests/scripts/test_deploy_server_contract.py（三态断言）
+  - backend/tests/scripts/test_audit_real_conversation_replay_candidate.py（fixture 去 CWD 依赖）
+  - backend/tests/scripts/test_check_real_conversation_replay_coverage.py（同上）
+  - backend/tests/scripts/test_check_real_conversation_replay_intake_readiness.py（同上）
+  - backend/tests/scripts/test_check_real_conversation_replay_pool.py（同上）
+  - backend/tests/scripts/test_prepare_real_conversation_replay_pool_entry.py（同上）
+  - backend/tests/scripts/test_check_project_development_register.py（脏断言临时仓库化）
+  - backend/tests/scripts/test_run_isolated_remediation_harness.py（子进程显式编码）
+  - docs/tasks/20260906-项目负责人最终上线收口计划-OpenCode.md（注册元数据）
+  - PROJECT-STATE.md（T-AUDIT-GO-LIVE-20260906 登记与发票范围标注）
+  - ERRORS.md（M-20260830-004 上线范围标注；M-20260906-004 耗时优化事项）
+  - docs/audit/20260906-p0-p1-final-code-review.md（第六轮章节）
+  - docs/harness-engineering/core/evidence-index.md（E-20260906-016）
+reproduction: 演练 10 首轮失败确认未知态误判；回放 14 失败经 CWD 对照确认路径产物；脏断言机制复核确认工作区产物
+implementation: 见各文件改动；未放宽断言阈值；未伪造 fixture；xfail 保留并标注范围；未碰生产与真实数据
+tests: Task 1 演练 10 路全过；Task 2 回放 23 项与注册测试全过；Task 3 代码侧全过
+commands:
+  - bash -n backend/scripts/deploy_server.sh（通过）；bash -n backend/scripts/drill_deploy_rollback.sh（通过）
+  - python -B -m pytest backend/tests/scripts/test_deploy_server_contract.py（通过，退出码 0）
+  - bash backend/scripts/drill_deploy_rollback.sh（10 路通过，退出码 0；输出 D:/Temp/yunxi-audit-final-20260906/drill-final6.txt）
+  - python -B -m pytest backend/tests/scripts/test_audit_real_conversation_replay_candidate.py backend/tests/scripts/test_check_real_conversation_replay_coverage.py backend/tests/scripts/test_check_real_conversation_replay_intake_readiness.py backend/tests/scripts/test_check_real_conversation_replay_pool.py backend/tests/scripts/test_prepare_real_conversation_replay_pool_entry.py backend/tests/scripts/test_check_project_development_register.py backend/tests/scripts/test_run_isolated_remediation_harness.py（全过，退出码 0）
+  - python -B -m pytest backend/tests/scripts/test_no_hardcoded_credentials_20260906.py backend/tests/service/youzan/test_youzan_credential_isolation.py（通过，退出码 0）
+  - python -B -m ruff check backend/（退出码 0）；python -B -m ruff format --check backend/（退出码 0）
+  - python -B backend/scripts/check_project_development_register.py（通过，tasks=36）
+  - python -B backend/scripts/check_project.py --skip-tests（退出码 0）
+  - python -B backend/scripts/check_chinese_governance.py --summary（coverage=1.0）
+  - python -B backend/scripts/check_evidence_index.py --summary（failed=0）
+  - python -B backend/scripts/check_mistake_ledger.py（30 条）
+  - python -B backend/scripts/harness_p0_gate.py --summary（9 项 0 失败）
+  - python -B -m pytest backend/tests/service/test_review3_combined_snapshot_20260906.py backend/tests/scripts/test_deploy_server_contract.py backend/tests/service/order/test_review2_pay_combined_refund_20260906.py backend/tests/scripts/test_no_hardcoded_credentials_20260906.py backend/tests/service/youzan/test_youzan_credential_isolation.py（退出码 0）
+  - python -B -m pytest backend/tests -q --no-cov -p no:cacheprovider -rs（单次全量：2026-09-06 19:13:30 至 19:22:01，约 510 秒，退出码 0；1854 项收集，1846 通过、4 跳过、4 预期失败，0 失败 0 错误；输出 D:/Temp/yunxi-audit-final-20260906/full-pytest-closeout.txt；测量运行 full-pytest-durations.txt 附 30 项耗时表）
+  - python -B backend/scripts/preflight_production.py --json --output D:/Temp/yunxi-audit-final-20260906/preflight-closeout.json（32 项中 4 项开发配置预期阻断，退出码 1；阻断键与预期完全一致，未填假凭证）
+duration: 定向秒级；演练秒级；全量约 510 秒
+failure_class: none
+evidence: docs/audit/20260906-p0-p1-final-code-review.md；E-20260906-016；全量原始输出 D:/Temp/yunxi-audit-final-20260906/full-pytest-closeout.txt；计时测量 D:/Temp/yunxi-audit-final-20260906/full-pytest-durations.txt；预检 D:/Temp/yunxi-audit-final-20260906/preflight-closeout.json；演练 D:/Temp/yunxi-audit-final-20260906/drill-final6.txt
+residual_risks: 凭证轮换与历史审计（M-20260906-003 open，关闭前禁止上线）、真实支付退款、企微身份、多实例 Redis、真实模型红队、生产回滚均未验证待负责人批准；正式公开生产上线 No-Go
+
+## [2026-09-06] - fix(audit): 审计复核收口计划执行（No-Go）
+
+task_id: T-AUDIT-CLOSEOUT-20260906
+trace_id: 20260906-audit-remediation-final
+run_id: 20260906-audit-remediation-final5
+parent_run_id: 20260906-audit-remediation-final4
+owner: OpenCode
+status: active
+status_label: 进行中（active）
+as_of_commit: 220a8fe0dcd1126dfe43e3745667a3f7f58fc262
+version: 0.133.0-p2trial.3
+scope: 收口计划 Task 1→5；部署状态恢复、fixture 去 CWD 依赖、脏测试临时仓库化、凭证代码侧确认；任务保持进行中
+changed_files:
+  - backend/scripts/deploy_server.sh（按发布前状态恢复服务）
+  - backend/scripts/drill_deploy_rollback.sh（演练 9 与桩服务状态控制）
+  - backend/tests/scripts/test_deploy_server_contract.py（恢复标记断言）
+  - backend/tests/scripts/test_audit_real_conversation_replay_candidate.py（fixture 路径去 CWD 依赖）
+  - backend/tests/scripts/test_check_real_conversation_replay_coverage.py（同上）
+  - backend/tests/scripts/test_check_real_conversation_replay_intake_readiness.py（同上）
+  - backend/tests/scripts/test_check_real_conversation_replay_pool.py（同上）
+  - backend/tests/scripts/test_prepare_real_conversation_replay_pool_entry.py（同上）
+  - backend/tests/scripts/test_check_project_development_register.py（脏断言临时仓库化）
+  - docs/tasks/20260906-审计复核收口执行计划-OpenCode.md（注册元数据）
+  - PROJECT-STATE.md（T-AUDIT-CLOSEOUT-20260906 登记）
+  - docs/audit/20260906-p0-p1-final-code-review.md（第五轮章节）
+  - docs/harness-engineering/core/evidence-index.md（E-20260906-015）
+reproduction: 演练 9 首轮失败确认回滚误启动；回放 14 失败经 CWD 对照确认路径产物；脏断言经机制复核确认工作区产物
+implementation: 见各文件改动；未放宽断言阈值；未伪造 fixture；未碰生产与真实数据
+tests: Task 1/2 定向全过；Task 3 代码侧全过
+commands:
+  - bash -n backend/scripts/deploy_server.sh（通过）；bash -n backend/scripts/drill_deploy_rollback.sh（通过）
+  - python -B -m pytest backend/tests/scripts/test_deploy_server_contract.py（通过，退出码 0）
+  - bash backend/scripts/drill_deploy_rollback.sh（9 路通过，退出码 0；输出 D:/Temp/yunxi-audit-final-20260906/drill5.txt）
+  - python -B -m pytest backend/tests/scripts/test_audit_real_conversation_replay_candidate.py backend/tests/scripts/test_check_real_conversation_replay_coverage.py backend/tests/scripts/test_check_real_conversation_replay_intake_readiness.py backend/tests/scripts/test_check_real_conversation_replay_pool.py backend/tests/scripts/test_prepare_real_conversation_replay_pool_entry.py backend/tests/scripts/test_check_project_development_register.py（全过，退出码 0；另在 backend 目录对照 23 项全过）
+  - python -B -m pytest backend/tests/scripts/test_no_hardcoded_credentials_20260906.py backend/tests/service/youzan/test_youzan_credential_isolation.py（通过，退出码 0）
+  - python -B -m ruff check backend/（退出码 0）；python -B -m ruff format --check backend/（退出码 0）
+  - python -B backend/scripts/check_project_development_register.py（通过，tasks=35）
+  - python -B backend/scripts/check_project.py --skip-tests（退出码 0）
+  - python -B backend/scripts/check_chinese_governance.py --summary（coverage=1.0）
+  - python -B backend/scripts/check_evidence_index.py --summary（failed=0）
+  - python -B backend/scripts/check_mistake_ledger.py（29 条）
+  - python -B backend/scripts/harness_p0_gate.py --summary（9 项 0 失败）
+  - python -B -m pytest backend/tests/service/test_review3_combined_snapshot_20260906.py backend/tests/scripts/test_deploy_server_contract.py backend/tests/service/order/test_review2_pay_combined_refund_20260906.py backend/tests/scripts/test_no_hardcoded_credentials_20260906.py backend/tests/service/youzan/test_youzan_credential_isolation.py（退出码 0）
+  - python -B -m pytest backend/tests -q --no-cov -p no:cacheprovider -rs（单次全量：2026-09-06 19:13:30 至 19:22:01，约 510 秒，退出码 0；1854 项收集，1846 通过、4 跳过、4 预期失败，0 失败 0 错误；输出 D:/Temp/yunxi-audit-final-20260906/full-pytest-closeout.txt；另有同结果测量运行 full-pytest-durations.txt 附 30 项耗时表）
+  - python -B backend/scripts/preflight_production.py --json --output D:/Temp/yunxi-audit-final-20260906/preflight-closeout.json（32 项中 4 项开发配置预期阻断，退出码 1；阻断键与预期完全一致，未填假凭证）
+duration: 定向秒级；演练秒级；全量约 510 秒
+failure_class: none
+evidence: docs/audit/20260906-p0-p1-final-code-review.md；E-20260906-015；全量原始输出 D:/Temp/yunxi-audit-final-20260906/full-pytest-closeout.txt；计时测量 D:/Temp/yunxi-audit-final-20260906/full-pytest-durations.txt；预检 D:/Temp/yunxi-audit-final-20260906/preflight-closeout.json；演练 D:/Temp/yunxi-audit-final-20260906/drill5.txt
+residual_risks: 凭证轮换与历史审计（M-20260906-003 open，关闭前禁止上线）、真实支付退款、企微身份、多实例 Redis、真实模型红队、生产回滚均未验证待负责人批准；正式公开生产上线 No-Go
+
+## [2026-09-06] - fix(audit): P0/P1 复核第四轮 3 项修复（No-Go）
+
+task_id: T-AUDIT-REMEDIATION-20260906
+trace_id: 20260906-audit-remediation-final
+run_id: 20260906-audit-remediation-final4
+owner: OpenCode
+status: active
+status_label: 进行中（active）
+as_of_commit: 220a8fe0dcd1126dfe43e3745667a3f7f58fc262
+scope: 复核方 P0×1、P1×2、P2×1 逐项先失败测试（演练）后实现；任务保持进行中
+changed_files:
+  - backend/app/service/stored_value/payment.py（快照全等比对与同连接固化）
+  - backend/app/service/stored_value/member.py（db_handle 连接句柄）
+  - backend/scripts/deploy_server.sh（工作区保护、结构化标记、退出码 3、失败告警）
+  - backend/scripts/drill_deploy_rollback.sh（演练扩展至 8 路）
+  - backend/tests/service/test_review3_combined_snapshot_20260906.py（新增 3 项）
+  - backend/tests/scripts/test_deploy_server_contract.py（新恢复标记断言）
+  - docs/audit/20260906-p0-p1-final-code-review.md（第四轮章节与复核口径原文）
+  - ERRORS.md（M-20260906-003 残留排查进展与上线门禁）
+reproduction: P0 三新测试首轮 1 项未抛错确认缺陷；部署 3 条新路径走读确认直接退出无恢复；演练 5 初版断言与预检语义冲突，修正为发布前拒绝
+implementation: 见各文件改动；CAS 更新保留为第二道防线；回滚不删数据临时文件；不可变发布目录记运维后续项
+tests: 新测试 3 项全过；部署演练 8 路全过；受影响定向套件全过
+commands:
+  - python -B -m pytest backend/tests/service/test_review3_combined_snapshot_20260906.py backend/tests/service/test_stored_value.py backend/tests/scripts/test_deploy_server_contract.py（全过，退出码 0）
+  - bash backend/scripts/drill_deploy_rollback.sh（8 路通过，退出码 0）
+  - python -B backend/scripts/check_project_development_register.py（通过，tasks=34）
+  - python -B backend/scripts/check_project.py --skip-tests（通过，退出码 0）
+  - python -B backend/scripts/check_chinese_governance.py --summary（通过，coverage=1.0）
+  - python -B backend/scripts/check_evidence_index.py --summary（通过，failed=0）
+  - python -B backend/scripts/check_mistake_ledger.py（通过，29 条）
+  - python -B backend/scripts/harness_p0_gate.py --summary（通过，9 项 0 失败）
+  - python -B -m ruff check backend/（通过，退出码 0）；python -B -m ruff format --check backend/（通过，退出码 0）
+  - python -B backend/scripts/preflight_production.py --json（开发配置预期阻断，退出码 1）
+  - python -B -m pytest backend/tests -q --no-cov -p no:cacheprovider（单次全量：2026-09-06 16:06:56 至 16:14:08，约 432 秒，退出码 1；1851 项中 15 项失败其余通过；输出 D:/Temp/yunxi-audit-final-20260906/full-pytest-final4.txt）
+duration: 定向秒级；演练秒级；全量约 432 秒
+failure_class: 环境与数据前提类 15 项（13 真实会话 fixture 缺失 FileNotFoundError 加 2 同源连锁断言；1 脏树产物断言），无业务逻辑失败；口径：业务定向测试通过；全量测试未通过，失败项属于环境前置或工作区状态问题，待前置条件补齐后重新执行
+evidence: docs/audit/20260906-p0-p1-final-code-review.md；E-20260906-014；全量原始输出 D:/Temp/yunxi-audit-final-20260906/full-pytest-final4.txt
+residual_risks: 真实支付退款、企微身份与接手人、多实例 Redis、凭证轮换（M-20260906-003 open，关闭前禁止上线）、真实模型红队、生产回滚均未验证待负责人批准；正式公开生产上线 No-Go
+
+## [2026-09-06] - fix(audit): P0/P1 复核第三轮 3 项修复（No-Go）
+
+task_id: T-AUDIT-REMEDIATION-20260906
+trace_id: 20260906-audit-remediation-final
+run_id: 20260906-audit-remediation-final3
+owner: OpenCode
+status: active
+status_label: 进行中（active）
+as_of_commit: 220a8fe0dcd1126dfe43e3745667a3f7f58fc262
+scope: 复核方 P0×1、P1×2、P2×1 逐项先失败测试（演练）后实现；任务保持进行中
+changed_files:
+  - backend/app/service/stored_value/payment.py（事务内重算比对，不一致回滚重发）
+  - backend/scripts/deploy_server.sh（阶段状态与统一 EXIT 恢复 trap）
+  - backend/scripts/drill_deploy_rollback.sh（演练扩展至 6 路）
+  - backend/tests/service/test_review3_combined_snapshot_20260906.py（新增 1 项）
+  - backend/tests/scripts/test_deploy_server_contract.py（新恢复标记断言）
+  - docs/audit/20260906-p0-p1-final-code-review.md（第三轮章节与复核口径原文）
+  - ERRORS.md（M-20260906-003 上线门禁备注）
+reproduction: P0 并发改券新测试首轮未抛错确认缺陷；部署 3 条新路径此前直接退出无恢复（脚本走读确认）
+implementation: 见各文件改动；CAS 更新保留为第二道防线；回滚不删数据临时文件
+tests: 新测试 1 项全过；部署演练 6 路全过；受影响定向套件全过
+commands:
+  - python -B -m pytest backend/tests/service/test_review3_combined_snapshot_20260906.py backend/tests/service/test_stored_value.py backend/tests/scripts/test_deploy_server_contract.py（全过，退出码 0）
+  - bash backend/scripts/drill_deploy_rollback.sh（6 路通过，退出码 0）
+  - python -B backend/scripts/check_project_development_register.py（通过，tasks=34）
+  - python -B backend/scripts/check_project.py --skip-tests（通过，退出码 0）
+  - python -B backend/scripts/check_chinese_governance.py --summary（通过，coverage=1.0）
+  - python -B backend/scripts/check_evidence_index.py --summary（通过，failed=0）
+  - python -B backend/scripts/check_mistake_ledger.py（通过，29 条）
+  - python -B backend/scripts/harness_p0_gate.py --summary（通过，9 项 0 失败）
+  - python -B -m ruff check backend/（通过，退出码 0）；python -B -m ruff format --check backend/（通过，退出码 0）
+  - python -B backend/scripts/preflight_production.py --json（开发配置预期阻断，退出码 1）
+  - python -B -m pytest backend/tests -q --no-cov -p no:cacheprovider（单次全量：2026-09-06 15:28:44 至 15:35:45，约 421 秒，退出码 1；1851 项中 15 项失败其余通过；输出 D:/Temp/yunxi-audit-final-20260906/full-pytest-final3.txt）
+duration: 定向秒级；演练秒级；全量约 421 秒
+failure_class: 环境与数据前提类 15 项（13 真实会话 fixture 缺失 FileNotFoundError 加 2 同源连锁断言；1 脏树产物断言），无业务逻辑失败；口径：业务定向测试通过；全量测试未通过，失败项属于环境前置或工作区状态问题，待前置条件补齐后重新执行
+evidence: docs/audit/20260906-p0-p1-final-code-review.md；E-20260906-013；全量原始输出 D:/Temp/yunxi-audit-final-20260906/full-pytest-final3.txt
+residual_risks: 真实支付退款、企微身份与接手人、多实例 Redis、凭证轮换（M-20260906-003 open，关闭前禁止上线）、真实模型红队、生产回滚均未验证待负责人批准；正式公开生产上线 No-Go
+
+## [2026-09-06] - fix(audit): P0/P1 复核第二轮 8 项修复（No-Go）
+
+task_id: T-AUDIT-REMEDIATION-20260906
+trace_id: 20260906-audit-remediation-final
+run_id: 20260906-audit-remediation-final2
+owner: OpenCode
+status: active
+status_label: 进行中（active）
+as_of_commit: 220a8fe0dcd1126dfe43e3745667a3f7f58fc262
+scope: 复核方 8 项阻断逐项先失败测试后实现；任务保持进行中
+changed_files:
+  - backend/app/service/stored_value/payment.py（组合支付先会话后扣款）
+  - backend/app/service/order/wechat_normalizers.py（退款金额统一合同与必填交易号）
+  - backend/app/service/order/refund_notification.py（原金额与订单一致校验建案）
+  - backend/app/service/order/payment_runtime.py（查询恢复认领化与键前缀修正）
+  - backend/app/service/order/notify_intake.py（complete_notify_key 与失败租约一致）
+  - backend/app/repository/balance_ledger_repo.py、backend/app/repository/points_ledger_repo.py（指纹随插入落库，删除补写路径）
+  - backend/app/service/stored_value/member.py、backend/app/service/points/ledger.py（构造时指纹与重放指纹校验）
+  - backend/app/service/idempotency.py（指纹一致校验）
+  - backend/app/repository/edge_protection_repo.py、backend/app/repository/edge_protection_redis_repo.py（登录原子占用）
+  - backend/app/service/edge_protection.py（attempt 与裸 RESP 存活探测）
+  - backend/app/api/admin/root.py、backend/app/api/admin/__init__.py、backend/app/api/admin/dialog.py（登录门禁原子化）
+  - backend/app/config.py（TRUSTED_PROXY_NETWORKS）
+  - backend/app/middleware/edge_protection.py（网段信任与共享异常 503）
+  - backend/app/main.py（ready 可用性探测与启动存活门禁）
+  - backend/scripts/preflight_production.py（可用性检查与恢复计划）
+  - backend/app/repository/wecom_kf_outbound_repo.py（凭证 fencing 与过期接管）
+  - backend/app/service/wecom/kf_outbound_sender.py（凭证透传与退避）
+  - backend/app/migrations/v034_wecom_kf_outbound_claim_token.sql（新增）
+  - backend/scripts/test_youzan_product_feasibility.py（环境变量化与脱敏）
+  - backend/tests/service/order/test_review2_pay_combined_refund_20260906.py（新增 6 项）
+  - backend/tests/middleware/test_review2_edge_outbound_20260906.py（新增 8 项）
+  - backend/tests/scripts/test_no_hardcoded_credentials_20260906.py（新增 2 项）
+  - backend/tests/service/wecom/test_kf_outbound_delivery.py（崩溃退避加接管语义更新）
+  - backend/tests/middleware/test_edge_protection_shared.py、backend/tests/middleware/test_edge_protection_contract_20260906.py（网段配置同步）
+  - docs/audit/20260906-p0-p1-final-code-review.md（新增第二轮章节）
+  - ERRORS.md（M-20260906-003 代码侧整改进展，轮换仍 open）
+reproduction: 复核 8 项逐项复现（组合扣款先提交、金额关系缺失、查询双合同、指纹后补、失败无租约、登录 TOCTOU、直连伪造、配置即就绪、外发无 fencing）；新测试首轮 11 项采集失败确认
+implementation: 见各文件改动；分层保持；未机械拆文件
+tests: 新测试 16 项全过；受影响定向与存量套件全过
+commands:
+  - python -B -m pytest backend/tests/service/order/test_review2_pay_combined_refund_20260906.py backend/tests/middleware/test_review2_edge_outbound_20260906.py backend/tests/scripts/test_no_hardcoded_credentials_20260906.py（16 项通过，退出码 0）
+  - 受影响定向套件（订单/退款/账务/企微/边缘/管理后台/脚本门禁/LLM 隔离/金额）：全过，退出码 0
+  - python -B backend/scripts/check_project_development_register.py（通过，tasks=34）
+  - python -B backend/scripts/check_project.py --skip-tests（通过，退出码 0；中途 1 次 SQL f-string 红线，定位修复后复绿）
+  - python -B backend/scripts/check_chinese_governance.py --summary（通过，coverage=1.0）
+  - python -B backend/scripts/check_evidence_index.py --summary（通过，failed=0）
+  - python -B backend/scripts/check_mistake_ledger.py（通过，29 条）
+  - python -B backend/scripts/harness_p0_gate.py --summary（通过，9 项 0 失败）
+  - python -B -m ruff check backend/（通过，退出码 0）；python -B -m ruff format --check backend/（861 文件通过，退出码 0）
+  - python -B -m mypy 新增文件范围（新增文件零错误；其余为存量既有报错）
+  - npm run typecheck（通过，退出码 0）；npm run check:page-api-coverage（15 页 33 接口通过）
+  - bash backend/scripts/drill_deploy_rollback.sh（三路通过，退出码 0）
+  - python -B backend/scripts/preflight_production.py --json（32 项中 4 项开发配置预期阻断，退出码 1）
+  - python -B -m pytest backend/tests -q --no-cov -p no:cacheprovider（单次全量：2026-09-06 14:54:00 至 15:01:05，约 425 秒，退出码 1；1850 项中 15 项失败其余通过；输出 D:/Temp/yunxi-audit-final-20260906/full-pytest-final2.txt）
+duration: 定向秒级；全量约 425 秒
+failure_class: 环境与数据前提类 15 项（13 真实会话 fixture 缺失 FileNotFoundError 加 2 同源连锁断言；1 脏树产物断言），无业务逻辑失败
+evidence: docs/audit/20260906-p0-p1-final-code-review.md；E-20260906-012；全量原始输出 D:/Temp/yunxi-audit-final-20260906/full-pytest-final2.txt
+residual_risks: 真实支付退款、企微身份与接手人、多实例 Redis、凭证轮换（M-20260906-003 open）、真实模型红队、生产回滚均未验证待负责人批准；正式公开生产上线 No-Go
+
+## [2026-09-06] - fix(audit): P0/P1 新规最终整改与复核（No-Go）
+
+task_id: T-AUDIT-REMEDIATION-20260906
+trace_id: 20260906-audit-remediation-final
+run_id: 20260906-audit-remediation-final1
+owner: OpenCode
+status: active
+status_label: 进行中（active）
+as_of_commit: 220a8fe0dcd1126dfe43e3745667a3f7f58fc262
+scope: 不采信上一轮通过结论，按 P0-1..P1-5 新规逐项重验；先写失败测试再实现；任务保持进行中
+changed_files:
+  - backend/app/service/idempotency.py（新增幂等主体合同与 IdempotencyConflict）
+  - backend/app/service/order/notify_intake.py（claim 状态机与 token 校验）
+  - backend/app/service/order/payment_runtime.py（认领流与严格金额相等）
+  - backend/app/service/order/refund_notification.py（结构化 kind 与显式 UoW）
+  - backend/app/api/channels/storefront/payments.py（终态映射 200 确认）
+  - backend/app/service/coupon/payment.py（移除快照内部 commit）
+  - backend/app/service/stored_value/member.py、backend/app/service/points/ledger.py（主体绑定与原结果重放）
+  - backend/app/repository/balance_ledger_repo.py、backend/app/repository/points_ledger_repo.py（指纹落库）
+  - backend/app/migrations/v033_ledger_idempotency_fingerprint.sql（新增）
+  - backend/app/utils.py（金额非负有限拒绝与 fen_to_yuan_str 边界适配器）
+  - backend/app/service/order/creation.py、backend/app/service/youzan/order_parser.py（边界适配器）
+  - backend/app/service/wecom/kf_callback_processor.py（租约两段短事务）
+  - backend/app/service/wecom/kf_message_classifier.py、backend/app/service/wecom/kf_sync_models.py（dry-run 与账本 pendings）
+  - backend/app/service/wecom/kf_sync_persist.py（终态账本提交与过滤）
+  - backend/app/repository/wecom_kf_sync_lease_repo.py、backend/app/migrations/v031_wecom_kf_sync_leases.sql（新增）
+  - backend/app/repository/wecom_kf_outbound_repo.py、backend/app/service/wecom/kf_outbound_sender.py（内容哈希与事件投递）
+  - backend/app/service/wecom/kf_card_sender.py（移除直发分支）
+  - backend/app/migrations/v032_wecom_kf_outbound_content_hash.sql（新增）
+  - backend/app/config.py（员工鉴权默认开启；边缘防护后端配置）
+  - backend/app/service/edge_protection.py、backend/app/repository/edge_protection_redis_repo.py（后端抽象与 fail-closed）
+  - backend/app/readiness.py、backend/scripts/preflight_production.py、backend/app/main.py（同一判定函数）
+  - backend/app/middleware/edge_protection.py（非法 IP 回退）
+  - backend/app/api/admin/assets.py（临时写入加原子发布）
+  - backend/app/service/llm/profile_prompt.py（画像不可信界定）
+  - backend/app/models/stored_value.py、backend/app/models/member.py（指纹字段）
+  - backend/tests/service/order/test_p0_final_claim_idempotency_20260906.py（新增 13 项，先失败后通过）
+  - backend/tests/service/wecom/test_p1_final_sync_outbound_20260906.py（新增 8 项）
+  - backend/tests/middleware/test_edge_protection_contract_20260906.py（新增 6 项）
+  - backend/tests/service/wecom/test_kf_card_sender.py（迁移至账本上下文并加拒直发用例）
+  - backend/tests/service/llm/test_untrusted_input_isolation.py（加画像隔离用例）
+  - backend/tests/service/test_money_contract.py（边界适配器守卫收紧）
+  - backend/tests/service/wecom/test_employee_authorization.py、backend/tests/service/wecom/test_kf_callback_processor.py、backend/tests/test_health_ready.py（新规同步断言）
+  - docs/audit/20260906-p0-p1-final-code-review.md（新增本轮复核报告）
+  - ERRORS.md（新增 M-20260906-003 已入库真实有赞密钥，负责人轮换动作）
+reproduction: 重验发现新规差距 11 处（bool 归档永久跳过、rejected 转 400、退款无显式 UoW、券快照内部 commit、幂等无主体、金额小于比较、同步长事务无租约、外发无哈希与直发分支、鉴权默认关闭、无共享后端判定、画像无界定）；新测试首轮采集失败确认缺陷
+implementation: 见各文件改动；架构分层保持 api→service→repository→models；未机械拆文件
+tests: 新测试 13+8+6 项全过；受影响定向套件全过；存量退款/账务/同步/外发/金额/鉴权套件全过
+commands:
+  - python -B -m pytest backend/tests/service/order/test_p0_final_claim_idempotency_20260906.py（13 项通过，退出码 0）
+  - python -B -m pytest backend/tests/service/wecom/test_p1_final_sync_outbound_20260906.py（8 项通过，退出码 0）
+  - python -B -m pytest backend/tests/middleware/ backend/tests/service/test_money_contract.py backend/tests/service/youzan/ backend/tests/service/test_order.py backend/tests/api/test_miniapp_order_api.py（全过，退出码 0）
+  - python -B -m pytest backend/tests/service/wecom/（全过，退出码 0）
+  - python -B -m pytest backend/tests/api/test_miniapp_payment_api.py backend/tests/api/test_admin_asset_upload.py backend/tests/api/test_admin_assets_api.py backend/tests/api/test_wecom_intelligent_bot_callback_api.py backend/tests/test_health_ready.py backend/tests/test_main_runtime.py backend/tests/middleware/ backend/tests/service/llm/ backend/tests/service/agents/（全过，退出码 0）
+  - python -B -m pytest backend/tests/scripts/test_preflight_production.py backend/tests/scripts/test_check_project.py backend/tests/scripts/test_smoke_test.py backend/tests/scripts/test_deploy_server_contract.py backend/tests/scripts/test_production_boundary.py backend/tests/api/test_admin_frontend.py（全过，退出码 0）
+  - python -B backend/scripts/check_project_development_register.py（通过，tasks=34）
+  - python -B backend/scripts/check_project.py --skip-tests（通过，退出码 0）
+  - python -B backend/scripts/check_chinese_governance.py --summary（通过，coverage=1.0）
+  - python -B backend/scripts/check_evidence_index.py --summary（通过，failed=0）
+  - python -B backend/scripts/check_mistake_ledger.py（通过，29 条）
+  - python -B backend/scripts/harness_p0_gate.py --summary（通过，9 项 0 失败）
+  - python -B -m ruff check backend/（通过，退出码 0）；python -B -m ruff format --check backend/（858 文件通过，退出码 0）
+  - python -B -m mypy 新增文件范围（新增文件零错误；其余为存量既有报错）
+  - npm run typecheck（通过，退出码 0）；npm run check:page-api-coverage（15 页 33 接口通过）
+  - bash backend/scripts/drill_deploy_rollback.sh（三路通过，退出码 0）
+  - python -B backend/scripts/preflight_production.py --json --output D:/Temp/yunxi-audit-final-20260906/preflight-final.json（退出码 1，31 项中 4 项开发配置预期阻断）
+  - python -B -m pytest backend/tests -q --no-cov -p no:cacheprovider（单次全量：2026-09-06 13:43:42 至 13:51:23，约 461 秒，退出码 1；1836 项中 15 项失败其余通过；输出 D:/Temp/yunxi-audit-final-20260906/full-pytest-final.txt）
+duration: 全量约 461 秒；定向均为秒级
+failure_class: 环境与数据前提类 15 项（13 真实会话 fixture 缺失 FileNotFoundError 加 2 同源连锁断言；1 脏树产物断言），无业务逻辑失败
+evidence: docs/audit/20260906-p0-p1-final-code-review.md；E-20260906-011；全量原始输出 D:/Temp/yunxi-audit-final-20260906/full-pytest-final.txt；预检 D:/Temp/yunxi-audit-final-20260906/preflight-final.json；演练 D:/Temp/yunxi-audit-final-20260906/drill.txt
+residual_risks: 真实支付退款、企微身份与接手人、多实例 Redis、凭证轮换（M-20260906-003）、真实模型红队、生产回滚均未验证待负责人批准；REAL 金额列迁移未执行；正式公开生产上线 No-Go
+
+## [2026-09-06] - review(audit): 整改结果复核与收口
+
+task_id: T-AUDIT-REMEDIATION-20260906
+trace_id: 20260906-audit-remediation
+run_id: 20260906-audit-remediation-review1
+owner: OpenCode
+status: active
+status_label: 进行中（active）
+as_of_commit: 220a8fe0dcd1126dfe43e3745667a3f7f58fc262
+scope: 复核轮：证据矛盾处理、双维度状态、最终报告；任务保持进行中
+changed_files:
+  - backend/tests/scripts/test_cleanup_local_artifacts.py（控制台解码合同修复）
+  - backend/tests/service/agents/test_observability.py（子进程工作目录修复）
+  - backend/tests/service/youzan/test_youzan_credential_isolation.py（全仓构造点注册表）
+  - backend/tests/api/test_admin_asset_upload.py（恶意文件名用例）
+  - backend/tests/service/test_user_order_pagination.py（55 单与插入重放用例）
+  - backend/app/service/wecom/intelligent_bot_order_lookup_helpers.py（缺金额显式容忍）
+  - docs/audit/20260906-audit-remediation-final-review.md（新增最终复核报告）
+reproduction: 复核发现全量 28 失败中 8 项归因本轮（已修），ruff 中间态已复绿，预检误用参数已重做，S-03 默认值经论证保持
+implementation: 见各文件改动；最终报告区分代码验证与运行验收双维度
+tests: 复核新增与修复定向复绿；最终全量 15 失败与分类吻合（14 前提加 1 脏树）
+commands:
+  - python -B -m ruff check（78 文件，退出码 0）；format --check（退出码 0）
+  - python -B backend/scripts/preflight_production.py --json（退出码 1，预期阻断 4 项）
+  - python -B -m pytest backend/tests（最终复跑，见证据）
+duration: 见最终复跑记录
+failure_class: none
+evidence: docs/audit/20260906-audit-remediation-final-review.md；E-20260906-010
+residual_risks: 15 项前提产物失败待提交消除或负责人提供数据；真实运行验收全部未验证；正式上线 No-Go
+
+## [2026-09-06] - fix(audit): 最终回归与上线裁决（No-Go）
+
+task_id: T-AUDIT-REMEDIATION-20260906
+trace_id: 20260906-audit-remediation
+run_id: 20260906-audit-remediation-r9
+owner: OpenCode
+status: completed
+status_label: 已完成（completed）
+as_of_commit: 220a8fe0dcd1126dfe43e3745667a3f7f58fc262
+scope: 手册全部阶段最终回归：基线门禁、全量测试、生产预检、P0/P1/P2 逐项复核
+changed_files:
+  - PROJECT-STATE.md（任务收口为已完成，裁决 No-Go）
+  - docs/tasks/20260906-审计整改执行手册-OpenCode.md（状态同步已完成）
+  - LOGBOOK.md（本条目）
+  - docs/harness-engineering/core/evidence-index.md（新增 E-20260906-009）
+reproduction: 不适用（收口验证轮）
+implementation: 不适用（收口验证轮）
+tests: 定向门禁全过；全量一次复跑定位归因完成
+commands:
+  - python -B backend/scripts/check_project_development_register.py（通过，tasks=34）
+  - python -B backend/scripts/check_chinese_governance.py --summary（通过，coverage=1.0）
+  - python -B backend/scripts/check_project.py --skip-tests（通过，退出码 0）
+  - python -B backend/scripts/check_evidence_index.py --summary（通过，failed=0）
+  - python -B backend/scripts/check_mistake_ledger.py（通过，28 条）
+  - python -B backend/scripts/harness_p0_gate.py --summary（通过，9 项 0 失败）
+  - python -B -m ruff check（通过）；python -B -m ruff format --check（通过）
+  - npm run typecheck（通过）；npm run check:page-api-coverage（15 页 33 接口通过）
+  - bash -n 三发布脚本语法通过；bash backend/scripts/drill_deploy_rollback.sh 三路通过
+  - 全量：python -B -m pytest backend/tests -q --no-cov -p no:cacheprovider，2026-09-06 10:56:48 至 11:04:38，约 470 秒，1802 项中 20 失败其余通过
+duration: 全量约 470 秒（基线 363.6 秒，增量主要为新增 100 余项定向测试）
+failure_class: 环境与数据前提类 20 项，无业务逻辑失败
+evidence: docs/harness-engineering/core/evidence-index.md 之 E-20260906-009；全量原始输出 D:\Temp\yunxi-audit-remediation-20260906\full-pytest-final.txt；预检 D:\Temp\yunxi-audit-remediation-20260906\preflight-final.json
+residual_risks: 全量 20 失败全部归因非业务（清理脚本 PowerShell 编码 4、真实会话 fixture 缺失 14、子进程导入路径 1、工作区脏快照断言 1）；真实支付退款、企微身份、多实例、真实红队、凭证轮换待负责人批准；治理门禁通过不等于业务上线通过；正式公开生产上线 No-Go
+
+## [2026-09-06] - fix(audit): 小程序订单分页与治理复核（P2）
+
+task_id: T-AUDIT-REMEDIATION-20260906
+trace_id: 20260906-audit-remediation
+run_id: 20260906-audit-remediation-r8
+owner: OpenCode
+status: active
+status_label: 进行中（active）
+as_of_commit: 220a8fe0dcd1126dfe43e3745667a3f7f58fc262
+scope: P2 之 U-01/G-01；P0/P1 已收口
+changed_files:
+  - backend/app/repository/order_repo.py（用户订单分页与计数，稳定排序）
+  - backend/app/service/order/application.py（分页合同与页大小钳制）
+  - backend/app/api/channels/storefront/orders.py（分页查询参数）
+  - backend/tests/service/test_user_order_pagination.py（新增 5 项）
+  - backend/tests/service/test_order.py（列表断言同步分页包络）
+  - miniapp/miniprogram/services/orders.ts（分页调用与包络类型）
+  - miniapp/miniprogram/pages/orders/index.ts（触底续加载与失败重试）
+  - miniapp/miniprogram/pages/orders/index.wxml（续加载页脚与重试入口）
+  - miniapp/miniprogram/pages/orders/index.wxss（页脚样式）
+  - miniapp/miniprogram/pages/orders/index.json（下拉刷新）
+  - miniapp/docs/api-contract.md（分页合同与金额单位）
+reproduction: U-01 基线成立（默认 limit 50 无 offset、无续加载）；G-01 要求治理门禁不得冒充上线通过
+implementation: 后端页码分页（默认 20、封顶 50、创建时间主键双序）；小程序触底续加载、下拉刷新、失败重试；契约同步
+tests: 后端新增 5 项，订单相关 35 项通过；小程序类型检查通过；页面覆盖检查通过
+commands:
+  - python -B -m pytest backend/tests/service/test_user_order_pagination.py backend/tests/service/test_order.py backend/tests/api/test_miniapp_order_api.py -q --no-cov -p no:cacheprovider（35 项通过）
+  - npm run typecheck（通过）；npm run check:page-api-coverage（15 页 33 接口通过）
+  - python -B -m ruff check（通过）；python -B -m ruff format --check（格式化后通过）
+duration: 定向测试秒级；全量回归见最终收口条目
+failure_class: none
+evidence: docs/harness-engineering/core/evidence-index.md 之 E-20260906-008；原始输出位于 D:\Temp\yunxi-audit-remediation-20260906（directed-u01b/miniapp-typecheck2）
+residual_risks: 真实受控验收（支付退款、企微身份、多实例、回滚、红队）待负责人批准；正式上线保持 No-Go
+
+## [2026-09-06] - fix(audit): 生产安全与恢复 P1 收口
+
+task_id: T-AUDIT-REMEDIATION-20260906
+trace_id: 20260906-audit-remediation
+run_id: 20260906-audit-remediation-r7
+owner: OpenCode
+status: active
+status_label: 进行中（active）
+as_of_commit: 220a8fe0dcd1126dfe43e3745667a3f7f58fc262
+scope: P1 之 S-04/S-05/S-06/O-01/O-02/O-03/AI-01；P0 已收口，P2 未动
+changed_files:
+  - backend/app/migrations/v030_edge_protection.sql（新增限流与登录共享状态表）
+  - backend/app/repository/edge_protection_repo.py（新增单语句原子操作仓储）
+  - backend/app/service/edge_protection.py（新增应用服务入口，隔离分层）
+  - backend/app/middleware/edge_protection.py（共享限流＋受信代理边界）
+  - backend/app/api/admin/root.py（登录防护异步共享版）
+  - backend/app/api/admin/dialog.py（登录调用await 化）
+  - backend/app/config.py（新增 TRUSTED_PROXY_COUNT）
+  - backend/app/main.py（mock 开启启动警告）
+  - backend/app/service/youzan/client.py（凭证单点构造＋异常脱敏）
+  - backend/app/api/admin/assets.py（真实内容校验＋失败清理）
+  - backend/app/service/security/image_validation.py（新增标准库魔数维度校验）
+  - backend/app/service/llm/prompt.py（知识不可信边界）
+  - backend/app/service/agents/customer/prompts.py（摘要不可信边界）
+  - backend/docker-compose.yml（端口回环绑定）
+  - backend/scripts/deploy_server.sh（自动回滚＋统一清理＋强制取数）
+  - backend/scripts/deploy.sh（临时密钥统一 trap 清理）
+  - backend/scripts/drill_deploy_rollback.sh（新增三路演练）
+  - backend/scripts/check_file_sizes.py（同步职责评审记录已存在项复核）
+  - backend/tests/middleware/test_edge_protection_shared.py（新增 6 项）
+  - backend/tests/api/test_admin_asset_upload.py（新增 13 项）
+  - backend/tests/api/test_admin_assets_api.py（旧用例升级真图片＋伪装拒绝）
+  - backend/tests/service/youzan/test_youzan_credential_isolation.py（新增 4 项）
+  - backend/tests/service/llm/test_untrusted_input_isolation.py（新增 4 项）
+  - backend/tests/scripts/test_production_boundary.py（新增 4 项）
+  - backend/tests/test_main_runtime.py（中间件转共享存储＋启动警告）
+  - ERRORS.md（新增 M-20260906-002 发布取数缺陷）
+reproduction: S-04 基线成立（进程内字典）；S-05 基线成立（凭证在地址，异常文本可泄漏）；S-06 基线成立（仅 MIME）；O-01 基线成立（全网卡）；O-02 基线成立（人工回滚）；O-03 打包已卫生；AI-01 基线成立（外部文本直拼）
+implementation: S-04 单语句原子窗口与登录计数共享存储，受信代理默认零信任；S-05 协议约束登记＋单点构造＋异常脱敏＋守卫；S-06 魔数维度预算三重校验＋失败清理；O-01 回环绑定＋守卫；O-02 自动回滚幂等＋演练三路；O-03 守卫锁定打包卫生；AI-01 不可信界定＋工具优先＋红队回归
+tests: P1 新增 39 项；P1 相关 179 项通过（中间件 22、上传新旧 18、凭证 4、隔离 13、边界 4、运行 25、wecom 58、提示词 13、资产旧 5）
+commands:
+  - P1 定向套件见 evidence；合计 179 项通过
+  - python -B backend/scripts/check_project.py --skip-tests（通过，退出码 0；中途分层违规已提服务隔离）
+  - python -B backend/scripts/check_mistake_ledger.py（通过，28 条）
+  - python -B -m ruff check（通过）；python -B -m ruff format --check（格式化后通过）
+  - bash -n 三脚本语法通过；bash backend/scripts/drill_deploy_rollback.sh 三路通过
+duration: 定向测试秒级；未执行全量测试
+failure_class: none
+evidence: docs/harness-engineering/core/evidence-index.md 之 E-20260906-007；原始输出位于 D:\Temp\yunxi-audit-remediation-20260906（directed-p1*/check-project-p1b/ruff-p1*/drill-o02d）
+residual_risks: P2 未整改；多机共享存储、真实凭证轮换、真实企微红队需负责人决策；正式上线保持 No-Go
+
+## [2026-09-06] - fix(audit): 支付身份上线门禁与通知退款闭环（P0-B）
+
+task_id: T-AUDIT-REMEDIATION-20260906
+trace_id: 20260906-audit-remediation
+run_id: 20260906-audit-remediation-r6
+owner: OpenCode
+status: active
+status_label: 进行中（active）
+as_of_commit: 220a8fe0dcd1126dfe43e3745667a3f7f58fc262
+scope: P0-B 之 S-01/S-02/S-03；P0-A 已收口，P1 未动
+changed_files:
+  - backend/app/readiness.py（新增 mock 禁用、微信支付配置、员工鉴权就绪门）
+  - backend/scripts/preflight_production.py（员工鉴权改单源、新增恢复指引、纳管新门）
+  - backend/tests/test_health_ready.py（就绪矩阵同步新门）
+  - backend/tests/service/test_payment_config_matrix.py（新增开发/测试/生产/缺凭证矩阵 20 项）
+  - backend/app/service/integrations/wechat_pay.py（通知时间戳新鲜度 300 秒）
+  - backend/app/service/order/notify_intake.py（新增先归档后确认 intake）
+  - backend/app/service/order/payment_runtime.py（支付通知 intake 去重、退款通知入口、支付/退款查询恢复）
+  - backend/app/service/order/refund_notification.py（新增退款端到端应用服务）
+  - backend/app/service/order/application.py（退款与查询恢复事务入口）
+  - backend/app/service/order/payment.py（门面透传）
+  - backend/app/api/channels/storefront/payments.py（新增退款通知路由）
+  - backend/app/repository/wechat_refund_event_repo.py（新增退款事件事实仓储）
+  - backend/app/repository/order_repo.py（新增支付快照 CAS 更新）
+  - backend/app/migrations/v029_wechat_refund_events.sql（新增退款事件表）
+  - backend/scripts/check_project.py（D1 矩阵登记退款统一入口与案件方法）
+  - backend/tests/scripts/test_check_project.py（调用链断言同步）
+  - backend/tests/service/order/test_pay_notify_freshness_intake.py（新增 16 项）
+  - backend/tests/service/order/test_refund_notification.py（新增 7 项）
+reproduction: S-01 基线成立（mock 本地开启、微信关闭；就绪缺 mock 与支付门）；S-02 基线成立（无新鲜度、无 intake、退款无入口）；S-03 基线成立（接手人缺失、鉴权默认关闭）
+implementation: S-01 就绪与预检共享 mock 禁用与微信配置门，矩阵覆盖四态；S-02 通知先归档后消费重复确认，时间戳超差拒绝，退款全额自动三腿补偿、部分记账建案、超额记账建案并拒绝、失信无事件行只建案，通知查询共用幂等键乱序安全；S-03 接手人与鉴权进就绪门，生产预检自动继承
+tests: 新增 39 项（矩阵 20、新鲜度 intake 9、退款 7、调用链 2、就绪同步）；P0-B 相关 121 项通过
+commands:
+  - python -B -m pytest backend/tests/service/order/ backend/tests/api/test_miniapp_payment_api.py backend/tests/test_health_ready.py backend/tests/scripts/test_preflight_production.py backend/tests/scripts/test_check_project.py backend/tests/service/test_payment_config_matrix.py backend/tests/service/test_wechat_normalizers.py -q --no-cov -p no:cacheprovider（121 项通过）
+  - python -B backend/scripts/check_project.py --skip-tests（通过，退出码 0；D1 新入口已按矩阵协议登记）
+  - python -B -m ruff check（通过）；python -B -m ruff format --check（格式化后通过）
+duration: 定向测试秒级；未执行全量测试
+failure_class: none
+evidence: docs/harness-engineering/core/evidence-index.md 之 E-20260906-006；原始输出位于 D:\Temp\yunxi-audit-remediation-20260906（directed-p0b2/check-project-p0b2/ruff-p0b）
+residual_risks: P1、P2 均未整改；真实支付与退款需负责人批准受控验收；部分退款腿补偿仍转人工；正式上线保持 No-Go
+
+## [2026-09-06] - fix(audit): 金额模型统一（A-05）
+
+task_id: T-AUDIT-REMEDIATION-20260906
+trace_id: 20260906-audit-remediation
+run_id: 20260906-audit-remediation-r5
+owner: OpenCode
+status: active
+status_label: 进行中（active）
+as_of_commit: 220a8fe0dcd1126dfe43e3745667a3f7f58fc262
+scope: P0-A 之 A-05 金额统一；P0-A 全部收口，P0-B 未动
+changed_files:
+  - backend/app/utils.py（元分换算唯一合同：半向上舍入＋非法拒绝；新增仅传输用分转元）
+  - backend/app/service/youzan/order_parser.py（全整数分解析，无浮点中转）
+  - backend/app/service/youzan/event_trade.py（归因金额走统一换算）
+  - backend/app/service/youzan/member_helpers.py（券面额浮点分支走统一舍入）
+  - backend/app/service/order/creation.py（订单金额由整数分换算写入）
+  - backend/app/service/order/payment_notification.py（通知校验走统一换算）
+  - backend/tests/service/test_money_contract.py（新增 35 项断言）
+  - miniapp/docs/api-contract.md（新增金额单位章节）
+reproduction: 审计报告 A-05 基线成立（REAL 列加浮点中转加整数分混用，`int(float*100)` 存在截断误差）
+implementation: 分为唯一 canonical 单位；元分换算收敛到 `yuan_to_fen`（半向上舍入，非法拒绝）；分转元仅用于浮点列传输与展示，不参与判定；关键路径静态守卫禁止裸 float 与裸分乘除；历史 8 单核验零违规
+tests: 新增 35 项（边界舍入、非法拒绝、分浮往返精确、有赞解析恒等、经典陷阱、累计一致、静态守卫）通过；订单/券/通知/有赞关联 126 项通过；合计 161 项通过
+commands:
+  - python -B -m pytest backend/tests/service/test_money_contract.py backend/tests/service/test_order.py backend/tests/service/test_coupon_payment.py backend/tests/service/test_wechat_normalizers.py backend/tests/service/youzan/ -q --no-cov -p no:cacheprovider（161 项通过）
+  - python -B backend/scripts/check_project.py --skip-tests（通过，退出码 0）
+  - python -B -m ruff check（通过）；python -B -m ruff format --check（通过）
+  - 历史核验：开发库 orders 8 单 0 违规（D:\Temp\yunxi-audit-remediation-20260906\money-history-check.txt）
+duration: 定向测试秒级；未执行全量测试
+failure_class: none
+evidence: docs/harness-engineering/core/evidence-index.md 之 E-20260906-005；原始输出位于 D:\Temp\yunxi-audit-remediation-20260906（directed-a05-related/check-project-a05/ruff-a05/money-history-check）
+residual_risks: P0-B、P1、P2 均未整改；折扣万分比解析与展示格式化维持现状；正式上线保持 No-Go
+
+## [2026-09-06] - fix(audit): 储值积分账务原子幂等（A-04）
+
+task_id: T-AUDIT-REMEDIATION-20260906
+trace_id: 20260906-audit-remediation
+run_id: 20260906-audit-remediation-r4
+owner: OpenCode
+status: active
+status_label: 进行中（active）
+as_of_commit: 220a8fe0dcd1126dfe43e3745667a3f7f58fc262
+scope: P0-A 之 A-04 账务原子幂等；A-01/A-02/A-03 已收口，其余项未动
+changed_files:
+  - backend/app/service/stored_value/member.py（占位先行＋同事务提交＋同键异额拒绝＋扣款重放校验）
+  - backend/app/service/points/ledger.py（同上，积分域）
+  - backend/app/repository/balance_ledger_repo.py（新增占位、补写、删除方法）
+  - backend/app/repository/points_ledger_repo.py（新增占位、补写、删除方法）
+  - backend/tests/service/test_asset_atomic_idempotent.py（新增 9 项）
+reproduction: 审计报告 A-04 基线部分成立（先读后写顺序仍在，但余额扣减已是条件原子更新）；实测确认两处真缺口：储值流水 `INSERT OR IGNORE` 使并发同键静默双重应用，以及储值扣款缺重放校验导致重放重复扣减
+implementation: 幂等占位在数据库写入时竞争（占位→余额变更→补写同一事务）；条件原子更新继续作为余额并发保护；同键异额直接拒绝；余额不足删占位无痕迹；失败整体回滚
+tests: 新增 9 项（储值加款重放/异额拒绝/扣款重放/不足无痕、积分重放异额不足、双连接并发扣款单胜者、补写失败无孤儿、两域独立、事务静态检查）通过；关联账务 63 项通过；合计 72 项通过
+commands:
+  - python -B -m pytest backend/tests/service/test_coupon_payment.py backend/tests/service/test_member_accounting.py backend/tests/service/test_asset_atomic_idempotent.py backend/tests/service/test_stored_value.py backend/tests/service/test_points_payment.py -q --no-cov -p no:cacheprovider（72 项通过）
+  - python -B backend/scripts/check_project.py --skip-tests（通过，退出码 0）
+  - python -B -m ruff check（通过）；python -B -m ruff format --check（格式化后通过）
+duration: 定向测试秒级；未执行全量测试
+failure_class: none
+evidence: docs/harness-engineering/core/evidence-index.md 之 E-20260906-004；原始输出位于 D:\Temp\yunxi-audit-remediation-20260906（directed-a04-related2/check-project-a04/ruff-a04）
+residual_risks: A-05、S-01/S-02/S-03、P1、P2 均未整改；并发同键冲突走重放或报错重试；正式上线保持 No-Go
+
+## [2026-09-06] - fix(audit): 企微外发投递合同（A-03）
+
+task_id: T-AUDIT-REMEDIATION-20260906
+trace_id: 20260906-audit-remediation
+run_id: 20260906-audit-remediation-r3
+owner: OpenCode
+status: active
+status_label: 进行中（active）
+as_of_commit: 220a8fe0dcd1126dfe43e3745667a3f7f58fc262
+scope: P0-A 之 A-03 外发重复发送；A-01/A-02 已收口，其余项未动
+changed_files:
+  - backend/app/migrations/v028_wecom_kf_outbound_ledger.sql（新增外发投递账本表与索引）
+  - backend/app/repository/wecom_kf_outbound_repo.py（新增状态机仓储，无自提交）
+  - backend/app/service/wecom/kf_outbound_sender.py（新增投递合同：稳定幂等键、未知/失败不重发、人工重试）
+  - backend/app/service/wecom/kf_message_queue.py（文本与卡片走幂等投递）
+  - backend/app/service/wecom/kf_card_sender.py（卡片与降级文本支持幂等键）
+  - backend/app/service/wecom/kf_message_preprocessor.py（非文本兜底走幂等投递）
+  - backend/tests/service/wecom/test_kf_outbound_delivery.py（新增 8 项）
+reproduction: 审计报告 A-03 基线成立（外部成功后标记完成存在重复窗口；文本发送未传 msgid）；供应商发送接口支持 msgid 参数，但无结果查询接口，不可假设自动幂等
+implementation: 外发分段使用稳定业务幂等键并作为供应商 msgid；状态机 pending→sending→sent/unknown/failed；传输异常与响应丢失记 unknown；明确拒绝记 failed；重复消费与发送中重入转 unknown；unknown/failed 只许人工确认后重排；卡片降级文本仅明确失败时触发
+tests: 新增 8 项（稳定键单发、超时未知不重发、响应丢失单次送达、明确失败不重发、崩溃重入未知、人工重试重排发送、误重排拒绝、队列重复消费单发）通过；wecom 全域 58 项通过
+commands:
+  - python -B -m pytest backend/tests/service/wecom/ -q --no-cov -p no:cacheprovider（58 项通过）
+  - python -B backend/scripts/check_project.py --skip-tests（通过，退出码 0；中途拦截仓储 f-string 已改写）
+  - python -B -m ruff check（通过）；python -B -m ruff format --check（格式化后通过）
+duration: 定向测试秒级；未执行全量测试
+failure_class: none
+evidence: docs/harness-engineering/core/evidence-index.md 之 E-20260906-003；原始输出位于 D:\Temp\yunxi-audit-remediation-20260906（directed-a03-wecom2/check-project-a03b/ruff-a03）
+residual_risks: A-04/A-05、S-01/S-02/S-03、P1、P2 均未整改；欢迎语与事件响应仍为即发即忘（账本去重保证至多一次）；瞬时供应商错误也需人工重排；正式上线保持 No-Go
+
+## [2026-09-06] - fix(audit): 企微同步游标与入队原子性（A-02）
+
+task_id: T-AUDIT-REMEDIATION-20260906
+trace_id: 20260906-audit-remediation
+run_id: 20260906-audit-remediation-r2
+owner: OpenCode
+status: active
+status_label: 进行中（active）
+as_of_commit: 220a8fe0dcd1126dfe43e3745667a3f7f58fc262
+scope: P0-A 之 A-02 游标与入队原子性；A-01 已收口，其余项未动
+changed_files:
+  - backend/app/repository/wecom_kf_sync_repo.py（移除四处内部自提交）
+  - backend/app/service/wecom/kf_callback_processor.py（同一事务完成账本、落库、收件箱暂存、游标推进；拉取失败回滚后记失败状态）
+  - backend/app/service/wecom/kf_sync_persist.py（新增收件箱暂存与游标推进原语）
+  - backend/app/service/wecom/kf_handoff_sync.py（落库与事件支持共用外层事务）
+  - backend/app/service/wecom/kf_servicer_sync.py（落库支持共用外层事务）
+  - backend/app/service/wecom/kf_handoff_checker.py（状态检查支持共用外层事务，消除嵌套连接锁争用）
+  - backend/app/service/wecom/kf_message_classifier.py（透传事务连接）
+  - backend/app/service/wecom/kf_message_queue.py（入队支持共用外层事务）
+  - backend/tests/service/wecom/test_kf_sync_atomicity.py（新增静态守卫与故障注入 6 项）
+  - backend/scripts/check_file_sizes.py（处理器职责评审记录）
+  - ERRORS.md（新增 M-20260906-001 测试补丁隔离教训）
+reproduction: 审计报告 A-02 基线成立（游标先提交、消息后入队；仓储四处自提交）；重构中暴露检查器嵌套连接锁争用，根因为外层未提交写事务与新连接写冲突
+implementation: 仓储只执行语句；同步命令单事务提交账本、人工落库、收件箱、游标，游标最后推进；拉取失败回滚后单独记失败；队列满不丢弃持久事实，靠收件箱重领
+tests: 新增 6 项（静态无自提交、入队失败游标不超前且重跑恢复、重复拉取单事实、空页、分段失败回滚恢复、保存点隔离）通过；存量回调 17 项与同步仓储 2 项通过；合计定向 25 项通过
+commands:
+  - python -B -m pytest backend/tests/service/wecom/test_kf_callback_processor.py backend/tests/service/wecom/test_kf_sync_atomicity.py backend/tests/repository/test_wecom_kf_sync_repo.py -q --no-cov -p no:cacheprovider（25 项通过）
+  - python -B backend/scripts/check_project.py --skip-tests（通过，退出码 0）
+  - python -B backend/scripts/check_mistake_ledger.py（通过，27 条）
+  - python -B -m ruff check（通过）；python -B -m ruff format --check（通过）
+duration: 定向测试秒级；未执行全量测试
+failure_class: none
+evidence: docs/harness-engineering/core/evidence-index.md 之 E-20260906-002；原始输出位于 D:\Temp\yunxi-audit-remediation-20260906（directed-a02-final/check-project-a02/ledger-a02/ruff-a02b）
+residual_risks: A-03/A-04/A-05、S-01/S-02/S-03、P1、P2 均未整改；拉取网络仍在事务内（后续优化为先拉取后开事务）；真实企微、真实支付、多实例、回滚演练继续禁止；正式上线保持 No-Go
+
+## [2026-09-06] - fix(audit): 有赞通知审计事务属主整改（A-01）
+
+task_id: T-AUDIT-REMEDIATION-20260906
+trace_id: 20260906-audit-remediation
+run_id: 20260906-audit-remediation-r1
+owner: OpenCode
+status: active
+status_label: 进行中（active）
+as_of_commit: 220a8fe0dcd1126dfe43e3745667a3f7f58fc262
+scope: P0-A 之 A-01 通知审计事务属主；其余项只做现状核验，未改代码
+changed_files:
+  - backend/app/repository/youzan_webhook_event_repo.py（移除三处内部自提交，事务归调用方）
+  - backend/app/api/integrations/youzan_audit.py（审计失败直接抛出，触发外层回滚）
+  - backend/app/api/integrations/youzan_webhook.py（收件审计与收件箱共用请求事务）
+  - backend/app/service/youzan/webhook_dispatcher.py（入队支持共用外层事务连接）
+  - backend/tests/service/youzan/test_webhook_uow_atomicity.py（新增静态守卫与故障注入 6 项）
+  - docs/tasks/20260906-审计整改执行手册-OpenCode.md（补任务元数据；状态标签按项目守卫用“进行中”，与手册“执行中”字面差异已记录）
+  - PROJECT-STATE.md（登记 T-AUDIT-REMEDIATION-20260906 进行中，A-01 进展）
+  - docs/harness-engineering/core/evidence-index.md（新增 E-20260906-001）
+reproduction: 审计报告 A-01 基线仍成立（HEAD 版审计仓储含三处 commit，工作区已清零）；其余项抽查确认仍存在（企微游标四处 commit、金额 REAL/float 混用、订单默认 50、端口全网暴露、内存限流、上传仅 MIME、员工鉴权默认关闭）
+implementation: 仓储只执行语句不提交；审计写入失败不再吞掉；收件入口与工作器统一外层统一提交；重复投递保持幂等
+tests: 新增 6 项（静态无自提交、收件回滚、重复幂等、业务失败回滚、审计失败回滚、保存点隔离）通过；存量审计仓储 2 项与分发器 2 项通过；合计定向 10 项通过
+commands:
+  - python -B backend/scripts/check_project_development_register.py（通过，tasks=34）
+  - python -B backend/scripts/check_chinese_governance.py --summary（通过，coverage=1.0）
+  - python -B backend/scripts/check_project.py --skip-tests（通过，退出码 0）
+  - python -B -m pytest backend/tests/repository/test_youzan_webhook_event_repo.py backend/tests/service/youzan/test_webhook_dispatcher.py backend/tests/service/youzan/test_webhook_uow_atomicity.py -q --no-cov -p no:cacheprovider（10 项通过）
+  - python -B backend/scripts/harness_p0_gate.py --summary（通过，9 项 0 失败）
+  - python -B -m ruff check（通过）；python -B -m ruff format --check（格式化后通过）
+duration: 定向测试秒级；未执行全量测试（非上线候选收口，按测试节奏约束只跑定向）
+failure_class: none
+evidence: docs/harness-engineering/core/evidence-index.md 之 E-20260906-001；原始输出位于 D:\Temp\yunxi-audit-remediation-20260906（register/check-project/定向测试/门禁/ruff）
+residual_risks: A-02/A-03/A-04/A-05、S-01/S-02/S-03、S-04/S-05/S-06、O-01/O-02/O-03、AI-01、U-01 均未整改未验证；禁止真实用户、真实支付退款、真实企微、生产数据切换；正式上线保持 No-Go；手册 status_label 字面与项目守卫映射冲突，本轮按守卫执行
+
+## [2026-09-05] - audit: 项目负责人视角代码库全面审计
+
+- 操作者: AI (Codex)
+- trace_id: `20260905-comprehensive-project-audit`
+- run_id: `local-20260905-comprehensive-project-audit-closeout`
+- task_id: `T-AUDIT-20260905-COMPREHENSIVE`
+- as_of_commit: `220a8fe0dcd1126dfe43e3745667a3f7f58fc262`
+- version: `0.133.0-p2trial.3`
+- 背景: 按项目负责人要求，从目标业务承接、架构边界、账务与支付、外部集成、AI 安全、小程序、部署恢复和 Harness 控制面进行全面审计。
+- changed_files:
+  - `docs/audit/20260905-project-comprehensive-audit.md`
+  - `PROJECT-STATE.md`
+  - `docs/harness-engineering/core/evidence-index.md`
+  - `LOGBOOK.md`
+- 主要结论: **正式公开生产上线 No-Go**。代码库可以继续用于开发、调试和受控测试，但不能承接真实用户订单、真实微信支付、退款闭环、人工客服或不可逆本地权威切换。
+- 主要发现: 有赞 Webhook 审计仓储内部自提交；企微客服游标在消息入队前提交；企微外部发送成功到队列完成标记之间存在重复窗口；储值/积分余额与流水缺少服务级原子幂等合同；订单金额混用 `REAL`、Python `float` 和整数分；真实支付关闭且本地 mock 开启；人工接手人缺失且企微员工鉴权默认关闭；支付通知缺少时间戳新鲜度；限流与登录失败计数为进程内状态；有赞 token 位于 URL；上传只校验 MIME；部署只提供人工回滚；AI 输入缺少可信度边界；小程序订单列表固定最多 50 条。
+- validation:
+  - 生产预检历史证据：28 项中 26 项通过、2 项失败，失败为 `handoff_staff_userid_ready`、`wecom_employee_auth_ready`。
+  - 中文治理：16/16，六维 coverage=1.0。
+  - 数据库结构、知识库有效记录（341）、embedding 缓存和静态业务合约（29/29）通过。
+  - 后端定向测试 22/23；唯一失败为要求干净工作区的预期测试。
+  - 小程序 TypeScript 类型检查通过。
+  - 根目录全量测试约 363.6 秒；因 `PYTHONPATH`、fixture 路径和 dirty workspace 环境失败，未将其记为业务全量通过。
+- 结论四分法: 结果正确=否（产品尚不具备生产证明）；策略合规=是；证据完整=部分（静态与治理证据完整，真实支付/退款/多实例/回滚未验证）；可回放=是。
+- failure_class: none
+- evidence: `docs/audit/20260905-project-comprehensive-audit.md`；`docs/harness-engineering/core/evidence-index.md`：E-20260905-006；生产预检 JSON：`D:\Temp\yunxi-audit-20260905\preflight.json`
+- residual_risks: P0 账务/消息/支付一致性和生产配置门禁未解除；P1 安全与恢复能力未完成；真实支付、退款、客户数据导入、真实企微和真实用户开放继续禁止。报告完成不等于业务完成，不等于上线批准。
+
 ## [2026-09-05] - fix(harness): 同步最终状态快照提交
 
 - 操作者: AI (Codex)
@@ -16782,3 +17470,35 @@ ______________________________________________________________________
 - 结果：新增 CI 汇总脚本与最终失败门禁；CI 记录 `.run.json` 并刷新观测；回归集从 8 项扩展为 12 项；成熟度维持 3.0/5，明确趋势证据尚在积累。
 - 验证：定向 pytest 6/6；`harness_eval_regression.py --summary` 为 12/12；`observe_harness_runs.py --summary` 为 12 runs；doc garden 0 errors/17 warnings。
 - 策略：未访问生产、支付或客户数据；未删除有效报告；临时目录按白名单清理流程处理。
+## [2026-09-06] - fix(invoice): 发票状态与必填校验收口
+
+task_id: T-P1-5-INVOICE-FIX
+trace_id: 20260906-invoice-fix
+run_id: 20260906-invoice-fix-r1
+owner: 项目负责人＋AI 员工
+status: completed
+status_label: 已完成（completed）
+as_of_commit: 220a8fe
+scope: 仅修复后台发票 API 的必填校验和 applied 到 issued 状态转换；不执行真实支付、生产操作或真人联动验收
+changed_files:
+  - backend/app/api/admin/invoices.py
+  - backend/app/service/invoice/admin.py
+  - backend/app/repository/invoice_repo.py
+  - backend/tests/api/test_admin_invoice_api.py
+implementation: 请求模型要求 companyTitle、taxNo、email；服务层拒绝缺失、非字符串和空白值；仓储层用条件 UPDATE 与 rowcount 实现原子状态转换；非法状态返回 409，不存在记录返回 404
+tests: 发票专用测试 7 项通过；相关 Ruff check、format check 和 git diff --check 通过
+evidence: E-20260906-017
+residual_risks: E1-E4 真实客服、后台和联动验收尚未执行；发票验收任务 T-P1-5-INVOICE 继续保持阻塞
+## [2026-09-07] - fix(wecom): 收紧客服同步分类与持久化原子性
+
+task_id: T-AUDIT-P1-WECOM-UOW-20260907
+trace_id: 20260907-wecom-sync-uow-atomicity
+run_id: 20260907-wecom-sync-uow-atomicity-r1
+owner: 项目负责人＋AI 员工
+status: completed
+status_label: 已完成（completed）
+as_of_commit: 220a8fe0dcd1126dfe43e3745667a3f7f58fc262
+scope: 仅修复确定性的企微客服同步 P1 事务一致性问题；不执行真实企微、支付、生产或推送操作
+implementation: 分类阶段改为只读并携带待关闭会话意图；仅在同一持久化事务中关闭会话；企微人工消息与接待员消息同步路径显式使用外层事务，不内部提交；修复回调持久化阶段 SessionRepo 局部导入导致的 NameError Crash
+tests: 企微回调与同步原子性、SessionRepo 定向测试 31/31 通过；相关文件 py_compile 通过；ruff check 通过；开发总表、项目红线、git diff --check 通过
+decision: 代码审核范围内未发现新的 P0/P1；当前工作区仍混合包含其他未提交改动，未执行 git commit 或 git push

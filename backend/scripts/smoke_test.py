@@ -85,6 +85,9 @@ CHANNEL_READINESS_SETTING_NAMES = {
         "WECOM_INTELLIGENT_BOT_ENCODING_AES_KEY_OR_WECOM_ENCODING_AES_KEY"
     ),
     "handoff_staff_userid_ready": "WECOM_STAFF_ID_OR_WECOM_KF_SERVICER_USERID",
+    "wecom_employee_auth_ready": "WECOM_EMPLOYEE_AUTH_AND_ALLOWLISTS",
+    "mock_payment_disabled": "ALLOW_MOCK_PAYMENT_FALSE",
+    "wechat_pay_configured": "WECHAT_PAY_CREDENTIALS",
 }
 
 

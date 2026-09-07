@@ -15,6 +15,69 @@ ______________________________________________________________________
 - 用户需要反复提醒同一流程。
 - 某个操作依赖聊天上下文，换 Agent 后容易丢失。
 
+## M-20260906-004：全量测试耗时超过 10 分钟优化阈值
+
+- status: verified
+- first_seen: 2026-09-06
+- severity: medium
+- symptom: 全量 `python -B -m pytest backend/tests -q --no-cov -p no:cacheprovider` 本轮 510 秒、上轮 697 秒，均超过 600 秒阈值；审计基线 363.6 秒，整改各轮 421-461 秒。
+- root_cause: 最耗时为元测试（check_project 30 秒、preflight 29 秒、harness 自评 18 秒，多次重复执行重量级检查器）、LLM 工厂与聊天失败路径（单项 6-13 秒）、治理与总表检查（单项 4-6 秒，数量多）；单进程串行执行，无分片。
+- impact: 开发反馈变慢；耗时波动掩盖真实回归信号。
+- fix: 本轮仅建档，不删测试、不降覆盖、不默认跳过。
+- new_guardrail: 优化方向为慢测试标记分流、元测试复用检查结果缓存、pytest-xdist 分片；下一次全量复测附 `--durations=30` 对照本轮基线。
+- verification: `D:/Temp/yunxi-audit-final-20260906/full-pytest-durations.txt`（30 项耗时表）；收口全量 `full-pytest-closeout.txt` 退出码 0。
+- linked_trace: `20260906-audit-remediation-final`
+- linked_files: `backend/tests/scripts/test_check_project.py`; `backend/tests/scripts/test_preflight_production.py`; `backend/tests/scripts/test_harness_eval_regression.py`
+- next_time_signal: 全量耗时相对本轮基线增长 20% 以上或绝对值持续超 600 秒时，必须先落优化动作再收口，不得用跳过测试代替优化。
+
+## M-20260906-003：已入库脚本硬编码真实有赞应用密钥
+
+- status: open
+- first_seen: 2026-09-06
+- severity: critical
+- symptom: `backend/scripts/test_youzan_product_feasibility.py`（git 已跟踪）第 9-11 行以字面量硬编码真实有赞 `client_id`/`client_secret`/`kdt_id`，注释称“真实配置信息”。任何克隆仓库者均可读到该密钥。
+- root_cause: 早期连通性探针为图方便把生产密钥写入脚本并提交；后续无人清理；密钥类字面量无提交门禁。
+- impact: 有赞应用密钥已随 git 历史扩散，视为已泄露；须由项目负责人轮换并评估历史泄露面。本地 `backend/.env` 未入库，不在本次范围内。
+- fix: 负责人轮换该有赞应用密钥；脚本改为从环境变量读取；评估是否需要清理 git 历史（注意重写历史影响协作，需负责人决策）。
+- fix_progress_20260906_round2: 脚本代码侧已整改（环境变量读取、输出脱敏、失败非零退出、落盘改系统临时目录），新增脚本凭证卫生扫描测试；轮换与历史处理仍待负责人，账本保持 open。
+- gating_20260906_round3: M-20260906-003 关闭前禁止上线（复核裁决）。
+- progress_20260906_round4: 代码侧整改完成（环境变量化、脱敏、非零退出、临时目录、扫描测试）；残留面排查完成（D盘临时目录、报告目录、工作流仅占位命中，无真实值残留）；旧密钥轮换、历史与远端内容审计、CI/部署包排查、旧凭证失效确认仍待负责人，账本保持 open。
+- new_guardrail: 本轮新增凭证模式扫描（路径加指纹，不输出真实值）；提交前对新增字面量密钥保持人工复核。
+- verification: 扫描复核脚本位于 `D:/Temp/yunxi-audit-final-20260906/credential_scan.py`；命中清单见最终复核报告 P1-4 节；真实值从未在本轮输出或提交。
+- linked_trace: `20260906-audit-remediation-final`
+- linked_files: `backend/scripts/test_youzan_product_feasibility.py`; `docs/audit/20260906-p0-p1-final-code-review.md`
+- next_time_signal: 发现 git 已跟踪文件含真实密钥字面量时，先登记负责人轮换动作，不读取、不输出、不提交真实值。
+
+## M-20260906-002：回滚后再次发布因 fetch 非快进被拒
+
+- status: guarded
+- first_seen: 2026-09-06
+- severity: high
+- symptom: 回滚演练第 2 路（重复失败发布）中，`git fetch server.bundle` 因传输游标非快进被拒，发布在合入阶段失败；生产回滚后下一次发布会命中同一失败。
+- root_cause: bundle 传输游标复用普通分支引用，fetch 默认拒绝非快进更新；回滚把 HEAD 指回旧提交，新包相对游标不再是快进。
+- impact: 回滚成功但后续发布被阻断，恢复时间不可预测；演练前生产脚本同样存在该缺陷。
+- fix: 取数引用改为强制更新，传输游标语义与分支历史解耦；演练覆盖回滚后再次发布路径。
+- new_guardrail: `backend/scripts/drill_deploy_rollback.sh` 三路演练（失败回滚、重复回滚、健康上线）；发布脚本引用变更必须经演练验证。
+- verification: `bash backend/scripts/drill_deploy_rollback.sh` 三路通过；三个脚本 `bash -n` 语法通过。
+- linked_trace: `20260906-audit-remediation`
+- linked_files: `backend/scripts/deploy_server.sh`; `backend/scripts/drill_deploy_rollback.sh`
+- next_time_signal: 修改发布取数或回滚引用后，若演练三路未全过，不得声明发布恢复收口。
+
+## M-20260906-001：测试补丁撤销误触真实开发库
+
+- status: guarded
+- first_seen: 2026-09-06
+- severity: high
+- symptom: 新测试中调用 `monkeypatch.undo()` 恢复单个补丁，顺带撤销了同夹具的 `DB_PATH` 补丁，后续回调在真实开发库 `backend/data/bot.db` 落库，单跑通过、联跑失败且污染开发数据。
+- root_cause: `monkeypatch.undo()` 撤销该用例全部补丁，而 `DB_PATH` 补丁与被测补丁共享同一 `monkeypatch` 实例；测试未声明数据库隔离断言，污染直到联跑失败才暴露。
+- impact: 开发库写入 3 行测试假数据（已清理）；若假游标残留，企微同步重跑会跳过真实消息。
+- fix: 改用 `monkeypatch.setattr` 显式恢复单个目标，不调用 `undo()`；清理开发库测试行并复核为 0。
+- new_guardrail: 故障注入测试必须使用显式恢复单个补丁；涉及 `DB_PATH` 的测试不得调用 `monkeypatch.undo()`。
+- verification: `python -B -m pytest backend/tests/service/wecom/test_kf_callback_processor.py backend/tests/service/wecom/test_kf_sync_atomicity.py backend/tests/repository/test_wecom_kf_sync_repo.py -q --no-cov -p no:cacheprovider` 联跑通过；开发库复核三表残留均为 0。
+- linked_trace: `20260906-audit-remediation`
+- linked_files: `backend/tests/service/wecom/test_kf_sync_atomicity.py`
+- next_time_signal: 新增或修改 `DB_PATH` 相关测试后，若出现单跑过联跑失败，必须先查补丁恢复范围与真实库残留，不得只重跑单文件收口。
+
 ## M-20260831-002：中文注释扫描器误判 URL、资源和工具指令
 
 - status: guarded
@@ -66,18 +129,19 @@ ______________________________________________________________________
 
 ## M-20260830-004：发票承接 API 未完整执行状态与必填校验
 
-- status: open
+- status: verified
 - first_seen: 2026-08-30
 - severity: medium
 - symptom: 发票登记 API 可以创建并标记记录，但已为 `issued` 的记录再次标记仍返回 200；缺少企业抬头、税号或邮箱时也会被归一为空字符串并成功登记。
 - root_cause: 请求模型为三个字段提供空字符串默认值，仓储更新只用 `status != 'issued'` 避免重复写入，却没有把“未更新”转为非法状态流转错误。
 - impact: 后台可能重复执行开票动作或保存不可执行的开票请求，P1 发票验收和 P2 E 项无法闭环。
-- fix: 本轮仅新增严格预期失败的专用 API 测试，未修改业务实现；后续应在服务层补字段校验和状态机错误码，再移除严格预期失败标记。
+- fix: API 模型将三个字段改为必填；服务层拒绝缺失、非字符串和空白值；仓储层使用 `status = 'applied'` 条件更新并检查 `rowcount`，服务层将非法状态转换映射为 409。
 - new_guardrail: `backend/tests/api/test_admin_invoice_api.py` 固化创建、列表、标记已开、重复标记和三个必填字段缺失场景；P1-5 在这些用例全部通过且完成 E1-E4 前保持阻塞。
-- verification: `python -B -m pytest tests/api/test_admin_invoice_api.py -q --no-cov --basetemp=D:/Project/.tmp-20260830-invoice/pytest-base` → EXIT=0（3 passed，4 strict xfailed）；`python -B scripts/check_knowledge.py` → EXIT=0。
+- verification: `python -B -m pytest backend/tests/api/test_admin_invoice_api.py -q --no-cov -p no:cacheprovider` → EXIT=0（7 passed）；相关 Ruff check 与 format check → EXIT=0。
 - linked_trace: `20260830-p1p2-continue`
 - linked_files: `backend/app/api/admin/invoices.py`; `backend/app/service/invoice/admin.py`; `backend/app/repository/invoice_repo.py`; `backend/tests/api/test_admin_invoice_api.py`; `docs/tasks/20260829-P1-5-发票承接验收-指令.md`
 - next_time_signal: 发票状态再次标记未返回 409，或缺少抬头/税号/邮箱的请求未被 400/422 拒绝时，禁止将 P1-5 或 P2 E 项标记为完成。
+- closeout_20260906: 4 项严格 `xfail` 已移除，代码缺口已修复；发票仍需完成 `T-P1-5-INVOICE` 的 E1-E4 真实客服、后台和联动验收，代码修复不等同于真实验收。
 
 ## M-20260830-001：中文管理要求未下沉到 Harness 防线
 

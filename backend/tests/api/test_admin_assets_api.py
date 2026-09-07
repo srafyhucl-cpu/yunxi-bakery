@@ -8,6 +8,7 @@ from fastapi import FastAPI
 
 from app.api.admin_assets import create_admin_assets_router
 from app.config import settings
+from tests.api.test_admin_asset_upload import _png_bytes, _webp_vp8x_bytes
 
 
 @pytest.fixture
@@ -30,7 +31,7 @@ async def test_admin_upload_decoration_asset_returns_static_url(app: FastAPI) ->
     ) as client:
         response = await client.post(
             "/api/v1/admin/shop-config/assets",
-            files={"file": ("hero.png", b"\x89PNG\r\n\x1a\nhero", "image/png")},
+            files={"file": ("hero.png", _png_bytes(2, 2), "image/png")},
             headers=headers,
         )
 
@@ -56,12 +57,12 @@ async def test_admin_upload_decoration_asset_supports_multiple_images(
     ) as client:
         first_response = await client.post(
             "/api/v1/admin/shop-config/assets",
-            files={"file": ("hero-1.png", b"\x89PNG\r\n\x1a\nhero-1", "image/png")},
+            files={"file": ("hero-1.png", _png_bytes(2, 2), "image/png")},
             headers=headers,
         )
         second_response = await client.post(
             "/api/v1/admin/shop-config/assets",
-            files={"file": ("hero-2.webp", b"RIFFhero-2", "image/webp")},
+            files={"file": ("hero-2.webp", _webp_vp8x_bytes(2, 2), "image/webp")},
             headers=headers,
         )
 
@@ -79,6 +80,24 @@ async def test_admin_upload_decoration_asset_supports_multiple_images(
     for uploaded_path in uploaded_paths:
         assert uploaded_path.exists()
         uploaded_path.unlink()
+
+
+@pytest.mark.asyncio
+async def test_admin_upload_decoration_asset_rejects_fake_image(app: FastAPI) -> None:
+    """伪装图片即使声明正确类型也拒绝，不落盘。"""
+    headers = {"Authorization": f"Bearer {settings.ADMIN_API_TOKEN}"}
+    transport = httpx.ASGITransport(app=app)
+
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as client:
+        response = await client.post(
+            "/api/v1/admin/shop-config/assets",
+            files={"file": ("hero.png", b"\x89PNG\r\n\x1a\nhero", "image/png")},
+            headers=headers,
+        )
+
+    assert response.status_code == 400
 
 
 @pytest.mark.asyncio

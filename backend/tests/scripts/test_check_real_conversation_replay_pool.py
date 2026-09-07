@@ -7,6 +7,11 @@ from pathlib import Path
 
 from scripts import check_real_conversation_replay_pool
 
+_TESTS_DIR = Path(__file__).resolve().parents[1]
+COVERAGE_SAMPLE_FIXTURE = (
+    _TESTS_DIR / "fixtures" / "customer_real_replay_coverage_sample.json"
+)
+
 
 def test_real_replay_pool_manifest_sample_passes_without_real_claim() -> None:
     report = check_real_conversation_replay_pool.build_real_replay_pool_report()
@@ -179,11 +184,7 @@ def test_real_replay_pool_cli_writes_json(tmp_path: Path) -> None:
 
 
 def write_real_redacted_fixture(fixture_path: Path) -> None:
-    payload = json.loads(
-        Path("tests/fixtures/customer_real_replay_coverage_sample.json").read_text(
-            encoding="utf-8"
-        )
-    )
+    payload = json.loads(COVERAGE_SAMPLE_FIXTURE.read_text(encoding="utf-8"))
     payload["metadata"]["source"] = "unit_test_real_redacted_pool"
     payload["metadata"]["redaction"] = "manual_redaction_v1"
     fixture_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")

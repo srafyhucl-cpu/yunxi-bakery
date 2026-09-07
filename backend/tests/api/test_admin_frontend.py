@@ -10,6 +10,7 @@ from app.api.admin import create_admin_router, issue_admin_session
 from app.api.admin.root import has_admin_api_access
 from app.api.admin_frontend import FRONTEND_INDEX_FILE, create_admin_frontend_router
 from app.config import settings
+from app.database import close_db, init_db
 
 
 def _get_route_endpoint(router, path: str, method: str):
@@ -115,7 +116,12 @@ def test_admin_origin_mismatch_is_rejected(monkeypatch: pytest.MonkeyPatch) -> N
 
 
 @pytest.mark.asyncio
-async def test_admin_auth_login_sets_cookie() -> None:
+async def test_admin_auth_login_sets_cookie(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(settings, "DB_PATH", str(tmp_path / "admin-login.db"))
+    connection = await init_db(settings.DB_PATH)
+    await close_db(connection)
     router = create_admin_router(
         chat_service=object(),
         admin_service=object(),
@@ -154,9 +160,12 @@ async def test_admin_auth_login_sets_cookie() -> None:
 
 @pytest.mark.asyncio
 async def test_admin_login_rate_limits_failed_attempts(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     """后台登录失败达到阈值后应暂时拒绝继续尝试。"""
+    monkeypatch.setattr(settings, "DB_PATH", str(tmp_path / "admin-login.db"))
+    connection = await init_db(settings.DB_PATH)
+    await close_db(connection)
     monkeypatch.setattr(settings, "ADMIN_LOGIN_MAX_ATTEMPTS", 2)
     monkeypatch.setattr(settings, "ADMIN_LOGIN_WINDOW_SECONDS", 300)
     router = create_admin_router(

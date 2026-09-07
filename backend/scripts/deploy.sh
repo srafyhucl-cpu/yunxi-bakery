@@ -37,6 +37,15 @@ if [[ "$SSH_KEY" == /mnt/c/* || "$OSTYPE" == "msys" ]]; then
     SSH_KEY="$TMP_SSH_KEY"
 fi
 
+# 统一清理临时产物：正常与失败路径均执行，不得静默遗留私钥
+cleanup_temp_files() {
+    rm -f "$BUNDLE_FILE"
+    if [ -n "$TMP_SSH_KEY" ]; then
+        rm -f "$TMP_SSH_KEY"
+    fi
+}
+trap cleanup_temp_files EXIT
+
 # 颜色输出
 RED='\033[0;31m'
 GREEN='\033[0;32m'
