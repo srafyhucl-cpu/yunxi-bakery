@@ -1,3 +1,18 @@
+## [2026-09-07] - feat(miniapp): 暖棕主题与详情页参考重构
+
+task_id: T-MINIAPP-DISPLAY-POLISH-01
+trace_id: 20260907-miniapp-display-polish
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: A 决策整套暖棕气质；详情页按 CAKE FOR YOU 参考重构；subtitle 与说明展示清洗
+changed_files:
+  - miniapp 全局 token 与共享组件暖化（背景文字阴影描边，CTA 留绿）
+  - home/products/cart/checkout/orders/detail/tabBar 暖棕 sweep（机械映射 85 处，CTA 渐变保留）
+  - product-detail 沉浸大图、数量步进、搭配推荐、客服入口、红色成交价
+reproduction: npm run typecheck / check:miniapp / check:page-api-coverage 通过；列表页 automation 6/6 通过；其余页待模拟器目检
+implementation: 未新增后端字段；晒单无数据不做；会员客服页留二期
+
 ## [2026-09-07] - feat(miniapp): 展示整改一期实现（商品浏览/购物车结算/订单）
 
 task_id: T-MINIAPP-DISPLAY-POLISH-01

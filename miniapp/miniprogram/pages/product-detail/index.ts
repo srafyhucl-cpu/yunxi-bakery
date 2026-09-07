@@ -1,13 +1,34 @@
 import { addCartItem } from "../../utils/cart";
 import { getMiniappLayoutMetrics } from "../../utils/layout";
 import { formatFen } from "../../utils/money";
+import {
+  getDescriptionBlocks,
+  getDisplaySpecs,
+  getDisplayTags,
+  type DescriptionBlock
+} from "../../utils/bakery";
 import { ROUTES } from "../../constants/routes";
-import { getProductDetail } from "../../services/products";
+import { getProductDetail, listProducts } from "../../services/products";
 import type { CatalogProduct } from "../../types/catalog";
+
+interface RelatedProductView {
+  id: string;
+  title: string;
+  imageUrl: string;
+  priceText: string;
+  imageFailed: boolean;
+}
+
+// 搭配推荐位数量：横滑一条刚好铺满又不喧宾夺主
+const RELATED_PRODUCT_LIMIT = 4;
 
 interface ProductDetailView extends CatalogProduct {
   priceText: string;
   imageFailed: boolean;
+  displaySubtitle: string;
+  specChips: string[];
+  tagChips: string[];
+  descriptionBlocks: DescriptionBlock[];
 }
 
 function canPurchaseProduct(product: CatalogProduct | null): boolean {
@@ -27,12 +48,35 @@ function getUnavailableText(product: CatalogProduct | null): string {
   return "";
 }
 
+function isJunkSubtitle(subtitle: string, product: CatalogProduct): boolean {
+  // 后端 subtitle 可能混入同步原文：与标题重复或含库存链接等非展示信息时直接隐藏
+  const text = subtitle.trim();
+  if (!text || text === product.title.trim()) {
+    return true;
+  }
+  return (
+    text.includes("商品名称") ||
+    text.includes("在售状态") ||
+    text.includes("实时库存") ||
+    text.includes("下单链接") ||
+    text.includes("h5.youzan.com") ||
+    text.includes("[UMP")
+  );
+}
+
+function getDisplaySubtitle(product: CatalogProduct): string {
+  const subtitle = (product.subtitle || "").trim();
+  return isJunkSubtitle(subtitle, product) ? "" : subtitle;
+}
+
 Page({
   data: {
     product: null as ProductDetailView | null,
     loading: true,
     loadFailed: false,
     lastProductId: "",
+    purchaseQty: 1,
+    relatedProducts: [] as RelatedProductView[],
     addingToCart: false,
     buyingNow: false,
     canPurchase: false,
@@ -88,11 +132,64 @@ Page({
       loadFailed: false,
       canPurchase: canPurchaseProduct(product),
       unavailableText: getUnavailableText(product),
+      purchaseQty: 1,
       product: {
         ...product,
         imageFailed: false,
-        priceText: formatFen(product.priceFen)
+        priceText: formatFen(product.priceFen),
+        displaySubtitle: getDisplaySubtitle(product),
+        specChips: getDisplaySpecs(product),
+        tagChips: getDisplayTags(product),
+        descriptionBlocks: getDescriptionBlocks(product.description || "")
       }
+    });
+    void this.loadRelatedProducts(product.id);
+  },
+  async loadRelatedProducts(productId: string) {
+    // 搭配推荐：精选商品去重去己，失败静默不打断主流程
+    try {
+      const related = (await listProducts({ featured: true, limit: RELATED_PRODUCT_LIMIT + 1 }))
+        .filter((item) => item.id !== productId)
+        .slice(0, RELATED_PRODUCT_LIMIT)
+        .map((item) => ({
+          id: item.id,
+          title: item.title,
+          imageUrl: item.imageUrl,
+          priceText: formatFen(item.priceFen),
+          imageFailed: false
+        }));
+      this.setData({ relatedProducts: related });
+    } catch {
+      this.setData({ relatedProducts: [] });
+    }
+  },
+  onRelatedImageError(event: WechatMiniprogram.TouchEvent) {
+    const productId = event.currentTarget.dataset.id as string;
+    const index = this.data.relatedProducts.findIndex((item) => item.id === productId);
+    if (productId && index !== -1 && !this.data.relatedProducts[index].imageFailed) {
+      this.setData({ [`relatedProducts[${index}].imageFailed`]: true });
+    }
+  },
+  openRelated(event: WechatMiniprogram.TouchEvent) {
+    const productId = event.currentTarget.dataset.id as string;
+    if (!productId) {
+      return;
+    }
+    wx.navigateTo({
+      url: `${ROUTES.productDetail}?id=${productId}`
+    });
+  },
+  decreaseQty() {
+    if (this.data.purchaseQty > 1) {
+      this.setData({ purchaseQty: this.data.purchaseQty - 1 });
+    }
+  },
+  increaseQty() {
+    this.setData({ purchaseQty: this.data.purchaseQty + 1 });
+  },
+  goChat() {
+    wx.switchTab({
+      url: ROUTES.chat
     });
   },
   goBack() {
@@ -119,7 +216,7 @@ Page({
         title: product.title,
         imageUrl: product.imageUrl,
         priceFen: product.priceFen,
-        quantity: 1
+        quantity: this.data.purchaseQty
       });
       wx.showToast({
         title: "已加入购物车",

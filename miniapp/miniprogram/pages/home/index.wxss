@@ -14,8 +14,8 @@
   margin-top: -4rpx;
   padding: 0 20rpx;
   border-radius: 999rpx;
-  background: rgba(237, 247, 232, 0.88);
-  border-color: rgba(75, 129, 72, 0.1);
+  background: rgba(247, 238, 220, 0.88);
+  border-color: rgba(122, 90, 58, 0.1);
   box-shadow: none;
 }
 
@@ -29,7 +29,7 @@
   flex: 1;
   font-size: 22rpx;
   line-height: 1.5;
-  color: #6e806f;
+  color: #8A7660;
 }
 
 .home-hero {
@@ -39,10 +39,10 @@
   border-radius: 40rpx;
   background:
     radial-gradient(circle at 82% 20%, rgba(255, 255, 255, 0.86), transparent 20%),
-    radial-gradient(circle at 96% 92%, rgba(108, 154, 99, 0.25), transparent 30%),
-    linear-gradient(112deg, #4A7A41 0%, #6C9A63 45%, #F4F1EB 100%);
+    radial-gradient(circle at 96% 92%, rgba(201, 165, 106, 0.25), transparent 30%),
+    linear-gradient(112deg, #4A2F23 0%, #8A5A2E 55%, #F2E7D2 100%);
   border: 0;
-  box-shadow: 0 28rpx 62rpx rgba(108, 154, 99, 0.18);
+  box-shadow: 0 28rpx 62rpx rgba(201, 165, 106, 0.18);
 }
 
 .home-hero__swiper,
@@ -73,8 +73,8 @@
   top: 0;
   height: auto;
   background:
-    linear-gradient(90deg, rgba(36, 58, 40, 0.46), rgba(49, 93, 53, 0.18) 48%, transparent),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(36, 58, 40, 0.08));
+    linear-gradient(90deg, rgba(58, 43, 32, 0.46), rgba(74, 54, 36, 0.18) 48%, transparent),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(58, 43, 32, 0.08));
   pointer-events: none;
 }
 
@@ -121,8 +121,8 @@
   align-items: center;
   min-height: 34rpx;
   padding: 0 12rpx;
-  color: #315d35;
-  background: rgba(244, 250, 241, 0.92);
+  color: #5C3D24;
+  background: rgba(250, 243, 226, 0.92);
   border: 1rpx solid rgba(255, 255, 255, 0.24);
   border-radius: 999rpx;
   font-size: 18rpx;
@@ -136,12 +136,12 @@
   width: 120rpx;
   min-height: 88rpx;
   margin-top: 2rpx;
-  color: #315d35;
-  background: linear-gradient(180deg, #ffffff, #d8efcf);
+  color: #5C3D24;
+  background: linear-gradient(180deg, #ffffff, #F3E3C2);
   border-radius: 999rpx;
   font-size: 20rpx;
   font-weight: 800;
-  box-shadow: 0 10rpx 22rpx rgba(49, 93, 53, 0.16);
+  box-shadow: 0 10rpx 22rpx rgba(74, 54, 36, 0.16);
 }
 
 
@@ -209,9 +209,9 @@
   border-radius: 32rpx;
   background:
     radial-gradient(circle at 84% 12%, rgba(255, 255, 255, 0.78), transparent 24%),
-    linear-gradient(135deg, rgba(108, 154, 99, 0.96), rgba(74, 122, 65, 0.88));
+    linear-gradient(135deg, rgba(92, 61, 36, 0.96), rgba(138, 90, 46, 0.9));
   color: #ffffff;
-  box-shadow: 0 16rpx 40rpx rgba(108, 154, 99, 0.15);
+  box-shadow: 0 16rpx 40rpx rgba(122, 90, 58, 0.22);
 }
 
 .member-promo__mark {
@@ -221,10 +221,10 @@
   justify-content: center;
   width: 72rpx;
   height: 72rpx;
-  color: #315d35;
-  background: linear-gradient(135deg, #ffffff, #d8efcf);
+  color: #5C3D24;
+  background: linear-gradient(135deg, #ffffff, #F3E3C2);
   border-radius: 24rpx;
-  box-shadow: 0 12rpx 28rpx rgba(49, 93, 53, 0.2);
+  box-shadow: 0 12rpx 28rpx rgba(74, 54, 36, 0.2);
   font-size: 34rpx;
   font-weight: 900;
 }
@@ -257,13 +257,13 @@
   flex: 0 0 auto;
   min-width: 140rpx;
   padding: 16rpx 20rpx;
-  color: #315d35;
-  background: linear-gradient(180deg, #ffffff, #d8efcf);
+  color: #5C3D24;
+  background: linear-gradient(180deg, #ffffff, #F3E3C2);
   border-radius: 999rpx;
   text-align: center;
   font-size: 22rpx;
   font-weight: 800;
-  box-shadow: 0 10rpx 22rpx rgba(49, 93, 53, 0.16);
+  box-shadow: 0 10rpx 22rpx rgba(74, 54, 36, 0.16);
 }
 
 .service-notices {
@@ -277,7 +277,7 @@
   align-items: center;
   min-height: 88rpx;
   gap: 12rpx;
-  border-bottom: 1rpx solid rgba(75, 129, 72, 0.1);
+  border-bottom: 1rpx solid rgba(122, 90, 58, 0.1);
 }
 
 .service-notice:last-child {
@@ -302,7 +302,7 @@
   min-width: 108rpx;
   padding: 9rpx 14rpx;
   color: var(--yunxi-accent-deep);
-  background: rgba(237, 247, 232, 0.86);
+  background: rgba(247, 238, 220, 0.86);
   border-radius: 999rpx;
   font-size: 20rpx;
   font-weight: 800;
@@ -331,7 +331,7 @@
 
 .shelf-head__eyebrow {
   margin-bottom: 6rpx;
-  color: rgba(63, 122, 66, 0.78);
+  color: rgba(122, 90, 58, 0.78);
   font-size: 18rpx;
   letter-spacing: 0.18em;
 }
@@ -396,9 +396,9 @@
   align-items: center;
   min-height: 36rpx;
   padding: 0 12rpx;
-  color: #315d35;
-  background: rgba(237, 247, 232, 0.9);
-  border: 1rpx solid rgba(75, 129, 72, 0.14);
+  color: #5C3D24;
+  background: rgba(247, 238, 220, 0.9);
+  border: 1rpx solid rgba(122, 90, 58, 0.14);
   border-radius: 999rpx;
   font-size: 18rpx;
   font-weight: 800;
@@ -439,7 +439,7 @@
 .product-price {
   display: block;
   margin-top: 10rpx;
-  color: #3f7a42;
+  color: var(--yunxi-price);
   font-size: 34rpx;
   font-weight: 900;
 }

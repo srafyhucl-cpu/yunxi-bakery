@@ -40,7 +40,7 @@
   padding: 0 8rpx;
   border-radius: 999rpx;
   color: inherit;
-  background: rgba(139, 191, 116, 0.16);
+  background: rgba(201, 165, 106, 0.16);
   font-size: 20rpx;
   line-height: 28rpx;
   text-align: center;
@@ -118,7 +118,7 @@
 .payment-status {
   padding: 4rpx 10rpx;
   border-radius: 999rpx;
-  background: rgba(139, 191, 116, 0.16);
+  background: rgba(201, 165, 106, 0.16);
   color: var(--yunxi-text-secondary);
   font-size: 22rpx;
 }
@@ -162,12 +162,12 @@
 
 .order-action-secondary {
   color: var(--yunxi-text-secondary);
-  background: #f8fbf6;
+  background: #FAF4E8;
 }
 
 .order-action-button[disabled] {
   color: var(--yunxi-text-muted);
-  background: #eef4eb;
+  background: var(--yunxi-surface-alt);
 }
 
 .empty {

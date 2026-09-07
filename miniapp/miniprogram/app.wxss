@@ -4,21 +4,22 @@ page {
   --yunxi-page-bottom-space: calc(env(safe-area-inset-bottom) + 200rpx);
   --yunxi-tabbar-occupied-height: calc(env(safe-area-inset-bottom) + 128rpx);
   --yunxi-fixed-action-space: calc(env(safe-area-inset-bottom) + 276rpx);
-  --yunxi-page-bg: #FAF8F5;
-  --yunxi-surface: #ffffff;
-  --yunxi-surface-alt: #F4F1EB;
-  --yunxi-text-primary: #2C2520;
-  --yunxi-text-secondary: #756D66;
-  --yunxi-text-muted: #A39B93;
+  --yunxi-page-bg: #F7F0E3;
+  --yunxi-surface: #FFFDF8;
+  --yunxi-surface-alt: #F2E7D2;
+  --yunxi-text-primary: #3A2B20;
+  --yunxi-text-secondary: #8A7660;
+  --yunxi-text-muted: #BCAF96;
   --yunxi-accent: #6C9A63;
   --yunxi-accent-deep: #4A7A41;
-  --yunxi-accent-soft: rgba(108, 154, 99, 0.12);
+  --yunxi-accent-soft: rgba(201, 165, 106, 0.12);
   --yunxi-border: rgba(44, 37, 32, 0.08);
-  --yunxi-shadow: 0 16rpx 40rpx rgba(108, 154, 99, 0.15);
+  --yunxi-shadow: 0 16rpx 40rpx rgba(201, 165, 106, 0.15);
   --yunxi-radius-lg: 32rpx;
   --yunxi-radius-md: 24rpx;
   --yunxi-radius-sm: 16rpx;
   --yunxi-price: #111111;
+  --yunxi-deal: #C25B4E;
   --yunxi-gold: #C9A56A;
   --yunxi-card-shadow: 0 8rpx 24rpx rgba(44, 37, 32, 0.10);
 
@@ -71,7 +72,7 @@ button::after {
   bottom: 18rpx;
   transform: translateX(-50%);
   max-width: 360rpx;
-  color: #243a28;
+  color: #3A2B20;
   font-size: 31rpx;
   font-weight: 900;
   letter-spacing: 0.12em;
@@ -98,7 +99,7 @@ button::after {
   right: 116rpx;
   bottom: 18rpx;
   display: none;
-  color: #17223a;
+  color: #3A2B20;
   font-size: 31rpx;
   font-weight: 900;
   line-height: 1.2;
@@ -125,15 +126,17 @@ button::after {
   width: 88rpx;
   height: 88rpx;
   color: var(--yunxi-text-primary);
-  background: rgba(237, 247, 232, 0.9);
-  border: 1rpx solid rgba(75, 129, 72, 0.12);
+  background: #ffffff;
+  border: 1rpx solid var(--yunxi-border);
   border-radius: 50%;
+  box-shadow: var(--yunxi-card-shadow);
 }
 
 .page-nav-back[disabled] {
   color: var(--yunxi-text-muted);
-  background: rgba(245, 248, 243, 0.86);
-  border-color: rgba(75, 129, 72, 0.08);
+  background: var(--yunxi-surface-alt);
+  border-color: var(--yunxi-border);
+  box-shadow: none;
   opacity: 0.72;
 }
 
@@ -148,12 +151,12 @@ button::after {
   flex: 0 0 auto;
   padding: 0 var(--yunxi-page-gutter) 18rpx;
   background: #ffffff;
-  border-bottom: 1rpx solid rgba(75, 129, 72, 0.08);
+  border-bottom: 1rpx solid rgba(122, 90, 58, 0.08);
   box-shadow: 0 10rpx 24rpx rgba(54, 103, 56, 0.045);
 }
 
 .product-art.cake-yellow .product-art-base {
-  background: #edf7e8;
+  background: #F7EEDC;
   border-bottom-color: #8bbf74;
 }
 
@@ -200,9 +203,9 @@ button::after {
   flex: 1;
   min-height: 0;
   background:
-    radial-gradient(circle at 10% 5%, rgba(108, 154, 99, 0.45), transparent 45%),
+    radial-gradient(circle at 10% 5%, rgba(201, 165, 106, 0.45), transparent 45%),
     radial-gradient(circle at 90% 25%, rgba(229, 175, 110, 0.35), transparent 50%),
-    radial-gradient(circle at 30% 75%, rgba(108, 154, 99, 0.25), transparent 60%),
+    radial-gradient(circle at 30% 75%, rgba(201, 165, 106, 0.25), transparent 60%),
     var(--yunxi-page-bg);
 }
 
@@ -262,7 +265,7 @@ button::after {
 .ghost-button[disabled] {
   color: var(--yunxi-text-muted);
   background: rgba(245, 248, 243, 0.86);
-  border-color: rgba(75, 129, 72, 0.08);
+  border-color: rgba(122, 90, 58, 0.08);
 }
 
 .bakery-panel {
@@ -289,7 +292,7 @@ button::after {
   content: "";
   width: 28rpx;
   height: 2rpx;
-  background: rgba(139, 191, 116, 0.65);
+  background: rgba(201, 165, 106, 0.65);
 }
 
 .bakery-feature-icon,
@@ -299,10 +302,10 @@ button::after {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #274D29;
+  color: #5C3D24;
   font-weight: 700;
-  background: radial-gradient(circle at 30% 24%, #F2F8EE, #7BBA6E 74%);
-  box-shadow: 0 8rpx 16rpx rgba(108, 154, 99, 0.2);
+  background: radial-gradient(circle at 30% 24%, #FBF3E2, #C9A56A 74%);
+  box-shadow: 0 8rpx 16rpx rgba(201, 165, 106, 0.2);
 }
 
 .bakery-feature-icon::after,
@@ -320,7 +323,7 @@ button::after {
   overflow: hidden;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.74), rgba(255, 255, 255, 0) 28%),
-    linear-gradient(135deg, #eaf7e3 0%, #ffffff 58%, #cce8bf 100%);
+    linear-gradient(135deg, #F7EEDC 0%, #ffffff 58%, #EBD9B8 100%);
 }
 
 .bakery-photo::before {
@@ -382,6 +385,76 @@ button::after {
   background: #ffffff;
   border-radius: var(--yunxi-radius-md);
   box-shadow: var(--yunxi-card-shadow);
+}
+
+/* 分区标题：中文名 + 英文小字 + 两侧短线 */
+.yunxi-section-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6rpx;
+  padding: 12rpx 0 4rpx;
+}
+
+.yunxi-section-head__title {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  color: var(--yunxi-text-primary);
+  font-size: 30rpx;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.yunxi-section-head__title::before,
+.yunxi-section-head__title::after {
+  content: "";
+  width: 40rpx;
+  height: 2rpx;
+  background: rgba(201, 165, 106, 0.6);
+}
+
+/* 统一步进器：圆形减号描边、加号深绿实心（购物车与详情页复用） */
+.yunxi-stepper {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.yunxi-stepper__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48rpx;
+  height: 48rpx;
+  font-size: 26rpx;
+  font-weight: 800;
+  border-radius: 50%;
+}
+
+.yunxi-stepper__btn--minus {
+  color: var(--yunxi-text-secondary);
+  background: #ffffff;
+  border: 1rpx solid var(--yunxi-border);
+}
+
+.yunxi-stepper__btn--plus {
+  color: #ffffff;
+  background: var(--yunxi-accent-deep);
+  border: 1rpx solid var(--yunxi-accent-deep);
+}
+
+.yunxi-stepper__btn:active {
+  transform: scale(0.9);
+  opacity: 0.9;
+}
+
+.yunxi-stepper__val {
+  min-width: 48rpx;
+  color: var(--yunxi-text-primary);
+  font-size: 28rpx;
+  font-weight: 800;
+  text-align: center;
 }
 
 .yunxi-badge {
@@ -446,7 +519,7 @@ button::after {
   justify-content: center;
   width: 100%;
   height: 100%;
-  background: linear-gradient(135deg, #F4F1EB 0%, #FFFFFF 60%, #E9E2D4 100%);
+  background: linear-gradient(135deg, #F2E7D2 0%, #FFFFFF 60%, #EBD9B8 100%);
 }
 
 .yunxi-image-fallback__mark {
@@ -457,14 +530,14 @@ button::after {
   height: 96rpx;
   color: var(--yunxi-accent-deep);
   background: rgba(255, 255, 255, 0.9);
-  border: 1rpx solid rgba(75, 129, 72, 0.14);
+  border: 1rpx solid rgba(122, 90, 58, 0.14);
   border-radius: 50%;
   font-size: 44rpx;
   font-weight: 900;
 }
 
 .yunxi-skeleton {
-  background: linear-gradient(90deg, #EDE9E1 25%, #F8F5EF 50%, #EDE9E1 75%);
+  background: linear-gradient(90deg, #EAE0CE 25%, #F8F3E8 50%, #EAE0CE 75%);
   background-size: 200% 100%;
   animation: yunxiSkeletonShimmer 1.2s ease-in-out infinite;
 }

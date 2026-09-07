@@ -1,6 +1,6 @@
 .cart-page {
   padding: 24rpx 24rpx var(--yunxi-fixed-action-space);
-  background: #faf8f5;
+  background: var(--yunxi-page-bg);
   min-height: 100vh;
   box-sizing: border-box;
 }
@@ -38,7 +38,7 @@
   font-weight: 700;
   color: #ffffff;
   background: linear-gradient(135deg, #6c9a63, #4a7a41);
-  box-shadow: 0 6rpx 14rpx rgba(74, 122, 65, 0.16);
+  box-shadow: 0 6rpx 14rpx rgba(122, 90, 58, 0.16);
   flex-shrink: 0;
 }
 
@@ -48,7 +48,7 @@
   border-radius: 20rpx;
   overflow: hidden;
   flex-shrink: 0;
-  background: #F4F1EB;
+  background: #F2E7D2;
 }
 
 .cart-cover {
@@ -83,7 +83,7 @@
 .cart-title {
   font-size: 28rpx;
   font-weight: 800;
-  color: #243a28;
+  color: #3A2B20;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -95,7 +95,7 @@
   font-size: 18rpx;
   font-weight: 700;
   color: #4a7a41;
-  background: rgba(74, 122, 65, 0.08);
+  background: rgba(122, 90, 58, 0.08);
   border-radius: 6rpx;
   white-space: nowrap;
 }
@@ -104,48 +104,7 @@
   font-size: 30rpx;
 }
 
-.cart-stepper {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-}
-
-.stepper-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 48rpx;
-  height: 48rpx;
-  font-size: 26rpx;
-  font-weight: 800;
-  border-radius: 50%;
-  transition: all 0.2s cubic-bezier(0.25, 1, 0.5, 1);
-}
-
-.stepper-btn--minus {
-  color: var(--yunxi-text-secondary);
-  background: #ffffff;
-  border: 1rpx solid var(--yunxi-border);
-}
-
-.stepper-btn--plus {
-  color: #ffffff;
-  background: var(--yunxi-accent-deep);
-  border: 1rpx solid var(--yunxi-accent-deep);
-}
-
-.stepper-btn:active {
-  transform: scale(0.9);
-  opacity: 0.9;
-}
-
-.stepper-val {
-  min-width: 56rpx;
-  text-align: center;
-  font-size: 24rpx;
-  font-weight: 700;
-  color: #243a28;
-}
+/* 步进器改走全局 yunxi-stepper */
 
 .cart-footer {
   position: fixed;
@@ -159,8 +118,8 @@
   padding: 24rpx 36rpx;
   background: #ffffff;
   backdrop-filter: blur(20px);
-  border-top: 1rpx solid rgba(74, 122, 65, 0.06);
-  box-shadow: 0 -8rpx 32rpx rgba(74, 122, 65, 0.03);
+  border-top: 1rpx solid rgba(122, 90, 58, 0.06);
+  box-shadow: 0 -8rpx 32rpx rgba(122, 90, 58, 0.03);
   z-index: 100;
 }
 
@@ -172,7 +131,7 @@
 .cart-footer .primary-button {
   flex: 0 0 250rpx;
   min-width: 250rpx;
-  box-shadow: 0 8rpx 20rpx rgba(74, 122, 65, 0.15);
+  box-shadow: 0 8rpx 20rpx rgba(122, 90, 58, 0.15);
 }
 
 .cart-total {
@@ -188,7 +147,7 @@
   margin: 48rpx 8rpx 24rpx;
   font-size: 30rpx;
   font-weight: 800;
-  color: #243a28;
+  color: #3A2B20;
 }
 
 .recommend-grid {
@@ -210,14 +169,14 @@
   width: 100%;
   aspect-ratio: 1 / 1;
   overflow: hidden;
-  background: #F4F1EB;
+  background: #F2E7D2;
 }
 
 .recommend-name {
   display: block;
   min-height: 80rpx;
   padding: 18rpx 18rpx 0;
-  color: #243a28;
+  color: #3A2B20;
   font-size: 27rpx;
   font-weight: 800;
   line-height: 1.35;
@@ -231,7 +190,7 @@
 .recommend-sold {
   display: block;
   padding: 8rpx 18rpx 0;
-  color: #9cb09e;
+  color: #BCAF96;
   font-size: 21rpx;
   font-weight: 600;
 }
@@ -249,7 +208,7 @@
   margin: -10rpx 18rpx 0 auto;
   border-radius: 99rpx;
   background: linear-gradient(135deg, #6c9a63, #4a7a41);
-  box-shadow: 0 6rpx 14rpx rgba(74, 122, 65, 0.16);
+  box-shadow: 0 6rpx 14rpx rgba(122, 90, 58, 0.16);
   position: relative;
   transition: all 0.2s ease;
 }

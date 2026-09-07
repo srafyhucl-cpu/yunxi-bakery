@@ -2,6 +2,14 @@
 
 本文件记录 YunxiBakeMiniApp 的关键推进。每次较大变更、设计决策、验证收口或上线动作，都要在顶部追加一条。
 
+## 2026-09-07 - 暖棕主题与详情页参考重构
+
+- trace_id: `20260907-miniapp-display-polish`
+- task_id: `T-MINIAPP-DISPLAY-POLISH-01`
+- 变更: 全局 token 暖棕化，CTA 留绿；详情页沉浸大图、数量步进、搭配推荐、客服入口、红色成交价；subtitle 与说明展示清洗。
+- 验证: `typecheck`、`check:miniapp`、`check:page-api-coverage` 全绿；列表 automation 6/6；详情后链路待模拟器目检。
+- 待办: 模拟器目检暖棕与详情；会员客服与品牌页放二期。
+
 ## 2026-09-07 - 展示整改一期实现（商品浏览/购物车结算/订单）
 
 - trace_id: `20260907-miniapp-display-polish`

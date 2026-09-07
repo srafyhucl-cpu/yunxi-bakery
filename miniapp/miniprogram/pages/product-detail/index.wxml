@@ -16,28 +16,44 @@
               <text class="yunxi-image-fallback__mark">芸</text>
             </view>
           </view>
-          <view wx:if="{{product.tags.length > 0}}" class="detail-tags">
-            <text wx:for="{{product.tags}}" wx:key="*this" wx:for-item="tag" class="detail-chip">{{tag}}</text>
-          </view>
+          <text wx:if="{{product.soldText}}" class="detail-sold-flag">{{product.soldText}}</text>
         </view>
 
         <view class="detail-main yunxi-card">
+          <view wx:if="{{product.tagChips.length > 0}}" class="detail-tags">
+            <text wx:for="{{product.tagChips}}" wx:key="*this" wx:for-item="tag" class="yunxi-chip">{{tag}}</text>
+          </view>
           <view class="detail-title-row">
             <text class="detail-title">{{product.title}}</text>
             <text class="detail-status">{{product.isActive ? "在售" : "暂不可售"}}</text>
           </view>
-          <text class="detail-subtitle">{{product.subtitle}}</text>
+          <text wx:if="{{product.displaySubtitle}}" class="detail-subtitle">{{product.displaySubtitle}}</text>
           <view class="detail-meta">
             <text class="detail-price">{{product.priceText}}</text>
             <text class="detail-sold">{{product.soldText}}</text>
           </view>
+          <view wx:if="{{canPurchase}}" class="detail-qty-row">
+            <text class="detail-qty-label">数量</text>
+            <view class="yunxi-stepper">
+              <view class="yunxi-stepper__btn yunxi-stepper__btn--minus" bindtap="decreaseQty">-</view>
+              <text class="yunxi-stepper__val">{{purchaseQty}}</text>
+              <view class="yunxi-stepper__btn yunxi-stepper__btn--plus" bindtap="increaseQty">+</view>
+            </view>
+          </view>
+          <view wx:if="{{product.specChips.length > 0}}" class="detail-specs">
+            <text wx:for="{{product.specChips}}" wx:key="*this" wx:for-item="spec" class="yunxi-chip">{{spec}}</text>
+          </view>
         </view>
 
         <view class="detail-card yunxi-card">
-          <text class="detail-card-title">商品说明</text>
-          <text class="detail-description">{{product.description}}</text>
-          <view wx:if="{{product.specs.length > 0}}" class="detail-specs">
-            <text wx:for="{{product.specs}}" wx:key="*this" wx:for-item="spec" class="yunxi-chip">{{spec}}</text>
+          <view class="yunxi-section-head">
+            <text class="yunxi-section-head__title">图文详情</text>
+          </view>
+          <view class="detail-description">
+            <block wx:for="{{product.descriptionBlocks}}" wx:key="index" wx:for-item="block">
+              <text wx:if="{{block.isHeading}}" class="detail-description__heading">{{block.text}}</text>
+              <text wx:else class="notice-item">{{block.text}}</text>
+            </block>
           </view>
         </view>
 
@@ -46,6 +62,31 @@
           <view class="notice-list">
             <text wx:for="{{product.notices}}" wx:key="*this" wx:for-item="notice" class="notice-item">{{notice}}</text>
           </view>
+        </view>
+
+        <view wx:if="{{relatedProducts.length > 0}}" class="detail-card yunxi-card">
+          <view class="yunxi-section-head">
+            <text class="yunxi-section-head__title">搭配推荐</text>
+          </view>
+          <scroll-view class="related-strip" scroll-x enhanced show-scrollbar="{{false}}">
+            <view
+              wx:for="{{relatedProducts}}"
+              wx:key="id"
+              wx:for-item="related"
+              class="related-card"
+              data-id="{{related.id}}"
+              bindtap="openRelated"
+            >
+              <view class="related-image">
+                <image wx:if="{{related.imageUrl && !related.imageFailed}}" class="related-cover" src="{{related.imageUrl}}" mode="aspectFill" data-id="{{related.id}}" binderror="onRelatedImageError" />
+                <view wx:else class="yunxi-image-fallback">
+                  <text class="yunxi-image-fallback__mark">芸</text>
+                </view>
+              </view>
+              <text class="related-name">{{related.title}}</text>
+              <text class="related-price">{{related.priceText}}</text>
+            </view>
+          </scroll-view>
         </view>
       </view>
       <view wx:else class="yunxi-state">
@@ -58,6 +99,10 @@
   </scroll-view>
 
   <view class="detail-actions">
+    <view class="detail-service" bindtap="goChat">
+      <text class="detail-service__icon">💬</text>
+      <text class="detail-service__label">客服</text>
+    </view>
     <button
       class="ghost-button"
       bindtap="addToCart"
