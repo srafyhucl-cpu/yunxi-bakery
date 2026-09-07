@@ -14,7 +14,7 @@
 
 ```yaml
 updated_at: 2026-09-07
-as_of_commit: 220a8fe0dcd1126dfe43e3745667a3f7f58fc262
+as_of_commit: 9544acb5bdd02949e8df40755c9aee816160bc74
 version: 0.133.0-p2trial.3
 current_branch: main
 workspace_state: clean
