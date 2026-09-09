@@ -7272,7 +7272,7 @@ backend/docs/harness-engineering/core/evidence-index.md 仅作为历史镜像。
 - generated_at: 2026-09-09
 - evidence_type: maintenance/miniapp-unused-config-and-tabbar-layout
 - file: local:miniapp/miniprogram/app.json; local:miniapp/miniprogram/app.wxss; local:miniapp/miniprogram/config/shop.ts; local:miniapp/miniprogram/constants/ui.ts; local:miniapp/miniprogram/constants/user.ts; local:miniapp/miniprogram/components/session-notice/index.wxml; local:miniapp/miniprogram/pages/home/index.wxml; local:miniapp/miniprogram/pages/products/index.wxml; local:miniapp/miniprogram/pages/cart/index.wxml; local:miniapp/miniprogram/pages/chat/index.wxml; local:miniapp/miniprogram/pages/profile/index.wxml
-- commit_sha: 53246f47ce9e46bf0b6a9493c3958e34dadf4d88
+- commit_sha: a1ab2ac8f34410944373db953153d3502c096f06
 - command: cd miniapp && npm run typecheck; npm run check:miniapp; npm run check:page-api-coverage; npm run audit:buttons; npm run audit:button-styles; npm exec -- tsc --noEmit --noUnusedLocals --noUnusedParameters; git diff --check; MiniApp 全仓引用审计确认删除项无调用方
 - result: pass
 - related_logbook: 2026-09-09 - cleanup(miniapp): 清理无用配置并收口页面布局

@@ -17813,7 +17813,7 @@ run_id: 20260909-miniapp-cleanup-r2
 owner: AI 员工
 status: active
 status_label: 进行中（active）
-as_of_commit: 53246f47ce9e46bf0b6a9493c3958e34dadf4d88
+as_of_commit: a1ab2ac8f34410944373db953153d3502c096f06
 scope: 在不影响北京单店预订、商品展示、配送报价和验收证据的前提下，清理确认无引用的 MiniApp 配置与常量，并提交既有页面底部布局修复。
 implementation: 删除未引用的 miniapp/miniprogram/constants/ui.ts 与 miniapp/miniprogram/constants/user.ts；删除未使用的微信地理位置权限声明和 SHOP_CONFIG.storeLocation；保留商品 mock 回退、装修回退、业务常量、配送服务、验收脚本、报告和本地配置。首页、商品目录、购物车、客服和会员中心滚动视口统一为自定义 TabBar 让位，会话提示动作改为可访问的自定义操作节点。
 verification: cd miniapp && npm run typecheck 退出码 0；npm run check:miniapp 退出码 0（15 页面、15 路由）；npm run check:page-api-coverage 退出码 0；npm run audit:buttons 退出码 0（104 controls）；npm run audit:button-styles 退出码 0（104 controls、0 failures、0 warnings）；npm exec -- tsc --noEmit --noUnusedLocals --noUnusedParameters 退出码 0；git diff --check 退出码 0。
