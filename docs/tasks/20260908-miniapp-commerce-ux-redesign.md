@@ -4,7 +4,7 @@
 > owner: AI 员工
 > status: active
 > status_label: 进行中（active）
-> as_of_commit: 696cedfff64b99ad8b0c76811fd149f67a6e1814
+> as_of_commit: 53246f47ce9e46bf0b6a9493c3958e34dadf4d88
 > version: 0.133.0-p2trial.3
 > branch: main
 > allowed_paths: miniapp/, backend/app/api/channels/storefront/, backend/app/service/order/, backend/app/service/delivery/, backend/app/repository/, backend/app/models/, backend/app/migrations/, backend/tests/, docs/superpowers/, docs/tasks/
@@ -19,7 +19,8 @@
 
 - 已删除结算页未使用的 `totalFen` 局部变量与摘要字段。
 - 已删除商品目录未使用的 `ProductCategory` 类型导入和无调用方的 `productMatchesSearch` 函数。
-- 已核对页面、服务、配置和验收脚本引用；没有发现可安全删除的其他源码。
+- 已删除确认无引用的 constants/ui.ts、constants/user.ts，以及已经不再使用的 app.json 地理位置权限声明和 shop.ts 门店经纬度配置。
+- 已核对页面、服务、配置和验收脚本引用；商品 mock 回退、页面装修回退、配送服务、业务常量和验收脚本仍有调用或证据职责，予以保留。
 - 可重建缓存按白名单清理；业务数据、有效报告、环境文件和历史证据保留。
 
 ## 首发范围
@@ -50,11 +51,11 @@
 
 ## 当前基线
 
-- `as_of_commit`: `343355a8d833428e1bd4f5ebd9cbe2dceae426e1`
+- `as_of_commit`: `53246f47ce9e46bf0b6a9493c3958e34dadf4d88`
 - `version`: `0.133.0-p2trial.3`
 - `branch`: `main`
-- `workspace_state`: `dirty`
-- 当前工作区已有 MiniApp UI、后端会员资产零态和测试相关改动；本任务不覆盖、不回退这些改动。
+- `workspace_state`: `clean`
+- 当前代码快照包含 MiniApp UI 布局修复、会话提示修复和无用前端配置清理；后端会员资产、配送实现、有效报告和环境文件未被本轮删除或回退。
 
 ## 本任务已执行验证
 
@@ -122,6 +123,14 @@
 - DevTools 运行态审计确认商品目录存在活动分类清单、库存状态、预订提示和“预订/查看”动作；结算配送审计确认无有效报价不可提交、报价失效立即禁用。
 
 ## 下一步
+
+## 无用前端配置与页面布局收口（2026-09-09）
+
+- 删除 constants/ui.ts 和 constants/user.ts，两者在小程序源码、脚本和文档契约中均无调用方。
+- 删除 app.json 中未被任何运行代码使用的 scope.userLocation / getLocation 权限声明，并同步删除 shop.ts 中仅服务于该权限的 storeLocation。
+- 首页、商品目录、购物车、客服和会员中心根节点统一标记 page-shell--tabbar，滚动视口为自定义 TabBar 让出占用高度；会话提示动作改为可访问的自定义操作节点，避免原生按钮默认样式造成空白块。
+- 本轮未删除商品 mock 回退、页面装修回退、配送服务、业务常量、测试脚本、验收报告、node_modules 或本地微信工具配置。
+- 验证：npm run typecheck、npm run check:miniapp、npm run check:page-api-coverage、npm run audit:buttons、npm run audit:button-styles、npm exec -- tsc --noEmit --noUnusedLocals --noUnusedParameters 均退出码 0；git diff --check 通过。
 
 ## 展示语言与按钮审计收口（2026-09-09）
 

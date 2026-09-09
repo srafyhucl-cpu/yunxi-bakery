@@ -6,10 +6,6 @@ export const SHOP_CONFIG = {
   customerPhone: "13240240418",
   businessHours: "09:00-19:30",
   pickupAddress: "北京市东城区南竹杆胡同2号银河SOHO",
-  storeLocation: {
-    latitude: 39.9222,
-    longitude: 116.4338
-  },
   defaultNotice: "定制蛋糕 + 客服微信：13240240418"
 } as const;
 

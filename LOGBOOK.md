@@ -17805,3 +17805,16 @@ implementation: 删除结算页未使用的 `totalFen` 局部变量与摘要字�
 verification: `cd miniapp && npm exec -- tsc --noEmit --noUnusedLocals --noUnusedParameters` 退出码 0；`npm run typecheck` 退出码 0；`npm run check:miniapp` 退出码 0（15 页面、15 路由）；`npm run test:order-summary` 4/4 通过；`git diff --check` 退出码 0。
 cleanup: 按 `scripts/cleanup-local-artifacts.ps1` 白名单预览并清理可重建缓存；不触碰 `backend/data/`、`backend/reports/`、`miniapp/reports/`、`.env*`、`.git/` 或其他有效工件。
 limitations: 真实认证、真实支付、真实闪送平台和正式上线仍未验收；npm 单测仍有既存的 MODULE_TYPELESS_PACKAGE_JSON 性能警告，不影响测试结果。
+## [2026-09-09] - cleanup(miniapp): 清理无用配置并收口页面布局
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260909-miniapp-cleanup-r2
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+as_of_commit: 53246f47ce9e46bf0b6a9493c3958e34dadf4d88
+scope: 在不影响北京单店预订、商品展示、配送报价和验收证据的前提下，清理确认无引用的 MiniApp 配置与常量，并提交既有页面底部布局修复。
+implementation: 删除未引用的 miniapp/miniprogram/constants/ui.ts 与 miniapp/miniprogram/constants/user.ts；删除未使用的微信地理位置权限声明和 SHOP_CONFIG.storeLocation；保留商品 mock 回退、装修回退、业务常量、配送服务、验收脚本、报告和本地配置。首页、商品目录、购物车、客服和会员中心滚动视口统一为自定义 TabBar 让位，会话提示动作改为可访问的自定义操作节点。
+verification: cd miniapp && npm run typecheck 退出码 0；npm run check:miniapp 退出码 0（15 页面、15 路由）；npm run check:page-api-coverage 退出码 0；npm run audit:buttons 退出码 0（104 controls）；npm run audit:button-styles 退出码 0（104 controls、0 failures、0 warnings）；npm exec -- tsc --noEmit --noUnusedLocals --noUnusedParameters 退出码 0；git diff --check 退出码 0。
+cleanup_boundary: 未删除 miniapp/reports/ 有效验收证据、node_modules/ 本地依赖、project.private.config.json 微信开发者工具本地配置、商品/页面配置回退或任何后端业务代码；真实认证、真实闪送、真实支付和正式上线仍未验证。

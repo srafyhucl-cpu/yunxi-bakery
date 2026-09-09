@@ -1,4 +1,4 @@
-<view class="page-shell chat-page" style="{{layoutStyle}}">
+<view class="page-shell page-shell--tabbar chat-page" style="{{layoutStyle}}">
   <view class="page-fixed-safe"></view>
   <view class="page-pinned page-pinned--empty"></view>
 

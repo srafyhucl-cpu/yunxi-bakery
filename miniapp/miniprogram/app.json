@@ -24,14 +24,6 @@
     "backgroundTextStyle": "dark",
     "navigationStyle": "custom"
   },
-  "permission": {
-    "scope.userLocation": {
-      "desc": "用于计算到门店距离"
-    }
-  },
-  "requiredPrivateInfos": [
-    "getLocation"
-  ],
   "tabBar": {
     "custom": true,
     "color": "#3D332D",

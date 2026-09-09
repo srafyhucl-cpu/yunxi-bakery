@@ -231,6 +231,11 @@ button.page-nav-back,
   background: var(--yunxi-page-bg);
 }
 
+/* 自定义 TabBar 悬浮在页面外层，Tab 页滚动视口必须让出其占用高度。 */
+.page-shell--tabbar > .page-scroll {
+  margin-bottom: var(--yunxi-tabbar-occupied-height);
+}
+
 .page-top-spacer {
   display: none;
   height: 0;

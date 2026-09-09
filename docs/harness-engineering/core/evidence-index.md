@@ -7265,3 +7265,23 @@ backend/docs/harness-engineering/core/evidence-index.md 仅作为历史镜像。
 - failure_class: none
 - replayable: yes
 - residual_risks: 真实认证、支付、闪送和正式上线未验证；单测存在既存 Node 模块类型警告。
+## E-20260909-014：MiniApp 无用配置清理与 Tab 页布局修复
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260909-miniapp-cleanup-r2
+- generated_at: 2026-09-09
+- evidence_type: maintenance/miniapp-unused-config-and-tabbar-layout
+- file: local:miniapp/miniprogram/app.json; local:miniapp/miniprogram/app.wxss; local:miniapp/miniprogram/config/shop.ts; local:miniapp/miniprogram/constants/ui.ts; local:miniapp/miniprogram/constants/user.ts; local:miniapp/miniprogram/components/session-notice/index.wxml; local:miniapp/miniprogram/pages/home/index.wxml; local:miniapp/miniprogram/pages/products/index.wxml; local:miniapp/miniprogram/pages/cart/index.wxml; local:miniapp/miniprogram/pages/chat/index.wxml; local:miniapp/miniprogram/pages/profile/index.wxml
+- commit_sha: 53246f47ce9e46bf0b6a9493c3958e34dadf4d88
+- command: cd miniapp && npm run typecheck; npm run check:miniapp; npm run check:page-api-coverage; npm run audit:buttons; npm run audit:button-styles; npm exec -- tsc --noEmit --noUnusedLocals --noUnusedParameters; git diff --check; MiniApp 全仓引用审计确认删除项无调用方
+- result: pass
+- related_logbook: 2026-09-09 - cleanup(miniapp): 清理无用配置并收口页面布局
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 记录确认无引用的常量/权限配置删除、Tab 页底部布局修复和静态门禁结果；未删除商品回退、有效报告、依赖或本地微信工具配置。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 删除两个无引用常量文件、未使用的地理位置权限和对应门店经纬度配置；五个 Tab 页滚动视口为自定义 TabBar 让位，会话提示动作改为可访问的自定义操作节点。15 页面静态检查、API 覆盖、TypeScript 未使用检查、104 个控件审计和按钮样式审计均通过。
+- failure_class: none
+- replayable: yes
+- residual_risks: 微信开发者工具当前 Automator 会话仍不稳定，真实认证、真实闪送开放平台、真实支付和正式上线未验证。
