@@ -19,10 +19,6 @@ interface RequestOptions<TBody extends RequestData> {
   timeoutMs?: number;
 }
 
-export interface ApiResponse<TData> {
-  data: TData;
-}
-
 interface ErrorPayload {
   detail?: string;
   message?: string;

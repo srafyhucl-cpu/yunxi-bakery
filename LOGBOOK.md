@@ -17858,3 +17858,15 @@ implementation: 删除当前源码、页面、脚本和测试中均无调用方�
 verification: `cd miniapp && npm run typecheck` 退出码 0；`npm exec -- tsc --noEmit --noUnusedLocals --noUnusedParameters` 退出码 0；`npm run check:miniapp` 退出码 0（15 页面、15 路由）；`npm run check:page-api-coverage` 退出码 0（15 页面、34 API terms、9 boundaries）；`npm run audit:buttons` 退出码 0（104 controls）；`npm run audit:button-styles` 退出码 0（104 controls、0 failures、0 warnings）；`git diff --check` 通过；删除符号扫描仅保留仍在使用的 `removeAddressBookItemRemote`。
 cleanup_boundary: 未删除 `miniapp/reports/`、`node_modules/`、历史验收脚本、业务服务文件或任何不确定用途的文件；本轮没有创建临时文件。
 limitations: 最新微信开发者工具截图级视觉验收、真实认证、真实闪送、真实支付和生产验收仍未完成；本轮清理结果不改变这些上线边界。
+## [2026-09-09] - chore(miniapp): 删除无调用方的 ApiResponse 类型
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260909-miniapp-commerce-ux-redesign-r14
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 清理 MiniApp 中已确认无调用方的前端死代码，并复核是否存在可安全删除的孤立文件、服务或验收脚本。
+implementation: 删除 `miniapp/miniprogram/services/http.ts` 中无调用方的 `ApiResponse<TData>` 导出类型。文件级盘点保留了仍被页面、服务、npm 入口、历史验收记录或质量门禁使用的代码，包括 `phasec-step3.mjs`、mock 兜底、会员/支付门禁和地址同步能力。
+verification: `cd miniapp && npm run typecheck` 退出码 0；`npm exec -- tsc --noEmit --noUnusedLocals --noUnusedParameters` 退出码 0；`npm run check:miniapp` 退出码 0（15 页面、15 路由）；`npm run check:page-api-coverage` 退出码 0（15 页面、34 API terms、9 boundaries）；`npm run audit:buttons` 退出码 0（104 controls）；`npm run audit:button-styles` 退出码 0（104 controls、0 failures、0 warnings）；`git diff --check` 退出码 0。
+limitations: 本轮未删除报告、审计资产、业务数据或仍有历史复核用途的脚本；微信开发者工具当前运行态、真实认证、真实闪送、真实支付和像素级截图仍不在本轮验证范围。
