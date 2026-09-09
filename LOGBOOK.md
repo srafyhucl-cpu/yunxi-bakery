@@ -17818,3 +17818,16 @@ scope: 在不影响北京单店预订、商品展示、配送报价和验收证�
 implementation: 删除未引用的 miniapp/miniprogram/constants/ui.ts 与 miniapp/miniprogram/constants/user.ts；删除未使用的微信地理位置权限声明和 SHOP_CONFIG.storeLocation；保留商品 mock 回退、装修回退、业务常量、配送服务、验收脚本、报告和本地配置。首页、商品目录、购物车、客服和会员中心滚动视口统一为自定义 TabBar 让位，会话提示动作改为可访问的自定义操作节点。
 verification: cd miniapp && npm run typecheck 退出码 0；npm run check:miniapp 退出码 0（15 页面、15 路由）；npm run check:page-api-coverage 退出码 0；npm run audit:buttons 退出码 0（104 controls）；npm run audit:button-styles 退出码 0（104 controls、0 failures、0 warnings）；npm exec -- tsc --noEmit --noUnusedLocals --noUnusedParameters 退出码 0；git diff --check 退出码 0。
 cleanup_boundary: 未删除 miniapp/reports/ 有效验收证据、node_modules/ 本地依赖、project.private.config.json 微信开发者工具本地配置、商品/页面配置回退或任何后端业务代码；真实认证、真实闪送、真实支付和正式上线仍未验证。
+## [2026-09-09] - chore(miniapp): 清理确认无用样式
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260909-miniapp-cleanup-r3
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 清理 MiniApp 中已确认无运行时引用的展示层样式，保持商品、会员、订单、配送和验收链路完整。
+implementation: 删除 `app.wxss` 中旧页面顶部占位间距和未使用的状态图标变体，删除首页旧销量文本、充值页旧日期类和政策页旧标题类；通过入口、引用和动态 class 复核，未删除任何仍承载业务或证据职责的 TypeScript 文件。
+verification: `cd miniapp && npm run typecheck` 退出码 0；`npm run check:miniapp` 退出码 0（15 页面、15 路由）；`npm run check:page-api-coverage` 退出码 0（15 页面、34 API terms、9 boundaries）；`npm run audit:buttons` 退出码 0（104 controls）；`npm run audit:button-styles` 退出码 0（104 controls、0 failures、0 warnings）；`npm exec -- tsc --noEmit --noUnusedLocals --noUnusedParameters` 退出码 0；`git diff --check` 退出码 0。
+limitations: 本轮不改变业务行为；真实认证、真实闪送开放平台报价/运单/回调、真实支付、生产验收和最新 DevTools 运行态仍未验证。
+commit: d06b0ba93b4109b7fa47d7b14cd51a550e8d10fb

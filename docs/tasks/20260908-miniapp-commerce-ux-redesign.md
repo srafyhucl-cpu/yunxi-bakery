@@ -4,7 +4,7 @@
 > owner: AI 员工
 > status: active
 > status_label: 进行中（active）
-> as_of_commit: a1ab2ac8f34410944373db953153d3502c096f06
+> as_of_commit: d06b0ba93b4109b7fa47d7b14cd51a550e8d10fb
 > version: 0.133.0-p2trial.3
 > branch: main
 > allowed_paths: miniapp/, backend/app/api/channels/storefront/, backend/app/service/order/, backend/app/service/delivery/, backend/app/repository/, backend/app/models/, backend/app/migrations/, backend/tests/, docs/superpowers/, docs/tasks/
@@ -51,7 +51,7 @@
 
 ## 当前基线
 
-- `as_of_commit`: `a1ab2ac8f34410944373db953153d3502c096f06`
+- `as_of_commit`: `d06b0ba93b4109b7fa47d7b14cd51a550e8d10fb`
 - `version`: `0.133.0-p2trial.3`
 - `branch`: `main`
 - `workspace_state`: `clean`
@@ -170,3 +170,10 @@
 - `commerce-states`、`product-purchase-path`、`checkout-delivery-states`、`same-day-scheduling` 四项 DevTools 审计串行通过；既有 `all-pages-devtools-audit.json` 回读结果为 15/15 PASS。
 - `scan:button-touch-targets` 本轮再次出现 `timeout waiting for automator response`，报告为 0 pages / 0 selectors；按 M-20260909-060/M-20260909-062 作为工具会话失败处理，不替代触控验收。
 - 静态、类型、页面 API 覆盖、金额测试、104 个控件审计、按钮样式审计和配送后端定向测试均通过；真实认证、真实闪送开放平台、真实支付、生产验收仍未验证。
+
+## 无用前端代码清理（2026-09-09，run_id: 20260909-miniapp-cleanup-r3）
+
+- 通过入口、引用和动态 class 复核，未发现可安全删除的业务 TypeScript 文件；商品回退、页面装修回退、配送、会员、订单和验收脚本均有实际调用或证据职责，继续保留。
+- 删除 4 组确认无引用的 WXSS 规则：旧页面顶部占位间距、未使用的状态图标变体、首页旧销量文本、充值页旧日期类和政策页旧标题类；动态商品徽标和页面状态类未删除。
+- `npm run typecheck`、`npm run check:miniapp`、`npm run check:page-api-coverage`、`npm run audit:buttons`、`npm run audit:button-styles`、`npm exec -- tsc --noEmit --noUnusedLocals --noUnusedParameters` 均通过。
+- 当前清理提交为 `d06b0ba`；本轮不改变业务行为，也不替代微信开发者工具运行态、真实认证、真实闪送或真实支付验收。

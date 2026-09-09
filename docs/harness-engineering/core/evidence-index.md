@@ -7285,3 +7285,23 @@ backend/docs/harness-engineering/core/evidence-index.md 仅作为历史镜像。
 - failure_class: none
 - replayable: yes
 - residual_risks: 微信开发者工具当前 Automator 会话仍不稳定，真实认证、真实闪送开放平台、真实支付和正式上线未验证。
+## E-20260909-015：MiniApp 无用展示层样式清理与静态门禁
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260909-miniapp-cleanup-r3
+- generated_at: 2026-09-09
+- evidence_type: verification/miniapp-dead-style-cleanup
+- file: local:miniapp/miniprogram/app.wxss; local:miniapp/miniprogram/pages/home/index.wxss; local:miniapp/miniprogram/pages/policy/index.wxss; local:miniapp/miniprogram/pages/recharge/index.wxss; local:miniapp/reports/button-audit/miniapp-buttons-20260909-094036.json; local:miniapp/reports/button-style-audit/button-style-audit-20260909-094037.json
+- commit_sha: d06b0ba93b4109b7fa47d7b14cd51a550e8d10fb
+- command: cd miniapp && npm run typecheck; npm run check:miniapp; npm run check:page-api-coverage; npm run audit:buttons; npm run audit:button-styles; npm exec -- tsc --noEmit --noUnusedLocals --noUnusedParameters; git diff --check
+- result: pass
+- related_logbook: 2026-09-09 - chore(miniapp): 清理确认无用样式
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录确认无引用的前端 WXSS 清理和静态门禁；不含真实客户、地址、登录凭证、闪送凭证、支付数据或生产写入。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 删除旧页面顶部占位间距、未使用状态图标变体、首页旧销量文本、充值页旧日期类和政策页旧标题类；动态商品徽标、业务状态类和所有有调用的 TypeScript 文件均保留。MiniApp 类型、15 页面结构、API 覆盖、104 个控件和按钮样式审计全部通过。
+- failure_class: none
+- replayable: yes
+- residual_risks: 最新微信开发者工具运行态、像素级截图、真实认证、真实闪送和真实支付仍未验证。
