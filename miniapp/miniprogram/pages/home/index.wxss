@@ -459,13 +459,6 @@
   overflow: hidden;
 }
 
-.product-sold {
-  display: block;
-  margin-top: 8rpx;
-  color: var(--yunxi-text-muted);
-  font-size: 22rpx;
-}
-
 .product-price {
   display: block;
   margin-top: 10rpx;

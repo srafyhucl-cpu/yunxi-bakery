@@ -236,11 +236,6 @@ button.page-nav-back,
   margin-bottom: var(--yunxi-tabbar-occupied-height);
 }
 
-.page-top-spacer {
-  display: none;
-  height: 0;
-}
-
 .page {
   min-height: 100%;
   padding: 24rpx var(--yunxi-page-gutter) var(--yunxi-page-bottom-space);
@@ -392,9 +387,7 @@ button.ghost-button,
   opacity: 0.7;
 }
 
-.bakery-feature-icon,
-.bakery-action-icon,
-.bakery-status-icon {
+.bakery-action-icon {
   position: relative;
   display: flex;
   align-items: center;
@@ -406,9 +399,7 @@ button.ghost-button,
   box-shadow: 0 8rpx 20rpx rgba(61, 51, 45, 0.18);
 }
 
-.bakery-feature-icon::after,
-.bakery-action-icon::after,
-.bakery-status-icon::after {
+.bakery-action-icon::after {
   content: "";
   position: absolute;
   inset: 6rpx;

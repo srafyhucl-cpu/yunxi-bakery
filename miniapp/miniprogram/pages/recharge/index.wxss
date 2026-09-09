@@ -151,12 +151,6 @@
   color: var(--yunxi-text-primary);
 }
 
-.record-date {
-  font-size: 22rpx;
-  color: var(--yunxi-text-muted);
-  margin-top: 4rpx;
-}
-
 .primary-btn {
   margin-top: 24rpx;
   width: 100%;

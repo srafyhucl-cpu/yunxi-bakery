@@ -20,13 +20,6 @@
   box-shadow: var(--yunxi-card-shadow);
 }
 
-.policy-title {
-  color: var(--yunxi-text-primary);
-  font-size: 40rpx;
-  font-weight: 900;
-  letter-spacing: 0.02em;
-}
-
 .policy-subtitle {
   color: var(--yunxi-text-muted);
   font-size: 24rpx;
