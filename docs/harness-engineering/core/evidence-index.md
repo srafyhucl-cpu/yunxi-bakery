@@ -7252,7 +7252,7 @@ backend/docs/harness-engineering/core/evidence-index.md 仅作为历史镜像。
 - run_id: 20260909-miniapp-cleanup-r1
 - generated_at: 2026-09-09
 - evidence_type: maintenance/miniapp-dead-code-cleanup
-- file: `local:miniapp/miniprogram/pages/checkout/index.ts`; `local:miniapp/miniprogram/pages/products/index.ts`; `local:miniapp/scripts/cleanup-local-artifacts.ps1`
+- file: `local:miniapp/miniprogram/pages/checkout/index.ts`; `local:miniapp/miniprogram/pages/products/index.ts`; `local:scripts/cleanup-local-artifacts.ps1`
 - command: `cd miniapp && npm exec -- tsc --noEmit --noUnusedLocals --noUnusedParameters`; `npm run typecheck`; `npm run check:miniapp`; `npm run test:order-summary`; `git diff --check`
 - result: pass
 - related_logbook: 2026-09-09 - cleanup(miniapp): 删除已确认无用的 TypeScript 死代码

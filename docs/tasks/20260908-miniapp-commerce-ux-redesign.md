@@ -50,7 +50,7 @@
 
 ## 当前基线
 
-- `as_of_commit`: `c02ab45458102c58a1b4a7b5c578bcbc919496bc`
+- `as_of_commit`: `343355a8d833428e1bd4f5ebd9cbe2dceae426e1`
 - `version`: `0.133.0-p2trial.3`
 - `branch`: `main`
 - `workspace_state`: `dirty`

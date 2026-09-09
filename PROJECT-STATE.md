@@ -5,7 +5,7 @@
 > 中文优先：人类可读内容使用中文；`task_id`、`trace_id`、`status`、`owner`、`branch`、`as_of_commit`、`version` 和路径保持稳定机器字段。
 > 最小阅读集：所有 Agent 先读 `AGENTS.md` 与本文件；执行具体任务时再读对应 `docs/tasks/*.md`，按需读取专业契约。
 
-**最后更新**：2026-09-09（as_of_commit: `39a21f68b89980b9ca8fb7bbde0105d072c791bc`；version: `0.133.0-p2trial.3`）
+**最后更新**：2026-09-09（as_of_commit: `343355a8d833428e1bd4f5ebd9cbe2dceae426e1`；version: `0.133.0-p2trial.3`）
 
 > 当前状态口径：P1 承接验证已于 2026-08-30 经项目负责人确认正式关闭；P2 准备段已完成，真人执行段已阻塞（blocked），尚未启动。Harness P0 与中文治理控制面已完成，版本号以 `backend/VERSION` 为准，代码快照以当前 `git rev-parse HEAD` 为准。
 
@@ -14,7 +14,7 @@
 
 ```yaml
 updated_at: 2026-09-09
-as_of_commit: 39a21f68b89980b9ca8fb7bbde0105d072c791bc
+as_of_commit: 343355a8d833428e1bd4f5ebd9cbe2dceae426e1
 version: 0.133.0-p2trial.3
 current_branch: main
 workspace_state: clean
@@ -64,7 +64,7 @@ state_owner: 项目负责人＋AI 员工
 | T-AUDIT-CLOSEOUT-20260906 | 审计复核收口执行（部署恢复/全量前置/凭证审计） | active | 进行中（active） | P0 | OpenCode | main | 220a8fe0dcd1126dfe43e3745667a3f7f58fc262 | T-AUDIT-REMEDIATION-20260906 | trace: 20260906-audit-remediation-final；run_id: 20260906-audit-remediation-final5；E-20260906-015；收口计划执行中 | 按计划 Task 1→5 执行并收口证据，保持 No-Go 直至门禁与负责人动作完成 |
 | T-AUDIT-GO-LIVE-20260906 | 最终上线收口执行（三态识别/测试治理/凭证与验收） | active | 进行中（active） | P0 | OpenCode | main | 220a8fe0dcd1126dfe43e3745667a3f7f58fc262 | T-AUDIT-CLOSEOUT-20260906 | trace: 20260906-audit-remediation-final；run_id: 20260906-audit-remediation-final6；E-20260906-016；全量 1854 项退出码 0 | 三态识别与测试治理已代码完成但负责人动作缺失，保持 No-Go；M-20260906-003 关闭前禁止上线 |
 | T-MINIAPP-DISPLAY-POLISH-01 | MiniApp 全页面与次级交互链路大厂级统一整改及 DevTools 走查 | active | 进行中（active） | P1 | AI 员工 | main | b738ecf8192e4dc30a5a3f829158ba6d337fe1f1 | — | trace: 20260908-miniapp-console-zero-error；DevTools 控制台 0 warning / 0 error；全 15 页面自动化走查 15/15 PASS；单测与门禁通过 | 保持 DevTools 实机高保真与大厂验收标准，推进二期业务闭环 |
-| T-MINIAPP-COMMERCE-UX-REDESIGN | MiniApp 商品优先型 UI/UX 与北京闪送履约重构 | active | 进行中（active） | P1 | AI 员工 | main | 39a21f68b89980b9ca8fb7bbde0105d072c791bc | T-MINIAPP-DISPLAY-POLISH-01 | trace: 20260908-miniapp-commerce-ux-redesign；E-20260909-001,E-20260909-002,E-20260909-003,E-20260909-004,E-20260909-005,E-20260909-006,E-20260909-007,E-20260909-008,E-20260909-009,E-20260909-010,E-20260909-011,E-20260909-012；商品优先核心购买链路、全页面视觉统一、未登录结算收敛、商品/订单金额明细、营业时段同步、当天预约边界、商品目录清单化、空购物车结算收敛、商品目录触控目标、展示语言收敛、商品目录快速预订、购物车服务商品推荐和 104 个控件按钮样式零警告已完成；四项串行 DevTools 业务状态审计通过，触控扫描本轮因会话响应超时未形成新通过证据 | 后台保存 09:00-19:30 运营配置；恢复稳定 Automator 会话后重跑触控扫描；获得受控测试授权后复核真实认证结算与报价状态；真实闪送平台资料到位后验证报价、订单金额快照、创建运单和回调幂等；像素级视觉、真实认证态、真实闪送和支付仍未验证 |
+| T-MINIAPP-COMMERCE-UX-REDESIGN | MiniApp 商品优先型 UI/UX 与北京闪送履约重构 | active | 进行中（active） | P1 | AI 员工 | main | 343355a8d833428e1bd4f5ebd9cbe2dceae426e1 | T-MINIAPP-DISPLAY-POLISH-01 | trace: 20260908-miniapp-commerce-ux-redesign；E-20260909-001,E-20260909-002,E-20260909-003,E-20260909-004,E-20260909-005,E-20260909-006,E-20260909-007,E-20260909-008,E-20260909-009,E-20260909-010,E-20260909-011,E-20260909-012,E-20260909-013；商品优先核心购买链路、全页面视觉统一、未登录结算收敛、商品/订单金额明细、营业时段同步、当天预约边界、商品目录清单化、空购物车结算收敛、商品目录触控目标、展示语言收敛、商品目录快速预订、购物车服务商品推荐、104 个控件按钮样式零警告和明确无用前端代码清理已完成；四项串行 DevTools 业务状态审计通过，触控扫描本轮因会话响应超时未形成新通过证据 | 后台保存 09:00-19:30 运营配置；恢复稳定 Automator 会话后重跑触控扫描；获得受控测试授权后复核真实认证结算与报价状态；真实闪送平台资料到位后验证报价、订单金额快照、创建运单和回调幂等；像素级视觉、真实认证态、真实闪送和支付仍未验证 |
 
 ## 状态视图（只引用主表 task_id）
 
