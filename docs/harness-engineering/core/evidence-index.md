@@ -7346,6 +7346,26 @@ backend/docs/harness-engineering/core/evidence-index.md 仅作为历史镜像。
 - failure_class: none
 - replayable: yes
 - residual_risks: 微信开发者工具截图级视觉验收、真实认证、真实闪送、真实支付和生产验收仍未验证。
+## E-20260909-021：MiniApp 客服页时间格式化重复代码清理
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260909-miniapp-cleanup-r18
+- generated_at: 2026-09-09
+- evidence_type: verification/miniapp-dead-code-cleanup
+- file: local:miniapp/miniprogram/pages/chat/index.ts; local:miniapp/miniprogram/utils/time-format.ts; local:miniapp/tests/utils/time-format.test.ts; local:LOGBOOK.md
+- commit_sha: c91544c8a1053578280f3a60153abbe62c1706b3
+- command: `cd miniapp && npm run typecheck`; `cd miniapp && node --test tests/utils/time-format.test.ts`; `cd miniapp && npm run check:miniapp`; `cd miniapp && npm run check:page-api-coverage`; `cd miniapp && npm run audit:buttons`; `cd miniapp && npm run audit:button-styles`; `git diff --check`
+- result: pass
+- related_logbook: 2026-09-09 - chore(miniapp): 清理客服页重复时间格式化包装
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录客服页无行为变化的重复代码清理和静态/定向测试结果；不含客户消息、地址、登录凭证、闪送凭证、支付数据或生产写入。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 客服页直接使用公共 `formatMsgTime`，删除仅作转发的本地包装函数；公共工具的 iOS 空格分隔时间兼容用例 5/5 通过。
+- failure_class: none
+- replayable: yes
+- residual_risks: 微信开发者工具最新运行态、真实认证、真实闪送、真实支付和生产验收仍未验证。
 ## E-20260909-018：MiniApp 无调用方前端类型清理
 
 - trace_id: 20260908-miniapp-commerce-ux-redesign
