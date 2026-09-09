@@ -5,7 +5,7 @@ import { addCartItem, getCartItems } from "../../utils/cart";
 import { getCategoryById } from "../../utils/catalog";
 import { formatFen } from "../../utils/money";
 import { syncCustomTabBar } from "../../utils/tab-bar";
-import { listProductCategories, listProducts, type ProductCategory } from "../../services/products";
+import { listProductCategories, listProducts } from "../../services/products";
 import { getProductImageClass } from "../../utils/bakery";
 import type { CatalogProduct } from "../../types/catalog";
 
@@ -298,14 +298,6 @@ function getCartQuantity(productId: string): number {
 
 function getProductFromViews(products: ProductView[], productId: string): CatalogProduct | undefined {
   return products.find((product) => product.id === productId);
-}
-
-function productMatchesSearch(product: CatalogProduct, keyword: string): boolean {
-  const normalizedKeyword = keyword.trim().toLocaleLowerCase();
-  if (!normalizedKeyword) {
-    return true;
-  }
-  return getSearchText(product).toLocaleLowerCase().includes(normalizedKeyword);
 }
 
 function refineCategorySections(sections: CategorySectionView[]): CategorySectionView[] {

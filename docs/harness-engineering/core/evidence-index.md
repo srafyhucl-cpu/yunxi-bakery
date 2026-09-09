@@ -7246,3 +7246,22 @@ backend/docs/harness-engineering/core/evidence-index.md 仅作为历史镜像。
 - retention_note: 业务链路、静态门禁、后端配送契约和四项串行 DevTools 状态审计通过；触控扫描单次连接超时，未形成新的通过结论。未含真实客户、地址、登录凭证、闪送凭证、支付数据或生产写入。
 - storage_scope: repository
 - summary: 已确认本轮有效业务源码、对应测试、任务文档和运行态审计脚本均有源码调用或证据引用，没有删除正式模块；静态与类型门禁、配送后端定向测试、四项串行 DevTools 业务状态审计和既有 15/15 全页报告通过，触控扫描因 Automator 响应超时未形成新的通过证据。
+## E-20260909-013：MiniApp 死代码清理与工作区清理验证
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260909-miniapp-cleanup-r1
+- generated_at: 2026-09-09
+- evidence_type: maintenance/miniapp-dead-code-cleanup
+- file: `local:miniapp/miniprogram/pages/checkout/index.ts`; `local:miniapp/miniprogram/pages/products/index.ts`; `local:miniapp/scripts/cleanup-local-artifacts.ps1`
+- command: `cd miniapp && npm exec -- tsc --noEmit --noUnusedLocals --noUnusedParameters`; `npm run typecheck`; `npm run check:miniapp`; `npm run test:order-summary`; `git diff --check`
+- result: pass
+- related_logbook: 2026-09-09 - cleanup(miniapp): 删除已确认无用的 TypeScript 死代码
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录死代码清理和静态验证；不含客户、地址、凭证、支付或生产数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 删除 3 处由 TypeScript 未使用检查直接确认的死代码；页面数量、路由、订单金额测试和工作区差异检查均通过。未删除仍承担回退配置、复用算法、主题兼容或验收职责的候选文件。
+- failure_class: none
+- replayable: yes
+- residual_risks: 真实认证、支付、闪送和正式上线未验证；单测存在既存 Node 模块类型警告。

@@ -17792,3 +17792,16 @@ implementation: 盘点 87 个已修改文件和 24 个未跟踪源码/测试/文
 verification: `cd miniapp && npm run typecheck` 通过；`npm run check:miniapp` 通过（15 页面、15 路由）；`npm run check:page-api-coverage` 通过（15 页面、34 API terms、9 boundaries）；`npm run test:order-summary` 4/4 通过；`npm run audit:buttons` 通过（104 controls）；`npm run audit:button-styles` 通过（104 controls、0 failures、0 warnings）；`cd backend && pytest tests/api/test_miniapp_delivery_api.py tests/service/delivery -q --no-cov` 13 项通过；Ruff 定向检查通过；串行 DevTools `commerce-states`、`product-purchase-path`、`checkout-delivery-states`、`same-day-scheduling` 均 PASS；既有 `all-pages-devtools-audit.json` 保留的 15/15 PASS 报告可回读。
 devtools_boundary: 本轮最后一次 `scan:button-touch-targets` 连接 `ws://127.0.0.1:9420` 超时，报告为 0 pages / 0 selectors，按已登记的 M-20260909-060/M-20260909-062 口径视为工具会话失败，不写成控件验收通过；未执行真实认证、闪送开放平台、支付或生产操作。
 cleanup: 未发现可以证明无调用、无证据依赖且可安全删除的正式源码；报告目录按 `.gitignore` 保留，业务数据和生产目录未触碰。
+## [2026-09-09] - cleanup(miniapp): 删除已确认无用的 TypeScript 死代码
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260909-miniapp-cleanup-r1
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 清理商品优先型 MiniApp 收口后的无用前端代码，并核对没有误删页面、服务、配置或验收脚本。
+implementation: 删除结算页未使用的 `totalFen` 局部变量与摘要字段、商品目录未使用的 `ProductCategory` 类型导入，以及没有调用方的 `productMatchesSearch` 函数。对 `mock-pages.ts`、`location.ts`、`bakery-theme.ts` 和全部 MiniApp 脚本完成引用核对；这些文件仍分别承担页面回退配置、可复用地理计算、历史主题常量或质量/验收入口，予以保留。
+verification: `cd miniapp && npm exec -- tsc --noEmit --noUnusedLocals --noUnusedParameters` 退出码 0；`npm run typecheck` 退出码 0；`npm run check:miniapp` 退出码 0（15 页面、15 路由）；`npm run test:order-summary` 4/4 通过；`git diff --check` 退出码 0。
+cleanup: 按 `scripts/cleanup-local-artifacts.ps1` 白名单预览并清理可重建缓存；不触碰 `backend/data/`、`backend/reports/`、`miniapp/reports/`、`.env*`、`.git/` 或其他有效工件。
+limitations: 真实认证、真实支付、真实闪送平台和正式上线仍未验收；npm 单测仍有既存的 MODULE_TYPELESS_PACKAGE_JSON 性能警告，不影响测试结果。

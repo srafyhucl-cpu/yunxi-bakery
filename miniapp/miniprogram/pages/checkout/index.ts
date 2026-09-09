@@ -712,7 +712,6 @@ Page({
         balanceEnabled: this.data.balanceEnabled
       });
       await this.confirmAndPay(orderId, {
-        totalFen,
         couponFen,
         pointsFen,
         remainFen,
@@ -731,7 +730,6 @@ Page({
   async confirmAndPay(
     orderId: string,
     summary: {
-      totalFen: number;
       couponFen: number;
       pointsFen: number;
       remainFen: number;
@@ -740,7 +738,7 @@ Page({
       deliveryFeeFen?: number;
     }
   ): Promise<void> {
-    const { totalFen, couponFen, pointsFen, remainFen, branch, balanceFen, deliveryFeeFen } = summary;
+    const { couponFen, pointsFen, remainFen, branch, balanceFen, deliveryFeeFen } = summary;
     let content = "";
     if (branch === "free") {
       content = "本单已由优惠全额抵扣，无需支付";

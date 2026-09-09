@@ -4,7 +4,7 @@
 > owner: AI 员工
 > status: active
 > status_label: 进行中（active）
-> as_of_commit: c02ab45458102c58a1b4a7b5c578bcbc919496bc
+> as_of_commit: 696cedfff64b99ad8b0c76811fd149f67a6e1814
 > version: 0.133.0-p2trial.3
 > branch: main
 > allowed_paths: miniapp/, backend/app/api/channels/storefront/, backend/app/service/order/, backend/app/service/delivery/, backend/app/repository/, backend/app/models/, backend/app/migrations/, backend/tests/, docs/superpowers/, docs/tasks/
@@ -14,6 +14,13 @@
 ## 目标
 
 完成商品优先型 MiniApp 体验重构，并建立北京闪送支付前报价、订单金额快照和配送状态闭环。
+
+## 2026-09-09 清理收口
+
+- 已删除结算页未使用的 `totalFen` 局部变量与摘要字段。
+- 已删除商品目录未使用的 `ProductCategory` 类型导入和无调用方的 `productMatchesSearch` 函数。
+- 已核对页面、服务、配置和验收脚本引用；没有发现可安全删除的其他源码。
+- 可重建缓存按白名单清理；业务数据、有效报告、环境文件和历史证据保留。
 
 ## 首发范围
 
