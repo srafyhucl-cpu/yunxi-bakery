@@ -17831,3 +17831,17 @@ implementation: 删除 `app.wxss` 中旧页面顶部占位间距和未使用的�
 verification: `cd miniapp && npm run typecheck` 退出码 0；`npm run check:miniapp` 退出码 0（15 页面、15 路由）；`npm run check:page-api-coverage` 退出码 0（15 页面、34 API terms、9 boundaries）；`npm run audit:buttons` 退出码 0（104 controls）；`npm run audit:button-styles` 退出码 0（104 controls、0 failures、0 warnings）；`npm exec -- tsc --noEmit --noUnusedLocals --noUnusedParameters` 退出码 0；`git diff --check` 退出码 0。
 limitations: 本轮不改变业务行为；真实认证、真实闪送开放平台报价/运单/回调、真实支付、生产验收和最新 DevTools 运行态仍未验证。
 commit: d06b0ba93b4109b7fa47d7b14cd51a550e8d10fb
+## [2026-09-09] - chore(miniapp): 清理无调用方导出
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260909-miniapp-commerce-ux-redesign-r14
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+as_of_commit: 789fd3451044b56aa385a1fe71fe2c52eafc73fe
+version: 0.133.0-p2trial.3
+implementation: 删除 `utils/catalog.ts` 中无调用方的 `getCategoriesByIds`、`services/session-store.ts` 中无调用方的 `getMiniappUserId` 及 `auth.ts` 的对应兼容再导出；支付门控移除只被本文件使用的 `IS_LOCAL_BACKEND` 中间别名，保留 `RECHARGE_READY` 和 `ONLINE_PAYMENT_READY` 行为不变。未删除任何页面、服务文件、业务回退、有效报告或验收脚本。
+verification: `cd miniapp && npm run typecheck` 退出码 0；`npm run check:miniapp` 退出码 0（15 页面、15 路由）；`npm run check:page-api-coverage` 退出码 0（15 页面、34 API terms、9 boundaries）；`npm run audit:buttons` 退出码 0（104 controls）；`npm run audit:button-styles` 退出码 0（104 controls、0 failures、0 warnings）；`npm exec -- tsc --noEmit --noUnusedLocals --noUnusedParameters` 退出码 0；`git diff --check` 退出码 0。
+devtools_boundary: 本轮未重复启动或并发调用微信开发者工具；触控扫描仍需稳定 Automator 会话，不把静态门禁结果写成最新 DevTools 运行态或像素级截图验收。
+limitations: 真实认证态、真实闪送开放平台报价/运单/回调、真实支付、生产验收和最新 DevTools 运行态仍未执行；任务继续保持进行中（active）。

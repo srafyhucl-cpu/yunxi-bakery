@@ -4,7 +4,7 @@
 > owner: AI 员工
 > status: active
 > status_label: 进行中（active）
-> as_of_commit: d06b0ba93b4109b7fa47d7b14cd51a550e8d10fb
+> as_of_commit: 789fd3451044b56aa385a1fe71fe2c52eafc73fe
 > version: 0.133.0-p2trial.3
 > branch: main
 > allowed_paths: miniapp/, backend/app/api/channels/storefront/, backend/app/service/order/, backend/app/service/delivery/, backend/app/repository/, backend/app/models/, backend/app/migrations/, backend/tests/, docs/superpowers/, docs/tasks/
@@ -21,6 +21,7 @@
 - 已删除商品目录未使用的 `ProductCategory` 类型导入和无调用方的 `productMatchesSearch` 函数。
 - 已删除确认无引用的 constants/ui.ts、constants/user.ts，以及已经不再使用的 app.json 地理位置权限声明和 shop.ts 门店经纬度配置。
 - 已核对页面、服务、配置和验收脚本引用；商品 mock 回退、页面装修回退、配送服务、业务常量和验收脚本仍有调用或证据职责，予以保留。
+- 已删除 3 个无调用方导出符号：`getCategoriesByIds`、`getMiniappUserId` 和 `IS_LOCAL_BACKEND`；未删除任何页面、服务文件、商品回退、配送/支付能力或验收脚本。
 - 可重建缓存按白名单清理；业务数据、有效报告、环境文件和历史证据保留。
 
 ## 首发范围
@@ -51,7 +52,7 @@
 
 ## 当前基线
 
-- `as_of_commit`: `d06b0ba93b4109b7fa47d7b14cd51a550e8d10fb`
+- `as_of_commit`: `789fd3451044b56aa385a1fe71fe2c52eafc73fe`
 - `version`: `0.133.0-p2trial.3`
 - `branch`: `main`
 - `workspace_state`: `clean`

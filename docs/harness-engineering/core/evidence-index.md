@@ -7305,3 +7305,23 @@ backend/docs/harness-engineering/core/evidence-index.md 仅作为历史镜像。
 - failure_class: none
 - replayable: yes
 - residual_risks: 最新微信开发者工具运行态、像素级截图、真实认证、真实闪送和真实支付仍未验证。
+## E-20260909-016：MiniApp 无调用方导出清理
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260909-miniapp-commerce-ux-redesign-r14
+- generated_at: 2026-09-09
+- evidence_type: verification/miniapp-unused-export-cleanup
+- file: local:miniapp/miniprogram/utils/catalog.ts; local:miniapp/miniprogram/services/session-store.ts; local:miniapp/miniprogram/services/auth.ts; local:miniapp/miniprogram/services/payment-gate.ts; local:miniapp/package.json
+- commit_sha: 789fd3451044b56aa385a1fe71fe2c52eafc73fe
+- command: `cd miniapp && npm run typecheck`; `npm run check:miniapp`; `npm run check:page-api-coverage`; `npm run audit:buttons`; `npm run audit:button-styles`; `npm exec -- tsc --noEmit --noUnusedLocals --noUnusedParameters`; `git diff --check`
+- result: pass
+- related_logbook: 2026-09-09 - chore(miniapp): 清理无调用方导出
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录无调用方导出符号清理与定向门禁结果；不含客户、地址、凭证、支付或生产数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 删除 3 个已确认无调用方的导出符号，保留所有页面、服务文件、商品/配送/支付能力和验收脚本；TypeScript、15 页面结构、API 覆盖、104 个控件按钮审计、按钮样式和未使用变量检查均通过。
+- failure_class: none
+- replayable: yes
+- residual_risks: 微信开发者工具 Automator 触控扫描、真实认证、真实闪送、真实支付和像素级截图仍未验证。
