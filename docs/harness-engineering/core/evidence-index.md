@@ -7373,7 +7373,7 @@ backend/docs/harness-engineering/core/evidence-index.md 仅作为历史镜像。
 - generated_at: 2026-09-09
 - evidence_type: verification/miniapp-dead-code-cleanup
 - file: local:miniapp/miniprogram/utils/order-summary.ts; local:miniapp/miniprogram/pages/order-detail/index.wxss; local:LOGBOOK.md; local:docs/tasks/20260908-miniapp-commerce-ux-redesign.md
-- commit_sha: pending
+- commit_sha: 9dc5504291258f6f588eb6aa0e6180173103c150
 - command: `cd miniapp && npm run typecheck`; `npm run check:miniapp`; `npm run check:page-api-coverage`; `npm run audit:buttons`; `npm run audit:button-styles`; `npm exec -- tsc --noEmit --noUnusedLocals --noUnusedParameters`; `git diff --check`
 - result: pass
 - related_logbook: 2026-09-09 - chore(miniapp): 清理最后一批可证明冗余
