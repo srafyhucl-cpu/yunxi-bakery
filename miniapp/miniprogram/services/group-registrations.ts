@@ -58,10 +58,3 @@ export async function submitGroupRegistration(
   });
   return unwrapResponse(response);
 }
-
-export async function listMyGroupRegistrations(): Promise<GroupRegistration[]> {
-  const response = await request<WrappedApiResponse<GroupRegistration[]> | GroupRegistration[]>({
-    path: "/api/v1/miniapp/group-registrations/me"
-  });
-  return unwrapResponse(response);
-}

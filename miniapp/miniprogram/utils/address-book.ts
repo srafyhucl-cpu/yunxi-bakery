@@ -119,26 +119,6 @@ export function findAddressById(addressId: string): AddressBookItem | undefined 
   return getAddressBookItems().find((item) => item.id === addressId);
 }
 
-export function upsertAddressBookItem(draft: AddressBookDraft): AddressBookItem {
-  const items = getAddressBookItems();
-  const addressId = draft.id || createAddressId();
-  const nextItem = normalizeAddressItem({
-    id: addressId,
-    receiverName: draft.receiverName,
-    receiverPhone: draft.receiverPhone,
-    address: draft.address,
-    isDefault: draft.isDefault ?? items.length === 0,
-    updatedAt: new Date().toISOString()
-  });
-  if (!nextItem) {
-    throw new Error("地址信息不完整");
-  }
-  const nextItems = items.filter((item) => item.id !== addressId);
-  nextItems.unshift(nextItem);
-  saveAddressBookItems(nextItems);
-  return nextItem;
-}
-
 export function setDefaultAddress(addressId: string): void {
   saveAddressBookItems(
     getAddressBookItems().map((item) => ({
@@ -146,10 +126,6 @@ export function setDefaultAddress(addressId: string): void {
       isDefault: item.id === addressId
     }))
   );
-}
-
-export function removeAddressBookItem(addressId: string): void {
-  saveAddressBookItems(getAddressBookItems().filter((item) => item.id !== addressId));
 }
 
 export async function persistAddressBookDraft(draft: AddressBookDraft): Promise<AddressBookItem> {

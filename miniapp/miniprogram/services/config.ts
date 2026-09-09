@@ -18,5 +18,4 @@ function getApiBaseUrl(): string {
 }
 
 export const API_BASE_URL = getApiBaseUrl();
-export const API_ENVIRONMENT = wx.getAccountInfoSync().miniProgram.envVersion;
 export const IS_USING_LOCAL_API = API_BASE_URL === LOCAL_API_BASE_URL;

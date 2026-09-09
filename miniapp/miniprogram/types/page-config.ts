@@ -40,10 +40,6 @@ export interface LinkTarget {
   linkTarget: string;
 }
 
-export interface SearchBarProps {
-  placeholder: string;
-}
-
 export interface HeroCarouselProps {
   items: Array<LinkTarget & {
     id?: string;
@@ -57,34 +53,12 @@ export interface HeroCarouselProps {
   intervalMs?: number;
 }
 
-export interface NoticeBarProps {
-  text: string;
-}
-
-export interface CategoryGridProps {
-  categoryIds: string[];
-}
-
 export interface QuickLinksProps {
   items: Array<LinkTarget & { id: string; title: string; subtitle: string; iconText: string }>;
 }
 
-export interface MembershipBannerProps {
-  title: string;
-  subtitle: string;
-  actionText: string;
-}
-
 export interface NoticeListProps {
   items: Array<LinkTarget & { id: string; title: string; actionText: string }>;
-}
-
-export interface ProductShelfProps {
-  title: string;
-  subtitle?: string;
-  source: "manual" | "category" | "featured";
-  productIds?: string[];
-  categoryId?: string;
 }
 
 export interface MemberSummaryProps {
@@ -97,14 +71,4 @@ export interface MemberSummaryProps {
   coupons: number;
   balanceFen: number;
   benefitCardCount: number;
-}
-
-export interface ServiceGridProps {
-  title: string;
-  items: Array<LinkTarget & { id: string; title: string; iconText: string }>;
-}
-
-export interface RichTextProps {
-  title: string;
-  paragraphs: string[];
 }

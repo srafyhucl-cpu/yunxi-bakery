@@ -7,7 +7,7 @@ export interface PointsSummary {
   ledger: PointsLedgerItem[];
 }
 
-export interface PointsPreview {
+export interface PointsApplied {
   orderId: string;
   totalFen: number;
   balanceFen: number;
@@ -15,8 +15,6 @@ export interface PointsPreview {
   pointsUsed: number;
   remainFen: number;
 }
-
-export interface PointsApplied extends PointsPreview {}
 
 interface WrappedApiResponse<TData> {
   code: number;
@@ -33,17 +31,6 @@ function unwrap<TData>(response: WrappedApiResponse<TData> | TData): TData {
 export async function getPoints(): Promise<PointsSummary> {
   const response = await request<WrappedApiResponse<PointsSummary> | PointsSummary>({
     path: "/api/v1/miniapp/points"
-  });
-  return unwrap(response);
-}
-
-export async function pointsPreview(orderId: string): Promise<PointsPreview> {
-  const response = await request<
-    WrappedApiResponse<PointsPreview> | PointsPreview,
-    Record<string, never>
-  >({
-    method: "POST",
-    path: `/api/v1/miniapp/orders/${orderId}/points-preview`
   });
   return unwrap(response);
 }

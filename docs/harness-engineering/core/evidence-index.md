@@ -7325,3 +7325,24 @@ backend/docs/harness-engineering/core/evidence-index.md 仅作为历史镜像。
 - failure_class: none
 - replayable: yes
 - residual_risks: 微信开发者工具 Automator 触控扫描、真实认证、真实闪送、真实支付和像素级截图仍未验证。
+
+## E-20260909-017：MiniApp 源码死代码清理
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260909-miniapp-commerce-ux-redesign-r15
+- generated_at: 2026-09-09
+- evidence_type: verification/miniapp-dead-code-cleanup
+- file: local:miniapp/miniprogram/services/chat.ts; local:miniapp/miniprogram/services/config.ts; local:miniapp/miniprogram/services/coupons.ts; local:miniapp/miniprogram/services/group-registrations.ts; local:miniapp/miniprogram/services/http.ts; local:miniapp/miniprogram/services/points.ts; local:miniapp/miniprogram/types/page-config.ts; local:miniapp/miniprogram/utils/address-book.ts
+- commit_sha: pending-code-commit
+- command: `cd miniapp && npm run typecheck`; `npm exec -- tsc --noEmit --noUnusedLocals --noUnusedParameters`; `npm run check:miniapp`; `npm run check:page-api-coverage`; `npm run audit:buttons`; `npm run audit:button-styles`; `git diff --check`; 删除符号扫描
+- result: pass
+- related_logbook: 2026-09-09 - chore(miniapp): 清理确认无调用方的前端死代码
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录无调用方源码声明清理和静态门禁结果；不含客户、地址、登录凭证、闪送凭证、支付数据或生产写入。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 删除 15 个确认无调用方的内部服务方法、类型和本地辅助方法，保留商品、库存、配送、订单、支付、会员、远程地址同步及验收资产。类型检查、未使用变量检查、15 页面结构、34 项 API 覆盖和 104 个控件按钮审计均通过。
+- failure_class: none
+- replayable: yes
+- residual_risks: 微信开发者工具截图级视觉验收、真实认证、真实闪送、真实支付和生产验收仍未验证。

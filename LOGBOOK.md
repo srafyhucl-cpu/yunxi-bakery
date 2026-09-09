@@ -17845,3 +17845,16 @@ implementation: 删除 `utils/catalog.ts` 中无调用方的 `getCategoriesByIds
 verification: `cd miniapp && npm run typecheck` 退出码 0；`npm run check:miniapp` 退出码 0（15 页面、15 路由）；`npm run check:page-api-coverage` 退出码 0（15 页面、34 API terms、9 boundaries）；`npm run audit:buttons` 退出码 0（104 controls）；`npm run audit:button-styles` 退出码 0（104 controls、0 failures、0 warnings）；`npm exec -- tsc --noEmit --noUnusedLocals --noUnusedParameters` 退出码 0；`git diff --check` 退出码 0。
 devtools_boundary: 本轮未重复启动或并发调用微信开发者工具；触控扫描仍需稳定 Automator 会话，不把静态门禁结果写成最新 DevTools 运行态或像素级截图验收。
 limitations: 真实认证态、真实闪送开放平台报价/运单/回调、真实支付、生产验收和最新 DevTools 运行态仍未执行；任务继续保持进行中（active）。
+## [2026-09-09] - chore(miniapp): 清理确认无调用方的前端死代码
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260909-miniapp-commerce-ux-redesign-r15
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 对商品优先型 MiniApp 做源码级死代码清理，保持商品、库存、配送、订单、支付、会员和验收能力完整。
+implementation: 删除当前源码、页面、脚本和测试中均无调用方的服务方法与类型声明：聊天列表旧入口、优惠券预览类型与方法、积分预览类型与方法、客户群登记列表旧入口、未使用 API 环境导出、未消费的页面装修属性接口，以及地址本地 upsert/删除辅助方法。保留页面文件、真实服务调用、商品目录、配送报价、支付开关、远程地址同步和所有验收脚本。
+verification: `cd miniapp && npm run typecheck` 退出码 0；`npm exec -- tsc --noEmit --noUnusedLocals --noUnusedParameters` 退出码 0；`npm run check:miniapp` 退出码 0（15 页面、15 路由）；`npm run check:page-api-coverage` 退出码 0（15 页面、34 API terms、9 boundaries）；`npm run audit:buttons` 退出码 0（104 controls）；`npm run audit:button-styles` 退出码 0（104 controls、0 failures、0 warnings）；`git diff --check` 通过；删除符号扫描仅保留仍在使用的 `removeAddressBookItemRemote`。
+cleanup_boundary: 未删除 `miniapp/reports/`、`node_modules/`、历史验收脚本、业务服务文件或任何不确定用途的文件；本轮没有创建临时文件。
+limitations: 最新微信开发者工具截图级视觉验收、真实认证、真实闪送、真实支付和生产验收仍未完成；本轮清理结果不改变这些上线边界。

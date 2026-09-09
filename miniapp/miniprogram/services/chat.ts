@@ -23,17 +23,6 @@ function unwrapResponse<TData>(response: WrappedApiResponse<TData> | TData): TDa
   return response as TData;
 }
 
-export async function listChatMessages(): Promise<ChatMessage[]> {
-  const response = await request<WrappedApiResponse<ChatPayload | ChatMessage[]> | ChatPayload | ChatMessage[]>({
-    path: "/api/v1/miniapp/chat/messages"
-  });
-  const data = unwrapResponse(response);
-  if (Array.isArray(data)) {
-    return data;
-  }
-  return data.messages || [];
-}
-
 export async function getChatPayload(): Promise<ChatPayload> {
   const response = await request<WrappedApiResponse<ChatPayload> | ChatPayload>({
     path: "/api/v1/miniapp/chat/messages"
