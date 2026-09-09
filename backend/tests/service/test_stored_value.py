@@ -115,7 +115,7 @@ async def _create_order(
             ],
             "receiverName": "储值测试",
             "receiverPhone": MOBILE,
-            "deliveryType": "delivery",
+            "deliveryType": "pickup",
             "deliveryAddress": "储值测试地址",
             "expectTime": "2026-08-20 19:00",
         },

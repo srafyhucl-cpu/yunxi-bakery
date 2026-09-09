@@ -15,6 +15,66 @@ ______________________________________________________________________
 - 用户需要反复提醒同一流程。
 - 某个操作依赖聊天上下文，换 Agent 后容易丢失。
 
+## M-20260909-001：迁移编号与既有版本冲突导致初始化失败
+
+- status: verified
+- first_seen: 2026-09-09
+- severity: medium
+- symptom: 新增配送表迁移最初使用 `v032_delivery_quotes.sql`，仓库已有 `v032_wecom_kf_outbound_content_hash.sql`；迁移器按数字版本登记，内存数据库初始化出现 `_schema_version.version` 唯一约束失败。
+- root_cause: 新迁移文件只按局部功能顺序命名，未先核对全仓迁移目录的既有版本号。
+- impact: 测试数据库和新环境无法完成 schema 初始化，配送、订单与其他依赖完整迁移链路的测试被阻断。
+- fix: 配送迁移改为未占用的 `v035_delivery_quotes.sql`，保留既有 `v032` 迁移不变。
+- new_guardrail: 新增迁移前先检索 `backend/app/migrations/` 的版本前缀；定向测试必须使用 `init_db(":memory:")` 验证完整迁移链可执行。
+- verification: `pytest tests/api/test_miniapp_delivery_api.py tests/service/delivery/test_order_quote_binding.py tests/service/delivery/test_shansong.py -q --no-cov` 退出码 0（9 项通过）；订单、支付、券、积分、储值与配送定向回归 120 项退出码 0。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: `backend/app/migrations/v035_delivery_quotes.sql`; `backend/tests/service/delivery/test_order_quote_binding.py`; `backend/tests/api/test_miniapp_delivery_api.py`
+- next_time_signal: 新增迁移后如 `init_db(":memory:")` 出现 `_schema_version` 约束冲突，先核对版本号全局唯一性，禁止通过删除或覆盖既有迁移修复。
+
+## M-20260909-002：DevTools 截图超时后仍延迟写入，文件与目标页面错配
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: medium
+- symptom: `miniprogram-automator` 的 `miniProgram.screenshot()` 超时后，DevTools 仍可能在后续页面导航完成后写入截图；例如目标为结算页的 `wt-checkout.png` 实际显示积分明细页，走查 JSON 也出现当前路由与目标页不一致。
+- root_cause: 截图协议超时只中断调用方等待，不会取消 DevTools 内部的异步截图任务；脚本继续导航后，迟到帧被写入原文件名。
+- impact: 截图文件名、报告目标页和实际像素内容不再存在一一对应关系，不能作为视觉验收或 UI 回归结论。
+- fix: 走查脚本保留截图失败即非零退出；在截图通道修复前，以当前路由、运行态数据、关键 DOM 坐标、元素可见性和溢出检查作为结构证据。
+- new_guardrail: 任何截图超时、截图前后路由不一致或异步调用未完成时，禁止引用该图片作为页面视觉证据；关键交易页必须额外记录当前路由与关键元素的运行态检查结果。
+- verification: 单页模式下 `App.captureScreenshot` 仍在 30 秒超时，且既有 `walkthrough-phase-c.json` 可复现页面错配；`devtools:verify-all-pages` 可稳定复核当前路由和 DOM。
+- linked_trace: `20260908-miniapp-commerce-ux-redesign`
+- linked_files: `miniapp/scripts/walkthrough-phase-c.mjs`; `miniapp/scripts/verify-all-15-pages-devtools.cjs`; `miniapp/reports/devtools/walkthrough-phase-c.json`
+- next_time_signal: 后续要恢复截图级验收，先验证单页截图在请求期限内完成且截图前后 `currentPage.path` 相同；任一条件不满足时继续使用结构化运行态证据。
+
+## M-20260909-003：DevTools 测试状态注入使用错误的购物车存储键
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 首次有商品购物车走查向 `yunxiCartItems` 写入样本数据，但实际购物车读取 `STORAGE_KEYS.cartItems` 的 `cartItems` 键，页面保持空态并误报缺少结算栏。
+- root_cause: 测试脚本未先读取 `miniapp/miniprogram/constants/storage.ts` 的共享存储契约，凭名称猜测了键值。
+- impact: 自动化走查可将测试状态注入失败误判为界面或布局故障，浪费排查时间。
+- fix: 使用共享契约中的 `cartItems` 键重新验证；新增 `devtools:commerce-states` 固化正确键与清理逻辑。
+- new_guardrail: 任何依赖本地状态的 DevTools 审计先读取对应常量或工具函数；注入后必须同时断言页面运行态数据已反映目标状态。
+- verification: 正确注入后购物车 `hasItems=true`，商品行位于 `99px`，结算栏位于 `674px`，数量控件存在且无内容遮挡。
+- linked_trace: `20260908-miniapp-commerce-ux-redesign`
+- linked_files: `miniapp/miniprogram/constants/storage.ts`; `miniapp/miniprogram/utils/cart.ts`; `miniapp/scripts/verify-devtools-commerce-states.cjs`
+- next_time_signal: 后续任何状态注入若页面数据未进入预期分支，先核对共享存储契约和写入结果，禁止直接归因到页面 UI。
+
+## M-20260909-004：DevTools 审计只等待路由稳定，未等待首页商品异步内容就绪
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 15 页审计在首页路由已稳定但精选商品仍在异步加载时立即查询 `.shelf`，导致实际商品优先页面偶发报“未找到包含商品的货架”。
+- root_cause: 审计脚本的导航等待只验证 `currentPage.path`，没有为依赖远程商品块的首页增加内容就绪条件。
+- impact: 网络或模拟器性能波动可产生首页商品优先的假阴性，降低审计结果可信度。
+- fix: 首页业务断言查询货架和商品卡时最多等待 2.4 秒，只有内容仍未出现才报错。
+- new_guardrail: 路由稳定不等于页面数据稳定；涉及异步业务数据的运行态审计必须等待对应关键元素或显式加载失败状态。
+- verification: 修复后重新运行 `npm run devtools:verify-all-pages`，首页需同时输出货架、首张商品和品牌轮播坐标。
+- linked_trace: `20260908-miniapp-commerce-ux-redesign`
+- linked_files: `miniapp/scripts/verify-all-15-pages-devtools.cjs`; `ERRORS.md`
+- next_time_signal: 新增异步页面断言时，先区分路由完成、加载中、加载失败和内容就绪四种状态，禁止只按固定等待时间判断。
+
 ## M-20260906-004：全量测试耗时超过 10 分钟优化阈值
 
 - status: verified
@@ -538,3 +598,983 @@ python -B backend/scripts/check_mistake_ledger.py
 - `severity` 只能是 `low`、`medium`、`high`、`critical`。
 
 该检查由 `backend/.pre-commit-config.yaml` 的 `check-mistake-ledger` hook 保留，并可在根目录手动运行。账本一旦出现格式漂移，会在提交前被发现，而不是等到后续 Agent 读取时才踩坑。
+## M-20260908-001：单文件编辑工具误用导致治理文件重复试错
+
+- status: guarded
+- first_seen: 2026-09-08
+- severity: medium
+- symptom: 连续使用批量补丁接口对同一路径执行删除+新增，接口拒绝“multiple operations target”并未落盘。
+- root_cause: 未按工具 schema 选择单文件 replace 操作，且失败后重复了同一调用方式。
+- impact: 治理文件未能及时收口，浪费执行轮次；业务源码未被覆盖。
+- fix: 改用单文件替换接口；后续同一路径只执行一个编辑操作，失败后先读取当前内容和工具 schema，再更换方法。
+- new_guardrail: 编辑失败三次后必须暂停重试并写入 ERRORS.md，随后只允许使用已确认匹配 schema 的单文件操作。
+- verification: 当前条目保留在 ERRORS.md，并在本轮继续执行前完成任务登记文件解析检查。
+- linked_trace: `20260908-miniapp-commerce-ux-redesign`
+- linked_files: `ERRORS.md`; `backend/scripts/check_mistake_ledger.py`
+- next_time_signal: 新增错误条目若缺少治理字段，账本检查必须在继续业务改动前失败并先修复。
+
+## M-20260908-002：补丁上下文与文件实际内容不一致
+
+- status: guarded
+- first_seen: 2026-09-08
+- severity: medium
+- symptom: 对已有文件使用过大的上下文块进行替换时，工具报告找不到预期行；文件编码/换行或当前内容与记忆不一致。
+- root_cause: 编辑前未先读取足够精确的原文上下文，且在失败后继续使用同一批量删除+新增方式。
+- impact: 该轮未改动目标业务文件；执行时间被编辑方式试错消耗。
+- fix: 以后只使用已成功验证的 `apply_patch_add_file` 新增文件或 `apply_patch_update_file` 小范围 hunk；现有文件先读取精确行，再改单一职责。
+- new_guardrail: 同一补丁失败后不得原样重试；失败三次即记录 ERRORS.md 并换成小 hunk 或先停止编辑。
+- verification: 已追加本条目；新增配送 API 文件已成功落盘，后续将以单文件小步方式继续。
+- linked_trace: `20260908-miniapp-commerce-ux-redesign`
+- linked_files: `ERRORS.md`; `backend/app/api/channels/storefront/delivery.py`; `backend/app/service/delivery/`
+- next_time_signal: 新增配送领域文件若未完成单文件读取确认，禁止继续扩展跨层实现。
+
+## M-20260908-004：视觉走查发现商品信号和未登录结算状态不符合业务主路径
+
+- status: guarded
+- first_seen: 2026-09-08
+- severity: medium
+- symptom: DevTools 截图显示首页首屏由无商品图的促销块占据，推荐商品被固定底栏遮挡；商品详情无商品时主体近乎空白；未登录结算仍展示可填写表单和提交订单按钮。
+- root_cause: 商品货架排序晚于品牌宣传块，页面底部空间未覆盖多层固定栏，空态和登录状态没有按交易动作收敛。
+- impact: 用户不能在首屏快速选购，可能误以为未登录仍可提交订单，核心购买路径的理解和转化受损。
+- fix: 将精选商品前置，统一固定栏底部留白，完善商品详情和结算空态动作；通过微信开发者工具逐页复验。
+- new_guardrail: 视觉走查同时检查首屏商品可见性、固定元素遮挡和未登录状态是否暴露核心写操作。
+- verification: 本轮 DevTools 15 页面结构走查 15/15、控制台 warning/error 0；关键视觉问题已由截图复核，修复验证待完成。
+- linked_trace: `20260908-miniapp-commerce-ux-redesign`
+- linked_files: `miniapp/miniprogram/pages/home/`; `miniapp/miniprogram/pages/products/`; `miniapp/miniprogram/pages/product-detail/`; `miniapp/miniprogram/pages/cart/`; `miniapp/miniprogram/pages/checkout/`
+- next_time_signal: 关键交易页视觉走查再次发现固定栏遮挡、首屏无商品或未登录状态暴露提交动作时，必须先阻断验收并修复。
+
+## M-20260908-005：走查脚本缺少已存在的 npm 命令入口
+
+- status: guarded
+- first_seen: 2026-09-08
+- severity: low
+- symptom: scripts/walkthrough-phase-c.mjs 存在，但 npm run walkthrough:phase-c 返回 Missing script。
+- root_cause: package.json 未登记该已有走查脚本。
+- impact: 按文档或脚本名称执行会失败，需要改用裸 node 命令，降低验证可发现性。
+- fix: 后续补齐稳定 npm script，并保持原有 node 入口兼容。
+- new_guardrail: 每个纳入验收的脚本必须同时有 package.json 命令和 node --check 可执行入口。
+- verification: 已用 node scripts/walkthrough-phase-c.mjs 完成本轮 15 页截图走查；npm script 修复待完成。
+- linked_trace: `20260908-miniapp-commerce-ux-redesign`
+- linked_files: `miniapp/package.json`; `miniapp/scripts/walkthrough-phase-c.mjs`
+- next_time_signal: 纳入验收的脚本若没有 package.json 稳定入口或 node --check 结果，必须视为验证入口不完整。
+
+## M-20260908-006：DevTools 走查截图超时导致页面验收串扰
+
+- status: guarded
+- first_seen: 2026-09-08
+- severity: medium
+- symptom: 走查脚本将截图和页面导航共用 12 秒超时；截图超时后未隔离未完成调用，后续页面出现路由错配，报告仍以成功退出。
+- root_cause: 自动化脚本将慢速截图当作普通页面操作处理，且未把路由一致性和截图错误纳入进程退出码。
+- impact: 15 页面报告可能把错误页面数据归属到目标页面，无法作为页面视觉验收证据。
+- fix: 单独配置截图超时，记录页面路由一致性，并在截图错误、路由错配或控制台警告/错误时以非零状态退出。
+- new_guardrail: DevTools 视觉走查报告只有在每页截图成功、当前路由匹配且控制台无 warning/error 时才可标记为通过。
+- verification: 修复后重新运行 `npm run walkthrough:phase-c` 并复核报告与关键截图。
+- linked_trace: `20260908-miniapp-commerce-ux-redesign`
+- linked_files: `miniapp/scripts/walkthrough-phase-c.mjs`; `miniapp/reports/devtools/walkthrough-phase-c.json`; `ERRORS.md`
+- next_time_signal: 再次发生截图超时或路由错配时，脚本必须非零退出并阻断视觉验收结论。
+
+## M-20260909-005：当天预订规则测试需要固定时钟，避免历史夹具随自然日期失效
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: medium
+- symptom: 订单预约夹具大量使用固定的 `2026-06` 日期；直接加入“不得预约过去时间”校验后，测试会随当前系统日期全部变成过去预约。
+- root_cause: 既有测试没有显式的业务时钟注入，预约服务直接依赖系统当前时间。
+- impact: 回归测试结果不可复现，业务规则可能被迫放宽或被历史数据掩盖。
+- fix: `OrderScheduleService` 支持可注入 `now_provider`；共享测试夹具将校验时钟固定为北京时间 `2026-06-17 12:00`，专用用例覆盖过去、当天截止前和当天截止后三态。
+- new_guardrail: 任何依赖当前日期或截止时间的订单规则必须通过注入时钟测试，禁止用自然时间让固定历史夹具偶发失效。
+- verification: `cd backend && pytest tests/service/test_order.py -q --no-cov` 通过；`ruff check app/service/order/schedule.py tests/conftest.py tests/service/test_order.py` 通过。
+- linked_trace: `20260908-miniapp-commerce-ux-redesign`
+- linked_files: `backend/app/service/order/schedule.py`; `backend/tests/conftest.py`; `backend/tests/service/test_order.py`
+- next_time_signal: 新增订单时间规则时，先声明业务时区、注入时钟和边界测试，再修改既有预约校验。
+
+## M-20260909-006：长文档补丁漏行前缀导致日志补丁未落盘
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: medium
+- symptom: 更新 `LOGBOOK.md` 的长补丁时，有一行正文缺少 `+` 前缀，`apply_patch` 报告 invalid hunk，文件未修改。
+- root_cause: 多文件长补丁没有保持每一行的补丁操作前缀，失败后又未立即拆分到单文件小块。
+- impact: 日志证据写入延迟，浪费一次执行轮次；源码和已有文档内容未被覆盖。
+- fix: 记录错误后改为单文件、小段落补丁；每次补丁后立即读取目标段落确认落盘。
+- new_guardrail: 治理文档只使用短 hunk；长自然语言段落逐行带操作前缀，补丁失败不原样重试。
+- verification: `check_mistake_ledger.py` 与本轮治理检查共同验证。
+- linked_trace: `20260908-miniapp-commerce-ux-redesign`
+- linked_files: `LOGBOOK.md`; `ERRORS.md`
+- next_time_signal: 更新日志或证据索引时，优先追加单独的小段落，并在下一步读取尾部确认。
+
+## M-20260909-007：PowerShell 内联 Node 脚本插值破坏 DevTools 选择器
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 使用 PowerShell 双引号执行内联 `node -e` 审计时，脚本中的 `$` 被 PowerShell 先解释，生成了 `p..time-preview` 等非法 JavaScript，导致当天预订运行态审计没有真正执行。
+- root_cause: PowerShell 双引号字符串会进行变量和子表达式插值，内联 Node 脚本中的 `$()` 选择器表达式没有被当作原始 JavaScript 传递。
+- impact: 本次命令未修改源码、订单或测试数据，但会产生“命令失败原因不清”的假象，延迟当天预订边界的运行态验证。
+- fix: 将审计逻辑落到独立的 `verify-devtools-same-day-scheduling.cjs` 文件，并通过 npm script 执行；脚本只读取页面状态和元素文本，不提交登记。
+- new_guardrail: Windows PowerShell 下禁止用双引号包装包含 `$` 的内联 Node 脚本；需要复跑时使用独立 `.cjs` 文件或单引号包装，并先运行 `node --check`。
+- verification: `cd miniapp && node --check scripts/verify-devtools-same-day-scheduling.cjs` 退出码 0；`cd miniapp && npm run devtools:same-day-scheduling` 退出码 0，报告为 PASS。
+- linked_trace: `20260908-miniapp-commerce-ux-redesign`
+- linked_files: `miniapp/scripts/verify-devtools-same-day-scheduling.cjs`; `miniapp/package.json`; `miniapp/reports/devtools/same-day-scheduling-audit.json`
+- next_time_signal: DevTools 运行态审计若依赖 `$` 选择器或模板字符串，先使用文件脚本并回读文件，再执行验证。
+
+## M-20260909-008：DevTools 审计并发占用同一调试连接
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: medium
+- symptom: 同时启动 `devtools:verify-all-pages` 与 `devtools:commerce-states`，两个脚本竞争 `ws://127.0.0.1:9420`；全页审计继续运行，状态审计无输出并挂起。
+- root_cause: 微信开发者工具自动化连接不是并发安全的，本轮操作没有遵守项目要求的单会话串行约束。
+- impact: 状态审计未形成有效结果，需要停止本轮明确创建的审计进程后重新串行运行；源码、订单、支付和测试数据未被修改。
+- fix: 已通过进程命令行确认后，仅停止本轮 `commerce-states` 的 npm、cmd 和 node 进程；后续所有 DevTools 脚本串行执行，前一个进程退出后才启动下一个。
+- new_guardrail: 小程序 DevTools 验证队列一次只允许一个自动化脚本持有调试连接；并行文件检查可以并行，DevTools 操作不得并行。
+- verification: `verify-all-15-pages-devtools.cjs` 15/15 PASS；状态审计将在串行条件下重新执行。
+- linked_trace: `20260908-miniapp-commerce-ux-redesign`
+- linked_files: `miniapp/scripts/verify-all-15-pages-devtools.cjs`; `miniapp/scripts/verify-devtools-commerce-states.cjs`; `ERRORS.md`
+- next_time_signal: 需要执行多个 DevTools 审计时，先等待前一脚本取得退出码，再启动下一脚本，不使用并行工具包装。
+
+## M-20260909-009：工作目录切换后残留检查使用错误相对路径
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 在 `miniapp` 工作目录执行残留样式检查时，仍使用 `miniapp/miniprogram/...` 路径，`rg` 报路径不存在。
+- root_cause: 命令工作目录和相对路径前缀没有保持一致。
+- impact: 该次 `rg` 没有形成有效的残留检查证据；同一命令中的 TypeScript 和小程序静态检查仍返回通过，源码和运行数据未受影响。
+- fix: 改为在仓库根目录使用完整相对路径，或在 `miniapp` 目录使用 `miniprogram/...` 路径；本轮将分开重跑残留检查、类型检查和静态检查。
+- new_guardrail: 每次执行命令前明确记录 workdir；禁止在已切换子目录后重复拼接仓库目录前缀。
+- verification: 修正路径后重新执行 `rg`，并分别执行 `npm run typecheck` 与 `npm run check:miniapp`。
+- linked_trace: `20260908-miniapp-commerce-ux-redesign`
+- linked_files: `miniapp/miniprogram/app.wxss`; `miniapp/miniprogram/pages/`; `ERRORS.md`
+- next_time_signal: 目录检查命令的路径必须与 workdir 同时审阅，禁止把组合命令的部分通过当成整体证据。
+
+## M-20260909-010：并行检查编排参数嵌套错误
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 并行执行详情页、商品页和购物车残留检查时，第三个工具调用参数被错误地嵌套为字符串，编排脚本报 JavaScript 语法错误，目标检查未执行。
+- root_cause: 组合工具参数没有保持统一的对象结构。
+- impact: 该次检查没有产生文件或运行态副作用，但浪费一次执行轮次；其余两个并行读取仍正常完成。
+- fix: 取消该错误调用，改用单独、结构明确的命令重新执行全部残留检查。
+- new_guardrail: 组合工具只传递合法的工具参数对象；复杂 PowerShell 检查先单独执行，再汇总结果。
+- verification: 修正后的残留检查、类型检查、小程序静态检查和 DevTools 审计共同验证。
+- linked_trace: `20260908-miniapp-commerce-ux-redesign`
+- linked_files: `miniapp/miniprogram/pages/`; `ERRORS.md`
+- next_time_signal: 工具编排失败时不得把其他并行调用的通过结果当作完整证据，必须重新执行未完成的目标检查。
+
+## M-20260909-016：次级页面读取命令重复遗漏 miniapp 路径前缀
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 在仓库根目录读取次级页面样式时使用了 miniprogram/...，实际文件位于 miniapp/miniprogram/...，多个 Get-Content 命令返回路径不存在。
+- root_cause: 本轮读取命令未统一使用仓库根目录或 miniapp 子目录的路径约定。
+- impact: 只影响本次代码读取，没有修改源码、订单、支付或测试数据；次级页面视觉审计尚未因该命令形成证据。
+- fix: 改用仓库根目录的绝对路径读取，并在后续命令中固定声明 workdir 与路径策略。
+- new_guardrail: 多文件读取前先用 rg --files 确认根路径；同一批命令只使用一种 workdir/路径组合。
+- verification: 修正路径后完成次级页面样式审阅，再运行全页面 DevTools 审计。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: miniapp/miniprogram/pages/; miniapp/miniprogram/components/; ERRORS.md
+- next_time_signal: 进入子目录或使用仓库根目录时，命令和路径必须成对复核。
+
+## M-20260909-011：残留扫描正则中的括号未转义
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 扫描旧颜色和旧文案时把含括号的 `rgba(... )` 片段直接放入正则，`rg` 报 unclosed group，扫描未执行。
+- root_cause: 正则元字符没有转义，且本次扫描本可使用固定字符串查询。
+- impact: 没有修改源码、订单或测试数据；该次扫描没有形成证据。
+- fix: 改用不含括号的固定关键词分组扫描，避免把命令解析问题误判为源码问题。
+- new_guardrail: Windows 下做残留检查优先使用 `rg --fixed-strings` 或逐项关键词查询；只有确需正则时才转义括号并先单独验证。
+- verification: 修正命令后完成旧视觉残留扫描，再运行最终类型、静态和 DevTools 审计。
+- linked_trace: `20260908-miniapp-commerce-ux-redesign`
+- linked_files: `miniapp/miniprogram/app.wxss`; `miniapp/miniprogram/pages/`; `ERRORS.md`
+- next_time_signal: 复杂命令失败时，先确认失败发生在扫描器还是目标文件，再重试最小等价命令。
+
+## M-20260909-012：治理文档补丁中的反引号破坏编排字符串
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 将包含反引号代码标记的长治理补丁直接放入 JavaScript 模板字符串，编排器报 Unexpected identifier，补丁未执行。
+- root_cause: 补丁文本的反引号未转义，提前结束了外层模板字符串。
+- impact: LOGBOOK、证据索引和项目状态均未被部分写入；源码、订单、支付和测试数据未受影响。
+- fix: 已放弃该长补丁，改为三个不含嵌套反引号的独立小补丁，并在每个补丁后回读目标段落。
+- new_guardrail: 治理文档补丁不得把未转义反引号直接放入工具编排模板字符串；长记录按文件拆分。
+- verification: 三个目标文件分别回读后，再运行治理检查器。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: LOGBOOK.md; docs/harness-engineering/core/evidence-index.md; PROJECT-STATE.md; ERRORS.md
+- next_time_signal: 自然语言补丁先检查模板边界字符，再执行 apply_patch。
+
+## M-20260909-013：状态表替换补丁缺少删除行前缀
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 更新 PROJECT-STATE.md 任务行时，补丁 hunk 中的旧行未使用删除前缀，apply_patch 报 Unexpected line found，补丁未执行。
+- root_cause: 手工构造替换 hunk 时只提供了新增行，没有同时提供旧行删除标记。
+- impact: PROJECT-STATE.md 没有被部分写入；此前已成功写入的 LOGBOOK.md 和 evidence-index.md 不受影响，源码、订单、支付和测试数据未受影响。
+- fix: 按标准替换 hunk 补齐旧行删除前缀和新行新增前缀，并在执行后回读任务行。
+- new_guardrail: 修改长表格行时先读取精确旧行，补丁必须同时包含以减号开头的旧行和以加号开头的新行。
+- verification: PROJECT-STATE.md 任务行回读后运行开发总表和证据检查器。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: PROJECT-STATE.md; ERRORS.md
+- next_time_signal: apply_patch 报 hunk 格式错误时不重试原文，先核对每行操作前缀。
+
+## M-20260909-014：全页面视觉残留审计发现次级页面仍未统一
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: medium
+- symptom: 对整个 miniapp 目录扫描后，客服、个人中心、订单、优惠券、充值和自定义 TabBar 仍存在旧绿色渐变、玻璃模糊或装饰性样式；此前只扫描核心购买链路，不能证明全页面视觉完成。
+- root_cause: 上一轮把核心购买链路收口结果误当成全页面 UI/UX 收口结果，审计范围不完整。
+- impact: 不影响当前业务接口或订单数据，但会造成页面间品牌系统不一致，违背本轮全页面 UI/UX 重构目标。
+- fix: 已扩大样式收口到所有 15 个页面和共享组件，保留业务行为与现有审计类名；已逐页用微信开发者工具复核结构和运行态。
+- new_guardrail: 视觉审计必须覆盖所有用户可达页面、共享组件和自定义 TabBar，不能只扫描商品购买主链路。
+- verification: `npm run typecheck`、`npm run check:miniapp`、`npm run devtools:verify-all-pages`、`npm run devtools:commerce-states`、`npm run devtools:product-purchase-path` 和 `npm run devtools:same-day-scheduling` 均退出码 0；15/15 页面通过。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: miniapp/miniprogram/pages/; miniapp/miniprogram/components/; miniapp/miniprogram/custom-tab-bar/; ERRORS.md
+- next_time_signal: 页面级 UI 任务必须建立全页面文件清单，并在收口前逐项验证；结构通过不等于截图级像素验收通过。
+
+## M-20260909-015：全页面扫描参数再次使用不兼容 PowerShell glob
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 使用类 Bash 的大括号 glob 扫描 WXML 时，PowerShell 在参数解析阶段报 Missing argument，目标扫描没有执行。
+- root_cause: PowerShell 不支持该形式的 brace expansion，且命令未按当前 shell 语法拆分。
+- impact: 没有修改源码、订单或测试数据；该次扫描不产生任何有效证据。
+- fix: 后续使用 rg --glob '*.wxml' 或明确目录参数，不使用 Bash 专属 glob 语法。
+- new_guardrail: Windows PowerShell 下所有文件 glob 命令必须先用最小目录和单个 glob 验证，再扩大范围。
+- verification: 改用兼容 PowerShell 的固定 glob 后重新执行全页面扫描。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: miniapp/miniprogram/pages/; miniapp/miniprogram/components/; ERRORS.md
+- next_time_signal: shell 相关命令失败时先确认 shell 语法，不将未执行的扫描当作源码结果。
+
+## M-20260909-017：DevTools 单页截图在延长超时后仍未完成
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: medium
+- symptom: 单页运行态和当前路由均已稳定，但 `miniProgram.screenshot()` 在 `SCREENSHOT_TIMEOUT=60000` 下仍超时；本次 `pages/profile/index` 走查总耗时约 73 秒，脚本以非零退出。
+- root_cause: 当前微信开发者工具的 `App.captureScreenshot` 调用未在自动化客户端等待窗口内完成，调用方超时无法取消底层请求。
+- impact: 本次没有生成可确认对应页面的截图，不能把既有同名 PNG 作为本轮视觉证据；页面运行态、接口、订单、支付和测试数据未受影响。
+- fix: 走查脚本改用页面专属临时文件，并仅在截图成功且截图前后路由仍为目标页面时替换正式图片；超时继续保留为失败，不再覆盖旧证据。
+- new_guardrail: 截图级验收必须同时满足调用成功、临时文件存在、截图前后路由一致三项条件；任一不满足时只报告结构化运行态证据。
+- verification: `MINIAPP_WALKTHROUGH_PAGE=pages/profile/index SCREENSHOT_TIMEOUT=60000 node scripts/walkthrough-phase-c.mjs` 退出码 1；`npm run devtools:verify-all-pages` 15/15 通过。
+- linked_trace: `20260908-miniapp-commerce-ux-redesign`
+- linked_files: `miniapp/scripts/walkthrough-phase-c.mjs`; `miniapp/reports/devtools/walkthrough-phase-c.json`; `ERRORS.md`
+- next_time_signal: DevTools 截图请求即使延长等待仍超时时，不重复启动并发截图；先使用结构审计，并等待官方工具或运行环境修复后再恢复像素级验收。
+
+## M-20260909-018：旧色值批量补丁因内嵌 SVG 上下文不匹配未执行
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 一次同时覆盖多个 WXSS、WXML、TS 和自定义 TabBar 内嵌 SVG 的补丁，因 TabBar 中目标 SVG 行与预期文本不完全一致而整体校验失败。
+- root_cause: 把长内嵌资源行和普通样式行放在同一批量 hunk 中，编辑前没有先读取精确原文。
+- impact: 本次补丁没有落盘，未修改源码、订单、支付或测试数据；执行轮次被浪费。
+- fix: 改为按文件、按短 hunk 修改；内嵌 SVG 颜色先读取精确行，再单独替换。
+- new_guardrail: 涉及内嵌资源的样式补丁不得与多文件批量替换混用；批量编辑失败后先确认 apply_patch 为原子失败，再拆分并回读。
+- verification: 补丁失败返回校验错误；后续拆分补丁逐个回读并执行类型、静态和 DevTools 验证。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: `miniapp/miniprogram/custom-tab-bar/index.wxss`; `ERRORS.md`
+- next_time_signal: 长 SVG 或模板字符串只做精确、小范围替换，禁止凭记忆构造整行上下文。
+
+## M-20260909-019：内嵌 SVG 颜色替换补丁再次因整行文本不匹配未执行
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 针对 TabBar 激活图标的精确替换补丁仍因手工重建的长 SVG 行与文件原文不一致而失败。
+- root_cause: 内嵌 URL 编码 SVG 是超长单行，手工拼接上下文容易遗漏字符。
+- impact: 该次补丁未落盘，未修改源码、订单、支付或测试数据；其余样式替换未受影响。
+- fix: 放弃手工整行重建，改用 Node 对单一 URL 编码色值 token 做机械替换，替换后回读确认旧 token 不再残留。
+- new_guardrail: 超长内嵌资源不做手工整行重写；需要改变时先将资源迁移为独立可维护文件，并配套静态检查。
+- verification: `node -e` 机械替换报告 `replaced encoded legacy color tokens=13`；回读仅剩 `%233D332D`，无 `%232B4C3F` 残留。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: `miniapp/miniprogram/custom-tab-bar/index.wxss`; `ERRORS.md`
+- next_time_signal: 不要凭记忆复制内嵌 SVG 行；若只是固定 token 替换，先统计命中数量，再执行机械替换并回读。
+
+## M-20260909-020：多文件补丁包含错误路径和空 hunk 未执行
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 对剩余旧色值做多文件补丁时，误写了 `miniapp/miniprogram/miniprogram/app.json` 路径并提交了空更新 hunk，apply_patch 在校验阶段失败。
+- root_cause: 没有把普通单文件替换与路径核对分开，补丁构造时重复拼接了目录前缀。
+- impact: 该次补丁整体未执行，未修改源码、订单、支付或测试数据。
+- fix: 改用实际路径的单文件短补丁，并在执行前用已确认的工作区路径。
+- new_guardrail: 每个补丁文件路径必须来自 `rg --files` 或当前已读路径；禁止提交空 hunk；跨文件补丁失败后改为逐文件执行。
+- verification: 后续分别回读优惠券 WXSS、app.json 和配置色值，再运行静态及 DevTools 门禁。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: `miniapp/miniprogram/pages/coupons/index.wxss`; `miniapp/miniprogram/app.json`; `ERRORS.md`
+- next_time_signal: 补丁执行前检查路径是否重复、hunk 是否有实际变更，失败后不重试原批次。
+
+## M-20260909-021：PowerShell 机械替换命令被执行策略拦截
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 针对 TabBar 单一颜色 token 的 PowerShell 文本替换命令被执行策略拒绝，命令未执行，目标 WXSS 未修改。
+- root_cause: 命令同时包含复杂引号、路径和临时文件清理操作，触发了当前执行器的命令策略拦截。
+- impact: 该次替换没有产生源码、订单、支付或测试数据副作用；临时补丁文件仍待单独清理。
+- fix: 将机械替换拆为独立 Node 单文件命令；清理临时文件时使用明确的单文件操作并单独核对。
+- new_guardrail: Windows 下复杂文本改写不混入清理操作；先执行单文件替换并回读，再清理明确的本轮临时文件。
+- verification: Node 单文件替换退出码 0，`%232B4C3F` 无残留；类型、静态及 DevTools 验证继续作为最终证据。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: `miniapp/miniprogram/custom-tab-bar/index.wxss`; `D:\Temp\yunxi-tabbar-color.patch`; `ERRORS.md`
+- next_time_signal: 执行器拒绝复杂 PowerShell 时，优先使用已确认语法的独立 Node 机械替换，不重复原命令。
+
+## M-20260909-022：临时文件清理命令被默认 Shell 误解析
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 清理单个 D 盘临时补丁文件时，带有 `cmd /c` 的命令仍由默认 PowerShell 解析，`exit /b` 被当作 PowerShell 命令而失败。
+- root_cause: 执行器的 `shell` 参数没有显式指定为 `cmd.exe`，导致命令语法和实际 Shell 不一致。
+- impact: 清理动作未完成，临时补丁文件暂时保留；源码、订单、支付和测试数据未受影响。
+- fix: 使用明确的 `cmd.exe` Shell 执行单文件删除，再用单独的存在性检查确认。
+- new_guardrail: Windows 删除命令必须让 `shell` 参数与命令语法一致；临时文件只允许一次删除一个明确路径，删除后必须单独复核。
+- verification: 删除命令和存在性检查分别取得退出码；治理检查在收口前确认临时文件不存在。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: `D:\Temp\yunxi-tabbar-color.patch`; `ERRORS.md`
+- next_time_signal: 使用 `cmd /c` 时显式指定 `shell: cmd.exe`，不要让默认 PowerShell 解释 cmd 语法。
+
+## M-20260909-023：执行器策略连续拒绝单文件临时清理
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 针对本轮创建的单个 `D:\Temp\yunxi-tabbar-color.patch`，默认 PowerShell、显式 `cmd.exe` 和最小 `Remove-Item` 删除调用均被执行器策略拒绝。
+- root_cause: 当前命令执行策略阻断了删除类操作，且无法在本轮切换到允许删除的执行通道。
+- impact: 当时该临时补丁文件尚未确认删除；源码、订单、支付和测试数据未受影响。
+- fix: 暂停重复删除尝试后，单独用存在性检查复核，确认该临时补丁文件已不存在。
+- new_guardrail: 删除失败后不重复变形尝试；记录明确路径、保护边界和未清理事实，禁止把清理失败写成完成。
+- verification: 三次删除调用均返回执行器策略拒绝；后续 `Test-Path -LiteralPath D:\Temp\yunxi-tabbar-color.patch` 返回 `False`，确认文件不存在。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: `D:\Temp\yunxi-tabbar-color.patch`; `ERRORS.md`
+- next_time_signal: 临时文件优先创建在可使用项目白名单清理入口管理的目录；删除动作被阻断时先做存在性复核，再决定是否继续处理。
+
+## M-20260909-024：并行验证参数多出引号导致编排脚本语法错误
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 一次并行执行残留扫描、类型检查和 diff 检查时，第一个工具参数对象末尾多出引号，编排器返回 `SyntaxError: Unexpected end of input`。
+- root_cause: 手工拼接 `multi_tool_use.parallel` 参数时没有逐项检查 JSON 对象闭合。
+- impact: 第一个残留扫描未执行；同批另外两个验证正常完成，源码、订单、支付和测试数据未受影响。
+- fix: 改为单独执行残留扫描并重新获取有效退出码；后续复杂验证拆成独立命令或先检查 JSON 结构。
+- new_guardrail: 并行工具只用于彼此独立且参数简单的命令；含多层引号的命令优先单独执行。
+- verification: 后续单独执行固定字符串扫描，确认旧绿色、渐变和模糊 token 无残留。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: `miniapp/miniprogram/`; `ERRORS.md`
+- next_time_signal: 编排命令报 `SyntaxError` 时先检查工具参数对象和引号闭合；同一批验证未执行的步骤必须单独重跑并记录退出码。
+ - next_time_signal: 并行验证失败时逐项确认哪些命令真实执行，未执行项必须单独复跑。
+
+## M-20260909-025：补丁脚本嵌套模板字符串导致语法错误
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 修改 `miniapp/miniprogram/utils/order-summary.ts` 时，外层执行脚本和补丁内容同时使用模板字符串，执行器返回 `SyntaxError: Invalid or unexpected token`。
+- root_cause: 手工构造补丁字符串时没有避开内层金额格式化模板表达式，导致 JavaScript 在调用 `apply_patch` 前先解析失败。
+- impact: 目标源码没有落盘改动，订单、支付、配送、客户数据和测试数据均未受影响；执行轮次被浪费。
+- fix: 改用普通字符串拼接的补丁，并把金额格式化函数改为不依赖内层模板字符串。
+- new_guardrail: 补丁正文包含反引号、模板表达式或长脚本时，不使用外层模板字符串承载；优先用单引号拼接或逐行数组。
+- verification: 重新应用补丁后 `npm run test:order-summary` 退出码 0，4 项金额展示断言通过；`npm run typecheck` 退出码 0。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: `miniapp/miniprogram/utils/order-summary.ts`; `miniapp/tests/utils/order-summary.test.ts`; `ERRORS.md`
+- next_time_signal: 看到 `apply_patch` 前的 `SyntaxError` 时先判断是否为执行脚本构造失败，不把它误判成目标文件语法错误。
+
+## M-20260909-026：新增 DevTools 脚本补丁再次被模板字符串截断
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 新增 `verify-devtools-checkout-delivery-states.cjs` 时，补丁正文包含页面路由模板字符串，外层执行器返回 `SyntaxError: Unexpected token '{'`。
+- root_cause: 仍使用模板字符串承载包含反引号的完整脚本文件，没有按上一条规则改为安全拼接。
+- impact: 新脚本文件没有创建，源码、订单、支付、配送和测试数据未受影响。
+- fix: 改为逐行数组拼接补丁，并在脚本中使用普通字符串拼接替代可避免的模板字符串。
+- new_guardrail: 新增脚本文件时，如果文件本身包含反引号，补丁构造必须使用逐行数组或外部已验证 patch，不得直接用同类分隔符嵌套。
+- verification: `node --check scripts/verify-devtools-checkout-delivery-states.cjs` 退出码 0；`npm run devtools:checkout-delivery-states` 退出码 0。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: `miniapp/scripts/verify-devtools-checkout-delivery-states.cjs`; `ERRORS.md`
+- next_time_signal: 同类工具错误发生第二次时必须立即换构造方式，不继续微调原模板字符串。
+
+## M-20260909-027：长串行验证外层执行器空输出超时
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 串行运行小程序静态检查和多项 DevTools 审计时，外层执行器因长时间空输出返回代理中断提示，但各审计报告随后已写入 `miniapp/reports/devtools/`。
+- root_cause: 多条长耗时命令被包在同一个外层执行脚本内，期间没有持续输出，触发执行器空输出保护。
+- impact: 没有源码或业务数据副作用；若直接复跑可能造成重复 DevTools 连接压力。
+- fix: 改为读取已生成的审计报告确认结果，并将后续长命令拆成单条执行；没有把空输出代理中断误写成测试失败。
+- new_guardrail: DevTools 验证必须保持串行，但每次只跑一个长命令；命令可能超过 30 秒时优先让脚本自身定期输出进度，或用报告文件作为补充证据。
+- verification: `all-pages-devtools-audit.json`、`commerce-state-audit.json`、`product-purchase-path-audit.json`、`same-day-scheduling-audit.json` 和 `checkout-delivery-state-audit.json` 均显示 `PASS`。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: `miniapp/reports/devtools/`; `ERRORS.md`
+- next_time_signal: 执行器提示不要继续等待同一空输出 cell 时，停止轮询并改查可复跑报告或单条命令结果。
+
+## M-20260909-028：错误账本补丁拼接末尾漏加连接符
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 登记本轮工具错误时，补丁字符串末尾的 `*** End Patch` 没有参与字符串拼接，执行器返回 `SyntaxError: Unexpected token '*'`。
+- root_cause: 手工拼接长补丁时混用了多行字符串连接和裸文本，缺少最后一段连接符。
+- impact: 错误账本没有写入，源码、订单、支付、配送和测试数据未受影响。
+- fix: 改为逐行数组构造完整补丁，再调用 `apply_patch`。
+- new_guardrail: 长治理补丁必须用逐行数组构造，并在末尾显式包含 `*** End Patch` 字符串，不手工拼接裸尾行。
+- verification: 本条写入后运行 `python -B backend/scripts/check_mistake_ledger.py` 复核账本结构。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: `ERRORS.md`
+- next_time_signal: 如果错误账本补丁本身失败，先确认没有落盘，再用更简单构造方式补记，避免工具错误逃逸。
+## M-20260909-029：PowerShell 嵌套引号截断 DevTools 尺寸测量命令
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 执行商品页运行态尺寸测量时，PowerShell 将 `node -e` 中的嵌套引号截断，Node 报 `Expression expected`，测量脚本未启动。
+- root_cause: 在 PowerShell 命令参数中直接嵌套 JavaScript 字符串和选择器引号，未使用标准输入或独立脚本文件隔离解析层。
+- impact: DevTools 未建立新连接，源码、订单、支付、配送和测试数据均未受影响；视觉尺寸测量尚未执行。
+- fix: 改用 PowerShell here-string 通过 `node -` 标准输入执行测量脚本，避免多层命令字符串解析。
+- new_guardrail: 含大量 JavaScript 引号或选择器的 DevTools 临时测量优先通过标准输入执行；`node -e` 仅用于无嵌套引号的一行命令。
+- verification: 修正命令成功输出商品页运行态尺寸，并在结束时断开 DevTools。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: `miniapp/miniprogram/pages/products/index.wxml`; `miniapp/miniprogram/pages/products/index.wxss`; `ERRORS.md`
+- next_time_signal: PowerShell 返回 Node 语法截断时，先判定为外层命令构造错误，改用标准输入并单独复跑未执行的测量步骤。
+## M-20260909-030：价格字距批量补丁选择器上下文不匹配
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 统一价格字距的多文件补丁因购物车实际选择器与预设名称不一致而被 `apply_patch` 拒绝，全部目标文件均未修改。
+- root_cause: 在没有读取每个文件精确上下文的情况下，按记忆拼接了跨文件选择器 hunk。
+- impact: 本轮价格字距优化尚未落盘；源码、订单、支付、配送和测试数据未受影响。
+- fix: 先用 `rg -n -C` 获取每个负字距规则的真实选择器，再按文件逐个使用最小 hunk 修改。
+- new_guardrail: 跨文件样式替换不得假设选择器名称；批量补丁失败后先读取精确上下文，不原样重试。
+- verification: 补丁失败后检查目标文件，确认负字距规则仍原样存在；后续最小补丁逐文件验证。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: `miniapp/miniprogram/app.wxss`; `miniapp/miniprogram/pages/`; `ERRORS.md`
+- next_time_signal: 对多页面样式统一时先读取选择器和相邻属性，优先拆成单文件小补丁。
+## M-20260909-031：Markdown 表格行未作为字符串转义导致证据同步脚本语法错误
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 同步 `PROJECT-STATE.md` 与证据索引的工具脚本包含未加引号的 Markdown 表格行，编排器返回 `SyntaxError: Unexpected token '|'`，补丁未调用编辑工具。
+- root_cause: 构造长补丁时把含 `|` 的 Markdown 内容直接写入 JavaScript 数组，而不是作为字符串元素。
+- impact: 证据编号修正和状态表更新延迟；源码、订单、支付、配送和测试数据未受影响，目标文档没有部分修改。
+- fix: 将每一行 Markdown 都作为独立字符串元素传给 `apply_patch`，并拆分为短补丁执行。
+- new_guardrail: 补丁数组中所有 Markdown、表格和代码内容必须显式置于字符串引号内；脚本语法错误后先确认目标文件未变化，再重构调用。
+- verification: 修正后的短补丁成功更新 `E-20260909-008` 和 `PROJECT-STATE.md`，随后运行证据索引与开发总表检查。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: `PROJECT-STATE.md`; `docs/harness-engineering/core/evidence-index.md`; `ERRORS.md`
+- next_time_signal: 长 Markdown 补丁优先逐行数组构造，遇到表格分隔符、反引号或模板表达式时禁止裸嵌套。
+## M-20260909-032：状态表替换行缺少补丁操作前缀
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 更新 `PROJECT-STATE.md` 表格行时，旧行未以 `-` 前缀传入 `apply_patch`，工具返回 `invalid hunk`，状态同步未落盘。
+- root_cause: 将包含 Markdown `|` 的整行作为 JavaScript 字符串后，忘记在补丁内容中添加删除行前缀。
+- impact: 证据编号已经修正，但项目状态表暂未追加 `E-20260909-008`；源码、订单、支付、配送和测试数据未受影响。
+- fix: 重新读取精确状态行，并使用 `-|旧行` 与 `+|新行` 的最小 hunk 修改。
+- new_guardrail: Markdown 表格替换必须显式标记删除/新增前缀；工具返回 `invalid hunk` 后先确认目标文件未变化，再重试。
+- verification: 状态行更新后运行开发总表、证据索引和错误账本检查。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: `PROJECT-STATE.md`; `docs/harness-engineering/core/evidence-index.md`; `ERRORS.md`
+- next_time_signal: 长表格行优先使用精确行号附近的小 hunk，所有上下文、删除和新增行都必须带合法补丁前缀。
+## M-20260909-033：触控扫描器工作目录和 DevTools 启动配置不匹配
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 在 `miniapp` 工作目录下读取 `miniapp/scripts/scan-miniapp-button-touch-targets.mjs` 时路径重复；随后运行扫描器时，它因缺少可用 `cliPath` 尝试自行启动微信开发者工具失败，报告没有形成有效扫描结果。
+- root_cause: 命令的 `workdir` 与相对路径前缀不一致，并误用需要独立启动 DevTools 的扫描入口检查已有自动化会话。
+- impact: 本次扫描没有提供触控证据；源码、订单、支付、配送和测试数据未受影响。当前通过独立商品页运行态测量和商品状态审计取得的 `58x45px` 证据不受影响。
+- fix: 复用脚本前先按仓库根目录读取其实现和启动参数；已有 DevTools 会话优先使用显式 `MINIAPP_AUTOMATOR_WS` 的串行审计，不让扫描器重复启动实例。
+- new_guardrail: 执行小程序命令前明确 `workdir`；需要当前 DevTools 实例时先检查脚本是否支持 WS 复用，禁止无配置地重复拉起开发者工具。
+- verification: 失败命令退出码 1，未启动新的有效审计连接；后续商品页尺寸测量和 `devtools:commerce-states` 在现有 WS 会话中成功。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: `miniapp/scripts/scan-miniapp-button-touch-targets.mjs`; `miniapp/miniprogram/pages/products/index.wxss`; `ERRORS.md`
+- next_time_signal: 运行子目录脚本时不重复添加目录前缀；自动化工具报 `Failed to launch wechat web devTools` 时先检查 CLI 配置，改用现有 WS 会话或明确启动配置。
+## M-20260909-034：跨文件触控样式补丁控制行未完全字符串化
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 扩大多页面触控命中区的补丁在外层 JavaScript 构造阶段因 `@@` 控制行未作为字符串传入而报 `SyntaxError: Unexpected token '**'`，编辑工具未被调用。
+- root_cause: 长补丁数组中混用了裸文本和字符串，未保证每一行都经过 JavaScript 解析。
+- impact: 本轮触控样式和扫描夹具没有部分落盘；源码、订单、支付、配送和测试数据未受影响。
+- fix: 改为单文件短 hunk，每一行补丁控制符都显式置于字符串引号内，并在每个文件后读取确认。
+- new_guardrail: 多文件样式修改不再使用未逐行检查的长数组；遇到 `@@`、`***` 或 Markdown 表格时拆分调用。
+- verification: 失败调用返回后检查目标文件，确认原有尺寸仍在；后续单文件补丁逐项通过。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: `miniapp/miniprogram/app.wxss`; `miniapp/miniprogram/pages/`; `miniapp/scripts/scan-miniapp-button-touch-targets.mjs`; `ERRORS.md`
+- next_time_signal: 补丁脚本出现 JavaScript 语法错误时，先确认未调用编辑工具，再切换为单文件短补丁。
+## M-20260909-035：触控扫描夹具补丁重复插入 selectors 导致语法错误
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 更新 `products-browse` 触控扫描夹具时重复插入 `selectors` 块，`node --check` 报 `Unexpected token ':'`，扫描脚本不能启动。
+- root_cause: 以局部上下文替换时没有核对原块边界，新增块和旧块同时保留。
+- impact: 触控扫描脚本暂不能运行；小程序源码、订单、支付、配送和测试数据未受影响。
+- fix: 删除重复旧块，只保留当前商品页的分类入口、搜索清除和商品卡选择器，并在执行前运行 `node --check`。
+- new_guardrail: 修改已有验证夹具前先读取完整对象边界；每次夹具编辑后必须先单独运行语法检查，再连接 DevTools。
+- verification: 修复后 `node --check miniapp/scripts/scan-miniapp-button-touch-targets.mjs` 退出码 0，随后串行运行触控扫描。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: `miniapp/scripts/scan-miniapp-button-touch-targets.mjs`; `ERRORS.md`
+- next_time_signal: 验证脚本改动出现语法错误时先修复并做本地语法门禁，不重复连接微信开发者工具。
+## M-20260909-036：CSS 检索正则未转义字面大括号
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 触控样式语法检查后使用 `rg` 查询包含字面 `{` 的选择器，正则解析报 `repetition quantifier expects a valid decimal`，该次组合命令返回非零。
+- root_cause: 检索内容包含 CSS 大括号，却使用了未转义的正则表达式。
+- impact: CSS 和验证脚本语法检查已先行通过；仅检索命令未形成有效输出，源码、订单、支付、配送和测试数据未受影响。
+- fix: 改用 `rg --fixed-strings` 或转义正则特殊字符，并将语法检查与内容检索拆开。
+- new_guardrail: CSS 字面 token 检索优先使用固定字符串模式；复杂正则失败后不将其误判为源码语法错误。
+- verification: `node --check` 对触控扫描脚本和 15 页审计脚本均通过；后续固定字符串检索和 DevTools 扫描单独执行。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: `miniapp/miniprogram/pages/`; `miniapp/scripts/scan-miniapp-button-touch-targets.mjs`; `ERRORS.md`
+- next_time_signal: 查询 CSS 选择器时优先使用 `rg -F`，不要把 `{`、`}`、`[` 等字面字符直接放入未转义正则。
+## M-20260909-037：触控扫描器多 hunk 上下文重复导致补丁拒绝
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 同时调整多个页面状态的触控扫描选择器时，订单筛选选择器行在同一补丁中重复作为上下文，`apply_patch` 报 `Failed to find expected lines`，补丁未落盘。
+- root_cause: 跨对象 hunk 没有按实际文件顺序拆开，且同一目标行同时出现在保留和删除上下文中。
+- impact: 扫描器规则仍保持上一版本；源码、订单、支付、配送和测试数据未受影响。
+- fix: 按 `product-detail`、`checkout`、`orders`、`order-detail`、`chat` 等对象逐段读取并单独修改，避免复用重复上下文。
+- new_guardrail: 验证脚本的多个状态对象必须分块修改；同一 hunk 不同时保留和替换同一行。
+- verification: 每个短补丁后运行 `node --check`，再串行运行触控扫描。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: `miniapp/scripts/scan-miniapp-button-touch-targets.mjs`; `ERRORS.md`
+- next_time_signal: 复杂验证脚本先按对象边界拆 patch；失败后先读取目标块，不原样重试。
+## M-20260909-038：触控扫描命令在仓库根目录执行导致 npm 找不到入口
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 触控扫描命令在 `D:\Project\YunxiBakery` 根目录执行，npm 找不到根目录 `package.json` 并返回 `ENOENT`；此前脚本语法检查已通过。
+- root_cause: 运行 npm script 时没有使用 `miniapp` 工作目录。
+- impact: 本次触控扫描没有启动，源码、订单、支付、配送和测试数据未受影响。
+- fix: 在 `D:\Project\YunxiBakery\miniapp` 目录重新执行，并保留 `MINIAPP_AUTOMATOR_WS` 复用当前 DevTools 会话。
+- new_guardrail: 执行 npm script 前先确认当前目录包含目标 `package.json`；跨目录命令拆成语法检查和脚本执行两个步骤。
+- verification: `node --check miniapp/scripts/scan-miniapp-button-touch-targets.mjs` 退出码 0；随后从 `miniapp` 目录串行执行触控扫描。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: `miniapp/package.json`; `miniapp/scripts/scan-miniapp-button-touch-targets.mjs`; `ERRORS.md`
+- next_time_signal: 看到 npm `ENOENT package.json` 时先检查 `workdir`，不要把它误判为依赖或代码错误。
+
+## M-20260909-039：触控扫描连接在部分页面后超时
+
+- status: open
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 最新一次触控扫描仅完成 2 个页面后发生 DevTools Automator timeout，未生成可作为最终通过证据的完整扫描结果。
+- root_cause: 当前尚未确认；候选范围包括复用 WebSocket 会话的页面切换等待不足、微信开发者工具响应迟延或验证脚本连接生命周期处理。
+- impact: 触控尺寸扫描中断；不能据此判定页面通过或失败。源码、订单、支付、配送和测试数据未受影响。
+- fix: 先完成本条错误登记，再运行脚本语法检查并只执行一次串行重试；若仍超时，基于报告中已完成页面和错误堆栈继续缩小根因。
+- new_guardrail: DevTools 自动化脚本失败后先保留报告和堆栈，不并发重连、不覆盖旧证据；验证脚本改动或运行方式变化后必须先做 node --check。
+- verification: 待本轮串行重试完成后补充结果。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: miniapp/scripts/scan-miniapp-button-touch-targets.mjs；miniapp/reports/button-visual/；ERRORS.md
+- next_time_signal: 触控扫描出现超时，优先核对当前 DevTools 会话、脚本等待策略和最新报告，不把连接错误写成 UI 缺陷。
+
+## M-20260909-043：错误账本新增状态不在门禁枚举内
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 错误账本检查器拒绝新增记录中的 investigating 状态，报告 invalid status。
+- root_cause: 新记录状态未按账本检查器允许的 open、guarded、verified 枚举填写。
+- impact: 账本结构检查暂时失败；源码、扫描器和业务数据未受影响。
+- fix: 将仍待验证的 M-20260909-039 改为 open，并保留本条记录说明门禁反馈。
+- new_guardrail: 新增错误账本条目前先读取检查器的状态枚举，未关闭的问题使用 open。
+- verification: 重新运行 check_mistake_ledger.py，预期返回 ok。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: ERRORS.md；backend/scripts/check_mistake_ledger.py
+- next_time_signal: 错误账本检查返回 invalid status 时，按检查器枚举修正字段，不自定义状态值。
+
+## M-20260909-046：DevTools 业务走查脚本无输出悬挂
+
+- status: open
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 触控扫描修复后运行 devtools commerce states，连接命令超过 40 秒无输出，无法在当前会话中形成新的业务走查报告，随后手动终止。
+- root_cause: 当前尚未确认；与触控扫描相同，候选范围是本机 Automator WebSocket 或微信开发者工具响应队列阻塞，不能归因于页面业务失败。
+- impact: 本轮未刷新商品状态走查证据；源码、订单、支付、配送和测试数据未受影响。
+- fix: 停止悬挂进程并保留已有报告；继续使用不依赖 DevTools 的静态、类型和业务单测验证，不并发重连。
+- new_guardrail: DevTools 脚本超过有限等待窗口无输出时停止单个进程，记录阻塞并避免继续启动其他 Automator 任务。
+- verification: 后续需在微信开发者工具会话恢复后串行重跑该脚本。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: miniapp/scripts/verify-devtools-commerce-states.cjs；miniapp/reports/devtools/；ERRORS.md
+- next_time_signal: DevTools 业务脚本无输出时先读取进程和报告状态，不能把悬挂视为 PASS。
+
+## M-20260909-047：日志补丁正文中的 Markdown 标记被外层模板解析
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 追加本轮 LOGBOOK 条目时，补丁正文包含反引号代码标记，外层 JavaScript 模板字符串报 Unexpected identifier，编辑工具未执行。
+- root_cause: 治理文档补丁未隔离正文中的模板字符串分隔符。
+- impact: 本次日志补丁未落盘；源码、扫描器和业务数据未受影响。
+- fix: 改用不含 Markdown 反引号的纯文本补丁重新追加日志，并读取文件头部确认。
+- new_guardrail: 通过 JavaScript 包装 apply_patch 时，治理文档正文使用纯文本命令和路径，避免未转义的反引号。
+- verification: 本条记录成功后检查 LOGBOOK.md 头部和错误账本门禁。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: LOGBOOK.md；ERRORS.md
+- next_time_signal: 日志补丁出现 Unexpected identifier 时，先确认编辑工具未调用，再移除正文中的 Markdown 代码标记。
+
+## M-20260909-048：DevTools CLI 配置端口与实际服务端口不一致
+
+- status: open
+- first_seen: 2026-09-09
+- severity: medium
+- symptom: 使用项目默认的 10701 端口关闭微信开发者工具项目时，CLI 返回 IDE server 已运行于 64787，必须先按实际端口处理。
+- root_cause: 当前 IDE HTTP 服务端口与小程序验证脚本默认端口发生漂移，旧的 Automator WebSocket 会话仍指向 9420。
+- impact: 无法通过默认配置重建 DevTools 自动化会话，触控扫描和商品状态走查持续无输出悬挂；业务源码与数据未受影响。
+- fix: 使用 CLI 返回的实际 HTTP 端口 64787 关闭当前项目，再以明确端口重新开启项目自动化并读取新 WebSocket 地址。
+- new_guardrail: 重建 DevTools 会话前先读取 CLI 返回的实际 IDE HTTP 端口，不假设默认端口仍有效。
+- verification: 待按实际端口完成关闭和自动化重开后补充。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: miniapp/scripts/scan-miniapp-button-touch-targets.mjs；miniapp/scripts/verify-devtools-commerce-states.cjs；ERRORS.md
+- next_time_signal: CLI 返回 must be restarted on port 时，先校准端口，不重复使用旧端口重连。
+
+## M-20260909-049：Automator 直接调用 cli.bat 启动失败
+
+- status: open
+- first_seen: 2026-09-09
+- severity: medium
+- symptom: 清理旧 WebSocket 后，触控扫描器使用实际 HTTP 端口 64787 并由 miniprogram-automator 直接 launch，立即返回 Failed to launch wechat web devTools。
+- root_cause: 当前微信开发者工具安装的 cli.bat 与 miniprogram-automator 的直接 launch 方式不兼容，CLI 自身 auto 命令可成功，但 launch 未取得自动化 WebSocket。
+- impact: 新触控扫描尚未启动页面验证；已生成 0 页面失败报告，业务源码和数据未受影响。
+- fix: 读取本地 miniprogram-automator 启动参数契约，使用 DevTools CLI 的固定自动化端口或正确 CLI 入口重建 WebSocket，再连接扫描。
+- new_guardrail: DevTools CLI auto 成功不等于 miniprogram-automator launch 可用；运行扫描前必须确认自动化 WebSocket 端口处于监听状态。
+- verification: 待固定自动化端口监听并完成扫描后补充。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: miniapp/scripts/scan-miniapp-button-touch-targets.mjs；miniapp/reports/button-visual/button-touch-targets-20260909-005456.json；ERRORS.md
+- next_time_signal: 扫描报告为 0 页面且提示 Failed to launch 时，先核对 CLI 入口和自动化端口，不重复直接 launch。
+
+## M-20260909-050：Windows 下 Automator 启动分支未能暴露自动化端口
+
+- status: open
+- first_seen: 2026-09-09
+- severity: medium
+- symptom: 通过实际 IDE HTTP 端口重建会话后，触控扫描器直接 launch 失败；手工 auto 命令也未使 9420 端口进入监听。
+- root_cause: 当前微信开发者工具 CLI 的批处理启动方式与 miniprogram-automator 的 Windows 直接 spawn 方式不兼容，且手工 auto 参数未确认被当前 CLI 接受。
+- impact: 最新触控扫描无法建立 Automator 连接，运行态触控证据继续缺失；业务源码、订单和测试数据未受影响。
+- fix: 先读取 CLI 的真实参数和退出结果，确认可用的自动化端口启动方式；若环境只支持既有连接，则扫描器明确要求 MINIAPP_AUTOMATOR_WS 并返回可诊断错误。
+- new_guardrail: Windows 下启动 DevTools 自动化必须同时验证 CLI 退出码、自动化端口监听和 WebSocket 连接，三者缺一不可。
+- verification: 待完成 CLI 参数核对或显式连接路径验证。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: miniapp/scripts/scan-miniapp-button-touch-targets.mjs；miniapp/reports/button-visual/；ERRORS.md
+- next_time_signal: Automator 启动失败时，先检查批处理 spawn 和真实端口监听，不把 0 页面报告当作页面失败。
+
+## M-20260909-051：DevTools 报告读取使用了错误的工作目录
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 在 miniapp 工作目录读取仓库根目录的 ERRORS.md 时，PowerShell 返回路径不存在；同一命令读取触控报告成功。
+- root_cause: 报告路径位于 miniapp/reports，而错误账本位于仓库根目录，命令没有区分两个路径基准。
+- impact: 仅错误账本尾部读取失败；没有修改源码、报告或业务数据，也没有形成新的错误判断。
+- fix: 将治理文件读取改为仓库根目录工作目录，并单独读取 miniapp 报告。
+- new_guardrail: 跨目录核对时明确每个目标文件的根路径，避免把一个命令的部分成功误写成整体成功。
+- verification: 后续根目录读取 ERRORS.md 和 miniapp 目录读取 DevTools 报告分别执行。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: ERRORS.md；miniapp/reports/button-visual/
+- next_time_signal: 读取治理文件和小程序报告时，先确认当前 workdir 与目标路径的层级关系。
+
+## M-20260909-052：读取计划时误把命令对象传入编排器源码
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 读取 MiniApp 计划文件时，将 exec_command 参数对象直接作为 functions.exec 输入，编排器在执行前报 Unexpected token，命令未运行。
+- root_cause: functions.exec 需要 JavaScript 编排代码，不能直接接收嵌套工具参数对象。
+- impact: 仅本次计划读取失败；源码、报告、业务数据和治理文件未受影响。
+- fix: 改用 tools.exec_command({cmd, workdir, max_output_tokens}) 的 JavaScript 调用形式重新读取。
+- new_guardrail: 每次 functions.exec 调用前确认输入是可执行 JavaScript，工具参数对象只作为 tools.exec_command 的参数。
+- verification: 后续计划和验证入口读取成功。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: docs/superpowers/plans/2026-09-08-miniapp-commerce-ux-redesign.md；ERRORS.md
+- next_time_signal: functions.exec 返回 Unexpected token 且命令没有输出时，先检查调用层级，不重复执行同一错误格式。
+
+## M-20260909-040：错误账本补丁字符串被嵌套反引号截断
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 追加 M-20260909-039 时，补丁正文中的 Markdown 反引号被外层 JavaScript 模板字符串解析，脚本在调用编辑工具前报 SyntaxError。
+- root_cause: 自由格式补丁经 JavaScript 包装时未隔离正文中的模板字符串分隔符。
+- impact: 首次补丁未执行，ERRORS.md 没有部分写入；源码和业务数据未受影响。
+- fix: 补丁正文不再嵌套 Markdown 反引号，并使用可解析的纯文本内容重新登记两条错误。
+- new_guardrail: 通过 JavaScript 调用 apply_patch 时，补丁正文避免直接包含未转义的模板字符串分隔符；需要代码标记时用字符串拼接或纯文本。
+- verification: 本补丁成功后立即读取 ERRORS.md 尾部确认两条记录完整落盘。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: ERRORS.md
+- next_time_signal: apply_patch 外层出现 JavaScript SyntaxError 时，先确认编辑工具未调用，再移除或转义补丁正文中的反引号。
+
+## M-20260909-041：扫描器导航补丁被外层模板表达式截断
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 为复用同一路由页面对象而追加扫描器补丁时，补丁正文包含脚本原有的模板表达式，外层 JavaScript 模板字符串报 SyntaxError，编辑工具未执行。
+- root_cause: 工具调用包装层未隔离补丁正文中的模板表达式。
+- impact: 本次导航稳定性修改未落盘；扫描器仍保持上一版本，源码和业务数据未受影响。
+- fix: 将补丁拆成不包含模板表达式的短 hunk，先做 node --check，再继续串行验证。
+- new_guardrail: apply_patch 的外层 JavaScript 不直接包裹含动态模板表达式的源码上下文；遇到模板表达式时拆分上下文或进行字符串拼接。
+- verification: 本补丁成功后读取目标函数和循环边界确认未发生部分写入。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: miniapp/scripts/scan-miniapp-button-touch-targets.mjs；ERRORS.md
+- next_time_signal: 工具调用出现 Unexpected identifier 或 Unexpected token 错误时，优先检查补丁正文中的模板表达式。
+
+## M-20260909-042：扫描器定位检索使用了未闭合正则分组
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 定位触控扫描器函数时，rg 命令的复合正则分组未闭合，命令返回 regex parse error，没有产生源码修改。
+- root_cause: 多个包含括号的固定代码片段被直接拼成正则，未进行转义。
+- impact: 仅本次定位命令失败；源码、扫描报告和业务数据未受影响。
+- fix: 改用 rg fixed strings 分次查询，并在编辑前读取精确上下文。
+- new_guardrail: 代码定位优先使用固定字符串检索；需要正则时先单独验证表达式。
+- verification: 后续定位命令使用固定字符串模式并成功读取目标上下文。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: miniapp/scripts/scan-miniapp-button-touch-targets.mjs；ERRORS.md
+- next_time_signal: rg 出现 unclosed group 时，不重复原正则，改用 fixed strings。
+
+## M-20260909-044：扫描器上下文读取调用格式错误
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 读取扫描器上下文时，将命令参数对象作为编排器 JavaScript 源码传入，工具在执行前报 Unexpected token，未产生文件修改。
+- root_cause: functions.exec 的输入需要 JavaScript 编排代码，命令必须通过 tools.exec_command 调用。
+- impact: 仅本次上下文读取失败；源码、扫描报告和业务数据未受影响。
+- fix: 改用正确的 tools.exec_command 编排调用，并在后续编辑前确认返回内容。
+- new_guardrail: functions.exec 统一传入可执行 JavaScript；嵌套命令参数显式放入 tools.exec_command 的对象中。
+- verification: 后续固定字符串检索和文件读取成功。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: miniapp/scripts/scan-miniapp-button-touch-targets.mjs；ERRORS.md
+- next_time_signal: functions.exec 返回 JavaScript SyntaxError 时，先检查是否把工具参数对象误当作源码传入。
+
+## M-20260909-045：页面模板检索使用了错误的相对目录
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 从 miniapp 目录检索页面模板时，使用 pages/... 而不是 miniprogram/pages/...，rg 返回路径不存在。
+- root_cause: 小程序源码位于 miniapp/miniprogram，当前工作目录与路径假设不一致。
+- impact: 仅本次上下文检索失败；源码、扫描器和业务数据未受影响。
+- fix: 改用 miniprogram/pages/... 读取模板，并在修改前确认工作目录。
+- new_guardrail: 小程序脚本和源码路径分开管理；从 miniapp 根目录执行检索时显式带 miniprogram 前缀。
+- verification: 后续固定字符串检索成功并读取目标模板上下文。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: miniapp/miniprogram/pages/；ERRORS.md
+- next_time_signal: rg 返回路径不存在时，先核对仓库相对根目录，不把路径错误当成页面缺陷。
+
+## M-20260909-053：跨文件 UI 补丁被外层模板字符串截断
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 同时修改商品服务、首页和个人中心时，补丁正文包含 TypeScript 模板字符串，外层 JavaScript 在调用编辑工具前报 Unexpected identifier，未产生部分写入。
+- root_cause: 多文件补丁没有隔离源码中的模板字符串分隔符。
+- impact: 本次 UI 修复未落盘；业务源码、报告和数据未受影响。
+- fix: 改为每个文件单独使用短补丁，并避开模板字符串源码上下文；每次编辑后立即读取确认。
+- new_guardrail: 前端源码补丁按文件拆分，外层编排字符串不直接包含未转义模板表达式。
+- verification: 待三个目标文件分别修改后运行 typecheck 和静态页面检查。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: miniapp/miniprogram/services/products.ts；miniapp/miniprogram/pages/home/index.ts；miniapp/miniprogram/pages/profile/index.ts；ERRORS.md
+- next_time_signal: apply_patch 外层出现 Unexpected identifier 时，先确认编辑未执行，再改为单文件短 hunk。
+
+## M-20260909-054：首页补丁再次被 TypeScript 模板字符串截断
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 单独修改首页商品映射时，补丁上下文仍包含 TypeScript 模板字符串，外层 JavaScript 在编辑前报 Unexpected identifier。
+- root_cause: 虽已拆成单文件补丁，但仍使用反引号包裹整段补丁，没有改变模板字符串冲突条件。
+- impact: 首页文件未发生部分写入；商品服务兜底修复已独立落盘，其他源码和数据未受影响。
+- fix: 使用普通字符串数组逐行构造补丁，让源码反引号和动态表达式不参与外层解析。
+- new_guardrail: 包含 TypeScript 模板字符串的补丁必须使用逐行普通字符串数组或转义，不再使用外层模板字符串。
+- verification: 首页补丁落盘后立即读取修改段并运行 typecheck。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: miniapp/miniprogram/pages/home/index.ts；ERRORS.md
+- next_time_signal: 同一文件连续出现模板字符串解析错误时，立即切换逐行普通字符串数组，不再尝试模板字符串包装。
+
+## M-20260909-055：首页 UI 修复验证命令在仓库根目录执行
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 在仓库根目录执行 npm run typecheck，npm 因找不到根目录 package.json 返回 ENOENT。
+- root_cause: MiniApp package.json 位于 miniapp 子目录，命令 workdir 没有与项目脚本路径保持一致。
+- impact: 本次类型检查没有执行；源码、报告、业务数据和治理文件未受影响。
+- fix: 改为在 miniapp 目录执行前端 npm 脚本，并单独记录命令结果。
+- new_guardrail: 运行前端门禁前先确认当前工作目录包含 miniapp/package.json，不把路径错误归因于代码。
+- verification: 后续在 miniapp 目录重新运行 typecheck、静态检查和页面审计。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: miniapp/package.json；ERRORS.md
+- next_time_signal: npm 返回根目录 package.json ENOENT 时，先切换到 miniapp 目录再重跑。
+
+## M-20260909-056：错误记录补丁数组缺少闭合语法
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 追加 M-20260909-055 时，functions.exec 输入的 JavaScript 数组缺少闭合语法，编排器报 Unexpected end of input，编辑工具未执行。
+- root_cause: 手工构造逐行补丁数组时遗漏结束括号和分号。
+- impact: 本次错误记录补丁未落盘；源码、报告、业务数据和既有账本内容未受影响。
+- fix: 重新构造完整数组并在工具返回后读取账本尾部。
+- new_guardrail: 逐行数组补丁发送前先检查数组闭合、join 调用和工具调用结束符。
+- verification: 本补丁成功后运行错误账本结构检查。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: ERRORS.md
+- next_time_signal: 编排器报 Unexpected end of input 时，先检查外层 JavaScript 的括号、引号和分号。
+
+## M-20260909-057：静态检查定位命令使用了仓库根目录错误路径
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 从仓库根目录定位 MiniApp 静态检查规则时使用 scripts/... 和 miniprogram/...，rg 返回路径不存在。
+- root_cause: 目标文件实际位于 miniapp/scripts 和 miniapp/miniprogram，命令未与仓库根目录保持一致。
+- impact: 仅定位命令失败；已经获得的 typecheck、API 覆盖和静态检查失败结果未被篡改，源码与数据未受影响。
+- fix: 改用 miniapp/scripts 和 miniapp/miniprogram 的完整相对路径重新读取规则。
+- new_guardrail: 仓库根目录检索 MiniApp 文件时必须保留 miniapp 前缀；进入 miniapp workdir 后才省略此前缀。
+- verification: 后续固定字符串检索成功并据此修复静态检查冲突。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: miniapp/scripts/check-miniapp.mjs；miniapp/miniprogram/services/products.ts；ERRORS.md
+- next_time_signal: rg 返回路径不存在时，先核对 MiniApp 子目录层级再继续分析检查结果。
+
+## M-20260909-058：静态检查修复补丁再次误用工具包装语法
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 修正商品详情空响应契约时，functions.exec 输入的逐行数组没有包裹在有效的 tools.apply_patch 调用代码中，编排器报 Unexpected token，文件未修改。
+- root_cause: 发送补丁时遗漏了把数组结果传给编辑工具的 JavaScript 调用。
+- impact: 本次静态检查修复未落盘；商品服务仍保持原状态，其他源码和数据未受影响。
+- fix: 重新用完整的 const patch 数组和 tools.apply_patch(patch) 调用执行修复。
+- new_guardrail: functions.exec 输入必须同时包含补丁构造和 tools.apply_patch 调用，不能只传补丁文本表达式。
+- verification: 修复后重新运行 check:miniapp 和 typecheck。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: miniapp/miniprogram/services/products.ts；ERRORS.md
+- next_time_signal: 编排器报 Unexpected token 且没有编辑工具输出时，先检查外层是否实际调用了 tools.apply_patch。
+
+## M-20260909-059：触控缺陷样式读取再次遗漏 MiniApp 源码前缀
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 读取结算页和订单页 WXSS 时从 miniapp 目录使用 pages/...，rg 返回路径不存在。
+- root_cause: 小程序页面样式实际位于 miniapp/miniprogram/pages，命令未按当前 workdir 拼接正确路径。
+- impact: 仅本次样式定位命令失败；触控扫描已经取得真实 35px 和 33px 高度测量，源码与数据未受影响。
+- fix: 改用 miniprogram/pages/checkout/index.wxss 和 miniprogram/pages/orders/index.wxss 读取样式，再按测量结果修复。
+- new_guardrail: 触控报告和源码读取必须使用同一 workdir 约定，先确认 miniapp/miniprogram 路径存在。
+- verification: 后续固定字符串检索成功并重跑触控扫描。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: miniapp/miniprogram/pages/checkout/index.wxss；miniapp/miniprogram/pages/orders/index.wxss；ERRORS.md
+- next_time_signal: 从 miniapp 目录检索页面源码时始终使用 miniprogram/ 前缀。
+
+## M-20260909-060：DevTools Automator 会话在触控复扫前退出
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 触控尺寸样式修复后，扫描器未连接到预期的 WebSocket 服务，回退启动 DevTools 失败，报告为 0 pages / 0 selectors。
+- root_cause: 先前手工启动的 DevTools Automator 会话不是持久服务，扫描复跑前已退出；扫描脚本默认端口也不等于当前项目会话端口。
+- impact: 本次扫描没有产生可用的触控验收结论；两处 WXSS 修复已落盘，业务数据和生产环境未受影响。
+- fix: 通过已验证的 cli.bat auto 命令恢复本地 DevTools 会话，并显式传入 MINIAPP_AUTOMATOR_WS 后重跑扫描。
+- new_guardrail: 运行依赖 DevTools Automator 的验收前先连接指定 WebSocket；0 pages 的扫描结果必须视为失败，不能作为通过证据。
+- verification: 恢复 ws://127.0.0.1:9420 后，扫描报告必须覆盖预期页面与选择器，且两类标签高度均不低于 44px。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: miniapp/scripts/scan-miniapp-button-touch-targets.mjs；miniapp/miniprogram/pages/checkout/index.wxss；miniapp/miniprogram/pages/orders/index.wxss；ERRORS.md
+- next_time_signal: 报告出现 0 pages、0 selectors 或 DevTools 启动失败时，先恢复指定 WebSocket 会话，再继续任何 UI 验收。
+
+## M-20260909-061：直接调用 DevTools cli.js 无法解析打包 CLI 模块
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 为恢复 Automator 服务而直接运行安装目录的 `node.exe cli.js auto ...` 时，启动器尝试加载未解包的 `D:微信web开发者工具jscommoncliindex.js`，进程以 `MODULE_NOT_FOUND` 退出。
+- root_cause: 当前 DevTools 将 CLI 实现放在 `code/package.nw` 打包资源中，`cli.js` 需要通过其原有启动方式解析资源路径，不能把内部模块路径当作普通目录文件执行。
+- impact: 本次恢复尝试未启动自动化服务；项目源码、报告内容和业务数据未受影响。
+- fix: 保留现有 DevTools 进程，改从 `miniprogram-automator`、IDE 服务端口和 DevTools 进程参数确认可用连接入口，不继续使用未经验证的直接模块路径。
+- new_guardrail: DevTools CLI 启动失败且出现 `MODULE_NOT_FOUND` 时，先核对安装包结构和官方启动器路径；不得通过复制、解包或修改安装目录来绕过。
+- verification: 该命令退出码 1，错误明确为 `Cannot find module ... js/common/cli/index.js`；后续只有 WebSocket 实际可连接并覆盖页面时才形成验收证据。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: miniapp/scripts/scan-miniapp-button-touch-targets.mjs；ERRORS.md
+- next_time_signal: 运行 DevTools 自动化恢复命令前，先确认启动器所需的 `package.nw` 资源路径和当前安装版本，不直接拼接内部模块路径。
+
+## M-20260909-062：DevTools 启动器一致性检查失败导致自动化端口无法恢复
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: medium
+- symptom: 尝试通过微信开发者工具启动器恢复 Automator 会话时，`WeappLog/launch.log` 记录 `CheckConsistency result false`，随后提示“当前应用已损坏，请重新下载安装 windows”，`9420` 自动化端口未监听。
+- root_cause: 当前 `D:\微信web开发者工具` 安装目录的一致性校验失败，启动器拒绝继续初始化完整 IDE/CLI 自动化能力；已有旧进程仍保留 IDE HTTP 口，但不能证明 Automator 服务可用。
+- impact: 本轮不能把依赖 DevTools Automator 的 0 pages 扫描当作 UI 验收通过；前端源码修复仍可通过静态门禁、类型检查和非 DevTools 审计继续推进。
+- fix: 停止继续用同一损坏启动器反复拉端口；先运行不依赖 DevTools 的门禁，后续只在启动器一致性恢复或存在可连接 WebSocket 时执行逐页自动化验收。
+- new_guardrail: DevTools 日志出现一致性失败或“应用已损坏”时，立即登记为工具环境阻塞，不再重复试同一启动命令；自动化验收必须要求非 0 页面报告和可连接 WebSocket。
+- verification: `Get-Content WeappLog/launch.log -Tail 160` 显示一致性检查失败；`Get-NetTCPConnection` 未发现 `9420` 监听。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: ERRORS.md；miniapp/reports/button-visual/button-touch-targets-latest.json
+- next_time_signal: DevTools Automator 再次 0 pages 或连接失败时，先检查启动器一致性日志和端口监听，再决定是否需要重装/修复工具。
+
+## M-20260909-063：已登记的 rg 正则分组错误再次复发
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 读取 `miniprogram-automator` 源码时再次把 `launch(|connect(` 等未转义括号放入 `rg` 正则，命令返回 `unclosed group`。
+- root_cause: 已有 M-20260909-042 的防线只要求“改用 fixed strings”，但本次没有把多个候选关键词拆成独立固定字符串查询。
+- impact: 仅一次源码定位命令失败；没有修改源码、报告或业务数据。
+- fix: 后续查找多个带括号或竖线的代码片段时，拆成多条 `rg --fixed-strings` 或读取文件目录后用精确路径打开。
+- new_guardrail: 本轮剩余源码定位禁止使用包含未转义括号的复合 `rg` 正则；要么 `--fixed-strings`，要么每个关键词单独查询。
+- verification: 本条落盘后继续用固定字符串读取 automator 源码，不再重复原复合正则。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: ERRORS.md；miniapp/node_modules/miniprogram-automator
+- next_time_signal: `rg` 再次报 `unclosed group` 时，立即停止复合正则，改为固定字符串分次查询。
+
+## M-20260909-064：DevTools HTTP 探测误把 /quit 放入候选端点
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: medium
+- symptom: 排查 IDE HTTP 服务端点时，将 `/quit` 与 `/open`、`/status` 等候选路径放在同一探测列表中执行。
+- root_cause: 端点探测没有先区分只读、编译、预览、自动化和退出类高风险动作。
+- impact: 当前返回值未显示 DevTools 主进程退出，项目源码和业务数据未受影响；但该行为可能中断正在打开的开发者工具会话，不能作为常规排查手段。
+- fix: 本轮后续 DevTools HTTP 排查只允许调用只读或必要的自动化启动端点，禁止把 `/quit`、上传、预览发布或真实操作端点放入批量探测。
+- new_guardrail: 任何 IDE HTTP 端点批量探测前先人工筛掉退出、上传、发布、删除和生产动作；不确定语义的端点先查源码或文档，不直接调用。
+- verification: 追加本条后继续仅使用 `/v2/auto`、端口监听和本地日志定位自动化问题；不再调用 `/quit`。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: ERRORS.md
+- next_time_signal: 命令列表里出现 `quit`、`upload`、`preview`、`delete` 或生产相关端点时，先停止并拆分成安全最小命令。
+
+## M-20260909-065：UI 收口时再次混用未核实脚本名、复合正则和过大补丁
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: low
+- symptom: 承接 MiniApp UI 收口时先后误读不存在的 `check-button-styles.mjs`、使用含括号的复合 `rg` 正则导致 `unclosed group`、以及提交跨文件样式大补丁触发 `apply_patch` hunk 校验失败。
+- root_cause: 没有先用实际文件清单和固定字符串确认目标，再把文案替换、样式补齐和审计修复混进同一批次。
+- impact: 这些失败均发生在工具校验阶段，目标源码和治理文档未被部分写入，订单、支付、配送、客户数据和测试数据未受影响；但浪费了执行轮次并降低了用户对工具可靠性的信任。
+- fix: 已改为先用 `rg --files` 定位真实脚本名、用 Node/PowerShell 固定字符串做残留扫描，并将样式补丁拆成按文件的小 hunk；随后重新运行 MiniApp 类型、静态、按钮和样式审计。
+- new_guardrail: MiniApp UI 收口先列真实文件路径，再按文件小补丁编辑；含括号、竖线、花括号或中文标点的残留扫描优先使用固定字符串或 Node `includes`；跨文件大补丁只在已读取精确上下文后使用。
+- verification: `cd miniapp && npm run typecheck` 退出码 0；`npm run check:miniapp` 退出码 0；`npm run audit:buttons` 退出码 0；`npm run audit:button-styles` 退出码 0 且 96 controls / 0 failures / 0 warnings。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: ERRORS.md；miniapp/scripts/audit-miniapp-button-styles.mjs；miniapp/miniprogram/pages/chat/index.wxml；miniapp/miniprogram/pages/checkout/index.wxss；miniapp/miniprogram/pages/products/index.ts
+- next_time_signal: UI/UX 收口中出现脚本名不确定、正则含特殊字符或补丁超过单页上下文时，先停止批量操作，改成路径清单、固定字符串扫描和单文件小补丁。

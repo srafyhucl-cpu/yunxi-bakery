@@ -56,6 +56,8 @@ def init_services(repos: dict[str, Any], vs: Any, bm25: Any = None) -> dict[str,
     from app.service.customer import CustomerAddressService
     from app.service.customer import CustomerGroupOperationsService
     from app.service.customer_consent import CustomerConsentService
+    from app.service.delivery.application import DeliveryApplicationService
+    from app.service.delivery.shansong import ShansongProvider
     from app.service.privacy_lifecycle import PrivacyLifecycleService
     from app.service.observability import ObservabilityService
     from app.service.ops import (
@@ -103,6 +105,10 @@ def init_services(repos: dict[str, Any], vs: Any, bm25: Any = None) -> dict[str,
     from app.service.coupon import CouponService
 
     coupon_service = CouponService()
+    delivery_service = DeliveryApplicationService(
+        provider=ShansongProvider(),
+        quote_repo=repos["delivery_quote_repo"],
+    )
     order_service = OrderApplicationService(
         order_repo=repos["order_repo"],
         event_repo=repos["order_event_repo"],
@@ -111,6 +117,7 @@ def init_services(repos: dict[str, Any], vs: Any, bm25: Any = None) -> dict[str,
         inventory_repo=repos["youzan_inventory_repo"],
         config_repo=repos["config_repo"],
         stored_value_service=stored_value_service,
+        delivery_service=delivery_service,
     )
     customer_address_service = CustomerAddressService(
         address_repo=repos["customer_address_repo"],
@@ -208,6 +215,7 @@ def init_services(repos: dict[str, Any], vs: Any, bm25: Any = None) -> dict[str,
         "stored_value_service": stored_value_service,
         "points_service": points_service,
         "coupon_service": coupon_service,
+        "delivery_service": delivery_service,
         "customer_address_service": customer_address_service,
         "customer_group_service": customer_group_service,
         "customer_consent_service": customer_consent_service,

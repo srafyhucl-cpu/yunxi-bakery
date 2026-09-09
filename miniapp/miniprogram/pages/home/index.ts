@@ -1,5 +1,6 @@
  import { ROUTES } from "../../constants/routes";
 import { getProductImageClass } from "../../utils/bakery";
+import { addCartItem, getCartItems } from "../../utils/cart";
 import { API_BASE_URL } from "../../services/config";
 import { getMiniappSession } from "../../services/auth";
 import { getPublishedPageConfig } from "../../services/page-config";
@@ -39,10 +40,10 @@ const HOME_HERO_BLOCK: PageBlock = {
       {
         id: "local-hero-1",
         imageUrl: "",
-        title: "匠心与艺术的结晶",
-        subtitle: "每日现制 / 手作奶油 / 礼赠场景",
-        eyebrow: "YUNXI BAKE",
-        badges: ["当日现做", "节日礼赠", "门店主推"],
+        title: "12年匠心手作 · 北京单店",
+        subtitle: "每日现制 / 动物奶油 / 提前1天预订",
+        eyebrow: "芸熙烘焙",
+        badges: ["北京单店", "提前预订", "闪送专送"],
         linkType: "none",
         linkTarget: ""
       }
@@ -56,6 +57,9 @@ interface ProductCardView extends CatalogProduct {
   priceText: string;
   imageClass: string;
   badgeText: string;
+  deliveryTip?: string;
+  isUnavailable: boolean;
+  actionText: string;
 }
 
 interface HomeBlockView extends PageBlock {
@@ -151,12 +155,12 @@ function ensureHomeVisualBlocks(blocks: PageBlock[]): PageBlock[] {
   ];
   const withFallbacks = [...visibleBlocks, ...visualBlocks];
   const order = new Map([
-    ["heroCarousel", 20],
+    ["productShelf", 20],
     ["noticeBar", 30],
-    ["quickLinks", 50],
-    ["membershipBanner", 60],
-    ["noticeList", 70],
-    ["productShelf", 80]
+    ["heroCarousel", 80],
+    ["quickLinks", 90],
+    ["membershipBanner", 100],
+    ["noticeList", 110]
   ]);
 
   return withFallbacks
@@ -197,17 +201,21 @@ async function buildHomeBlocks(config: ShopPageConfig): Promise<HomeBlockView[]>
         productIds?: string[];
         limit?: number;
       };
-      const featuredClasses = ["cake-choco", "cake-yellow"];
       // source=auto 时按精选+limit 拉取；manual 时按显式 ID 列表拉取
-      const products = (
-        await (props.source === "auto"
-          ? listProducts({ featured: true, limit: (props.limit as number) || 6 })
-          : listProducts({ ids: props.productIds ?? [] }))
-      ).map((product, index) => ({
+      let sourceProducts = props.source === "auto"
+        ? await listProducts({ featured: true, limit: (props.limit as number) || 6 })
+        : await listProducts({ ids: props.productIds ?? [] });
+      if (props.source === "auto" && sourceProducts.length === 0) {
+        sourceProducts = await listProducts({ limit: (props.limit as number) || 6 });
+      }
+      const products = sourceProducts.map((product) => ({
         ...product,
-        priceText: formatFen(product.priceFen),
-        imageClass: featuredClasses[index] || getProductImageClass(product),
-        badgeText: index === 0 ? "编辑推荐" : "新品热卖"
+        priceText: `自提价 ${formatFen(product.priceFen)}`,
+        imageClass: getProductImageClass(product),
+        badgeText: product.stock > 0 ? "可预订" : product.isActive ? "暂时售罄" : "已下架",
+        deliveryTip: product.stock > 0 ? "提前1天预订 · 闪送/自取" : "可咨询客服或先看其他商品",
+        isUnavailable: !product.isActive || product.stock <= 0,
+        actionText: !product.isActive || product.stock <= 0 ? "查看" : "预订"
       }));
       return { ...block, products };
     }
@@ -218,6 +226,10 @@ async function buildHomeBlocks(config: ShopPageConfig): Promise<HomeBlockView[]>
 Page({
   data: {
     blocks: [] as HomeBlockView[],
+    cartItemCount: 0,
+    cartTotalText: "¥0.00",
+    cartSummaryText: "还没有选择商品",
+    cartBarVisible: false,
     sessionView: buildMiniappSessionView(getMiniappSession()),
     canUseAccountFlows: false,
     loginNoticeText: "登录后会员、订单和客服记录会归属到当前微信身份",
@@ -231,6 +243,7 @@ Page({
   },
   onShow() {
     syncCustomTabBar(ROUTES.home);
+    this.refreshCartSummary();
   },
   async loadHome() {
     if (this.data.loaded || this.data.loading) {
@@ -274,6 +287,57 @@ Page({
     wx.navigateTo({
       url: `${ROUTES.productDetail}?id=${productId}`
     });
+  },
+  refreshCartSummary() {
+    const cartItems = getCartItems();
+    const cartItemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+    const cartTotalFen = cartItems.reduce((sum, item) => sum + item.priceFen * item.quantity, 0);
+    this.setData({
+      cartItemCount,
+      cartTotalText: formatFen(cartTotalFen),
+      cartSummaryText: cartItemCount > 0 ? cartItemCount + " 件已选 · 闪送费下单前确认" : "还没有选择商品",
+      cartBarVisible: cartItemCount > 0
+    });
+  },
+  quickAddHomeProduct(event: WechatMiniprogram.TouchEvent) {
+    const productId = event.currentTarget.dataset.id as string;
+    const product = this.data.blocks
+      .flatMap((block) => block.products || [])
+      .find((item) => item.id === productId);
+    if (!productId || !product) {
+      return;
+    }
+    if (product.isUnavailable) {
+      wx.navigateTo({ url: `${ROUTES.productDetail}?id=${productId}` });
+      return;
+    }
+    const currentQuantity = getCartItems()
+      .filter((item) => item.productId === productId)
+      .reduce((sum, item) => sum + item.quantity, 0);
+    if (currentQuantity >= product.stock) {
+      wx.showToast({ title: "库存仅余 " + product.stock + " 件", icon: "none" });
+      return;
+    }
+    addCartItem({
+      productId: product.id,
+      title: product.title,
+      imageUrl: product.imageUrl,
+      priceFen: product.priceFen,
+      quantity: 1,
+      stock: product.stock
+    });
+    this.refreshCartSummary();
+    wx.showToast({ title: "已加入预订单", icon: "success" });
+  },
+  goToCart() {
+    wx.switchTab({ url: ROUTES.cart });
+  },
+  goCheckout() {
+    if (!getCartItems().length) {
+      wx.showToast({ title: "请先选择商品", icon: "none" });
+      return;
+    }
+    wx.navigateTo({ url: ROUTES.checkout });
   },
   handleBlockAction(event: WechatMiniprogram.TouchEvent) {
     const linkType = event.currentTarget.dataset.linkType as string;

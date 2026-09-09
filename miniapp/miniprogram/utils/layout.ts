@@ -35,12 +35,24 @@ export function getMiniappLayoutMetrics(): MiniappLayoutMetrics {
   }
 
   try {
-    const systemInfo = wx.getSystemInfoSync();
-    const windowWidth = systemInfo.windowWidth || systemInfo.screenWidth || 375;
-    const statusBarRpx = pxToRpx(systemInfo.statusBarHeight || 0, windowWidth);
-    const safeAreaBottomPx = systemInfo.safeArea
-      ? Math.max(0, systemInfo.screenHeight - systemInfo.safeArea.bottom)
-      : 0;
+    let windowWidth = 375;
+    let screenHeight = 667;
+    let statusBarHeight = 20;
+    let safeArea: { bottom?: number; top?: number; left?: number; right?: number; width?: number; height?: number } | undefined;
+
+    if (typeof wx.getWindowInfo === "function") {
+      const windowInfo = wx.getWindowInfo();
+      windowWidth = windowInfo.windowWidth || 375;
+      screenHeight = windowInfo.screenHeight || 667;
+      statusBarHeight = windowInfo.statusBarHeight || 0;
+      safeArea = windowInfo.safeArea;
+    }
+
+    const statusBarRpx = pxToRpx(statusBarHeight, windowWidth);
+    const safeAreaBottomPx =
+      safeArea && typeof safeArea.bottom === "number"
+        ? Math.max(0, screenHeight - safeArea.bottom)
+        : 0;
     const bottomInsetRpx = pxToRpx(safeAreaBottomPx, windowWidth);
 
     let navSpaceRpx = FALLBACK_NAV_SPACE_RPX;

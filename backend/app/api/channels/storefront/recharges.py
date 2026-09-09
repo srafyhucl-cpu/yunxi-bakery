@@ -90,7 +90,13 @@ def create_storefront_balance_router(service: StoredValueService) -> APIRouter:
                 require_storefront_user_id(x_miniapp_user_id),
             )
         except ValueError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
+            msg = str(exc)
+            if "未识别为会员" in msg or "未登记手机号" in msg:
+                return {
+                    "code": 0,
+                    "data": {"balanceFen": 0, "mobile": "", "ledger": []},
+                }
+            raise HTTPException(status_code=400, detail=msg) from exc
         return {"code": 0, "data": balance}
 
     return router

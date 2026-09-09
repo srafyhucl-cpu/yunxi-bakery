@@ -6,7 +6,7 @@
       disabled="{{savingAddress || defaultingAddressId || deletingAddressId}}"
       aria-label="返回"
     >
-      <text class="page-nav-back__icon">‹</text>
+      <text class="page-nav-back__icon"></text>
     </button>
     <view class="page-fixed-safe__title">{{mode === 'select' ? '选择地址' : '收货地址'}}</view>
   </view>
@@ -23,11 +23,10 @@
         bind:action="goBack"
       ></session-notice>
       <view class="address-header">
-        <view>
-          <text class="section-title">收货地址</text>
+        <view class="address-header__info">
           <text class="address-subtitle">{{mode === 'select' ? '选择后将自动回填结算信息' : '管理常用联系人和配送地址'}}</text>
         </view>
-        <button class="ghost-button address-add" bindtap="startCreate" disabled="{{savingAddress}}">新增</button>
+        <button class="ghost-button address-add" bindtap="startCreate" disabled="{{savingAddress}}">＋ 新增</button>
       </view>
 
       <view wx:if="{{errorMessage}}" class="address-error">{{errorMessage}}</view>
@@ -38,7 +37,7 @@
         <textarea placeholder="收货地址，如小区、楼栋、门牌号" value="{{draft.address}}" data-field="address" bindinput="updateDraftField" />
         <view class="address-switch">
           <text>设为默认地址</text>
-          <switch checked="{{draft.isDefault}}" bindchange="toggleDraftDefault" color="#3f7a42" />
+          <switch checked="{{draft.isDefault}}" bindchange="toggleDraftDefault" color="#3D332D" />
         </view>
         <view class="address-actions">
           <button class="ghost-button" bindtap="cancelEdit" disabled="{{savingAddress}}">取消</button>

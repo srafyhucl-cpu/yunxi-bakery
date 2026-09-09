@@ -53,6 +53,7 @@ async def test_admin_shop_operations_update_visible_to_miniapp(app: FastAPI) -> 
         initial = await client.get("/api/v1/miniapp/shop-settings")
         assert initial.status_code == 200
         assert initial.json()["data"]["shopName"] == "芸熙烘焙"
+        assert initial.json()["data"]["businessHours"] == "09:00-19:30"
         assert initial.json()["data"]["paymentMode"] == "mock"
 
         payload = {

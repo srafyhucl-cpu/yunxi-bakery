@@ -11,23 +11,23 @@ import { getMiniappLayoutMetrics } from "../../utils/layout";
 import { classifyCouponStatus } from "../../utils/member-assets";
 import { formatFen } from "../../utils/money";
 import { navigateByLink } from "../../utils/navigation";
-import { buildMiniappSessionView } from "../../utils/session";
+import { buildMiniappSessionView, isMiniappLoggedIn } from "../../utils/session";
 import { syncCustomTabBar } from "../../utils/tab-bar";
 import type { MemberSummaryProps } from "../../types/page-config";
 
 interface OrderEntry {
   id: string;
   title: string;
-  emoji: string;
+  iconText: string;
   linkType: string;
   linkTarget: string;
 }
 
 const PROFILE_ORDER_ENTRIES: OrderEntry[] = [
-  { id: "to-pay", title: "待付款", emoji: "💳", linkType: "page", linkTarget: "orders" },
-  { id: "making", title: "制作中", emoji: "👨‍🍳", linkType: "page", linkTarget: "orders" },
-  { id: "delivery", title: "待配送", emoji: "🛵", linkType: "page", linkTarget: "orders" },
-  { id: "refund", title: "退款/售后", emoji: "🔄", linkType: "policy", linkTarget: "afterSales" },
+  { id: "to-pay", title: "待付款", iconText: "付", linkType: "page", linkTarget: "orders" },
+  { id: "making", title: "制作中", iconText: "制", linkType: "page", linkTarget: "orders" },
+  { id: "delivery", title: "待配送", iconText: "送", linkType: "page", linkTarget: "orders" },
+  { id: "refund", title: "退款/售后", iconText: "售", linkType: "policy", linkTarget: "afterSales" },
 ];
 
 function normalizeMemberSummaryProps(props: Partial<MemberSummaryProps>): MemberSummaryProps {
@@ -53,7 +53,7 @@ Page({
     assetCouponCount: 0 as number | null,
     assetsLoaded: false,
     rechargeReady: RECHARGE_READY,
-    serviceItems: [] as Array<{ id: string; title: string; emoji: string; subtitle?: string; linkType: string; linkTarget: string }>,
+    serviceItems: [] as Array<{ id: string; title: string; iconText: string; subtitle?: string; linkType: string; linkTarget: string }>,
     session: getMiniappSession(),
     sessionView: buildMiniappSessionView(getMiniappSession()),
     loginStateText: "个人中心需要登录后使用",
@@ -70,17 +70,22 @@ Page({
     syncCustomTabBar(ROUTES.profile);
     // 页面显示时刷新会话视图，及时反映登录状态变化
     const session = getMiniappSession();
+    const wasLoggedIn = Boolean(this.data.sessionView?.loggedIn);
+    const isLoggedIn = isMiniappLoggedIn(session);
     this.setData({
       session,
       sessionView: buildMiniappSessionView(session)
     });
+    // 若从未登录转为登录状态，或已登录但资产尚未完成加载，则加载资产
+    if (isLoggedIn && (!wasLoggedIn || !this.data.assetsLoaded)) {
+      void this.loadMemberAssets();
+    }
   },
   async loadProfile() {
     if (this.data.loaded || this.data.loading) {
       return;
     }
     this.setData({ loading: true });
-    void this.loadMemberAssets();
     try {
       const config = await getPublishedPageConfig("profile");
       const shopSettings = await getShopSettings();
@@ -91,11 +96,11 @@ Page({
       const memberProps = normalizeMemberSummaryProps(rawProps);
 
       const serviceItems = [
-        { id: "shop-phone", title: "客服电话", emoji: "📞", subtitle: shopSettings.customerPhone, linkType: "phone", linkTarget: shopSettings.customerPhone },
-        { id: "shop-wechat", title: "客服微信", emoji: "💬", subtitle: shopSettings.customerWechat, linkType: "wechat", linkTarget: shopSettings.customerWechat },
-        { id: "shop-after-sales", title: shopSettings.afterSalesPolicyTitle || "售后政策", emoji: "🛡️", linkType: "policy", linkTarget: "afterSales" },
-        { id: "shop-agreement", title: shopSettings.userAgreementTitle || "用户协议", emoji: "📄", linkType: "policy", linkTarget: "agreement" },
-        { id: "shop-privacy", title: shopSettings.privacyPolicyTitle || "隐私政策", emoji: "🔒", linkType: "policy", linkTarget: "privacy" }
+        { id: "shop-phone", title: "客服电话", iconText: "电", subtitle: shopSettings.customerPhone, linkType: "phone", linkTarget: shopSettings.customerPhone },
+        { id: "shop-wechat", title: "客服微信", iconText: "微", subtitle: shopSettings.customerWechat, linkType: "wechat", linkTarget: shopSettings.customerWechat },
+        { id: "shop-after-sales", title: shopSettings.afterSalesPolicyTitle || "售后政策", iconText: "售", linkType: "policy", linkTarget: "afterSales" },
+        { id: "shop-agreement", title: shopSettings.userAgreementTitle || "用户协议", iconText: "协", linkType: "policy", linkTarget: "agreement" },
+        { id: "shop-privacy", title: shopSettings.privacyPolicyTitle || "隐私政策", iconText: "隐", linkType: "policy", linkTarget: "privacy" }
       ];
 
       this.setData({
@@ -104,38 +109,70 @@ Page({
         session,
         sessionView: buildMiniappSessionView(session),
         loginStateText:
-          session.sessionReady && session.userId && !session.isDemo
+          isMiniappLoggedIn(session)
             ? "已使用真实登录态进入个人中心"
             : "请先登录后使用个人中心",
         loaded: true
       });
+
+      // 仅在真实登录态有效时才拉取资产，未登录绝不盲目请求受保护接口
+      if (isMiniappLoggedIn(session)) {
+        void this.loadMemberAssets();
+      } else {
+        this.setData({
+          assetBalanceFen: null,
+          assetPoints: null,
+          assetCouponCount: null,
+          balanceText: "--",
+          assetsLoaded: true
+        });
+      }
     } finally {
       this.setData({ loading: false });
     }
   },
   async loadMemberAssets() {
-    try {
-      const [balance, points, couponsData] = await Promise.all([
-        getBalance(),
-        getPoints(),
-        getMyCoupons()
-      ]);
-      const availableCoupons = (couponsData.coupons || []).filter(
-        (coupon) => classifyCouponStatus(coupon).tab === "available"
-      );
-      this.setData({
-        assetBalanceFen: balance.balanceFen,
-        assetPoints: points.pointsBalance,
-        assetCouponCount: availableCoupons.length,
-        balanceText: formatFen(balance.balanceFen),
-        assetsLoaded: true
-      });
-    } catch (error) {
-      // 单项整体失败降级：保持 "--" 占位，不阻塞页面（401 由 http 层会话刷新兜底）
+    const session = getMiniappSession();
+    // 守卫：未登录直接将资产置为空态，严禁发出未授权请求
+    if (!isMiniappLoggedIn(session)) {
       this.setData({
         assetBalanceFen: null,
         assetPoints: null,
         assetCouponCount: null,
+        balanceText: "--",
+        assetsLoaded: true
+      });
+      return;
+    }
+
+    try {
+      const [balanceRes, pointsRes, couponsRes] = await Promise.allSettled([
+        getBalance(),
+        getPoints(),
+        getMyCoupons()
+      ]);
+
+      const balanceFen = balanceRes.status === "fulfilled" ? balanceRes.value.balanceFen : 0;
+      const points = pointsRes.status === "fulfilled" ? pointsRes.value.pointsBalance : 0;
+      const couponsData = couponsRes.status === "fulfilled" ? couponsRes.value : { coupons: [] };
+
+      const availableCoupons = (couponsData.coupons || []).filter(
+        (coupon) => classifyCouponStatus(coupon).tab === "available"
+      );
+      this.setData({
+        assetBalanceFen: balanceFen,
+        assetPoints: points,
+        assetCouponCount: availableCoupons.length,
+        balanceText: formatFen(balanceFen),
+        assetsLoaded: true
+      });
+    } catch {
+      // 容错降级：保持稳定占位，不阻塞页面也不抛出未捕获错误
+      this.setData({
+        assetBalanceFen: null,
+        assetPoints: null,
+        assetCouponCount: null,
+        balanceText: "--",
         assetsLoaded: true
       });
     }

@@ -1,34 +1,50 @@
+/* ==========================================================================
+   政策与协议页 (Policy Page) - 现代自然轻食风格重塑
+   ========================================================================== */
+
 .policy-page {
   display: flex;
   flex-direction: column;
   gap: 24rpx;
+  padding: 24rpx 28rpx 80rpx;
 }
 
 .policy-header {
   display: flex;
   flex-direction: column;
   gap: 12rpx;
-  padding: 32rpx 28rpx;
+  padding: 36rpx 32rpx;
+  background: #FFFFFF;
+  border-radius: var(--yunxi-radius-md);
+  border: 1rpx solid var(--yunxi-border);
+  box-shadow: var(--yunxi-card-shadow);
 }
 
 .policy-title {
   color: var(--yunxi-text-primary);
   font-size: 40rpx;
   font-weight: 900;
+  letter-spacing: 0.02em;
 }
 
 .policy-subtitle {
-  color: var(--yunxi-text-secondary);
-  font-size: 26rpx;
+  color: var(--yunxi-text-muted);
+  font-size: 24rpx;
+  letter-spacing: 0.04em;
 }
 
 .policy-card {
-  padding: 32rpx 28rpx;
+  padding: 36rpx 32rpx;
+  background: #FFFFFF;
+  border-radius: var(--yunxi-radius-md);
+  border: 1rpx solid var(--yunxi-border);
+  box-shadow: var(--yunxi-card-shadow);
 }
 
 .policy-content {
-  color: var(--yunxi-text-primary);
+  color: var(--yunxi-text-secondary);
   font-size: 28rpx;
-  line-height: 1.8;
+  line-height: 1.85;
+  letter-spacing: 0.02em;
   white-space: pre-wrap;
 }

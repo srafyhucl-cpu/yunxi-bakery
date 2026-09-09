@@ -105,7 +105,7 @@
           >
             <!-- 徽章图标 -->
             <view class="order-nav-icon-wrapper">
-              <text class="order-nav-emoji">{{order.emoji}}</text>
+              <text class="order-nav-icon">{{order.iconText}}</text>
             </view>
             <text class="order-nav-title">{{order.title}}</text>
           </view>
@@ -128,7 +128,7 @@
             bindtap="handleServiceTap"
           >
             <view class="service-cell__left">
-              <text class="service-cell__emoji">{{service.emoji}}</text>
+              <text class="service-cell__icon">{{service.iconText}}</text>
               <text class="service-cell__title">{{service.title}}</text>
             </view>
             <view class="service-cell__right">

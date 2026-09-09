@@ -4,6 +4,7 @@ interface CartItem {
   imageUrl: string;
   priceFen: number;
   quantity: number;
+  stock?: number;
 }
 
 interface AddressBookItem {

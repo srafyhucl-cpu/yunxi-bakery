@@ -17,7 +17,7 @@ trace_id: `20260707-miniapp-page-api-coverage-local-contract`
 | `pages/products/index` | `GET /api/v1/miniapp/pages/products`、`GET /api/v1/miniapp/products`、`GET /api/v1/miniapp/product-categories` | 展示商品列表和分类筛选 |
 | `pages/product-detail/index` | `GET /api/v1/miniapp/products/{productId}` | 展示商品详情、加入购物车、立即购买入口 |
 | `pages/cart/index` | `GET /api/v1/miniapp/products/{productId}` | 展示本地购物车，并在结算前重新校验商品有效性 |
-| `pages/checkout/index` | `POST /api/v1/miniapp/orders`、`POST /api/v1/miniapp/orders/{orderId}/apply-coupon`、`POST /api/v1/miniapp/orders/{orderId}/apply-points`、`POST /api/v1/miniapp/orders/{orderId}/pay-with-balance`、`POST /api/v1/miniapp/orders/{orderId}/prepare-combined-payment`、`GET /api/v1/miniapp/products/{productId}`、`GET /api/v1/miniapp/addresses`、`GET /api/v1/miniapp/shop-settings` | 组织下单参数、协议确认、收货信息；结算扩展（券/积分/余额/组合支付）为 Phase 2 契约 |
+| `pages/checkout/index` | `POST /api/v1/miniapp/orders`、`POST /api/v1/miniapp/delivery/quotes`、`POST /api/v1/miniapp/orders/{orderId}/apply-coupon`、`POST /api/v1/miniapp/orders/{orderId}/apply-points`、`POST /api/v1/miniapp/orders/{orderId}/pay-with-balance`、`POST /api/v1/miniapp/orders/{orderId}/prepare-combined-payment`、`GET /api/v1/miniapp/products/{productId}`、`GET /api/v1/miniapp/addresses`、`GET /api/v1/miniapp/shop-settings` | 组织下单参数、协议确认、收货信息和支付前北京闪送报价；结算扩展（券/积分/余额/组合支付）为 Phase 2 契约 |
 | `pages/policy/index` | `GET /api/v1/miniapp/shop-settings` | 展示隐私政策、用户协议和售后说明 |
 | `pages/address/index` | `GET /api/v1/miniapp/addresses`、`POST /api/v1/miniapp/addresses`、`POST /api/v1/miniapp/addresses/{addressId}/default`、`DELETE /api/v1/miniapp/addresses/{addressId}` | 管理当前用户收货地址 UI |
 | `pages/orders/index` | `GET /api/v1/miniapp/orders` | 展示当前用户订单列表 |
@@ -42,6 +42,7 @@ trace_id: `20260707-miniapp-page-api-coverage-local-contract`
 - `POST /api/v1/miniapp/addresses`
 - `POST /api/v1/miniapp/addresses/{addressId}/default`
 - `DELETE /api/v1/miniapp/addresses/{addressId}`
+- `POST /api/v1/miniapp/delivery/quotes`
 - `POST /api/v1/miniapp/orders`
 - `GET /api/v1/miniapp/orders`
 - `GET /api/v1/miniapp/orders/{orderId}`
@@ -63,6 +64,7 @@ trace_id: `20260707-miniapp-page-api-coverage-local-contract`
 - 会员权益：不在本仓实现会员权益计算。
 - 积分、储值余额、优惠券：不在本仓实现积分、储值余额或优惠券账本。
 - 配送费、满减、活动价：不在本仓实现配送费、满减或活动价规则。
+- 北京闪送报价：小程序只请求并展示 Platform 返回的 `POST /api/v1/miniapp/delivery/quotes` 结果；未取得有效报价时不得按零元配送费提交订单。
 - 商品价格、库存、分类：不在本仓实现商品价格、库存或分类真相。
 - 订单状态：不在本仓实现订单状态机。
 - 支付闭环：不把 mock-pay 当作正式微信支付闭环。

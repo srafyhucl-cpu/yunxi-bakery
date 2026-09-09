@@ -371,6 +371,56 @@ Query：
 - `200`：图片内容，`Content-Type` 为原图图片类型。
 - `404`：商品不存在、商品无图、图片地址协议不允许、原图抓取失败或原图不是图片。
 
+## 配送报价
+
+### POST `/api/v1/miniapp/delivery/quotes`
+
+为北京闪送订单请求支付前配送报价。首发只支持 `pickup` 和 `beijing_delivery`；全国配送不在本接口范围内。
+
+- `pickup` 返回 `status=not_applicable` 与 `deliveryFeeFen=0`，不创建闪送报价。
+- `beijing_delivery` 必须同时提供门店地址、收货人、手机号、收货地址、预约时间、商品金额和商品 ID/数量集合。
+- 商品金额和商品集合用于将报价绑定到下单请求；订单创建时后端以实时商品价格与规范化商品集合重算并复核。
+- `deliveryFeeFen=null` 表示没有可支付配送费，与门店自取的 `0` 不同。
+- 未取得 `status=quoted`、有效 `quoteId` 和非空 `deliveryFeeFen` 时，前端必须禁止北京闪送订单提交。
+- 闪送开放平台尚未配置时，当前实现返回 `provider_unavailable`，不伪造费用，也不代表已经完成真实闪送联调。
+
+请求：
+
+```json
+{
+  "requestId": "quote_20260909_001",
+  "fulfillmentMethod": "beijing_delivery",
+  "pickupAddress": "北京市朝阳区云熙烘焙工坊",
+  "receiverName": "大海",
+  "receiverPhone": "18800000000",
+  "receiverAddress": "北京市朝阳区测试路 1 号",
+  "expectTime": "2026-09-10 15:00",
+  "goodsTotalFen": 19800,
+  "items": [
+    {
+      "productId": "p_001",
+      "quantity": 1
+    }
+  ]
+}
+```
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "data": {
+    "quoteId": "quote_20260909_001",
+    "status": "quoted",
+    "deliveryFeeFen": 2600,
+    "quoteTotalFen": 22400,
+    "expiresAt": "2026-09-10T07:05:00+00:00",
+    "message": ""
+  }
+}
+```
+
 ## 订单
 
 ### POST `/api/v1/miniapp/orders`
@@ -386,7 +436,8 @@ Query：
 - 真实商品下单成功后立即预占库存；后台将订单取消回 `cancelled` 时释放已预占库存。
 - Mock/未入库商品不参与库存预占与释放。
 - `expectTime` 必填，格式固定为 `YYYY-MM-DD HH:mm`。
-- 后端按店铺运营配置 `businessHours` 校验预约时间；MVP 阶段支持同日 `HH:mm-HH:mm`，预约时间必须落在营业时间内，非法配置回退默认营业时间。
+- 后端按北京时间校验预约时间：不得早于当前时间，必须落在店铺运营配置 `businessHours` 内；当天订单在 `17:00` 截止，截止后普通小程序订单只能预约明天或更晚时间。非法营业时间配置回退默认营业时间。
+- 前端在 `17:00` 前允许选择今天，但必须提示“当天订单需客服确认制作与履约安排”；当天订单不承诺即时制作或即时配送。
 
 请求：
 
@@ -401,11 +452,19 @@ Query：
   "receiverName": "大海",
   "receiverPhone": "18800000000",
   "deliveryType": "pickup",
+  "fulfillmentMethod": "pickup",
+  "pickupAddress": "北京市朝阳区云熙烘焙工坊",
   "deliveryAddress": "",
   "expectTime": "2026-06-18 18:00",
   "remark": "少糖"
 }
 ```
+
+过去预约时间或截止后的当天预约同样返回 HTTP 400，错误信息分别为“预约时间不能早于当前时间”和“当天订单已于 17:00 截止，请选择明天或更晚时间”。
+
+北京闪送建单时，`deliveryType` 可保留兼容值 `delivery`，但应同时传 `fulfillmentMethod=beijing_delivery` 和 `deliveryQuoteId`。后端会将旧值映射为北京闪送，并强制校验：报价归属、报价状态、有效期、门店与收货信息、规范化商品 ID/数量和后端计算的商品金额。
+
+`deliveryFeeFen` 允许客户端携带用于本地展示，但不作为服务端金额来源；订单总额只使用已验证报价快照中的配送费。
 
 响应：
 
@@ -415,7 +474,10 @@ Query：
   "data": {
     "orderId": "o_001",
     "status": "pending",
-    "totalFen": 19800
+    "totalFen": 19800,
+    "goodsTotalFen": 19800,
+    "deliveryFeeFen": 0,
+    "payableFen": 19800
   }
 }
 ```
@@ -1059,7 +1121,7 @@ Authorization: Bearer <miniappSession.accessToken>
     "shopName": "芸熙烘焙",
     "customerWechat": "13240240418",
     "customerPhone": "13240240418",
-    "businessHours": "09:00-20:00",
+    "businessHours": "09:00-19:30",
     "pickupAddress": "北京市东城区南竹杆胡同2号银河SOHO",
     "deliveryNotice": "门店配送需提前预约，配送范围和费用以客服确认为准",
     "pickupNotice": "蛋糕建议提前 24 小时预订，到店自提前请确认取货时间",

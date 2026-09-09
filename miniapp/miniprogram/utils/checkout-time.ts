@@ -1,9 +1,9 @@
 const DEFAULT_PICKUP_HOUR = 18;
 const DEFAULT_PICKUP_MINUTE = "00";
-const DEFAULT_BUSINESS_HOURS = "09:00-20:00";
-const DATE_OFFSET_DAYS = 1;
+const DEFAULT_BUSINESS_HOURS = "09:00-19:30";
 const DATE_PICKER_DAYS = 7;
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const SAME_DAY_ORDER_CUTOFF_HOUR = 17;
+const BEIJING_TIME_ZONE = "Asia/Shanghai";
 const BUSINESS_HOURS_PATTERN = /(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/;
 
 export const CHECKOUT_MINUTE_OPTIONS = ["00", "30"];
@@ -11,6 +11,14 @@ export const CHECKOUT_MINUTE_OPTIONS = ["00", "30"];
 interface BusinessHourRange {
   startHour: number;
   endHour: number;
+}
+
+interface BeijingDateTimeParts {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
 }
 
 function clampHour(value: number): number {
@@ -34,10 +42,49 @@ export function padDateNumber(value: number): string {
   return String(value).padStart(2, "0");
 }
 
-export function buildCheckoutHourOptions(businessHours: string): string[] {
+function getBeijingDateTimeParts(now = new Date()): BeijingDateTimeParts {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: BEIJING_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23"
+  }).formatToParts(now);
+  const values = Object.fromEntries(
+    parts
+      .filter((part) => ["year", "month", "day", "hour", "minute"].includes(part.type))
+      .map((part) => [part.type, Number(part.value)])
+  );
+  return {
+    year: values.year || 0,
+    month: values.month || 0,
+    day: values.day || 0,
+    hour: values.hour || 0,
+    minute: values.minute || 0
+  };
+}
+
+function formatBeijingDateWithOffset(now: Date, offsetDays: number): string {
+  const { year, month, day } = getBeijingDateTimeParts(now);
+  const value = new Date(Date.UTC(year, month - 1, day + offsetDays));
+  return `${value.getUTCFullYear()}-${padDateNumber(value.getUTCMonth() + 1)}-${padDateNumber(value.getUTCDate())}`;
+}
+
+export function buildCheckoutHourOptions(
+  businessHours: string,
+  dateValue = getCheckoutDateStart(),
+  now = new Date()
+): string[] {
   const { startHour, endHour } = parseBusinessHourRange(businessHours);
-  return Array.from({ length: endHour - startHour + 1 }, (_, index) =>
-    padDateNumber(startHour + index)
+  const currentTime = getBeijingDateTimeParts(now);
+  const earliestHour =
+    isCheckoutDateToday(dateValue, now)
+      ? Math.max(startHour, currentTime.hour + (currentTime.minute > 0 ? 1 : 0))
+      : startHour;
+  return Array.from({ length: Math.max(0, endHour - earliestHour + 1) }, (_, index) =>
+    padDateNumber(earliestHour + index)
   );
 }
 
@@ -48,24 +95,30 @@ export function getDefaultCheckoutHourIndex(hourOptions: string[]): number {
 }
 
 export function formatCheckoutDate(date: Date): string {
-  const year = date.getFullYear();
-  const month = padDateNumber(date.getMonth() + 1);
-  const day = padDateNumber(date.getDate());
-  return `${year}-${month}-${day}`;
+  return formatBeijingDateWithOffset(date, 0);
 }
 
-export function getCheckoutDateStart(): string {
-  return formatCheckoutDate(new Date(Date.now() + DATE_OFFSET_DAYS * MS_PER_DAY));
+export function isCheckoutDateToday(dateValue: string, now = new Date()): boolean {
+  return dateValue === formatCheckoutDate(now);
 }
 
-export function getCheckoutDateEnd(): string {
-  return formatCheckoutDate(new Date(Date.now() + DATE_PICKER_DAYS * MS_PER_DAY));
+export function getCheckoutDateStart(now = new Date()): string {
+  const { hour } = getBeijingDateTimeParts(now);
+  return formatBeijingDateWithOffset(now, hour < SAME_DAY_ORDER_CUTOFF_HOUR ? 0 : 1);
 }
 
-export function buildDefaultExpectTime(businessHours = DEFAULT_BUSINESS_HOURS): string {
-  const hourOptions = buildCheckoutHourOptions(businessHours);
+export function getCheckoutDateEnd(now = new Date()): string {
+  return formatBeijingDateWithOffset(now, DATE_PICKER_DAYS);
+}
+
+export function buildDefaultExpectTime(
+  businessHours = DEFAULT_BUSINESS_HOURS,
+  now = new Date()
+): string {
+  const dateValue = getCheckoutDateStart(now);
+  const hourOptions = buildCheckoutHourOptions(businessHours, dateValue, now);
   const hourValue = hourOptions[getDefaultCheckoutHourIndex(hourOptions)] || padDateNumber(DEFAULT_PICKUP_HOUR);
-  return `${getCheckoutDateStart()} ${hourValue}:${DEFAULT_PICKUP_MINUTE}`;
+  return `${dateValue} ${hourValue}:${DEFAULT_PICKUP_MINUTE}`;
 }
 
 export function buildExpectTime(dateValue: string, hourValue: string, minuteValue: string): string {

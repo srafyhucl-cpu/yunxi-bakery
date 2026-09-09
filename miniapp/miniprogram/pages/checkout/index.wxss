@@ -1,7 +1,12 @@
+/* ==========================================================================
+   结算下单页 (Checkout Page) - 现代自然轻食风格重塑
+   ========================================================================== */
+
 .checkout-page {
   display: flex;
   flex-direction: column;
-  gap: 18rpx;
+  gap: 20rpx;
+  padding-bottom: 220rpx;
 }
 
 .checkout-summary,
@@ -24,21 +29,40 @@
   white-space: nowrap;
 }
 
+/* 配送方式切换 */
+button.delivery-tab,
 .delivery-tab {
   flex: 1;
-  min-height: 88rpx;
-  border-radius: 999rpx;
-  background: #ffffff;
+  width: auto !important;
+  min-width: 0;
+  min-height: 84rpx;
+  border-radius: var(--yunxi-radius-full);
+  background: #FFFFFF;
   color: var(--yunxi-text-secondary);
   border: 1rpx solid var(--yunxi-border);
   font-size: 28rpx;
   font-weight: 700;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: all 0.25s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
+button.delivery-tab.is-active,
 .delivery-tab.is-active {
-  background: linear-gradient(180deg, #6C9A63 0%, #4A7A41 100%);
-  color: #ffffff;
-  border-color: transparent;
+  background: var(--yunxi-brand);
+  color: #FFFFFF;
+  border-color: var(--yunxi-brand);
+  box-shadow: 0 6rpx 16rpx rgba(61, 51, 45, 0.16);
+}
+
+button.delivery-tab:active,
+.delivery-tab:active {
+  opacity: 0.86;
 }
 
 .checkout-notice {
@@ -51,29 +75,38 @@
   background: transparent;
 }
 
-
 .checkout-error {
-  padding: 18rpx 22rpx;
-  color: #c0342b;
-  background: #fff4f0;
-  border: 1rpx solid #f0c1b6;
-  border-radius: 18rpx;
+  padding: 18rpx 24rpx;
+  color: var(--yunxi-deal);
+  background: #FDF1EE;
+  border: 1rpx solid rgba(186, 78, 61, 0.2);
+  border-radius: var(--yunxi-radius-md);
   font-size: 24rpx;
   line-height: 1.45;
 }
 
+/* 地址选择器 */
 .address-picker {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 20rpx;
-  padding: 24rpx;
+  padding: 28rpx;
+  line-height: 1.35;
+  overflow: hidden;
+}
+
+.address-picker:active,
+.benefit-row:active,
+.coupon-option:active,
+.agreement-row:active {
+  background: var(--yunxi-surface-alt);
 }
 
 .address-picker-label {
   display: block;
   margin-bottom: 8rpx;
-  color: var(--yunxi-text-secondary);
+  color: var(--yunxi-text-muted);
   font-size: 24rpx;
 }
 
@@ -84,16 +117,17 @@
 }
 
 .address-picker-action {
-  color: var(--yunxi-accent-deep);
+  color: var(--yunxi-brand);
   font-size: 26rpx;
   font-weight: 800;
 }
 
+/* 表单与时间选择 */
 .form {
   display: flex;
   flex-direction: column;
   gap: 20rpx;
-  padding: 22rpx;
+  padding: 28rpx;
 }
 
 .time-grid {
@@ -110,12 +144,13 @@
 .time-preview {
   display: flex;
   align-items: center;
-  min-height: 88rpx;
+  min-height: 84rpx;
   padding: 0 24rpx;
   background: var(--yunxi-surface-alt);
-  border: none;
-  border-radius: 18rpx;
+  border: 1rpx solid var(--yunxi-border);
+  border-radius: var(--yunxi-radius-md);
   font-size: 26rpx;
+  color: var(--yunxi-text-primary);
 }
 
 .time-preview {
@@ -129,12 +164,13 @@
 input,
 textarea {
   width: 100%;
-  min-height: 88rpx;
+  min-height: 84rpx;
   padding: 0 24rpx;
   background: var(--yunxi-surface-alt);
-  border: none;
-  border-radius: 18rpx;
+  border: 1rpx solid var(--yunxi-border);
+  border-radius: var(--yunxi-radius-md);
   font-size: 28rpx;
+  color: var(--yunxi-text-primary);
 }
 
 textarea {
@@ -142,6 +178,7 @@ textarea {
   padding-top: 24rpx;
 }
 
+/* 协议勾选 */
 .agreement-row {
   display: flex;
   align-items: flex-start;
@@ -153,20 +190,21 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36rpx;
-  height: 36rpx;
+  width: 38rpx;
+  height: 38rpx;
   margin-top: 2rpx;
-  color: #ffffff;
-  background: #ffffff;
-  border: 2rpx solid rgba(122, 90, 58, 0.22);
+  color: #FFFFFF;
+  background: #FFFFFF;
+  border: 2rpx solid var(--yunxi-border-medium);
   border-radius: 10rpx;
   font-size: 26rpx;
   font-weight: 800;
+  transition: all 0.2s ease;
 }
 
 .agreement-check.is-checked {
-  background: var(--yunxi-accent-deep);
-  border-color: var(--yunxi-accent-deep);
+  background: var(--yunxi-brand);
+  border-color: var(--yunxi-brand);
 }
 
 .agreement-copy {
@@ -182,12 +220,13 @@ textarea {
   display: inline-flex;
   align-items: center;
   min-height: 88rpx;
-  color: var(--yunxi-accent-deep);
-  font-weight: 700;
+  color: var(--yunxi-brand);
+  font-weight: 800;
 }
 
+/* 底部结算悬浮栏 */
 .checkout-footer {
-  position: absolute;
+  position: fixed;
   right: 0;
   bottom: 0;
   left: 0;
@@ -196,9 +235,10 @@ textarea {
   align-items: center;
   gap: 24rpx;
   padding: 18rpx 28rpx calc(env(safe-area-inset-bottom) + 18rpx);
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: none;
   border-top: 1rpx solid var(--yunxi-border);
-  box-shadow: 0 -8rpx 24rpx rgba(44, 37, 32, 0.06);
+  box-shadow: 0 -8rpx 28rpx rgba(35, 50, 42, 0.05);
 }
 
 .checkout-footer__total {
@@ -211,9 +251,10 @@ textarea {
 
 .checkout-footer__amount {
   color: var(--yunxi-price);
-  font-size: 38rpx;
+  font-size: 40rpx;
   font-weight: 900;
   white-space: nowrap;
+  letter-spacing: 0;
 }
 
 .checkout-footer__submit {
@@ -221,115 +262,364 @@ textarea {
   min-width: 250rpx;
 }
 
+/* 权益与金额明细面板 */
 .benefit-panel,
 .amount-panel {
-  margin-top: 24rpx;
-  padding: 8rpx 24rpx;
+  margin-top: 16rpx;
+  padding: 8rpx 28rpx;
+  border-radius: var(--yunxi-radius-lg);
+  background: #FFFFFF;
+  border: 1rpx solid var(--yunxi-border);
+  box-shadow: var(--yunxi-card-shadow);
 }
+
 .benefit-row {
   display: flex;
   align-items: center;
   padding: 24rpx 0;
-  border-bottom: 1rpx solid #f0ece6;
+  border-bottom: 1rpx solid var(--yunxi-border);
   gap: 16rpx;
+  line-height: 1.35;
+  overflow: hidden;
 }
+
 .benefit-label {
   font-size: 28rpx;
-  color: #3A2B20;
+  font-weight: 700;
+  color: var(--yunxi-text-primary);
 }
+
 .benefit-value {
   flex: 1;
   text-align: right;
   font-size: 26rpx;
-  color: #8A7660;
+  color: var(--yunxi-text-secondary);
 }
+
 .benefit-arrow {
   font-size: 22rpx;
-  color: #BCAF96;
+  color: var(--yunxi-text-subtle);
 }
+
 .coupon-panel {
   padding: 8rpx 0 16rpx;
 }
+
 .coupon-option {
   display: flex;
   align-items: center;
   gap: 16rpx;
-  padding: 18rpx 12rpx;
-  border-radius: 12rpx;
-  border: 2rpx solid #efeae4;
+  padding: 20rpx 16rpx;
+  border-radius: var(--yunxi-radius-md);
+  border: 2rpx solid var(--yunxi-border);
   margin-top: 12rpx;
+  line-height: 1.35;
+  overflow: hidden;
+  transition: all 0.2s ease;
 }
+
 .coupon-option.selected {
-  border-color: #6c9a63;
-  background: #f0f7ee;
+  border-color: var(--yunxi-brand);
+  background: var(--yunxi-brand-soft);
 }
+
 .coupon-option.disabled {
   opacity: 0.45;
 }
+
 .coupon-option-value {
-  font-size: 30rpx;
-  font-weight: 700;
-  color: #c25b4e;
+  font-size: 32rpx;
+  font-weight: 900;
+  color: var(--yunxi-deal);
 }
+
 .coupon-applied {
   margin-left: auto;
-  font-size: 22rpx;
-  color: #6c9a63;
+  font-size: 24rpx;
+  font-weight: 700;
+  color: var(--yunxi-brand);
 }
+
 .benefit-note {
   display: block;
   padding: 8rpx 0 16rpx;
   font-size: 22rpx;
-  color: #BCAF96;
+  color: var(--yunxi-text-muted);
 }
+
 .coupon-option-title {
-  font-size: 24rpx;
-  color: #8A7660;
+  font-size: 26rpx;
+  font-weight: 700;
+  color: var(--yunxi-text-primary);
 }
+
 .coupon-empty {
-  padding: 20rpx 0;
+  padding: 24rpx 0;
   font-size: 24rpx;
-  color: #BCAF96;
+  color: var(--yunxi-text-muted);
 }
+
 .amount-row {
   display: flex;
   justify-content: space-between;
   padding: 16rpx 0;
   font-size: 26rpx;
-  color: #8A7660;
+  color: var(--yunxi-text-secondary);
 }
+
 .amount-row.amount-total {
-  font-size: 30rpx;
+  font-size: 32rpx;
   font-weight: 900;
   color: var(--yunxi-price);
-  border-top: 1rpx solid #f0ece6;
+  border-top: 1rpx solid var(--yunxi-border);
   margin-top: 8rpx;
+  padding-top: 20rpx;
 }
+
 .amount-note {
   display: block;
   padding-bottom: 16rpx;
   font-size: 22rpx;
-  color: #BCAF96;
+  color: var(--yunxi-text-muted);
 }
+
+.amount-warning {
+  display: block;
+  padding: 0 0 16rpx;
+  color: var(--yunxi-deal);
+  font-size: 22rpx;
+  line-height: 1.45;
+}
+
+/* 待支付提示 */
 .pending-bar {
-  margin-top: 24rpx;
-  padding: 20rpx 24rpx;
-  border-radius: 12rpx;
-  background: #fdf3e3;
+  margin-top: 20rpx;
+  padding: 20rpx 28rpx;
+  border-radius: var(--yunxi-radius-md);
+  background: var(--yunxi-gold-soft);
+  border: 1rpx solid rgba(194, 155, 99, 0.25);
   display: flex;
   align-items: center;
   justify-content: space-between;
   font-size: 26rpx;
-  color: #8a5a1e;
+  color: #7A5524;
 }
+
 .pending-actions {
   display: flex;
   gap: 24rpx;
 }
+
 .pending-action {
-  color: #6c9a63;
-  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8rpx 16rpx;
+  min-height: 52rpx;
+  color: var(--yunxi-brand);
+  font-weight: 800;
 }
+
 .pending-action.danger {
-  color: #c25b4e;
+  color: var(--yunxi-deal);
+}
+
+.pending-action:active {
+  opacity: 0.65;
+}
+
+.agreement-link:active {
+  opacity: 0.65;
+}
+
+/* 结算页按履约决策排序，优惠信息降为次要信息 */
+.checkout-page {
+  gap: 12rpx;
+  padding-top: 16rpx;
+}
+
+.checkout-summary {
+  padding: 18rpx 20rpx;
+  border-radius: var(--yunxi-radius-md);
+  box-shadow: none;
+}
+
+.checkout-summary__eyebrow,
+.checkout-summary__hint {
+  display: block;
+}
+
+.checkout-summary__eyebrow {
+  color: var(--yunxi-text-primary);
+  font-size: 28rpx;
+  font-weight: 800;
+}
+
+.checkout-summary__hint {
+  margin-top: 4rpx;
+  color: var(--yunxi-text-muted);
+  font-size: 22rpx;
+}
+
+.checkout-total {
+  font-size: 32rpx;
+}
+
+.checkout-items {
+  padding: 0 20rpx;
+  background: #FFFFFF;
+  border: 1rpx solid var(--yunxi-border);
+  border-radius: var(--yunxi-radius-md);
+}
+
+.checkout-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  min-height: 72rpx;
+  border-bottom: 1rpx solid var(--yunxi-border);
+}
+
+.checkout-item:last-child {
+  border-bottom: 0;
+}
+
+.checkout-item__copy {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4rpx;
+}
+
+.checkout-item__title {
+  overflow: hidden;
+  color: var(--yunxi-text-primary);
+  font-size: 24rpx;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.checkout-item__meta {
+  color: var(--yunxi-text-muted);
+  font-size: 21rpx;
+}
+
+.checkout-item__price {
+  flex: 0 0 auto;
+  color: var(--yunxi-text-primary);
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.delivery-tabs {
+  gap: 8rpx;
+  padding: 4rpx;
+  background: var(--yunxi-surface-alt);
+  border-radius: var(--yunxi-radius-sm);
+}
+
+button.delivery-tab,
+.delivery-tab {
+  min-width: 0;
+  min-height: 92rpx;
+  border-radius: 6rpx;
+  border-color: transparent;
+  font-size: 25rpx;
+  line-height: 1.25;
+}
+
+button.delivery-tab.is-active,
+.delivery-tab.is-active {
+  box-shadow: none;
+}
+
+.checkout-notice {
+  gap: 5rpx;
+  padding: 12rpx 4rpx 14rpx;
+  border-bottom: 1rpx solid var(--yunxi-border);
+}
+
+.address-picker,
+.form,
+.benefit-panel,
+.amount-panel,
+.agreement-row {
+  border-radius: var(--yunxi-radius-md);
+  box-shadow: none;
+}
+
+.address-picker {
+  padding: 20rpx;
+  background: #FFFFFF;
+  border: 1rpx solid var(--yunxi-border);
+}
+
+.form {
+  gap: 12rpx;
+  padding: 20rpx;
+  background: #FFFFFF;
+  border: 1rpx solid var(--yunxi-border);
+}
+
+input,
+textarea,
+.time-picker {
+  border-radius: 6rpx;
+}
+
+.time-grid {
+  gap: 8rpx;
+}
+
+.time-picker {
+  padding: 0 14rpx;
+  font-size: 24rpx;
+}
+
+.benefit-panel,
+.amount-panel {
+  margin-top: 0;
+  padding: 4rpx 20rpx;
+  border-radius: var(--yunxi-radius-md);
+  box-shadow: none;
+}
+
+.benefit-row {
+  padding: 18rpx 0;
+}
+
+.amount-row {
+  padding: 13rpx 0;
+}
+
+.amount-row.amount-total {
+  padding-top: 16rpx;
+}
+
+.agreement-row {
+  padding: 16rpx 4rpx;
+  border: 0;
+  background: transparent;
+  line-height: 1.5;
+}
+
+.checkout-footer {
+  gap: 16rpx;
+  padding: 12rpx 20rpx calc(env(safe-area-inset-bottom) + 12rpx);
+  background: #FFFFFF;
+  backdrop-filter: none;
+  box-shadow: 0 -4rpx 16rpx rgba(61, 51, 45, 0.06);
+}
+
+.checkout-footer__amount {
+  font-size: 34rpx;
+}
+
+.checkout-footer__submit {
+  flex-basis: 220rpx;
+  min-width: 220rpx;
+  border-radius: 6rpx;
 }

@@ -11,6 +11,13 @@ export const MOCK_PAGE_CONFIGS: Record<string, ShopPageConfig> = {
     blocks: [
       { id: "home-search", type: "searchBar", enabled: true, props: { placeholder: "搜索商品" } },
       {
+        id: "home-featured",
+        type: "productShelf",
+        enabled: true,
+        props: { title: "今日推荐", subtitle: "提前预订，新鲜制作", source: "manual", productIds: ["p_001", "p_002"] }
+      },
+      { id: "home-notice", type: "noticeBar", enabled: true, props: { text: SHOP_CONFIG.defaultNotice } },
+      {
         id: "home-hero",
         type: "heroCarousel",
         enabled: true,
@@ -19,30 +26,30 @@ export const MOCK_PAGE_CONFIGS: Record<string, ShopPageConfig> = {
             {
               id: "hero-1",
               imageUrl: "",
-              title: "匠心与艺术的结晶",
-              subtitle: "每日现制 / 手作奶油 / 礼赠场景",
-              eyebrow: "YUNXI BAKE",
-              badges: ["当日现做", "精选奶油", "生日礼赠"],
+              title: "北京单店，12年手作烘焙",
+              subtitle: "蛋糕建议提前一天预订，当天订单请先咨询客服",
+              eyebrow: "芸熙烘焙",
+              badges: ["门店自提", "北京闪送", "新鲜制作"],
               linkType: "product",
               linkTarget: "p_001"
             },
             {
               id: "hero-2",
               imageUrl: "",
-              title: "主推上新",
-              subtitle: "生日 / 节日 / 定制",
-              eyebrow: "PROMOTION",
-              badges: ["新品主推", "限时预订", "到店自提"],
+              title: "生日、节日与定制蛋糕",
+              subtitle: "自提价公开，闪送运费按收货地址下单前确认",
+              eyebrow: "预订服务",
+              badges: ["当日咨询", "次日履约", "按距计费"],
               linkType: "product",
               linkTarget: "p_002"
             },
             {
               id: "hero-3",
               imageUrl: "",
-              title: "门店宣传位",
-              subtitle: "支持多图主推",
-              eyebrow: "CAMPAIGN",
-              badges: ["多图轮播", "后台装修", "品牌宣传"],
+              title: "每日 09:00-19:30 发货",
+              subtitle: "当天订单通常 17:00 截止，制作与配送以客服确认为准",
+              eyebrow: "履约时间",
+              badges: ["北京范围", "闪送配送", "到店自提"],
               linkType: "none",
               linkTarget: ""
             }
@@ -51,7 +58,6 @@ export const MOCK_PAGE_CONFIGS: Record<string, ShopPageConfig> = {
           intervalMs: 3500
         }
       },
-      { id: "home-notice", type: "noticeBar", enabled: true, props: { text: SHOP_CONFIG.defaultNotice } },
       {
         id: "home-categories",
         type: "categoryGrid",
@@ -86,12 +92,6 @@ export const MOCK_PAGE_CONFIGS: Record<string, ShopPageConfig> = {
             { id: "delivery-notice", title: "配送订购须知", actionText: "点击查看", linkType: "none", linkTarget: "" }
           ]
         }
-      },
-      {
-        id: "home-featured",
-        type: "productShelf",
-        enabled: true,
-        props: { title: "今日推荐", subtitle: "按需预订，新鲜制作", source: "manual", productIds: ["p_001", "p_002"] }
       },
       {
         id: "home-member",

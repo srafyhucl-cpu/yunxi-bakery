@@ -1,4 +1,4 @@
-import { addCartItem } from "../../utils/cart";
+import { addCartItem, getCartItems } from "../../utils/cart";
 import { getMiniappLayoutMetrics } from "../../utils/layout";
 import { formatFen } from "../../utils/money";
 import {
@@ -185,11 +185,28 @@ Page({
     }
   },
   increaseQty() {
+    const product = this.data.product;
+    if (!product) {
+      return;
+    }
+    const currentQuantity = getCartItems()
+      .filter((item) => item.productId === product.id)
+      .reduce((sum, item) => sum + item.quantity, 0);
+    const remainingQuantity = Math.max(0, product.stock - currentQuantity);
+    if (remainingQuantity <= 0 || this.data.purchaseQty >= remainingQuantity) {
+      wx.showToast({ title: "库存仅余 " + product.stock + " 件", icon: "none" });
+      return;
+    }
     this.setData({ purchaseQty: this.data.purchaseQty + 1 });
   },
   goChat() {
     wx.switchTab({
       url: ROUTES.chat
+    });
+  },
+  goCart() {
+    wx.switchTab({
+      url: ROUTES.cart
     });
   },
   goBack() {
@@ -211,12 +228,20 @@ Page({
     }
     this.setData({ addingToCart: true });
     try {
+      const currentQuantity = getCartItems()
+        .filter((item) => item.productId === product.id)
+        .reduce((sum, item) => sum + item.quantity, 0);
+      if (currentQuantity + this.data.purchaseQty > product.stock) {
+        wx.showToast({ title: "库存仅余 " + product.stock + " 件", icon: "none" });
+        return false;
+      }
       addCartItem({
         productId: product.id,
         title: product.title,
         imageUrl: product.imageUrl,
         priceFen: product.priceFen,
-        quantity: this.data.purchaseQty
+        quantity: this.data.purchaseQty,
+        stock: product.stock
       });
       wx.showToast({
         title: "已加入购物车",

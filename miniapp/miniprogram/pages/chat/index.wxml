@@ -9,7 +9,7 @@
       <view wx:if="{{errorMessage}}" class="error-text">{{errorMessage}}</view>
 
       <view wx:if="{{!canUseChat}}" class="empty-login">
-        <view class="empty-login__icon">💬</view>
+        <view class="empty-login__icon">客服</view>
         <text class="empty-login__title">客服连接已断开</text>
         <text class="muted">请在个人中心登录后与客服通话</text>
         <button class="primary-button empty-login__action" bindtap="goProfile">去登录</button>
@@ -24,7 +24,7 @@
           class="message-row {{item.role}}"
         >
           <!-- 助手头像（左侧） -->
-          <view wx:if="{{item.role === 'assistant'}}" class="message-avatar assistant-avatar">👩‍🍳</view>
+          <view wx:if="{{item.role === 'assistant'}}" class="message-avatar assistant-avatar">芸熙</view>
 
           <!-- 消息气泡 -->
           <view class="message-bubble {{item.role}}">
@@ -44,7 +44,7 @@
           id="typing"
           class="message-row assistant typing-row"
         >
-          <view class="message-avatar assistant-avatar">👩‍🍳</view>
+          <view class="message-avatar assistant-avatar">芸熙</view>
           <view class="message-bubble assistant typing-bubble">
             <view class="typing-indicator">
               <view class="typing-dot"></view>
@@ -66,22 +66,22 @@
           class="quick-question-pill"
           data-content="想了解配送范围、配送费用和可配送时间"
           bindtap="sendQuickQuestion"
-        >配送政策 🚚</view>
+        >配送政策</view>
         <view
           class="quick-question-pill"
           data-content="想了解蛋糕订购流程和需要提前多久预订"
           bindtap="sendQuickQuestion"
-        >订购流程 🎂</view>
+        >订购流程</view>
         <view
           class="quick-question-pill"
           data-content="想咨询售后服务、临时调整或订单问题"
           bindtap="sendQuickQuestion"
-        >售后服务 ☎️</view>
+        >售后服务</view>
         <view
           class="quick-question-pill"
           data-content="门店的营业时间和具体地址在哪里"
           bindtap="sendQuickQuestion"
-        >营业地址 📍</view>
+        >营业地址</view>
       </view>
     </scroll-view>
 

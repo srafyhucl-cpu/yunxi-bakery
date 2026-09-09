@@ -113,7 +113,10 @@ async function fetchProducts(options: ListProductsOptions = {}): Promise<Catalog
       path: buildProductsPath(options)
     });
     if (isWrappedCatalogProducts(response)) {
-      return normalizeRemoteProducts(response.data);
+      const products = normalizeRemoteProducts(response.data);
+      if (products.length > 0 || !IS_USING_LOCAL_API) {
+        return products;
+      }
     }
   } catch (error) {
     if (!IS_USING_LOCAL_API) {

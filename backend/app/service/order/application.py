@@ -29,6 +29,7 @@ from app.service.order.timeline import OrderTimelineService
 from app.service.shop_operations import ShopOperationsService
 
 if TYPE_CHECKING:
+    from app.service.delivery.application import DeliveryApplicationService
     from app.service.stored_value import StoredValueService
 
 
@@ -49,6 +50,7 @@ class OrderApplicationService:
         config_repo: ConfigRepo,
         event_repo: OrderEventRepo | None = None,
         stored_value_service: StoredValueService | None = None,
+        delivery_service: DeliveryApplicationService | None = None,
     ) -> None:
         self._order_repo = order_repo
         self._serialization_service = OrderSerializationService()
@@ -68,6 +70,7 @@ class OrderApplicationService:
             inventory_service=inventory_service,
             schedule_service=schedule_service,
             timeline_service=self._timeline_service,
+            delivery_service=delivery_service,
         )
         self._payment_service = OrderPaymentService(payment_service)
         self._cancellation_service = OrderCancellationService(

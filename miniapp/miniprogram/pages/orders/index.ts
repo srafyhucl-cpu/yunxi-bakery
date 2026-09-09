@@ -11,8 +11,8 @@ import {
 import { ROUTES } from "../../constants/routes";
 import { getMiniappSession } from "../../services/auth";
 import { getMiniappLayoutMetrics } from "../../utils/layout";
-import { formatFen } from "../../utils/money";
 import { goBackOrHome } from "../../utils/navigation";
+import { buildOrderAmountView } from "../../utils/order-summary";
 import { payOrderById } from "../../utils/order-payment";
 import { buildMiniappSessionView, isMiniappLoggedIn } from "../../utils/session";
 
@@ -40,11 +40,12 @@ function paymentStatusText(status?: string): string {
 }
 
 function buildOrderView(order: OrderSummary): OrderView {
+  const amountView = buildOrderAmountView(order);
   return {
     ...order,
     statusText: statusText(order.status),
     paymentStatusText: paymentStatusText(order.paymentStatus),
-    totalText: formatFen(order.totalFen),
+    totalText: amountView.totalText,
     canPay: canPayOrder(order),
     canCancel: canUserCancelOrder(order),
   };
@@ -226,7 +227,7 @@ Page({
         title: "取消订单",
         content: "确认取消这笔订单吗？取消后会释放已预留的商品库存。",
         confirmText: "取消订单",
-        confirmColor: "#3f7a42",
+        confirmColor: "#3D332D",
         success: (modalResult) => resolve(modalResult.confirm),
         fail: () => resolve(false),
       });

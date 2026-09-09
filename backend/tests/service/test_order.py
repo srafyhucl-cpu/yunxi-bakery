@@ -54,7 +54,7 @@ async def test_admin_order_status_chain_updates_miniapp_reads(
             ],
             "receiverName": "状态测试",
             "receiverPhone": "18800000001",
-            "deliveryType": "delivery",
+            "deliveryType": "pickup",
             "deliveryAddress": "状态测试地址",
             "expectTime": "2026-06-18 19:00",
             "remark": "状态链自动化测试",
@@ -1172,6 +1172,87 @@ async def test_create_order_rejects_time_outside_business_hours(
                 "expectTime": "2026-06-18 08:30",
             },
             user_id="closed-time-user",
+        )
+
+
+async def test_create_order_rejects_past_expect_time(
+    service: OrderApplicationService,
+) -> None:
+    """预约时间不能早于当前北京时间。"""
+    with pytest.raises(ValueError, match="预约时间不能早于当前时间"):
+        await service.create_order(
+            {
+                "items": [
+                    {
+                        "productId": "p_past_time",
+                        "title": "过去时间测试蛋糕",
+                        "priceFen": 19800,
+                        "quantity": 1,
+                    }
+                ],
+                "expectTime": "2026-06-17 11:30",
+            },
+            user_id="past-time-user",
+        )
+
+
+async def test_create_order_allows_same_day_before_cutoff(
+    service: OrderApplicationService,
+) -> None:
+    """当天 17:00 前仍可提交待客服确认的预约订单。"""
+    created = await service.create_order(
+        {
+            "items": [
+                {
+                    "productId": "p_same_day",
+                    "title": "当天预约测试蛋糕",
+                    "priceFen": 19800,
+                    "quantity": 1,
+                }
+            ],
+            "expectTime": "2026-06-17 18:00",
+        },
+        user_id="same-day-user",
+    )
+
+    assert created["status"] == "pending"
+
+
+async def test_create_order_rejects_same_day_after_cutoff(
+    db: aiosqlite.Connection,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """当天截止后，普通小程序订单不能绕过日期选择器。"""
+    from app.service.order import schedule
+
+    monkeypatch.setattr(
+        schedule,
+        "_get_current_beijing_time",
+        lambda: datetime(2026, 6, 17, 17, 0),
+    )
+    service = OrderApplicationService(
+        order_repo=OrderRepo(db),
+        event_repo=OrderEventRepo(db),
+        session_repo=SessionRepo(db),
+        product_repo=YouzanProductRepo(db),
+        inventory_repo=YouzanInventoryRepo(db),
+        config_repo=ConfigRepo(db),
+    )
+
+    with pytest.raises(ValueError, match="当天订单已于 17:00 截止"):
+        await service.create_order(
+            {
+                "items": [
+                    {
+                        "productId": "p_after_cutoff",
+                        "title": "截止后测试蛋糕",
+                        "priceFen": 19800,
+                        "quantity": 1,
+                    }
+                ],
+                "expectTime": "2026-06-17 18:00",
+            },
+            user_id="after-cutoff-user",
         )
 
 

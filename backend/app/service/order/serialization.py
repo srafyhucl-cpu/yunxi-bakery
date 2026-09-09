@@ -24,6 +24,13 @@ class OrderSerializationService:
             "id": order.id,
             "status": status,
             "totalFen": yuan_to_fen(order.total_amount),
+            "goodsTotalFen": int(
+                delivery.get("goodsTotalFen", yuan_to_fen(order.total_amount))
+            ),
+            "deliveryFeeFen": int(delivery.get("deliveryFeeFen", 0)),
+            "payableFen": int(
+                delivery.get("payableFen", yuan_to_fen(order.total_amount))
+            ),
             "createdAt": order.created_at,
             "updatedAt": order.updated_at,
             "itemTitle": str(first_item.get("title", "")),
@@ -32,6 +39,8 @@ class OrderSerializationService:
             "receiverName": str(delivery.get("receiverName", "")),
             "receiverPhone": str(delivery.get("receiverPhone", "")),
             "deliveryType": str(delivery.get("deliveryType", "")),
+            "fulfillmentMethod": str(delivery.get("fulfillmentMethod", "pickup")),
+            "deliveryQuoteId": str(delivery.get("deliveryQuoteId", "")),
             "deliveryAddress": str(delivery.get("deliveryAddress", "")),
             "expectTime": str(delivery.get("expectTime", "")),
             "remark": order.remark,

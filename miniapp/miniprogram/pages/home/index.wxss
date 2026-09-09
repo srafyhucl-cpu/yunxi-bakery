@@ -1,48 +1,52 @@
+/* ==========================================================================
+   首页 (Home Page) - 现代自然轻食风格重塑
+   ========================================================================== */
+
 .home-page {
   display: flex;
   flex-direction: column;
-  gap: 14rpx;
-  padding-top: 18rpx;
+  gap: 20rpx;
+  padding-top: 16rpx;
   padding-bottom: var(--yunxi-page-bottom-space);
 }
 
+/* 公告提示条 */
 .notice-bar {
   display: flex;
   align-items: center;
   gap: 12rpx;
-  min-height: 58rpx;
-  margin-top: -4rpx;
-  padding: 0 20rpx;
-  border-radius: 999rpx;
-  background: rgba(247, 238, 220, 0.88);
-  border-color: rgba(122, 90, 58, 0.1);
-  box-shadow: none;
+  min-height: 64rpx;
+  padding: 0 24rpx;
+  border-radius: var(--yunxi-radius-full);
+  background: #ffffff;
+  border: 1rpx solid var(--yunxi-border);
+  box-shadow: var(--yunxi-card-shadow);
 }
 
 .notice-icon {
-  color: var(--yunxi-accent-deep);
-  font-weight: 700;
-  font-size: 28rpx;
+  color: var(--yunxi-gold);
+  font-weight: 800;
+  font-size: 26rpx;
 }
 
 .notice-text {
   flex: 1;
-  font-size: 22rpx;
-  line-height: 1.5;
-  color: #8A7660;
+  font-size: 24rpx;
+  line-height: 1.4;
+  color: var(--yunxi-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
+/* Hero 品牌大轮播 */
 .home-hero {
   position: relative;
-  height: 330rpx;
+  height: 360rpx;
   overflow: hidden;
-  border-radius: 40rpx;
-  background:
-    radial-gradient(circle at 82% 20%, rgba(255, 255, 255, 0.86), transparent 20%),
-    radial-gradient(circle at 96% 92%, rgba(201, 165, 106, 0.25), transparent 30%),
-    linear-gradient(112deg, #4A2F23 0%, #8A5A2E 55%, #F2E7D2 100%);
-  border: 0;
-  box-shadow: 0 28rpx 62rpx rgba(201, 165, 106, 0.18);
+  border-radius: var(--yunxi-radius-lg);
+  background: var(--yunxi-brand);
+  box-shadow: 0 16rpx 40rpx rgba(61, 51, 45, 0.12);
 }
 
 .home-hero__swiper,
@@ -60,21 +64,19 @@
   overflow: hidden;
 }
 
+.home-hero__slide:active {
+  transform: scale(0.99);
+}
+
 .home-hero__image {
-  border-radius: 38rpx;
+  border-radius: var(--yunxi-radius-lg);
 }
 
 .home-hero__slide::after {
   content: "";
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  top: 0;
-  height: auto;
-  background:
-    linear-gradient(90deg, rgba(58, 43, 32, 0.46), rgba(74, 54, 36, 0.18) 48%, transparent),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(58, 43, 32, 0.08));
+  inset: 0;
+  background: rgba(43, 35, 31, 0.48);
   pointer-events: none;
 }
 
@@ -82,50 +84,61 @@
   position: absolute;
   left: 0;
   top: 0;
+  bottom: 0;
   z-index: 2;
   display: flex;
   flex-direction: column;
+  justify-content: center;
   gap: 10rpx;
-  width: 64%;
-  padding: 38rpx 0 28rpx 34rpx;
-  color: #fff9f0;
+  width: 70%;
+  padding: 32rpx 0 32rpx 36rpx;
+  color: #FFFFFF;
 }
 
 .home-hero__eyebrow {
-  font-size: 18rpx;
-  letter-spacing: 0.18em;
-  opacity: 0.78;
+  font-size: 20rpx;
+  letter-spacing: 0.16em;
+  color: var(--yunxi-gold-light);
+  font-weight: 700;
+  text-transform: uppercase;
 }
 
 .home-hero__title {
-  font-size: 42rpx;
-  line-height: 1.18;
+  font-size: 40rpx;
+  line-height: 1.2;
   font-weight: 900;
+  color: #FFFFFF;
+  text-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.2);
 }
 
 .home-hero__desc {
-  font-size: 22rpx;
-  line-height: 1.5;
-  color: rgba(255, 249, 239, 0.82);
+  font-size: 24rpx;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.85);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .home-hero__badges {
   display: flex;
   flex-wrap: wrap;
-  gap: 8rpx;
-  margin-top: 2rpx;
+  gap: 10rpx;
+  margin-top: 4rpx;
 }
 
 .home-hero__badge {
   display: inline-flex;
   align-items: center;
-  min-height: 34rpx;
-  padding: 0 12rpx;
-  color: #5C3D24;
-  background: rgba(250, 243, 226, 0.92);
-  border: 1rpx solid rgba(255, 255, 255, 0.24);
-  border-radius: 999rpx;
-  font-size: 18rpx;
+  min-height: 36rpx;
+  padding: 0 14rpx;
+  color: #FFFFFF;
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: none;
+  border: 1rpx solid rgba(255, 255, 255, 0.25);
+  border-radius: var(--yunxi-radius-full);
+  font-size: 20rpx;
   font-weight: 700;
 }
 
@@ -133,43 +146,44 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 120rpx;
-  min-height: 88rpx;
-  margin-top: 2rpx;
-  color: #5C3D24;
-  background: linear-gradient(180deg, #ffffff, #F3E3C2);
-  border-radius: 999rpx;
-  font-size: 20rpx;
+  width: 136rpx;
+  height: 52rpx;
+  min-height: 52rpx;
+  margin-top: 8rpx;
+  color: var(--yunxi-brand);
+  background: #FFFFFF;
+  border-radius: var(--yunxi-radius-full);
+  font-size: 22rpx;
   font-weight: 800;
-  box-shadow: 0 10rpx 22rpx rgba(74, 54, 36, 0.16);
+  box-shadow: 0 6rpx 18rpx rgba(0, 0, 0, 0.12);
 }
 
-
-
+/* 快捷金刚区入口 */
 .quick-link-grid {
   display: flex;
-  gap: 10rpx;
-  margin-top: -2rpx;
+  gap: 16rpx;
 }
 
 .quick-link-card {
   display: flex;
   flex: 1;
   align-items: center;
-  gap: 10rpx;
+  gap: 12rpx;
   min-width: 0;
-  min-height: 88rpx;
-  padding: 10rpx 14rpx;
-  border-color: rgba(44, 37, 32, 0.1);
-  border-radius: 999rpx;
-  background: transparent;
+  min-height: 96rpx;
+  padding: 12rpx 18rpx;
+  background: #FFFFFF;
+  border: 1rpx solid var(--yunxi-border);
+  border-radius: var(--yunxi-radius-md);
+  box-shadow: var(--yunxi-card-shadow);
 }
 
 .quick-link-card__icon {
-  width: 42rpx;
-  height: 42rpx;
-  border-radius: 999rpx;
-  font-size: 12rpx;
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  font-size: 22rpx;
+  flex-shrink: 0;
 }
 
 .quick-link-card__copy {
@@ -177,41 +191,44 @@
   flex: 1;
   min-width: 0;
   flex-direction: column;
-  gap: 6rpx;
+  gap: 4rpx;
 }
 
 .quick-link-card__title {
   color: var(--yunxi-text-primary);
-  font-size: 22rpx;
+  font-size: 24rpx;
   font-weight: 800;
 }
 
 .quick-link-card__subtitle {
-  color: var(--yunxi-text-secondary);
-  font-size: 18rpx;
+  color: var(--yunxi-text-muted);
+  font-size: 20rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .quick-link-card__arrow {
   display: flex;
-  color: rgba(169, 122, 65, 0.62);
-  font-size: 24rpx;
-  line-height: 1;
+  color: var(--yunxi-text-subtle);
+  font-size: 26rpx;
+  font-weight: 700;
 }
 
+/* 会员尊享卡片 Banner */
 .member-promo {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 18rpx;
-  min-height: 138rpx;
-  padding: 18rpx 20rpx 18rpx 24rpx;
+  gap: 20rpx;
+  min-height: 140rpx;
+  padding: 24rpx 28rpx;
   overflow: hidden;
-  border-radius: 32rpx;
-  background:
-    radial-gradient(circle at 84% 12%, rgba(255, 255, 255, 0.78), transparent 24%),
-    linear-gradient(135deg, rgba(92, 61, 36, 0.96), rgba(138, 90, 46, 0.9));
-  color: #ffffff;
-  box-shadow: 0 16rpx 40rpx rgba(122, 90, 58, 0.22);
+  border-radius: var(--yunxi-radius-lg);
+  background: var(--yunxi-brand);
+  color: #FFFFFF;
+  border: 1rpx solid rgba(194, 155, 99, 0.3);
+  box-shadow: 0 16rpx 36rpx rgba(33, 56, 47, 0.16);
 }
 
 .member-promo__mark {
@@ -219,13 +236,13 @@
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  width: 72rpx;
-  height: 72rpx;
-  color: #5C3D24;
-  background: linear-gradient(135deg, #ffffff, #F3E3C2);
-  border-radius: 24rpx;
-  box-shadow: 0 12rpx 28rpx rgba(74, 54, 36, 0.2);
-  font-size: 34rpx;
+  width: 76rpx;
+  height: 76rpx;
+  color: var(--yunxi-brand);
+  background: var(--yunxi-gold-light);
+  border-radius: 50%;
+  box-shadow: 0 8rpx 20rpx rgba(194, 155, 99, 0.25);
+  font-size: 36rpx;
   font-weight: 900;
 }
 
@@ -234,18 +251,20 @@
   flex: 1;
   min-width: 0;
   flex-direction: column;
-  gap: 8rpx;
+  gap: 6rpx;
 }
 
 .member-promo__kicker {
-  font-size: 18rpx;
-  letter-spacing: 0.16em;
-  color: rgba(255, 255, 255, 0.76);
+  font-size: 20rpx;
+  letter-spacing: 0.12em;
+  color: var(--yunxi-gold-light);
+  font-weight: 700;
 }
 
 .member-promo__title {
-  font-size: 31rpx;
+  font-size: 30rpx;
   font-weight: 800;
+  color: #FFFFFF;
 }
 
 .member-promo__subtitle {
@@ -256,28 +275,36 @@
 .member-promo__action {
   flex: 0 0 auto;
   min-width: 140rpx;
-  padding: 16rpx 20rpx;
-  color: #5C3D24;
-  background: linear-gradient(180deg, #ffffff, #F3E3C2);
-  border-radius: 999rpx;
+  padding: 14rpx 24rpx;
+  color: #1A2E26;
+  background: var(--yunxi-gold-light);
+  border-radius: var(--yunxi-radius-full);
   text-align: center;
   font-size: 22rpx;
   font-weight: 800;
-  box-shadow: 0 10rpx 22rpx rgba(74, 54, 36, 0.16);
+  box-shadow: 0 8rpx 18rpx rgba(0, 0, 0, 0.15);
 }
 
+/* 服务公告列表 */
 .service-notices {
-  padding: 2rpx 22rpx;
-  border-radius: 22rpx;
-  background: transparent;
+  padding: 4rpx 24rpx;
+  border-radius: var(--yunxi-radius-md);
+  background: #FFFFFF;
+  border: 1rpx solid var(--yunxi-border);
+  box-shadow: var(--yunxi-card-shadow);
 }
 
 .service-notice {
   display: flex;
   align-items: center;
-  min-height: 88rpx;
-  gap: 12rpx;
-  border-bottom: 1rpx solid rgba(122, 90, 58, 0.1);
+  min-height: 84rpx;
+  gap: 14rpx;
+  border-bottom: 1rpx solid var(--yunxi-border);
+  overflow: hidden;
+}
+
+.service-notice:active {
+  background: var(--yunxi-surface-alt);
 }
 
 .service-notice:last-child {
@@ -288,52 +315,49 @@
   width: 10rpx;
   height: 10rpx;
   border-radius: 50%;
-  background: var(--yunxi-accent);
+  background: var(--yunxi-brand);
 }
 
 .service-notice__title {
   flex: 1;
   color: var(--yunxi-text-primary);
-  font-size: 23rpx;
+  font-size: 24rpx;
   font-weight: 700;
 }
 
 .service-notice__action {
   min-width: 108rpx;
-  padding: 9rpx 14rpx;
-  color: var(--yunxi-accent-deep);
-  background: rgba(247, 238, 220, 0.86);
-  border-radius: 999rpx;
-  font-size: 20rpx;
+  padding: 8rpx 16rpx;
+  color: var(--yunxi-brand);
+  background: var(--yunxi-brand-soft);
+  border-radius: var(--yunxi-radius-full);
+  font-size: 22rpx;
   font-weight: 800;
   text-align: center;
 }
 
+/* 货架与商品排版 */
 .shelf {
   display: flex;
   flex-direction: column;
-  gap: 10rpx;
+  gap: 16rpx;
+  margin-top: 10rpx;
 }
 
 .shelf-head {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  margin-top: 12rpx;
-  padding: 0 2rpx;
-}
-
-.shelf-head__eyebrow,
-.shelf-head__title,
-.shelf-head__subtitle {
-  display: block;
+  padding: 0 4rpx;
 }
 
 .shelf-head__eyebrow {
-  margin-bottom: 6rpx;
-  color: rgba(122, 90, 58, 0.78);
-  font-size: 18rpx;
-  letter-spacing: 0.18em;
+  margin-bottom: 4rpx;
+  color: var(--yunxi-gold);
+  font-size: 20rpx;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 
 .shelf-head__title {
@@ -345,68 +369,71 @@
 
 .shelf-head__subtitle {
   margin-top: 6rpx;
-  color: var(--yunxi-text-secondary);
-  font-size: 22rpx;
+  color: var(--yunxi-text-muted);
+  font-size: 24rpx;
 }
 
 .shelf-head__link {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-  min-height: 88rpx;
-  padding: 0 4rpx 0 18rpx;
-  color: var(--yunxi-accent-deep);
-  font-size: 22rpx;
+  min-height: 60rpx;
+  padding: 0 6rpx;
+  color: var(--yunxi-brand);
+  font-size: 24rpx;
   font-weight: 800;
+}
+
+.shelf-head__link:active {
+  opacity: 0.65;
 }
 
 .product-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 12rpx;
+  gap: 18rpx;
 }
 
 .product-card {
-  flex: 0 0 calc((100% - 12rpx) / 2);
-  width: calc((100% - 12rpx) / 2);
+  flex: 0 0 calc((100% - 18rpx) / 2);
+  width: calc((100% - 18rpx) / 2);
   min-width: 0;
-  min-height: 414rpx;
+  min-height: 420rpx;
   overflow: hidden;
-  border: 0;
-  border-radius: 32rpx;
-  background: transparent;
+  border-radius: var(--yunxi-radius-md);
+  background: #FFFFFF;
+  border: 1rpx solid var(--yunxi-border);
+  box-shadow: var(--yunxi-card-shadow);
+  transition: transform 0.2s ease;
 }
 
 .product-card:active {
   transform: translateY(2rpx);
-  opacity: 0.96;
 }
 
 .product-image {
-  height: 212rpx;
-  border-radius: 28rpx 28rpx 0 0;
+  position: relative;
+  width: 100%;
+  height: 260rpx;
+  overflow: hidden;
+  background: var(--yunxi-surface-alt);
 }
 
 .product-badge {
   position: absolute;
-  left: 16rpx;
-  top: 16rpx;
+  left: 14rpx;
+  top: 14rpx;
   z-index: 2;
   display: flex;
   align-items: center;
   min-height: 36rpx;
-  padding: 0 12rpx;
-  color: #5C3D24;
-  background: rgba(247, 238, 220, 0.9);
-  border: 1rpx solid rgba(122, 90, 58, 0.14);
-  border-radius: 999rpx;
-  font-size: 18rpx;
+  padding: 0 14rpx;
+  color: #FFFFFF;
+  background: var(--yunxi-brand);
+  border-radius: var(--yunxi-radius-full);
+  font-size: 20rpx;
   font-weight: 800;
-}
-
-.product-image::before,
-.product-image::after {
-  display: none;
+  box-shadow: 0 4rpx 10rpx rgba(0, 0, 0, 0.12);
 }
 
 .product-cover {
@@ -416,32 +443,409 @@
 }
 
 .product-info {
-  padding: 14rpx 16rpx 18rpx;
+  padding: 18rpx 18rpx 20rpx;
 }
 
 .product-title {
   display: block;
-  min-height: 64rpx;
-  font-size: 25rpx;
-  line-height: 1.34;
+  font-size: 26rpx;
+  line-height: 1.35;
   color: var(--yunxi-text-primary);
   font-weight: 700;
+  min-height: 70rpx;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .product-sold {
   display: block;
-  min-height: 30rpx;
   margin-top: 8rpx;
-  color: #9d8468;
-  font-size: 21rpx;
+  color: var(--yunxi-text-muted);
+  font-size: 22rpx;
 }
 
 .product-price {
   display: block;
   margin-top: 10rpx;
   color: var(--yunxi-price);
-  font-size: 34rpx;
-  font-weight: 900;
+  font-size: 30rpx;
+  font-weight: 800;
+  letter-spacing: 0;
 }
 
+.product-tip {
+  display: inline-block;
+  margin-top: 8rpx;
+  padding: 4rpx 10rpx;
+  border-radius: 6rpx;
+  background: rgba(138, 90, 54, 0.08);
+  color: #8A5A36;
+  font-size: 19rpx;
+  font-weight: 600;
+}
 
+.product-bottom-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin-top: 8rpx;
+}
+
+.product-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 88rpx;
+  min-height: 88rpx;
+  margin: 12rpx 0 0;
+  padding: 0 16rpx;
+  color: #FFFFFF;
+  background: var(--yunxi-brand);
+  border: 0;
+  border-radius: 6rpx;
+  font-size: 22rpx;
+  font-weight: 800;
+  line-height: 88rpx;
+  box-sizing: border-box;
+}
+
+.product-action::after {
+  border: 0;
+}
+
+.product-action:active {
+  opacity: 0.84;
+}
+
+.product-action.is-muted {
+  color: var(--yunxi-text-muted);
+  background: var(--yunxi-surface-alt);
+}
+
+.product-detail-link {
+  display: block;
+  margin-top: 10rpx;
+  color: var(--yunxi-text-muted);
+  font-size: 21rpx;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* 12年北京单店履约时效服务卡 */
+.shop-promise-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20rpx 16rpx;
+  border-radius: var(--yunxi-radius-md);
+  background: #FFFFFF;
+  border: 1rpx solid var(--yunxi-border);
+  box-shadow: var(--yunxi-card-shadow);
+}
+
+.shop-promise-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  min-width: 0;
+}
+
+.shop-promise-icon {
+  font-size: 28rpx;
+  flex-shrink: 0;
+}
+
+.shop-promise-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.shop-promise-title {
+  font-size: 22rpx;
+  font-weight: 700;
+  color: var(--yunxi-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.shop-promise-desc {
+  font-size: 18rpx;
+  color: var(--yunxi-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2rpx;
+}
+
+.shop-promise-divider {
+  width: 1rpx;
+  height: 44rpx;
+  background: var(--yunxi-border);
+  margin: 0 10rpx;
+  flex-shrink: 0;
+}
+
+/* 商品优先首页：减少装饰，把首屏空间留给可购买商品 */
+.home-page {
+  gap: 28rpx;
+  padding-top: 20rpx;
+}
+
+.notice-bar {
+  min-height: 56rpx;
+  padding: 0 4rpx;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.notice-icon {
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 50%;
+  background: var(--yunxi-gold);
+  font-size: 0;
+}
+
+.home-hero {
+  height: 248rpx;
+  border-radius: var(--yunxi-radius-md);
+  background: var(--yunxi-brand);
+  box-shadow: none;
+}
+
+.home-hero__image {
+  border-radius: var(--yunxi-radius-md);
+}
+
+.home-hero__slide::after {
+  background: rgba(43, 35, 31, 0.48);
+}
+
+.home-hero__copy {
+  width: 84%;
+  padding: 24rpx 28rpx;
+  gap: 8rpx;
+}
+
+.home-hero__title {
+  font-size: 34rpx;
+  text-shadow: none;
+}
+
+.home-hero__badge {
+  background: rgba(255, 255, 255, 0.16);
+  backdrop-filter: none;
+  border-radius: 6rpx;
+}
+
+.home-hero__tap {
+  width: auto;
+  height: auto;
+  min-height: 0;
+  margin-top: 4rpx;
+  padding: 8rpx 0;
+  color: #FFFFFF;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  text-align: left;
+}
+
+.quick-link-grid {
+  gap: 12rpx;
+}
+
+.quick-link-card {
+  min-height: 84rpx;
+  padding: 10rpx 14rpx;
+  border-radius: var(--yunxi-radius-sm);
+  box-shadow: none;
+}
+
+.member-promo {
+  min-height: 112rpx;
+  padding: 18rpx 20rpx;
+  border-radius: var(--yunxi-radius-md);
+  background: var(--yunxi-brand);
+  border-color: rgba(182, 138, 83, 0.42);
+  box-shadow: none;
+}
+
+.member-promo__mark {
+  width: 60rpx;
+  height: 60rpx;
+  background: var(--yunxi-gold-light);
+  box-shadow: none;
+}
+
+.member-promo__action {
+  min-width: 112rpx;
+  padding: 12rpx 16rpx;
+  color: var(--yunxi-brand);
+  background: var(--yunxi-gold-light);
+  border-radius: 6rpx;
+  box-shadow: none;
+}
+
+.service-notices {
+  padding: 0 16rpx;
+  border-radius: var(--yunxi-radius-sm);
+  box-shadow: none;
+}
+
+.service-notice__action {
+  min-width: auto;
+  padding: 8rpx 0 8rpx 16rpx;
+  background: transparent;
+  border-radius: 0;
+}
+
+.shelf {
+  gap: 16rpx;
+  margin-top: 0;
+}
+
+.shelf-head__title {
+  font-size: 32rpx;
+}
+
+.shelf-head__link {
+  min-height: 48rpx;
+}
+
+.product-grid {
+  gap: 16rpx;
+}
+
+.product-card {
+  min-height: 472rpx;
+  border-radius: var(--yunxi-radius-md);
+  box-shadow: none;
+}
+
+.product-image {
+  height: 228rpx;
+}
+
+.product-badge {
+  left: 12rpx;
+  top: 12rpx;
+  border-radius: 6rpx;
+  box-shadow: none;
+}
+
+.product-info {
+  padding: 14rpx 16rpx 16rpx;
+}
+
+.product-title {
+  min-height: 64rpx;
+}
+
+.product-price {
+  margin-top: 6rpx;
+  font-size: 28rpx;
+}
+
+.product-tip {
+  margin-top: 4rpx;
+}
+
+.shop-promise-card {
+  padding: 16rpx 12rpx;
+  border-radius: var(--yunxi-radius-sm);
+  box-shadow: none;
+}
+
+.home-cart-bar {
+  position: fixed;
+  left: 20rpx;
+  right: 20rpx;
+  bottom: calc(env(safe-area-inset-bottom) + 148rpx);
+  z-index: 900;
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  min-height: 104rpx;
+  padding: 14rpx 16rpx;
+  overflow: hidden;
+  background: #FFFFFF;
+  border: 1rpx solid var(--yunxi-border);
+  border-radius: var(--yunxi-radius-md);
+  box-shadow: 0 12rpx 28rpx rgba(61, 51, 45, 0.10);
+}
+
+.home-cart-bar__copy {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 76rpx;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4rpx;
+}
+
+.home-cart-bar__copy:active {
+  opacity: 0.72;
+}
+
+.home-cart-bar__label {
+  color: var(--yunxi-text-primary);
+  font-size: 26rpx;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.home-cart-bar__meta {
+  max-width: 360rpx;
+  overflow: hidden;
+  color: var(--yunxi-text-muted);
+  font-size: 21rpx;
+  font-weight: 600;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-cart-bar__amount {
+  flex: 0 0 auto;
+  color: var(--yunxi-price);
+  font-size: 30rpx;
+  font-weight: 900;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.home-cart-bar__submit {
+  flex: 0 0 auto;
+  width: 136rpx !important;
+  min-width: 136rpx;
+  min-height: 76rpx;
+  padding: 0 20rpx;
+  border-radius: 6rpx;
+  box-shadow: none;
+  font-size: 25rpx;
+  letter-spacing: 0;
+}
+.home-hero__tap,
+.shelf-head__link {
+  min-height: 88rpx;
+  padding: 8rpx 12rpx;
+}
+
+.quick-link-card {
+  min-height: 96rpx;
+}
+.service-notice {
+  min-height: 96rpx;
+  padding-top: 8rpx;
+  padding-bottom: 8rpx;
+}

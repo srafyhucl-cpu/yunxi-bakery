@@ -13,6 +13,10 @@ export interface CreateOrderPayload {
   deliveryAddress: string;
   expectTime: string;
   remark: string;
+  pickupAddress?: string;
+  fulfillmentMethod?: "pickup" | "beijing_delivery";
+  deliveryQuoteId?: string;
+  deliveryFeeFen?: number;
 }
 
 export interface OrderSummary {
@@ -24,6 +28,9 @@ export interface OrderSummary {
   paymentExpiredAt?: string;
   paymentExpiredReason?: string;
   totalFen: number;
+  goodsTotalFen?: number;
+  deliveryFeeFen?: number;
+  payableFen?: number;
   createdAt: string;
   updatedAt?: string;
   itemTitle: string;
@@ -37,6 +44,8 @@ export interface OrderSummary {
   receiverName?: string;
   receiverPhone?: string;
   deliveryType?: string;
+  fulfillmentMethod?: "pickup" | "beijing_delivery";
+  deliveryQuoteId?: string;
   deliveryAddress?: string;
   expectTime?: string;
   remark?: string;

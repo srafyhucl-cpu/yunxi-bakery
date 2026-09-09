@@ -1,53 +1,78 @@
-.filter-scroll {
-  width: 100%;
-  margin: 0 0 20rpx;
-  white-space: nowrap;
-}
+/* ==========================================================================
+   订单列表页 (Orders List Page) - 现代自然轻食风格重塑
+   ========================================================================== */
 
-.filter-tabs {
-  display: inline-flex;
+.filter-tabs-bar {
+  display: flex;
   align-items: center;
-  gap: 12rpx;
-  min-width: 100%;
+  justify-content: space-around;
+  width: 100%;
+  margin: 0 0 24rpx;
+  background: #FFFFFF;
+  border-radius: var(--yunxi-radius-lg);
+  padding: 6rpx 8rpx;
+  box-shadow: 0 2rpx 10rpx rgba(61, 51, 45, 0.04);
+  border: 1rpx solid var(--yunxi-border);
 }
 
-.filter-tab {
+.filter-tab-item {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 88rpx;
+  box-sizing: border-box;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16rpx 0 14rpx;
+  color: var(--yunxi-text-secondary);
+  font-size: 26rpx;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.filter-tab-content {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8rpx;
-  min-width: 132rpx;
-  height: 88rpx;
-  padding: 0 20rpx;
-  color: var(--yunxi-text-secondary);
-  background: #ffffff;
-  border: 1rpx solid var(--yunxi-border);
-  border-radius: 999rpx;
-  font-size: 24rpx;
-  white-space: nowrap;
+  gap: 6rpx;
 }
 
-.filter-tab-active {
-  color: #ffffff;
-  background: linear-gradient(180deg, var(--yunxi-accent) 0%, var(--yunxi-accent-deep) 100%);
-  border-color: transparent;
-  font-weight: 700;
+.filter-tab-item.is-active {
+  color: var(--yunxi-brand);
+  font-weight: 800;
 }
 
-.filter-count {
+.filter-tab-item:active {
+  background: var(--yunxi-surface-alt);
+}
+
+.filter-tab-badge {
   min-width: 28rpx;
   height: 28rpx;
-  padding: 0 8rpx;
+  padding: 0 6rpx;
   border-radius: 999rpx;
-  color: inherit;
-  background: rgba(201, 165, 106, 0.16);
+  background: var(--yunxi-surface-alt);
+  color: var(--yunxi-text-muted);
   font-size: 20rpx;
   line-height: 28rpx;
   text-align: center;
 }
 
-.filter-tab-active .filter-count {
-  background: rgba(255, 255, 255, 0.22);
+.filter-tab-item.is-active .filter-tab-badge {
+  background: var(--yunxi-brand-soft);
+  color: var(--yunxi-brand);
+  font-weight: 700;
+}
+
+.filter-tab-indicator {
+  position: absolute;
+  bottom: 4rpx;
+  width: 36rpx;
+  height: 6rpx;
+  background: var(--yunxi-brand);
+  border-radius: 999rpx;
 }
 
 .order-list {
@@ -57,10 +82,20 @@
 }
 
 .order-card {
-  padding: 24rpx;
+  padding: 28rpx;
   display: flex;
   flex-direction: column;
-  gap: 12rpx;
+  gap: 16rpx;
+  background: #FFFFFF;
+  border-radius: var(--yunxi-radius-lg);
+  border: 1rpx solid var(--yunxi-border);
+  box-shadow: var(--yunxi-card-shadow);
+  overflow: hidden;
+  transition: transform 0.2s ease;
+}
+
+.order-card:active {
+  transform: scale(0.99);
 }
 
 .order-header,
@@ -74,7 +109,7 @@
 .order-id,
 .order-meta,
 .order-footer {
-  color: var(--yunxi-text-secondary);
+  color: var(--yunxi-text-muted);
   font-size: 24rpx;
 }
 
@@ -86,41 +121,40 @@
 }
 
 .order-title {
-  font-size: 29rpx;
+  font-size: 30rpx;
   font-weight: 800;
   color: var(--yunxi-text-primary);
-}
-
-.order-status {
-  padding: 4rpx 12rpx;
-  border-radius: 999rpx;
-  background: var(--yunxi-accent-deep);
-  color: #ffffff;
-  font-size: 22rpx;
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-.order-total {
-  color: var(--yunxi-price);
-  font-size: 30rpx;
-  font-weight: 900;
-  white-space: nowrap;
 }
 
 .order-status-group {
   display: flex;
   align-items: center;
-  gap: 10rpx;
+  gap: 12rpx;
   flex-shrink: 0;
 }
 
 .payment-status {
-  padding: 4rpx 10rpx;
-  border-radius: 999rpx;
-  background: rgba(201, 165, 106, 0.16);
-  color: var(--yunxi-text-secondary);
-  font-size: 22rpx;
+  padding: 4rpx 14rpx;
+  border-radius: var(--yunxi-radius-full);
+  background: var(--yunxi-gold-soft);
+  color: #7A5524;
+  font-size: 20rpx;
+  font-weight: 700;
+}
+
+.order-status {
+  padding: 4rpx 14rpx;
+  border-radius: var(--yunxi-radius-full);
+  background: var(--yunxi-brand-soft);
+  color: var(--yunxi-brand);
+  font-size: 20rpx;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.order-footer {
+  padding-top: 16rpx;
+  border-top: 1rpx solid var(--yunxi-border);
 }
 
 .order-footer-right {
@@ -129,65 +163,90 @@
   gap: 16rpx;
 }
 
+.order-total {
+  color: var(--yunxi-price);
+  font-size: 34rpx;
+  font-weight: 900;
+  white-space: nowrap;
+  letter-spacing: 0;
+}
+
 .order-link {
-  color: var(--yunxi-accent-deep);
+  color: var(--yunxi-brand);
   font-size: 24rpx;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .order-actions {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
-  gap: 12rpx;
+  gap: 16rpx;
   padding-top: 8rpx;
 }
 
 .order-action-button {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 148rpx;
+  min-width: 160rpx;
   height: 88rpx;
-  padding: 0 20rpx;
-  border-radius: 999rpx;
+  min-height: 88rpx;
+  padding: 0 24rpx;
+  border-radius: var(--yunxi-radius-full);
   font-size: 24rpx;
-  font-weight: 600;
+  font-weight: 700;
   white-space: nowrap;
+  transition: all 0.2s ease;
 }
 
 .order-action-primary {
-  color: #ffffff;
-  background: linear-gradient(180deg, var(--yunxi-accent) 0%, var(--yunxi-accent-deep) 100%);
+  color: #FFFFFF;
+  background: var(--yunxi-brand);
+  box-shadow: 0 6rpx 16rpx rgba(61, 51, 45, 0.16);
 }
 
 .order-action-secondary {
-  color: var(--yunxi-text-secondary);
-  background: #FAF4E8;
+  color: var(--yunxi-deal);
+  background: #FDF1EE;
+  border: 1rpx solid rgba(186, 78, 61, 0.2);
 }
 
 .order-action-button[disabled] {
-  color: var(--yunxi-text-muted);
+  color: var(--yunxi-text-subtle);
   background: var(--yunxi-surface-alt);
+  box-shadow: none;
 }
 
 .empty {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 360rpx;
-  color: var(--yunxi-text-secondary);
+  min-height: 400rpx;
+  color: var(--yunxi-text-muted);
+  font-size: 28rpx;
 }
 
 .list-footer {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24rpx 0 48rpx;
-  color: var(--yunxi-text-secondary);
+  padding: 32rpx 0 48rpx;
+  color: var(--yunxi-text-muted);
   font-size: 24rpx;
 }
 
 .retry-link {
-  color: var(--yunxi-accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8rpx 16rpx;
+  min-height: 52rpx;
+  color: var(--yunxi-brand);
+  font-weight: 800;
   text-decoration: underline;
+}
+
+.retry-link:active {
+  opacity: 0.65;
 }

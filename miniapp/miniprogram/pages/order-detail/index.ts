@@ -15,6 +15,7 @@ import {
 import { getMiniappLayoutMetrics } from "../../utils/layout";
 import { formatFen } from "../../utils/money";
 import { goBackOrHome } from "../../utils/navigation";
+import { buildOrderAmountView } from "../../utils/order-summary";
 import { payOrderById } from "../../utils/order-payment";
 import { getMiniappSession } from "../../services/auth";
 import { buildMiniappSessionView, isMiniappLoggedIn } from "../../utils/session";
@@ -33,6 +34,8 @@ interface OrderDetailView extends OrderSummary {
   paymentStatusText: string;
   paymentMethodText: string;
   totalText: string;
+  goodsTotalText: string;
+  deliveryFeeText: string;
   deliveryTypeText: string;
   canCancel: boolean;
   canPay: boolean;
@@ -53,6 +56,7 @@ function buildOrderDetail(order: OrderSummary): OrderDetailView {
   const statusIndex = ORDER_PROGRESS_STEPS.findIndex((step) => step.status === order.status);
   const isCancelled = order.status === "cancelled";
   const timelineByStatus = new Map((order.timeline ?? []).map((event) => [event.status, event]));
+  const amountView = buildOrderAmountView(order);
   return {
     ...order,
     statusText: ORDER_STATUS_LABELS[order.status] ?? order.status,
@@ -62,8 +66,10 @@ function buildOrderDetail(order: OrderSummary): OrderDetailView {
     paymentStatusText: PAYMENT_STATUS_LABELS[paymentStatus] ?? paymentStatus,
     paymentMethodText:
       order.paymentMethod === "mock" ? "MVP 模拟支付" : order.paymentMethod === "wechat" ? "微信支付" : "未记录",
-    totalText: formatFen(order.totalFen),
-    deliveryTypeText: order.deliveryType === "delivery" ? "门店配送" : "到店自提",
+    totalText: amountView.totalText,
+    goodsTotalText: amountView.goodsTotalText,
+    deliveryFeeText: amountView.deliveryFeeText,
+    deliveryTypeText: amountView.deliveryTypeText,
     canCancel: canUserCancelOrder(order),
     canPay: canPayOrder(order),
     itemsView: items.map((item) => ({
@@ -158,7 +164,7 @@ Page({
         title: "取消订单",
         content: "确认取消这笔订单吗？取消后会释放已预留的商品库存。",
         confirmText: "取消订单",
-        confirmColor: "#3f7a42",
+        confirmColor: "#3D332D",
         success: (modalResult) => resolve(modalResult.confirm),
         fail: () => resolve(false),
       });

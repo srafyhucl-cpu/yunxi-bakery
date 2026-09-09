@@ -1,57 +1,79 @@
 <view class="page-shell" style="{{layoutStyle}}">
   <view class="page-fixed-safe has-custom-title">
     <button class="page-nav-back" bindtap="goBack" disabled="{{submitting}}" aria-label="返回">
-      <text class="page-nav-back__icon">‹</text>
+      <text class="page-nav-back__icon"></text>
     </button>
     <view class="page-fixed-safe__title">确认订单</view>
   </view>
   <view class="page-pinned page-pinned--empty"></view>
   <scroll-view class="page-scroll" scroll-y enhanced show-scrollbar="{{false}}">
     <view class="page checkout-page">
-      <view class="section-title">收货信息</view>
       <session-notice
         wx:if="{{loginStateText}}"
         status-text="{{sessionView.statusText}}"
         badge-text="{{sessionView.badgeText}}"
         description="{{loginStateText}}"
-        action-text="返回"
+        action-text="{{isLoggedIn ? '返回' : '去登录'}}"
         icon-text="结"
-        bind:action="goBack"
+        bind:action="handleSessionAction"
       ></session-notice>
-      <view class="checkout-summary yunxi-card hover-scale fade-in">
-        <text>订单合计</text>
+      <view wx:if="{{isLoggedIn && checkoutItems.length}}" class="checkout-summary yunxi-card hover-scale fade-in">
+        <view>
+          <text class="checkout-summary__eyebrow">本次购买</text>
+          <text class="checkout-summary__hint">{{checkoutItems.length}} 件商品 · 自提价</text>
+        </view>
         <text class="checkout-total">{{totalText}}</text>
       </view>
-      <view class="delivery-tabs">
+      <view wx:if="{{isLoggedIn && checkoutItems.length}}" class="checkout-items">
+        <view wx:for="{{checkoutItems}}" wx:key="productId" class="checkout-item">
+          <view class="checkout-item__copy">
+            <text class="checkout-item__title">{{item.title}}</text>
+            <text class="checkout-item__meta">数量 × {{item.quantity}}</text>
+          </view>
+          <text class="checkout-item__price">{{item.priceText}}</text>
+        </view>
+      </view>
+      <view wx:if="{{isLoggedIn && !checkoutItems.length}}" class="yunxi-state checkout-empty-state">
+        <view class="yunxi-state__icon">购</view>
+        <text class="yunxi-state__title">还没有选择商品</text>
+        <text class="yunxi-state__hint">先从商品列表选择蛋糕或点心，再确认自提或北京闪送</text>
+        <button class="primary-button yunxi-state__action" bindtap="goShopping">去选购</button>
+      </view>
+      <view wx:if="{{isLoggedIn && checkoutItems.length}}" class="delivery-tabs">
         <button
           class="delivery-tab {{deliveryType === 'pickup' ? 'is-active' : ''}}"
           data-type="pickup"
           bindtap="selectDeliveryType"
         >
-          到店自提
+          到店自提｜免运费
         </button>
         <button
           class="delivery-tab {{deliveryType === 'delivery' ? 'is-active' : ''}}"
           data-type="delivery"
           bindtap="selectDeliveryType"
         >
-          门店配送
+          北京闪送｜运费实算
         </button>
       </view>
-      <view class="checkout-notice yunxi-card fade-in">
-        <text wx:if="{{deliveryType === 'pickup'}}">{{pickupNotice}}</text>
-        <text wx:else>{{deliveryNotice}}</text>
-        <text wx:if="{{deliveryType === 'pickup'}}">{{pickupAddress}}</text>
+      <view wx:if="{{isLoggedIn && checkoutItems.length}}" class="checkout-notice fade-in">
+        <block wx:if="{{deliveryType === 'pickup'}}">
+          <text class="notice-main">建议提前一天预订 · 到店自取（09:00 - 19:30）</text>
+          <text class="notice-sub">自提门店：{{pickupAddress || '北京市朝阳区芸熙烘焙'}}</text>
+        </block>
+        <block wx:else>
+          <text class="notice-main">北京同城闪送专送 · 运费按收货地址实测</text>
+          <text class="notice-sub">商品按门店自提价展示；每日发货 09:00-19:30，当天订单 17:00 截单（须客服确认）</text>
+        </block>
       </view>
-      <view wx:if="{{errorMessage}}" class="checkout-error">{{errorMessage}}</view>
-      <view class="address-picker yunxi-card hover-scale fade-in" bindtap="openAddressBook">
+      <view wx:if="{{errorMessage && isLoggedIn}}" class="checkout-error">{{errorMessage}}</view>
+      <view wx:if="{{isLoggedIn && checkoutItems.length && deliveryType === 'delivery'}}" class="address-picker hover-scale fade-in" bindtap="openAddressBook">
         <view>
-          <text class="address-picker-label">常用地址</text>
+          <text class="address-picker-label">收货地址</text>
           <text class="address-picker-value">{{selectedAddressText}}</text>
         </view>
         <text class="address-picker-action">选择</text>
       </view>
-      <view class="form yunxi-card fade-in">
+      <view wx:if="{{isLoggedIn && checkoutItems.length}}" class="form fade-in">
         <input placeholder="联系人" value="{{receiverName}}" data-field="receiverName" bindinput="updateField" />
         <input placeholder="手机号，例：18800000000" type="number" maxlength="11" value="{{receiverPhone}}" data-field="receiverPhone" bindinput="updateField" />
         <input
@@ -78,9 +100,10 @@
           </picker>
         </view>
         <view class="time-preview">期望时间：{{expectTime || '未选择'}}</view>
+        <text wx:if="{{isSameDayOrder}}" class="time-preview">当天订单需客服确认制作与履约安排，不承诺即时制作或即时配送。</text>
         <textarea placeholder="备注，如生日牌文字、忌口等" value="{{remark}}" data-field="remark" bindinput="updateField" />
       </view>
-      <view class="benefit-panel yunxi-card">
+      <view wx:if="{{isLoggedIn && checkoutItems.length}}" class="benefit-panel">
         <view class="benefit-row" bindtap="toggleCouponPanel">
           <text class="benefit-label">优惠券</text>
           <text class="benefit-value">
@@ -104,34 +127,39 @@
         </view>
         <view class="benefit-row" bindtap="togglePointsRow">
           <text class="benefit-label">积分抵扣</text>
-          <switch checked="{{pointsEnabled}}" disabled="{{orderLocked}}" color="#6c9a63" bindchange="onPointsSwitch" />
+          <switch checked="{{pointsEnabled}}" disabled="{{orderLocked}}" color="#3D332D" bindchange="onPointsSwitch" />
           <text class="benefit-value">{{orderLocked ? '积分已应用' : '可用 ' + pointsBalance + ' 积分'}}</text>
         </view>
         <text wx:if="{{orderLocked}}" class="benefit-note">积分已应用，取消请先取消订单</text>
         <view class="benefit-row" bindtap="toggleBalanceRow">
           <text class="benefit-label">余额抵扣</text>
-          <switch checked="{{balanceEnabled}}" color="#6c9a63" bindchange="onBalanceSwitch" />
+          <switch checked="{{balanceEnabled}}" color="#3D332D" bindchange="onBalanceSwitch" />
           <text class="benefit-value">可用 {{balanceFen / 100}} 元</text>
         </view>
       </view>
 
-      <view class="amount-panel yunxi-card">
+      <view wx:if="{{isLoggedIn && checkoutItems.length}}" class="amount-panel">
         <view class="amount-row"><text>商品金额</text><text>{{goodsFenText}}</text></view>
+        <view class="amount-row">
+          <text>闪送运费</text>
+          <text class="{{deliveryType === 'pickup' ? 'fee-free' : ''}}">{{deliveryFeeText}}</text>
+        </view>
+        <text wx:if="{{deliveryType === 'delivery' && deliveryQuoteStatus !== 'quoted'}}" class="amount-warning">未取得有效闪送报价前，不能提交订单</text>
         <view class="amount-row"><text>优惠券</text><text>{{estimateCouponFenText}}</text></view>
         <view class="amount-row"><text>积分抵扣</text><text>{{pointsEnabled ? '提交后计算' : '-'}}</text></view>
         <view class="amount-row"><text>余额抵扣</text><text>{{balanceEnabled ? balanceDeductText : '-'}}</text></view>
         <view class="amount-row amount-total"><text>实付（估算）</text><text>{{estimateRemainFenText}}</text></view>
-        <text class="amount-note">最终金额以支付确认页为准</text>
+        <text class="amount-note">运费在支付前确定并一并支付，最终金额以确认页为准</text>
       </view>
 
-      <view wx:if="{{pendingBarVisible}}" class="pending-bar">
+      <view wx:if="{{isLoggedIn && checkoutItems.length && pendingBarVisible}}" class="pending-bar">
         <text>您有一笔待支付订单</text>
         <view class="pending-actions">
           <text class="pending-action" bindtap="resumePendingOrder">继续支付</text>
           <text class="pending-action danger" bindtap="cancelPendingOrder">取消订单</text>
         </view>
       </view>
-      <view class="agreement-row yunxi-card hover-scale fade-in" bindtap="toggleAgreementAccepted">
+      <view wx:if="{{isLoggedIn && checkoutItems.length}}" class="agreement-row hover-scale fade-in" bindtap="toggleAgreementAccepted">
         <text class="agreement-check {{agreementAccepted ? 'is-checked' : ''}}">{{agreementAccepted ? '✓' : ''}}</text>
         <view class="agreement-copy">
           <text>我已阅读并同意</text>
@@ -142,7 +170,7 @@
       </view>
     </view>
   </scroll-view>
-  <view class="checkout-footer">
+  <view wx:if="{{isLoggedIn && checkoutItems.length}}" class="checkout-footer">
     <view class="checkout-footer__total">
       <text class="muted">实付（估算）</text>
       <text class="checkout-footer__amount">{{estimateRemainFenText}}</text>
@@ -150,8 +178,8 @@
     <button
       class="primary-button checkout-footer__submit hover-scale"
       loading="{{submitting}}"
-      disabled="{{submitting}}"
+      disabled="{{submitting || !canSubmitOrder}}"
       bindtap="submitOrder"
-    >提交订单</button>
+    >{{submitButtonText}}</button>
   </view>
 </view>

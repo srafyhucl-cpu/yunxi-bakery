@@ -6,7 +6,7 @@
       disabled="{{loading || paying || cancelling}}"
       aria-label="返回"
     >
-      <text class="page-nav-back__icon">‹</text>
+      <text class="page-nav-back__icon"></text>
     </button>
     <view class="page-fixed-safe__title">订单详情</view>
   </view>
@@ -97,7 +97,15 @@
             <text class="product-subtotal">{{item.subtotalText}}</text>
           </view>
           <view class="order-total-row">
-            <text>订单合计</text>
+            <text>商品金额</text>
+            <text>{{order.goodsTotalText}}</text>
+          </view>
+          <view class="order-total-row">
+            <text>闪送费</text>
+            <text>{{order.deliveryFeeText}}</text>
+          </view>
+          <view class="order-total-row">
+            <text>实付合计</text>
             <text>{{order.totalText}}</text>
           </view>
         </view>

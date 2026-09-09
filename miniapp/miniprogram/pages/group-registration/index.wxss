@@ -1,20 +1,25 @@
+/* ==========================================================================
+   拼团登记页 (Group Registration Page) - 现代自然轻食风格重塑
+   ========================================================================== */
+
 .group-registration-page {
   display: flex;
   flex-direction: column;
-  gap: 18rpx;
+  gap: 20rpx;
 }
 
 .registration-hero {
   display: flex;
   flex-direction: column;
   gap: 12rpx;
-  padding: 28rpx;
+  padding: 32rpx 28rpx;
 }
 
 .registration-kicker {
-  color: var(--yunxi-accent-deep);
+  color: var(--yunxi-brand);
   font-size: 24rpx;
   font-weight: 800;
+  letter-spacing: 0.08em;
 }
 
 .registration-title {
@@ -31,11 +36,11 @@
 }
 
 .registration-error {
-  padding: 18rpx 22rpx;
-  color: #c0342b;
-  background: #fff4f0;
-  border: 1rpx solid #f0c1b6;
-  border-radius: 18rpx;
+  padding: 18rpx 24rpx;
+  color: var(--yunxi-deal);
+  background: #FDF1EE;
+  border: 1rpx solid rgba(186, 78, 61, 0.2);
+  border-radius: var(--yunxi-radius-md);
   font-size: 24rpx;
   line-height: 1.45;
 }
@@ -44,7 +49,7 @@
   display: flex;
   flex-direction: column;
   gap: 20rpx;
-  padding: 22rpx;
+  padding: 28rpx;
 }
 
 .fulfillment-tabs,
@@ -54,21 +59,29 @@
   gap: 16rpx;
 }
 
+button.fulfillment-tab,
 .fulfillment-tab {
   flex: 1;
-  min-height: 88rpx;
-  border-radius: 999rpx;
-  background: #ffffff;
+  width: auto !important;
+  min-height: 84rpx;
+  border-radius: var(--yunxi-radius-sm);
+  background: #FFFFFF;
   color: var(--yunxi-text-secondary);
   border: 1rpx solid var(--yunxi-border);
   font-size: 28rpx;
   font-weight: 700;
+  transition: all 0.25s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
+button.fulfillment-tab.is-active,
 .fulfillment-tab.is-active {
-  background: linear-gradient(180deg, #8bbf74 0%, #3f7a42 100%);
-  color: #ffffff;
-  border-color: transparent;
+  background: var(--yunxi-brand);
+  color: #FFFFFF;
+  border-color: var(--yunxi-brand);
+  box-shadow: 0 4rpx 14rpx rgba(61, 51, 45, 0.16);
 }
 
 .time-grid {
@@ -85,12 +98,13 @@
 .time-preview {
   display: flex;
   align-items: center;
-  min-height: 88rpx;
+  min-height: 84rpx;
   padding: 0 24rpx;
-  background: #f8fbf6;
-  border: 1rpx solid rgba(75, 129, 72, 0.12);
-  border-radius: 18rpx;
+  background: var(--yunxi-surface-alt);
+  border: 1rpx solid var(--yunxi-border);
+  border-radius: var(--yunxi-radius-md);
   font-size: 26rpx;
+  color: var(--yunxi-text-primary);
 }
 
 .time-preview {
@@ -104,12 +118,13 @@
 input,
 textarea {
   width: 100%;
-  min-height: 88rpx;
+  min-height: 84rpx;
   padding: 0 24rpx;
-  background: #f8fbf6;
-  border: 1rpx solid rgba(75, 129, 72, 0.12);
-  border-radius: 18rpx;
+  background: var(--yunxi-surface-alt);
+  border: 1rpx solid var(--yunxi-border);
+  border-radius: var(--yunxi-radius-md);
   font-size: 28rpx;
+  color: var(--yunxi-text-primary);
 }
 
 textarea {
@@ -117,45 +132,21 @@ textarea {
   padding-top: 24rpx;
 }
 
-.submit-button {
-  margin-top: 26rpx;
-}
-
-.success-panel {
+.registration-success {
   display: flex;
   flex-direction: column;
-  gap: 18rpx;
-  padding: 26rpx;
+  gap: 16rpx;
+  padding: 32rpx;
+  text-align: center;
 }
 
-.success-title {
-  color: var(--yunxi-accent-deep);
-  font-size: 34rpx;
-  font-weight: 900;
-}
-
-.success-row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 24rpx;
-  color: var(--yunxi-text-secondary);
-  font-size: 26rpx;
-  line-height: 1.5;
-}
-
-.success-row text:last-child {
-  max-width: 430rpx;
-  color: var(--yunxi-text-primary);
+.registration-success-badge {
+  display: inline-flex;
+  align-self: center;
+  padding: 6rpx 18rpx;
+  border-radius: var(--yunxi-radius-full);
+  background: var(--yunxi-brand-soft);
+  color: var(--yunxi-brand);
+  font-size: 24rpx;
   font-weight: 800;
-  text-align: right;
-  word-break: break-all;
-}
-
-.success-actions {
-  margin-top: 26rpx;
-}
-
-.success-actions button {
-  flex: 1;
 }

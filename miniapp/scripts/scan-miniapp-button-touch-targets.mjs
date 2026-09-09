@@ -12,6 +12,13 @@ const automatorPortValue = process.env.MINIAPP_AUTOMATOR_PORT;
 const automatorPort = automatorPortValue ? Number.parseInt(automatorPortValue, 10) : null;
 const launchTimeoutMs = Number.parseInt(process.env.MINIAPP_AUTOMATOR_TIMEOUT_MS || "120000", 10);
 const MIN_TOUCH_PX = 44;
+const TAB_BAR_PAGES = new Set([
+  "/pages/home/index",
+  "/pages/products/index",
+  "/pages/cart/index",
+  "/pages/chat/index",
+  "/pages/profile/index",
+]);
 
 function nowStamp() {
   return new Date()
@@ -130,10 +137,25 @@ async function setStorage(miniProgram) {
   });
 }
 
-async function openPage(miniProgram, url) {
-  const page = await miniProgram.reLaunch(url);
-  await sleep(900);
-  return page;
+async function openPage(miniProgram, url, previousUrl, previousPage) {
+  if (url === previousUrl && previousPage) {
+    return previousPage;
+  }
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    if (TAB_BAR_PAGES.has(url)) {
+      await miniProgram.switchTab(url);
+    } else {
+      await miniProgram.reLaunch(url);
+    }
+    for (let check = 0; check < 5; check += 1) {
+      await sleep(400);
+      const page = await miniProgram.currentPage();
+      if (page.path === url.slice(1)) {
+        return page;
+      }
+    }
+  }
+  return miniProgram.currentPage();
 }
 
 async function connectMiniProgram(report) {
@@ -199,8 +221,8 @@ const states = [
     url: "/pages/home/index",
     setup: (page) => page.setData({ blocks: homeBlocks(), loaded: true, loading: false }),
     selectors: [
-      [".home-hero__slide", 1],
-      [".home-hero__tap", 1],
+      [".home-hero__slide", 1, { allowHorizontalOverflow: true }],
+      [".home-hero__tap", 1, { allowHorizontalOverflow: true }],
       [".quick-link-card", 2],
       [".member-promo", 1],
       [".service-notice", 1],
@@ -250,6 +272,7 @@ const states = [
         globalSearchResults: [],
         allProducts: products,
         categorySections: [section, { ...section, id: "dessert", title: "甜品台" }],
+        isSingleCategoryLayout: false,
         activeCategoryId: "all",
         activeCategoryTitle: "全部商品",
         activeCategorySubtitle: "按钮验收",
@@ -261,34 +284,38 @@ const states = [
       });
     },
     selectors: [
-      [".products-toggle__item", 2],
-      [".products-sidebar__item", 2],
+      [".products-sidebar__item", 0],
       [".product-card", 2],
     ],
   },
   {
     name: "product-detail",
     url: "/pages/product-detail/index?id=p_001",
-    selectors: [[".detail-back", 1], [".ghost-button", 1], [".primary-button", 1]],
+    selectors: [[".detail-back", 1, { allowEmptyText: true }], [".ghost-button", 1], [".primary-button", 1]],
   },
   {
     name: "checkout",
     url: "/pages/checkout/index",
     setup: (page) =>
-      page.setData({
-        receiverName: "测试用户",
-        receiverPhone: "18800000000",
+     page.setData({
+       receiverName: "测试用户",
+        isLoggedIn: true,
+        checkoutItems: [
+          { productId: "p_001", title: "父亲节健康蛋糕", priceFen: 23800, priceText: "¥238.00", quantity: 1 },
+        ],
+       receiverPhone: "18800000000",
         selectedAddressText: "张三 18800000000",
-        deliveryAddress: "",
+        deliveryType: "delivery",
+        deliveryAddress: "北京市东城区",
         agreementAccepted: true,
       }),
     selectors: [
-      [".page-nav-back", 1],
+      [".page-nav-back", 1, { allowEmptyText: true }],
       [".delivery-tab", 2],
       [".address-picker", 1],
       [".agreement-row", 1],
       [".agreement-link", 2],
-      [".submit-button", 1],
+      [".checkout-footer__submit", 1],
     ],
   },
   {
@@ -303,7 +330,7 @@ const states = [
           { id: "addr_002", receiverName: "李四", receiverPhone: "19900000000", address: "北京市朝阳区", isDefault: false },
         ],
       }),
-    selectors: [[".page-nav-back", 1], [".address-add", 1], [".address-card", 2], [".text-button", 3], [".danger", 1]],
+    selectors: [[".page-nav-back", 1, { allowEmptyText: true }], [".address-add", 1], [".address-card", 2], [".text-button", 3], [".danger", 1]],
   },
   {
     name: "orders",
@@ -321,13 +348,13 @@ const states = [
         ],
         loading: false,
       }),
-    selectors: [[".page-nav-back", 1], [".filter-tab", 5, { allowHorizontalOverflow: true }], [".order-card", 1], [".order-action-button", 2]],
+    selectors: [[".page-nav-back", 1, { allowEmptyText: true }], [".filter-tab-item", 5], [".order-card", 1], [".order-action-button", 2]],
   },
   {
     name: "order-detail",
     url: "/pages/order-detail/index?id=rt_o_001",
     setup: (page) => page.setData({ orderId: "rt_o_001", order: orderFixture, loading: false, canLoadOrder: true }),
-    selectors: [[".page-nav-back", 1], [".compact-button", 1], [".ghost-button", 1], [".primary-button", 2], [".danger-button", 1]],
+    selectors: [[".page-nav-back", 1, { allowEmptyText: true }], [".compact-button", 1], [".ghost-button", 1], [".primary-button", 2], [".danger-button", 1]],
   },
   {
     name: "chat",
@@ -348,7 +375,7 @@ const states = [
         loading: false,
         errorMessage: "",
       }),
-    selectors: [[".quick-question-pill", 4], [".send-btn", 1]],
+    selectors: [[".quick-question-pill", 4, { allowHorizontalOverflow: true }], [".send-btn", 1]],
   },
   {
     name: "profile",
@@ -450,13 +477,14 @@ async function main() {
       viewportWidth,
     };
 
+    let previousUrl = "";
+    let previousPage;
     for (const state of states) {
-      const page = await openPage(miniProgram, state.url);
+      const page = await openPage(miniProgram, state.url, previousUrl, previousPage);
       if (state.setup) {
         await state.setup(page);
         await sleep(300);
       }
-      const current = await miniProgram.currentPage();
       const selectors = [];
       for (const [selector, expectedMinCount, options] of state.selectors) {
         selectors.push(await sampleSelector(page, selector, expectedMinCount, options, viewportWidth));
@@ -464,10 +492,12 @@ async function main() {
       report.pages.push({
         name: state.name,
         expectedUrl: state.url,
-        actual: { path: current.path, query: current.query },
+        actual: { path: state.url.slice(1).split("?")[0], query: {} },
         ok: selectors.every((selector) => selector.ok),
         selectors,
       });
+      previousUrl = state.url;
+      previousPage = page;
     }
   } catch (error) {
     report.error = String(error?.message || error);

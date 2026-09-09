@@ -125,7 +125,7 @@ async def test_points_preview_and_apply_paths(
             ],
             "receiverName": "API 测试",
             "receiverPhone": MOBILE,
-            "deliveryType": "delivery",
+            "deliveryType": "pickup",
             "deliveryAddress": "API 测试地址",
             "expectTime": "2026-08-20 19:00",
         },
@@ -149,3 +149,23 @@ async def test_points_preview_and_apply_paths(
     # B3.4 围栏：应用抵扣写入口关闭，试算（只读）不受影响
     assert applied.status_code == 400
     assert "积分抵扣已临时关闭" in applied.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_get_points_unlinked_member_returns_zero(app: FastAPI) -> None:
+    """未建档或未关联手机号的微信用户查询积分优雅返回零积分，不抛 400。"""
+    unlinked_user_id = "wx_unlinked_new_user_999"
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as client:
+        response = await client.get(
+            "/api/v1/miniapp/points",
+            headers=storefront_auth_headers(unlinked_user_id),
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["code"] == 0
+    assert payload["data"]["pointsBalance"] == 0
+    assert payload["data"]["ledger"] == []

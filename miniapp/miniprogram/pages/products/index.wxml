@@ -6,12 +6,12 @@
   <view class="page-pinned products-pinned">
     <view class="products-store">
       <view class="products-store__copy">
-        <text class="products-store__branch">📍 {{branchName}}</text>
-        <text class="products-store__meta">{{storeDistance}} · 营业中 {{businessHours}}</text>
+        <text class="products-store__branch">{{branchName}}</text>
+        <text class="products-store__meta">预订为主 · 每日 {{businessHours}} 发货或取货</text>
       </view>
-      <view class="products-toggle">
-        <view class="products-toggle__item" bindtap="setDeliveryMode" data-mode="pickup" data-active="{{deliveryMode === 'pickup'}}">外带</view>
-        <view class="products-toggle__item" bindtap="setDeliveryMode" data-mode="delivery" data-active="{{deliveryMode === 'delivery'}}">配送</view>
+      <view class="products-service-note">
+        <text>自提价</text>
+        <text>北京闪送｜运费实算</text>
       </view>
     </view>
     <view class="products-search">
@@ -30,7 +30,7 @@
 
   <view class="page-scroll products-scroll-region">
     <view wx:if="{{loadFailed}}" class="yunxi-state">
-      <view class="yunxi-state__icon">📡</view>
+      <view class="yunxi-state__icon">!</view>
       <text class="yunxi-state__title">商品加载失败</text>
       <text class="yunxi-state__hint">网络开小差了，重试一下吧</text>
       <button class="primary-button yunxi-state__action" bindtap="retryLoad">重新加载</button>
@@ -56,7 +56,7 @@
             wx:for="{{globalSearchResults}}"
             wx:key="id"
             wx:for-item="product"
-            class="product-card yunxi-card hover-scale stagger-fade-in"
+            class="product-card yunxi-card hover-scale stagger-fade-in {{product.isUnavailable ? 'is-unavailable' : ''}}"
             data-id="{{product.id}}"
             bindtap="openProduct"
           >
@@ -77,9 +77,17 @@
             </view>
             <view class="product-info">
               <text class="product-title">{{product.title}}</text>
+              <view class="product-meta-row">
+                <text class="product-stock {{product.isUnavailable ? 'is-muted' : ''}}">{{product.stockText}}</text>
+                <text class="product-hint">{{product.purchaseHint}}</text>
+              </view>
               <view class="product-info__bottom">
-                <text class="product-price yunxi-price">{{product.priceText}}<text class="yunxi-price__unit">起</text></text>
-                <view class="product-action-btn hover-scale">+</view>
+                <text class="product-price yunxi-price"><text class="yunxi-price__unit">自提价 </text>{{product.priceText}}</text>
+                <view
+                  class="product-action-btn hover-scale {{product.isUnavailable ? 'is-muted' : ''}}"
+                  data-id="{{product.id}}"
+                  catchtap="quickAddProduct"
+                >{{product.actionText}}</view>
               </view>
             </view>
           </view>
@@ -96,8 +104,8 @@
     <view wx:if="{{categoriesDegraded && !loadFailed && !(loading && !loaded)}}" class="products-degraded" bindtap="retryLoad">
       <text>分类加载失败，已展示全部商品，点击重试</text>
     </view>
-    <view class="products-layout" hidden="{{!!searchText || loadFailed || (loading && !loaded)}}">
-      <scroll-view class="products-sidebar" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="products-layout {{isSingleCategoryLayout ? 'is-single-category' : ''}}" hidden="{{!!searchText || loadFailed || (loading && !loaded)}}">
+      <scroll-view wx:if="{{!isSingleCategoryLayout}}" class="products-sidebar" scroll-y enhanced show-scrollbar="{{false}}">
         <view
           wx:for="{{categorySections}}"
           wx:key="id"
@@ -112,24 +120,22 @@
       </scroll-view>
 
       <view class="products-content-wrapper">
-        <scroll-view
-          wx:for="{{categorySections}}"
-          wx:key="id"
-          wx:for-item="section"
-          class="products-content"
-          scroll-y
-          enhanced
-          show-scrollbar="{{false}}"
-          hidden="{{activeCategoryId !== section.id}}"
-        >
+        <scroll-view class="products-content" scroll-y enhanced show-scrollbar="{{false}}">
           <view class="products-content__inner">
-            <view class="products-grid">
+            <view class="products-heading">
+              <view>
+                <text class="products-heading__title">{{activeCategoryTitle}}</text>
+                <text class="products-heading__hint">{{activeCategorySubtitle}} · {{activeCategoryCountLabel}} 款</text>
+              </view>
+              <text class="products-heading__service">自提价</text>
+            </view>
+            <view class="products-grid products-list">
               <view
-                wx:for="{{section.products}}"
+                wx:for="{{activeProducts}}"
                 wx:key="id"
                 wx:for-item="product"
-                class="product-card yunxi-card hover-scale stagger-fade-in"
-                style="animation-delay: {{index * 0.03}}s"
+                class="product-card yunxi-card hover-scale stagger-fade-in {{product.isUnavailable ? 'is-unavailable' : ''}}"
+                style="animation-delay: {{index * 0.02}}s"
                 data-id="{{product.id}}"
                 bindtap="openProduct"
               >
@@ -150,15 +156,27 @@
                 </view>
                 <view class="product-info">
                   <text class="product-title">{{product.title}}</text>
+                  <view class="product-meta-row">
+                    <text class="product-stock {{product.isUnavailable ? 'is-muted' : ''}}">{{product.stockText}}</text>
+                    <text class="product-hint">{{product.purchaseHint}}</text>
+                  </view>
                   <view class="product-info__bottom">
-                    <text class="product-price yunxi-price">{{product.priceText}}<text class="yunxi-price__unit">起</text></text>
-                    <view class="product-action-btn hover-scale">+</view>
+                    <text class="product-price yunxi-price"><text class="yunxi-price__unit">自提价 </text>{{product.priceText}}</text>
+                    <view
+                      class="product-action-btn hover-scale {{product.isUnavailable ? 'is-muted' : ''}}"
+                      data-id="{{product.id}}"
+                      catchtap="quickAddProduct"
+                    >{{product.actionText}}</view>
                   </view>
                 </view>
               </view>
             </view>
 
-            <view wx:if="{{section.hasMatches === false && section.id !== 'all'}}" class="products-empty">
+            <view wx:if="{{hasMoreProducts}}" class="products-load-more" bindtap="loadMoreProducts">
+              查看更多 {{activeCategoryTitle}}
+            </view>
+
+            <view wx:if="{{activeProducts.length === 0 && activeCategoryId !== 'all'}}" class="products-empty">
               <text class="products-empty__title">该分类暂无商品</text>
               <text class="products-empty__hint">再看看其他商品吧</text>
               <view class="products-empty__action" bindtap="switchToAll">查看全部商品</view>
@@ -169,5 +187,13 @@
 
       <!-- 已移除悬浮按钮，保持布局简洁 -->
     </view>
+  </view>
+  <view wx:if="{{cartBarVisible}}" class="products-cart-bar">
+    <view class="products-cart-bar__copy" bindtap="goToCart">
+      <text class="products-cart-bar__label">预订单</text>
+      <text class="products-cart-bar__meta">{{cartSummaryText}}</text>
+    </view>
+    <text class="products-cart-bar__amount">{{cartTotalText}}</text>
+    <button class="primary-button products-cart-bar__submit" bindtap="goCheckout">去结算</button>
   </view>
 </view>

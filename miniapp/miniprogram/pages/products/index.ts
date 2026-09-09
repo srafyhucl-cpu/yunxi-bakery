@@ -1,8 +1,8 @@
 import { ROUTES } from "../../constants/routes";
 import { SHOP_CONFIG } from "../../config/shop";
 import { getMiniappLayoutMetrics } from "../../utils/layout";
+import { addCartItem, getCartItems } from "../../utils/cart";
 import { getCategoryById } from "../../utils/catalog";
-import { calculateDistanceKm, formatDistanceKm } from "../../utils/location";
 import { formatFen } from "../../utils/money";
 import { syncCustomTabBar } from "../../utils/tab-bar";
 import { listProductCategories, listProducts, type ProductCategory } from "../../services/products";
@@ -24,6 +24,10 @@ interface ProductView extends CatalogProduct {
   badgeText: string;
   badgeClass: string;
   imageFailed: boolean;
+  isUnavailable: boolean;
+  stockText: string;
+  purchaseHint: string;
+  actionText: string;
   isSearchResult?: boolean;
 }
 
@@ -38,14 +42,13 @@ interface ProductsPageData {
   layoutStyle: string;
   searchText: string;
   storeName: string;
-  storeDistance: string;
-  deliveryMode: "delivery" | "pickup";
   loaded: boolean;
   loading: boolean;
   loadFailed: boolean;
   categoriesDegraded: boolean;
   allProducts: CatalogProduct[];
   categorySections: CategorySectionView[];
+  isSingleCategoryLayout: boolean;
   branchName: string;
   businessHours: string;
   globalSearchResults: ProductView[];
@@ -58,6 +61,10 @@ interface ProductsPageData {
   visibleProductCount: number;
   hasMoreProducts: boolean;
   loadingMore: boolean;
+  cartItemCount: number;
+  cartTotalText: string;
+  cartSummaryText: string;
+  cartBarVisible: boolean;
 }
 
 const INITIAL_PRODUCTS_PER_SECTION = 12;
@@ -147,7 +154,7 @@ function buildSectionsFromProducts(products: CatalogProduct[]): CategorySectionV
   const allProductsSection: CategorySection = {
     id: ALL_PRODUCTS_CATEGORY_ID,
     title: "全部商品",
-    subtitle: "当前接口返回的真实商品",
+    subtitle: "门店在售商品",
     products
   };
 
@@ -161,7 +168,7 @@ function buildSectionsFromProducts(products: CatalogProduct[]): CategorySectionV
     }
     let subtitle = "匠心手作";
     if (title.includes("蛋糕")) {
-      subtitle = "新鲜现做";
+      subtitle = "建议提前预订";
     } else if (title.includes("面包") || title.includes("甜品")) {
       subtitle = "麦香现烤";
     } else if (title.includes("礼盒") || title.includes("糕点")) {
@@ -209,15 +216,46 @@ function getBadgeText(kind: BadgeKind): string {
   return "热卖";
 }
 
+function getStockText(product: CatalogProduct): string {
+  if (!product.isActive) {
+    return "已下架";
+  }
+  if (product.stock <= 0) {
+    return "暂时售罄";
+  }
+  if (product.stock <= 5) {
+    return "仅余 " + product.stock + " 件";
+  }
+  return "可预订";
+}
+
+function getPurchaseHint(product: CatalogProduct): string {
+  if (!product.isActive || product.stock <= 0) {
+    return "可咨询客服或先看其他商品";
+  }
+  if (product.tags.some((tag) => tag.includes("现货") || tag.includes("当日"))) {
+    return "有现货时可当天取，建议先确认";
+  }
+  if (product.categoryName?.includes("蛋糕") || product.categoryId.includes("cake")) {
+    return "建议提前1天预订";
+  }
+  return "自提价展示，闪送费下单前确认";
+}
+
 function toProductView(product: CatalogProduct, isFirst = false): ProductView {
   const badgeKind = getBadgeKind(product, isFirst);
+  const isUnavailable = !product.isActive || product.stock <= 0;
   return {
     ...product,
     priceText: formatFen(product.priceFen),
     imageClass: getProductImageClass(product),
     badgeText: getBadgeText(badgeKind),
     badgeClass: badgeKind ? `is-${badgeKind}` : "",
-    imageFailed: false
+    imageFailed: false,
+    isUnavailable,
+    stockText: getStockText(product),
+    purchaseHint: getPurchaseHint(product),
+    actionText: isUnavailable ? "查看" : "预订"
   };
 }
 
@@ -252,14 +290,14 @@ function prefetchProductImages(products: ProductView[]): void {
   });
 }
 
-function getUserLocation(): Promise<WechatMiniprogram.GetLocationSuccessCallbackResult> {
-  return new Promise((resolve, reject) => {
-    wx.getLocation({
-      type: "gcj02",
-      success: resolve,
-      fail: reject
-    });
-  });
+function getCartQuantity(productId: string): number {
+  return getCartItems()
+    .filter((item) => item.productId === productId)
+    .reduce((sum, item) => sum + item.quantity, 0);
+}
+
+function getProductFromViews(products: ProductView[], productId: string): CatalogProduct | undefined {
+  return products.find((product) => product.id === productId);
 }
 
 function productMatchesSearch(product: CatalogProduct, keyword: string): boolean {
@@ -287,7 +325,7 @@ function refineCategorySections(sections: CategorySectionView[]): CategorySectio
     else if (title === "手作茶歇") subtitle = "专享定制";
     else if (title === "招牌千层") subtitle = "层层甜蜜";
     else if (title === "全部商品") subtitle = "人气汇聚";
-    else if (title === "生日蛋糕") subtitle = "新鲜现做";
+    else if (title === "生日蛋糕") subtitle = "建议提前预订";
     else if (title === "甜品和面包") subtitle = "麦香现烤";
 
     return {
@@ -321,31 +359,34 @@ Page<ProductsPageData, WechatMiniprogram.IAnyObject>({
     storeName: SHOP_CONFIG.displayName,
     branchName: SHOP_CONFIG.branchName,
     businessHours: SHOP_CONFIG.businessHours,
-    storeDistance: "距离待定位",
-    deliveryMode: "delivery",
     loaded: false,
     loading: false,
     loadFailed: false,
     categoriesDegraded: false,
     allProducts: [] as CatalogProduct[],
     categorySections: [] as CategorySectionView[],
+    isSingleCategoryLayout: false,
     globalSearchResults: [] as ProductView[],
     activeCategoryId: ALL_PRODUCTS_CATEGORY_ID,
     activeCategoryTitle: "全部商品",
-    activeCategorySubtitle: "当前接口返回的真实商品",
+    activeCategorySubtitle: "门店在售商品",
     activeCategoryCountLabel: "0",
     activeSectionProducts: [] as ProductView[],
     activeProducts: [] as ProductView[],
     visibleProductCount: 0,
     hasMoreProducts: false,
-    loadingMore: false
+    loadingMore: false,
+    cartItemCount: 0,
+    cartTotalText: "¥0.00",
+    cartSummaryText: "还没有选择商品",
+    cartBarVisible: false
   },
   onLoad() {
-    void this.refreshStoreDistance();
     void this.loadProducts();
   },
   onShow() {
     syncCustomTabBar(ROUTES.products);
+    this.refreshCartSummary();
   },
   goHome() {
     wx.switchTab({ url: ROUTES.home });
@@ -371,6 +412,7 @@ Page<ProductsPageData, WechatMiniprogram.IAnyObject>({
         this.setData({
           allProducts: products,
           categorySections: fallbackSections,
+          isSingleCategoryLayout: fallbackSections.length <= 1,
           categoriesDegraded: true,
           loaded: true
         });
@@ -385,7 +427,7 @@ Page<ProductsPageData, WechatMiniprogram.IAnyObject>({
         let subtitle = "匠心推荐";
         const title = category.title;
         if (title.includes("蛋糕")) {
-          subtitle = "新鲜现做";
+          subtitle = "建议提前预订";
         } else if (title.includes("面包") || title.includes("烘焙") || title.includes("甜品")) {
           subtitle = "麦香现烤";
         } else if (title.includes("礼盒") || title.includes("手作") || title.includes("糕点")) {
@@ -422,7 +464,12 @@ Page<ProductsPageData, WechatMiniprogram.IAnyObject>({
       ];
       
       const sortedSections = refineCategorySections(categorySections);
-      this.setData({ allProducts: products, categorySections: sortedSections, loaded: true });
+      this.setData({
+        allProducts: products,
+        categorySections: sortedSections,
+        isSingleCategoryLayout: sortedSections.length <= 1,
+        loaded: true
+      });
       if (sortedSections.length) {
         this.applyActiveCategory(sortedSections[0]);
       }
@@ -444,26 +491,21 @@ Page<ProductsPageData, WechatMiniprogram.IAnyObject>({
     });
     void this.loadProducts();
   },
-  async refreshStoreDistance() {
-    try {
-      const location = await getUserLocation();
-      const distanceKm = calculateDistanceKm(
-        { latitude: location.latitude, longitude: location.longitude },
-        SHOP_CONFIG.storeLocation
-      );
-      this.setData({ storeDistance: formatDistanceKm(distanceKm) });
-    } catch {
-      this.setData({ storeDistance: "距离待定位" });
-    }
-  },
   applyActiveCategory(section: CategorySectionView) {
+    const visibleProductCount = getInitialVisibleCount(section.products);
+    const activeProducts = getVisibleProducts(section.products, visibleProductCount);
     this.setData({
       activeCategoryId: section.id,
       activeCategoryTitle: section.title,
       activeCategorySubtitle: section.subtitle,
-      activeCategoryCountLabel: section.countLabel
+      activeCategoryCountLabel: section.countLabel,
+      activeSectionProducts: section.products,
+      visibleProductCount,
+      activeProducts,
+      hasMoreProducts: visibleProductCount < section.products.length,
+      loadingMore: false
     });
-    prefetchProductImages(section.products);
+    prefetchProductImages(activeProducts);
   },
   applySearch(keyword: string) {
     const searchText = keyword.trim().toLocaleLowerCase();
@@ -533,25 +575,27 @@ Page<ProductsPageData, WechatMiniprogram.IAnyObject>({
         }
 
         const key = `categorySections[${sectionIndex}]`;
-        this.setData({
-          [key]: {
-            ...section,
-            products: productViews,
-            loaded: true,
-            countLabel: String(productViews.length),
-            hasMatches: productViews.length > 0
-          }
-        });
+        const updatedSection = {
+          ...section,
+          products: productViews,
+          loaded: true,
+          countLabel: String(productViews.length),
+          hasMatches: productViews.length > 0
+        };
+        this.setData({ [key]: updatedSection });
+        this.applyActiveCategory(updatedSection);
       } catch {
         // 分类懒加载失败：保留全部商品并标记降级，不清空当前内容
         this.setData({ categoriesDegraded: true });
         wx.showToast({ title: "分类加载失败，已展示全部商品", icon: "none" });
+        this.applyActiveCategory(section);
       } finally {
         this.setData({ loading: false });
       }
+      return;
     }
 
-    this.setData({ activeCategoryId: categoryId });
+    this.applyActiveCategory(section);
   },
   switchToAll() {
     // 分类空态兜底：一键切回全部商品
@@ -560,10 +604,10 @@ Page<ProductsPageData, WechatMiniprogram.IAnyObject>({
       globalSearchResults: [],
       activeCategoryId: ALL_PRODUCTS_CATEGORY_ID
     });
-  },
-  setDeliveryMode(event: WechatMiniprogram.TouchEvent) {
-    const mode = event.currentTarget.dataset.mode as "delivery" | "pickup";
-    this.setData({ deliveryMode: mode });
+    const allSection = this.data.categorySections.find((section) => section.id === ALL_PRODUCTS_CATEGORY_ID);
+    if (allSection) {
+      this.applyActiveCategory(allSection);
+    }
   },
   loadMoreProducts() {
     if (this.data.loadingMore || !this.data.hasMoreProducts) {
@@ -582,6 +626,46 @@ Page<ProductsPageData, WechatMiniprogram.IAnyObject>({
     });
     prefetchProductImages(activeProducts.slice(Math.max(0, visibleProductCount - PRODUCTS_PAGE_SIZE)));
     this.setData({ loadingMore: false });
+  },
+  refreshCartSummary() {
+    const cartItems = getCartItems();
+    const cartItemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+    const cartTotalFen = cartItems.reduce((sum, item) => sum + item.priceFen * item.quantity, 0);
+    this.setData({
+      cartItemCount,
+      cartTotalText: formatFen(cartTotalFen),
+      cartSummaryText: cartItemCount > 0 ? cartItemCount + " 件已选 · 闪送费下单前确认" : "还没有选择商品",
+      cartBarVisible: cartItemCount > 0
+    });
+  },
+  quickAddProduct(event: WechatMiniprogram.TouchEvent) {
+    const productId = event.currentTarget.dataset.id as string;
+    if (!productId) {
+      return;
+    }
+    const product =
+      getProductFromViews(this.data.activeSectionProducts, productId) ||
+      getProductFromViews(this.data.globalSearchResults, productId) ||
+      this.data.allProducts.find((item) => item.id === productId);
+    if (!product || !product.isActive || product.stock <= 0) {
+      wx.navigateTo({ url: `${ROUTES.productDetail}?id=${productId}` });
+      return;
+    }
+    const currentQuantity = getCartQuantity(productId);
+    if (currentQuantity >= product.stock) {
+      wx.showToast({ title: "库存仅余 " + product.stock + " 件", icon: "none" });
+      return;
+    }
+    addCartItem({
+      productId: product.id,
+      title: product.title,
+      imageUrl: product.imageUrl,
+      priceFen: product.priceFen,
+      quantity: 1,
+      stock: product.stock,
+    });
+    this.refreshCartSummary();
+    wx.showToast({ title: "已加入预订单", icon: "success" });
   },
   onProductImageError(event: WechatMiniprogram.TouchEvent) {
     // 图片运行时加载失败：按商品定位全部命中项并切换占位，保持固定宽高
@@ -602,6 +686,11 @@ Page<ProductsPageData, WechatMiniprogram.IAnyObject>({
         updates[`globalSearchResults[${resultIndex}].imageFailed`] = true;
       }
     });
+    this.data.activeProducts.forEach((product, productIndex) => {
+      if (product.id === productId && !product.imageFailed) {
+        updates[`activeProducts[${productIndex}].imageFailed`] = true;
+      }
+    });
     if (Object.keys(updates).length > 0) {
       this.setData(updates);
     }
@@ -614,6 +703,13 @@ Page<ProductsPageData, WechatMiniprogram.IAnyObject>({
   },
   goToCart() {
     wx.switchTab({ url: ROUTES.cart });
+  },
+  goCheckout() {
+    if (!getCartItems().length) {
+      wx.showToast({ title: "请先选择商品", icon: "none" });
+      return;
+    }
+    wx.navigateTo({ url: ROUTES.checkout });
   },
   goToChat() {
     wx.switchTab({ url: ROUTES.chat });

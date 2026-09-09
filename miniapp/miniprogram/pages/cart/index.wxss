@@ -1,12 +1,15 @@
+/* ==========================================================================
+   购物车页 (Shopping Cart Page) - 现代自然轻食风格重塑
+   ========================================================================== */
+
 .cart-page {
-  padding: 24rpx 24rpx var(--yunxi-fixed-action-space);
+  padding: 20rpx 24rpx var(--yunxi-fixed-action-space);
   background: var(--yunxi-page-bg);
   min-height: 100vh;
   box-sizing: border-box;
 }
 
-/* 空态改走全局 yunxi-state */
-
+/* 购物车商品列表 */
 .cart-list {
   display: flex;
   flex-direction: column;
@@ -16,39 +19,42 @@
 
 .cart-item {
   display: flex;
-  gap: 24rpx;
+  gap: 20rpx;
   align-items: center;
   padding: 24rpx;
-  border-radius: var(--yunxi-radius-md);
-  transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+  border-radius: var(--yunxi-radius-lg);
+  background: #FFFFFF;
+  border: 1rpx solid var(--yunxi-border);
+  box-shadow: var(--yunxi-card-shadow);
+  transition: all 0.25s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 .cart-item:active {
-  transform: scale(0.97);
+  transform: scale(0.98);
 }
 
 .cart-check {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 42rpx;
-  height: 42rpx;
-  border-radius: 99rpx;
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 50%;
   font-size: 24rpx;
-  font-weight: 700;
-  color: #ffffff;
-  background: linear-gradient(135deg, #6c9a63, #4a7a41);
-  box-shadow: 0 6rpx 14rpx rgba(122, 90, 58, 0.16);
+  font-weight: 800;
+  color: #FFFFFF;
+  background: var(--yunxi-brand);
+  box-shadow: 0 4rpx 12rpx rgba(61, 51, 45, 0.16);
   flex-shrink: 0;
 }
 
 .cart-image {
-  width: 144rpx;
-  height: 144rpx;
-  border-radius: 20rpx;
+  width: 156rpx;
+  height: 156rpx;
+  border-radius: var(--yunxi-radius-md);
   overflow: hidden;
   flex-shrink: 0;
-  background: #F2E7D2;
+  background: var(--yunxi-surface-alt);
 }
 
 .cart-cover {
@@ -62,8 +68,9 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  min-height: 144rpx;
+  min-height: 156rpx;
   min-width: 0;
+  padding: 4rpx 0;
 }
 
 .cart-info__header {
@@ -83,7 +90,7 @@
 .cart-title {
   font-size: 28rpx;
   font-weight: 800;
-  color: #3A2B20;
+  color: var(--yunxi-text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -91,21 +98,68 @@
 }
 
 .tag {
-  padding: 4rpx 10rpx;
-  font-size: 18rpx;
+  padding: 4rpx 12rpx;
+  font-size: 20rpx;
   font-weight: 700;
-  color: #4a7a41;
-  background: rgba(122, 90, 58, 0.08);
-  border-radius: 6rpx;
+  color: var(--yunxi-brand);
+  background: var(--yunxi-brand-soft);
+  border-radius: var(--yunxi-radius-full);
   white-space: nowrap;
 }
 
 .cart-price {
-  font-size: 30rpx;
+  font-size: 32rpx;
+  color: var(--yunxi-price);
+  font-weight: 900;
+  letter-spacing: 0;
 }
 
-/* 步进器改走全局 yunxi-stepper */
+.cart-stepper {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
 
+.stepper-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48rpx;
+  height: 48rpx;
+  min-height: 48rpx;
+  border-radius: 50%;
+  font-size: 26rpx;
+  font-weight: 800;
+  line-height: 1;
+  overflow: hidden;
+  transition: all 0.15s ease;
+}
+
+.stepper-btn:active {
+  transform: scale(0.9);
+}
+
+.stepper-btn--minus {
+  color: var(--yunxi-brand);
+  background: #ffffff;
+  border: 2rpx solid var(--yunxi-border-medium);
+}
+
+.stepper-btn--plus {
+  color: #ffffff;
+  background: var(--yunxi-brand);
+  border: 2rpx solid var(--yunxi-brand);
+}
+
+.stepper-val {
+  min-width: 48rpx;
+  color: var(--yunxi-text-primary);
+  font-size: 28rpx;
+  font-weight: 800;
+  text-align: center;
+}
+
+/* 底部结算悬浮条 */
 .cart-footer {
   position: fixed;
   right: 0;
@@ -115,11 +169,11 @@
   justify-content: space-between;
   align-items: center;
   gap: 24rpx;
-  padding: 24rpx 36rpx;
-  background: #ffffff;
-  backdrop-filter: blur(20px);
-  border-top: 1rpx solid rgba(122, 90, 58, 0.06);
-  box-shadow: 0 -8rpx 32rpx rgba(122, 90, 58, 0.03);
+  padding: 20rpx 36rpx;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: none;
+  border-top: 1rpx solid var(--yunxi-border);
+  box-shadow: 0 -8rpx 28rpx rgba(35, 50, 42, 0.05);
   z-index: 100;
 }
 
@@ -129,27 +183,32 @@
 }
 
 .cart-footer .primary-button {
-  flex: 0 0 250rpx;
-  min-width: 250rpx;
-  box-shadow: 0 8rpx 20rpx rgba(122, 90, 58, 0.15);
+  flex: 0 0 240rpx;
+  width: 240rpx !important;
+  min-width: 240rpx;
+  height: 84rpx;
+  min-height: 84rpx;
+  font-size: 28rpx;
 }
 
 .cart-total {
   display: block;
-  margin-top: 6rpx;
-  font-size: 38rpx;
+  margin-top: 4rpx;
+  font-size: 40rpx;
   color: var(--yunxi-price);
   font-weight: 900;
   white-space: nowrap;
+  letter-spacing: 0;
 }
 
 .bakery-section-heading {
   margin: 48rpx 8rpx 24rpx;
   font-size: 30rpx;
   font-weight: 800;
-  color: #3A2B20;
+  color: var(--yunxi-text-primary);
 }
 
+/* 推荐商品流 */
 .recommend-grid {
   display: flex;
   flex-wrap: wrap;
@@ -162,6 +221,10 @@
   min-width: 0;
   padding: 0 0 20rpx;
   overflow: hidden;
+  border-radius: var(--yunxi-radius-md);
+  background: #FFFFFF;
+  border: 1rpx solid var(--yunxi-border);
+  box-shadow: var(--yunxi-card-shadow);
   box-sizing: border-box;
 }
 
@@ -169,15 +232,15 @@
   width: 100%;
   aspect-ratio: 1 / 1;
   overflow: hidden;
-  background: #F2E7D2;
+  background: var(--yunxi-surface-alt);
 }
 
 .recommend-name {
   display: block;
-  min-height: 80rpx;
-  padding: 18rpx 18rpx 0;
-  color: #3A2B20;
-  font-size: 27rpx;
+  min-height: 74rpx;
+  padding: 16rpx 16rpx 0;
+  color: var(--yunxi-text-primary);
+  font-size: 26rpx;
   font-weight: 800;
   line-height: 1.35;
   overflow: hidden;
@@ -189,51 +252,130 @@
 
 .recommend-sold {
   display: block;
-  padding: 8rpx 18rpx 0;
-  color: #BCAF96;
-  font-size: 21rpx;
+  padding: 6rpx 16rpx 0;
+  color: var(--yunxi-text-muted);
+  font-size: 22rpx;
   font-weight: 600;
 }
 
 .recommend-card .cart-price {
   display: block;
-  padding: 10rpx 18rpx 0;
-  font-size: 28rpx;
-  font-weight: 800;
+  font-size: 30rpx;
+  font-weight: 900;
 }
 
-.recommend-bag {
-  width: 48rpx;
-  height: 48rpx;
-  margin: -10rpx 18rpx 0 auto;
-  border-radius: 99rpx;
-  background: linear-gradient(135deg, #6c9a63, #4a7a41);
-  box-shadow: 0 6rpx 14rpx rgba(122, 90, 58, 0.16);
-  position: relative;
+.recommend-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10rpx;
+  padding: 8rpx 16rpx 0;
+}
+
+.recommend-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-width: 88rpx;
+  min-height: 64rpx;
+  padding: 0 14rpx;
+  overflow: hidden;
+  color: #FFFFFF;
+  background: var(--yunxi-brand);
+  border-radius: 6rpx;
+  font-size: 22rpx;
+  font-weight: 800;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   transition: all 0.2s ease;
 }
 
-.recommend-bag:active {
-  transform: scale(0.9);
+.recommend-action:active {
+  transform: scale(0.94);
+  opacity: 0.88;
 }
 
-.recommend-bag::before {
-  content: "";
-  position: absolute;
-  inset: 14rpx 12rpx 12rpx;
-  border: 2rpx solid rgba(255, 255, 255, 0.95);
-  border-top-width: 3rpx;
-  border-radius: 4rpx 4rpx 8rpx 8rpx;
+.recommend-action.is-muted {
+  color: var(--yunxi-text-muted);
+  background: var(--yunxi-surface-alt);
 }
 
-.recommend-bag::after {
-  content: "";
-  position: absolute;
-  left: 14rpx;
-  right: 14rpx;
-  top: 10rpx;
-  height: 8rpx;
-  border: 2rpx solid rgba(255, 255, 255, 0.95);
-  border-bottom: none;
-  border-radius: 8rpx 8rpx 0 0;
+/* 购物车只保留购买决策需要的信息 */
+.cart-page {
+  padding: 20rpx 20rpx var(--yunxi-fixed-action-space);
+}
+
+.cart-list {
+  gap: 12rpx;
+  margin-bottom: 36rpx;
+}
+
+.cart-item {
+  gap: 14rpx;
+  padding: 16rpx;
+  border-radius: var(--yunxi-radius-md);
+  box-shadow: none;
+}
+
+.cart-check {
+  width: 32rpx;
+  height: 32rpx;
+  box-shadow: none;
+}
+
+.cart-image {
+  width: 132rpx;
+  height: 132rpx;
+  border-radius: var(--yunxi-radius-sm);
+}
+
+.cart-info {
+  min-height: 132rpx;
+}
+
+.tag {
+  padding: 4rpx 8rpx;
+  border-radius: 4rpx;
+  font-size: 18rpx;
+  background: var(--yunxi-gold-soft);
+  color: #7A5524;
+}
+
+.cart-footer {
+  bottom: var(--yunxi-tabbar-occupied-height);
+  padding: 14rpx 20rpx;
+  background: #FFFFFF;
+  backdrop-filter: none;
+  box-shadow: 0 -4rpx 16rpx rgba(61, 51, 45, 0.06);
+}
+
+.cart-footer .primary-button {
+  width: 220rpx !important;
+  min-width: 220rpx;
+  height: 76rpx;
+  min-height: 76rpx;
+  border-radius: 6rpx;
+}
+
+.cart-total {
+  font-size: 34rpx;
+}
+
+.bakery-section-heading {
+  justify-content: flex-start;
+  margin: 36rpx 0 16rpx;
+  font-size: 28rpx;
+  letter-spacing: 0;
+}
+
+.bakery-section-heading::before,
+.bakery-section-heading::after {
+  display: none;
+}
+
+.recommend-card {
+  border-radius: var(--yunxi-radius-sm);
+  box-shadow: none;
 }

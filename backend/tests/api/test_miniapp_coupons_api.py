@@ -144,3 +144,23 @@ async def test_get_coupons_threshold_fallback_zero(
     assert response.status_code == 200
     coupons = response.json()["data"]["coupons"]
     assert coupons[0]["thresholdFen"] == 0
+
+
+@pytest.mark.asyncio
+async def test_get_coupons_unlinked_member_returns_empty(app: FastAPI) -> None:
+    """未建档或未关联手机号的微信用户查询优惠券优雅返回空列表，不抛 400。"""
+    unlinked_user_id = "wx_unlinked_new_user_999"
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as client:
+        response = await client.get(
+            "/api/v1/miniapp/coupons",
+            headers=storefront_auth_headers(unlinked_user_id),
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["code"] == 0
+    assert payload["data"]["coupons"] == []
+    assert payload["data"]["total"] == 0

@@ -14,6 +14,7 @@ import {
   getDefaultCheckoutHourIndex,
   getCheckoutDateEnd,
   getCheckoutDateStart,
+  isCheckoutDateToday,
 } from "../../utils/checkout-time";
 import { getMiniappLayoutMetrics } from "../../utils/layout";
 import { goBackOrHome } from "../../utils/navigation";
@@ -59,10 +60,11 @@ Page({
     dateStartValue: getCheckoutDateStart(),
     dateEndValue: getCheckoutDateEnd(),
     selectedDateValue: buildDefaultExpectTime().slice(0, 10),
-    hourOptions: buildCheckoutHourOptions("09:00-20:00"),
+    hourOptions: buildCheckoutHourOptions("09:00-19:30"),
     minuteOptions: CHECKOUT_MINUTE_OPTIONS,
-    selectedHourIndex: getDefaultCheckoutHourIndex(buildCheckoutHourOptions("09:00-20:00")),
+    selectedHourIndex: getDefaultCheckoutHourIndex(buildCheckoutHourOptions("09:00-19:30")),
     selectedMinuteIndex: 0,
+    isSameDayRegistration: isCheckoutDateToday(buildDefaultExpectTime().slice(0, 10)),
     errorMessage: "",
     submitting: false,
     submitted: false,
@@ -74,7 +76,7 @@ Page({
     layoutStyle: getMiniappLayoutMetrics().pageShellStyle
   },
   onLoad(query: Record<string, string | undefined>) {
-    const defaultExpectTime = buildDefaultExpectTime("09:00-20:00");
+    const defaultExpectTime = buildDefaultExpectTime("09:00-19:30");
     const productName = decodeQueryText(query.productName);
     const session = getMiniappSession();
     const loggedIn = isMiniappLoggedIn(session);
@@ -134,13 +136,18 @@ Page({
   },
   selectDesiredDate(event: WechatMiniprogram.PickerChange) {
     const selectedDateValue = String(event.detail.value);
+    const hourOptions = buildCheckoutHourOptions("09:00-19:30", selectedDateValue);
+    const selectedHourIndex = getDefaultCheckoutHourIndex(hourOptions);
     this.setData({
       selectedDateValue,
+      hourOptions,
+      selectedHourIndex,
       desiredTime: buildExpectTime(
         selectedDateValue,
-        this.data.hourOptions[this.data.selectedHourIndex] || "18",
+        hourOptions[selectedHourIndex] || "18",
         this.data.minuteOptions[this.data.selectedMinuteIndex] || "00"
       ),
+      isSameDayRegistration: isCheckoutDateToday(selectedDateValue),
       errorMessage: ""
     });
   },
@@ -207,7 +214,7 @@ Page({
       return false;
     }
     if (this.data.fulfillmentMethod === "delivery" && !address) {
-      this.showValidationError("门店配送需要填写配送地址");
+      this.showValidationError("北京闪送需要填写配送地址");
       return false;
     }
     this.setData({

@@ -35,7 +35,10 @@ def create_storefront_coupons_router(service: CouponService) -> APIRouter:
                 require_storefront_user_id(x_miniapp_user_id),
             )
         except ValueError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
+            msg = str(exc)
+            if "未识别为会员" in msg or "未登记手机号" in msg:
+                return {"code": 0, "data": {"coupons": [], "total": 0}}
+            raise HTTPException(status_code=400, detail=msg) from exc
         return {"code": 0, "data": data}
 
     @router.post("/orders/{order_id}/coupon-preview")

@@ -6,7 +6,7 @@
 
       <block wx:for="{{blocks}}" wx:key="id">
         <view wx:if="{{item.type === 'noticeBar'}}" class="notice-bar glass-panel hover-scale">
-          <text class="notice-icon">✦</text>
+          <text class="notice-icon"></text>
           <text class="notice-text">{{item.props.text}}</text>
         </view>
 
@@ -107,15 +107,26 @@
               style="animation-delay: {{index * 0.05}}s"
               data-id="{{product.id}}"
               bindtap="openProduct"
-            >
-              <view class="product-image bakery-photo {{product.imageClass}}">
-                <view class="product-badge">{{product.badgeText}}</view>
-                <image wx:if="{{product.imageUrl}}" class="product-cover" src="{{product.imageUrl}}" mode="aspectFill" lazy-load="{{true}}" />
-              </view>
+              >
+                <view class="product-image bakery-photo {{product.imageClass}}">
+                  <view class="product-badge">{{product.badgeText}}</view>
+                  <image wx:if="{{product.imageUrl}}" class="product-cover" src="{{product.imageUrl}}" mode="aspectFill" lazy-load="{{true}}" />
+                  <view wx:else class="yunxi-image-fallback">
+                    <text class="yunxi-image-fallback__mark">芸</text>
+                  </view>
+                </view>
               <view class="product-info">
                 <text class="product-title">{{product.title}}</text>
-                <text class="product-sold">{{product.soldText}}</text>
-                <text class="product-price">{{product.priceText}}</text>
+                <text wx:if="{{product.deliveryTip}}" class="product-tip">{{product.deliveryTip}}</text>
+                <view class="product-bottom-row">
+                  <text class="product-price">{{product.priceText}}</text>
+                </view>
+                <view
+                  class="product-action {{product.isUnavailable ? 'is-muted' : ''}}"
+                  data-id="{{product.id}}"
+                  catchtap="quickAddHomeProduct"
+                >{{product.actionText}}</view>
+                <text class="product-detail-link">查看详情 ›</text>
               </view>
             </view>
           </view>
@@ -123,6 +134,40 @@
 
       </block>
 
+      <view class="shop-promise-card glass-panel fade-in">
+        <view class="shop-promise-item">
+          <text class="shop-promise-icon">预</text>
+          <view class="shop-promise-text">
+            <text class="shop-promise-title">提前1天预订</text>
+            <text class="shop-promise-desc">当天制作 次日自取或配送</text>
+          </view>
+        </view>
+        <view class="shop-promise-divider"></view>
+        <view class="shop-promise-item">
+          <text class="shop-promise-icon">送</text>
+          <view class="shop-promise-text">
+            <text class="shop-promise-title">北京闪送</text>
+            <text class="shop-promise-desc">运费按地址单独计算</text>
+          </view>
+        </view>
+        <view class="shop-promise-divider"></view>
+        <view class="shop-promise-item">
+          <text class="shop-promise-icon">时</text>
+          <view class="shop-promise-text">
+            <text class="shop-promise-title">09:00-19:30</text>
+            <text class="shop-promise-desc">当天订单 17:00 前咨询</text>
+          </view>
+        </view>
+      </view>
+
     </view>
   </scroll-view>
+  <view wx:if="{{cartBarVisible}}" class="home-cart-bar">
+    <view class="home-cart-bar__copy" bindtap="goToCart">
+      <text class="home-cart-bar__label">预订单</text>
+      <text class="home-cart-bar__meta">{{cartSummaryText}}</text>
+    </view>
+    <text class="home-cart-bar__amount">{{cartTotalText}}</text>
+    <button class="primary-button home-cart-bar__submit" bindtap="goCheckout">去结算</button>
+  </view>
 </view>

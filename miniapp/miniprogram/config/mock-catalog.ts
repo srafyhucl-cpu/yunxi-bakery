@@ -57,7 +57,7 @@ export const CATALOG_PRODUCTS: CatalogProduct[] = [
     id: "p_004",
     title: "餐具（5人份）",
     subtitle: "一次性生日餐具",
-    imageUrl: "https://images.unsplash.com/photo-1543510473-ac2c353edd9e?w=600&auto=format&fit=crop&q=80",
+    imageUrl: "",
     priceFen: 500,
     soldText: "常用加购",
     categoryId: "tea-food",

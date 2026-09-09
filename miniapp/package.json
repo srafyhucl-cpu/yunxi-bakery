@@ -25,8 +25,15 @@
     "devtools:product-buy-now": "node scripts/check-devtools-product-buy-now.mjs",
     "devtools:real-order-open-detail": "node scripts/check-devtools-real-order-open-detail.mjs",
     "devtools:service-smoke": "node scripts/check-devtools-service-smoke.mjs",
+    "devtools:verify-all-pages": "node scripts/verify-all-15-pages-devtools.cjs",
+    "devtools:commerce-states": "node scripts/verify-devtools-commerce-states.cjs",
+    "devtools:product-purchase-path": "node scripts/verify-devtools-product-purchase-path.cjs",
+    "devtools:same-day-scheduling": "node scripts/verify-devtools-same-day-scheduling.cjs",
+    "devtools:checkout-delivery-states": "node scripts/verify-devtools-checkout-delivery-states.cjs",
+    "walkthrough:phase-c": "node scripts/walkthrough-phase-c.mjs",
     "release:readiness": "node scripts/release-readiness.mjs",
     "test:member-assets": "node --test tests/utils/member-assets.test.ts",
+    "test:order-summary": "node --test tests/utils/order-summary.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

@@ -1,7 +1,7 @@
 <view class="page-shell" style="{{layoutStyle}}">
   <view class="page-fixed-safe has-custom-title">
     <button class="page-nav-back" bindtap="goBack" aria-label="返回">
-      <text class="page-nav-back__icon">‹</text>
+      <text class="page-nav-back__icon"></text>
     </button>
     <view class="page-fixed-safe__title">积分明细</view>
   </view>

@@ -50,7 +50,7 @@ function validateBusinessHours(): boolean {
   const normalized = settings.value.businessHours.trim();
   const minutes = parseBusinessHourMinutes(normalized);
   if (!minutes) {
-    businessHoursError.value = "营业时间格式应为 HH:mm-HH:mm，例如 09:00-20:00";
+    businessHoursError.value = "营业时间格式应为 HH:mm-HH:mm，例如 09:00-19:30";
     return false;
   }
   if (minutes[1] <= minutes[0]) {
@@ -138,11 +138,11 @@ onMounted(() => {
             v-model="settings.businessHours"
             maxlength="30"
             data-testid="shop-settings-business-hours"
-            placeholder="09:00-20:00"
+            placeholder="09:00-19:30"
             @blur="validateBusinessHours"
           />
           <p class="shop-settings-page__field-tip" data-testid="shop-settings-business-hours-tip">
-            用于限制小程序 checkout 可选择的下单时段，格式：09:00-20:00。
+            用于限制小程序 checkout 可选择的下单时段，格式：09:00-19:30。
           </p>
           <p
             v-if="businessHoursError"

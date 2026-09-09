@@ -1,7 +1,12 @@
+/* ==========================================================================
+   收货地址管理页 (Address Management Page) - 现代自然轻食风格重塑
+   ========================================================================== */
+
 .address-page {
   display: flex;
   flex-direction: column;
-  gap: 18rpx;
+  gap: 20rpx;
+  padding: 24rpx 28rpx 80rpx;
 }
 
 .address-header {
@@ -9,32 +14,43 @@
   align-items: center;
   justify-content: space-between;
   gap: 24rpx;
+  margin-bottom: 8rpx;
 }
 
-.address-header .section-title {
-  display: block;
-  margin: 0 0 10rpx;
+.address-header__info {
+  flex: 1;
+  min-width: 0;
 }
 
 .address-subtitle {
-  color: var(--yunxi-text-secondary);
-  font-size: 26rpx;
-}
-
-.address-add {
-  flex: 0 0 auto;
-  min-width: 144rpx;
-}
-
-.address-error {
-  padding: 18rpx 22rpx;
-  color: #c0342b;
-  background: #fff4f0;
-  border: 1rpx solid #f0c1b6;
-  border-radius: 18rpx;
+  color: var(--yunxi-text-muted);
   font-size: 24rpx;
 }
 
+button.address-add,
+.address-add {
+  flex: 0 0 auto;
+  width: auto !important;
+  min-width: 144rpx;
+  height: 88rpx;
+  min-height: 88rpx;
+  padding: 0 28rpx !important;
+  margin: 0 !important;
+  border-radius: var(--yunxi-radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.address-error {
+  padding: 18rpx 24rpx;
+  color: var(--yunxi-deal);
+  background: #FDF1EE;
+  border: 1rpx solid rgba(186, 78, 61, 0.2);
+  border-radius: var(--yunxi-radius-md);
+  font-size: 24rpx;
+  line-height: 1.45;
+}
 
 .address-form,
 .address-list {
@@ -44,18 +60,23 @@
 }
 
 .address-form {
-  padding: 22rpx;
+  padding: 28rpx;
+  background: #FFFFFF;
+  border-radius: var(--yunxi-radius-md);
+  border: 1rpx solid var(--yunxi-border);
+  box-shadow: var(--yunxi-card-shadow);
 }
 
 input,
 textarea {
   width: 100%;
-  min-height: 88rpx;
+  min-height: 84rpx;
   padding: 0 24rpx;
-  background: #f8fbf6;
-  border: 1rpx solid rgba(75, 129, 72, 0.12);
-  border-radius: 18rpx;
+  background: var(--yunxi-surface-alt);
+  border: 1rpx solid var(--yunxi-border);
+  border-radius: var(--yunxi-radius-md);
   font-size: 28rpx;
+  color: var(--yunxi-text-primary);
 }
 
 textarea {
@@ -67,13 +88,14 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 88rpx;
+  min-height: 84rpx;
   padding: 0 24rpx;
-  background: #f8fbf6;
-  border: 1rpx solid rgba(75, 129, 72, 0.12);
-  border-radius: 18rpx;
+  background: var(--yunxi-surface-alt);
+  border: 1rpx solid var(--yunxi-border);
+  border-radius: var(--yunxi-radius-md);
   color: var(--yunxi-text-primary);
   font-size: 28rpx;
+  font-weight: 600;
 }
 
 .address-actions,
@@ -91,24 +113,38 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 16rpx;
-  padding: 72rpx 40rpx;
+  padding: 80rpx 40rpx;
   text-align: center;
+  background: #FFFFFF;
+  border-radius: var(--yunxi-radius-md);
+  border: 1rpx solid var(--yunxi-border);
+  box-shadow: var(--yunxi-card-shadow);
 }
 
 .address-empty-title {
   color: var(--yunxi-text-primary);
-  font-size: 34rpx;
+  font-size: 32rpx;
   font-weight: 800;
 }
 
 .address-empty-text {
-  color: var(--yunxi-text-secondary);
-  font-size: 26rpx;
+  color: var(--yunxi-text-muted);
+  font-size: 24rpx;
   line-height: 1.5;
 }
 
 .address-card {
   padding: 28rpx;
+  background: #FFFFFF;
+  border-radius: var(--yunxi-radius-lg);
+  border: 1rpx solid var(--yunxi-border);
+  box-shadow: var(--yunxi-card-shadow);
+  overflow: hidden;
+  transition: background 0.2s ease;
+}
+
+.address-card:active {
+  background: var(--yunxi-surface-alt);
 }
 
 .address-card-title {
@@ -121,11 +157,12 @@ textarea {
 }
 
 .address-badge {
-  padding: 4rpx 12rpx;
-  color: var(--yunxi-accent-deep);
-  background: rgba(139, 191, 116, 0.16);
-  border-radius: 999rpx;
-  font-size: 22rpx;
+  padding: 4rpx 14rpx;
+  color: #FFFFFF;
+  background: var(--yunxi-brand);
+  border-radius: var(--yunxi-radius-sm);
+  font-size: 20rpx;
+  font-weight: 700;
 }
 
 .address-card-detail {
@@ -136,29 +173,37 @@ textarea {
   line-height: 1.5;
 }
 
+button.text-button,
 .text-button {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 88rpx;
-  padding: 0 18rpx;
-  color: var(--yunxi-text-secondary);
-  background: #f8fbf6;
-  border-radius: 999rpx;
+  min-height: 88rpx !important;
+  height: 88rpx !important;
+  padding: 0 24rpx;
+  color: var(--yunxi-brand);
+  background: var(--yunxi-surface-alt);
+  border-radius: var(--yunxi-radius-full);
   font-size: 24rpx;
+  font-weight: 700;
+  transition: all 0.2s ease;
+}
+
+.text-button:active {
+  transform: scale(0.96);
 }
 
 .text-button.danger {
-  color: #c0342b;
-  background: #fff4f0;
+  color: var(--yunxi-deal);
+  background: #FDF1EE;
 }
 
 .text-button[disabled] {
-  color: var(--yunxi-text-muted);
-  background: #eef4eb;
+  color: var(--yunxi-text-subtle);
+  background: var(--yunxi-surface-alt);
 }
 
 .text-button.danger[disabled] {
-  color: #d7a19a;
-  background: #fff7f4;
+  color: var(--yunxi-text-subtle);
+  background: var(--yunxi-surface-alt);
 }

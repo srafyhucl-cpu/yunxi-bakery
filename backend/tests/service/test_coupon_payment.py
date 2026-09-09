@@ -124,7 +124,7 @@ async def _create_order(
             "receiverName": "券支付测试",
             "receiverPhone": MOBILE,
             "receiverAddress": "测试地址",
-            "deliveryType": "delivery",
+            "deliveryType": "pickup",
             "deliveryAddress": "测试地址",
             "expectTime": "2026-08-20 19:00",
             "userOpenid": OPENID,

@@ -20,6 +20,9 @@ export function addCartItem(item: CartItem): void {
   const existingItem = items.find((cartItem) => cartItem.productId === item.productId);
   if (existingItem) {
     existingItem.quantity += item.quantity;
+    if (typeof item.stock === "number") {
+      existingItem.stock = item.stock;
+    }
   } else {
     items.push(item);
   }

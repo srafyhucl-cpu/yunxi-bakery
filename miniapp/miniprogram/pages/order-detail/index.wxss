@@ -1,14 +1,23 @@
+/* ==========================================================================
+   订单详情页 (Order Detail Page) - 现代自然轻食风格重塑
+   ========================================================================== */
+
 .order-detail-page {
   display: flex;
   flex-direction: column;
   gap: 20rpx;
+  padding-bottom: 120rpx;
 }
 
 .order-card {
   display: flex;
   flex-direction: column;
-  gap: 18rpx;
-  padding: 24rpx;
+  gap: 20rpx;
+  padding: 30rpx 28rpx;
+  background: #FFFFFF;
+  border-radius: var(--yunxi-radius-lg);
+  border: 1rpx solid var(--yunxi-border);
+  box-shadow: var(--yunxi-card-shadow);
 }
 
 .order-card--status {
@@ -19,26 +28,28 @@
 
 .order-label,
 .product-meta {
-  color: var(--yunxi-text-secondary);
+  color: var(--yunxi-text-muted);
   font-size: 24rpx;
 }
 
 .order-status {
   display: block;
-  margin-top: 8rpx;
-  color: var(--yunxi-accent-deep);
-  font-size: 36rpx;
+  margin-top: 6rpx;
+  color: var(--yunxi-brand);
+  font-size: 38rpx;
   font-weight: 900;
+  letter-spacing: 0.02em;
 }
 
 .payment-status {
   display: inline-flex;
   margin-top: 10rpx;
-  padding: 4rpx 12rpx;
-  border-radius: 999rpx;
-  background: rgba(201, 165, 106, 0.16);
-  color: var(--yunxi-text-secondary);
+  padding: 4rpx 16rpx;
+  border-radius: var(--yunxi-radius-sm);
+  background: var(--yunxi-gold-soft);
+  color: #7A5524;
   font-size: 22rpx;
+  font-weight: 700;
 }
 
 .progress-hint {
@@ -51,22 +62,23 @@
   display: flex;
   flex-direction: column;
   gap: 0;
+  margin-top: 10rpx;
 }
 
 .progress-step {
   position: relative;
   display: flex;
-  gap: 18rpx;
-  padding-bottom: 28rpx;
+  gap: 20rpx;
+  padding-bottom: 32rpx;
 }
 
 .progress-step::after {
   position: absolute;
-  top: 44rpx;
+  top: 48rpx;
   bottom: 0;
   left: 21rpx;
   width: 2rpx;
-  background: rgba(122, 90, 58, 0.14);
+  background: var(--yunxi-border-medium);
   content: "";
 }
 
@@ -86,8 +98,8 @@
   justify-content: center;
   width: 44rpx;
   height: 44rpx;
-  color: #ffffff;
-  background: rgba(122, 90, 58, 0.22);
+  color: #FFFFFF;
+  background: var(--yunxi-text-subtle);
   border-radius: 50%;
   font-size: 24rpx;
   font-weight: 800;
@@ -96,13 +108,13 @@
 .progress-body {
   display: flex;
   flex-direction: column;
-  gap: 8rpx;
+  gap: 6rpx;
 }
 
 .progress-title {
   color: var(--yunxi-text-primary);
   font-size: 28rpx;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .progress-desc {
@@ -121,19 +133,21 @@
 
 .progress-step--done .progress-marker,
 .progress-step--current .progress-marker {
-  background: var(--yunxi-accent-deep);
+  background: var(--yunxi-brand);
 }
 
 .progress-step--current .progress-title {
-  color: var(--yunxi-accent-deep);
+  color: var(--yunxi-brand);
 }
 
 .progress-step--todo .progress-marker {
-  background: rgba(122, 90, 58, 0.14);
+  background: var(--yunxi-surface-alt);
+  border: 1rpx solid var(--yunxi-border-medium);
+  color: var(--yunxi-text-subtle);
 }
 
 .progress-step--cancelled .progress-marker {
-  background: #b9c4b5;
+  background: var(--yunxi-text-subtle);
 }
 
 .progress-step--cancelled .progress-title,
@@ -151,11 +165,27 @@
   gap: 20rpx;
 }
 
+.order-row {
+  padding: 10rpx 0;
+  border-bottom: 1rpx solid var(--yunxi-border);
+  font-size: 26rpx;
+  color: var(--yunxi-text-primary);
+}
+
+.order-row:last-child {
+  border-bottom: none;
+}
+
+.product-row {
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid var(--yunxi-border);
+}
+
 .product-title,
 .product-subtotal,
 .order-total-row {
   color: var(--yunxi-text-primary);
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .product-title,
@@ -164,31 +194,70 @@
 }
 
 .product-meta {
-  margin-top: 8rpx;
+  margin-top: 6rpx;
+  color: var(--yunxi-text-muted);
+}
+
+.product-subtotal {
+  font-size: 30rpx;
+  font-weight: 800;
+  color: var(--yunxi-price);
 }
 
 .order-total-row {
-  padding-top: 18rpx;
-  border-top: 1rpx solid rgba(122, 90, 58, 0.1);
+  padding-top: 20rpx;
+  font-size: 32rpx;
   color: var(--yunxi-price);
   font-weight: 900;
 }
 
 .compact-button {
   min-width: 120rpx;
+  height: 64rpx;
+  min-height: 64rpx;
+  padding: 0 24rpx;
+  font-size: 24rpx;
+}
+
+.order-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  margin-top: 10rpx;
+}
+
+button.order-actions__button,
+.order-actions button {
+  flex: 1;
+  width: auto !important;
+  min-width: 140rpx;
+  min-height: 92rpx !important;
+  height: 92rpx !important;
+  font-size: 26rpx;
 }
 
 .danger-button {
-  min-height: 88rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 84rpx;
   padding: 0 24rpx;
-  color: #c0342b;
-  background: #fff4f0;
-  border-radius: 999rpx;
+  color: var(--yunxi-deal);
+  background: #FDF1EE;
+  border: 1rpx solid rgba(186, 78, 61, 0.2);
+  border-radius: var(--yunxi-radius-sm);
+  font-weight: 700;
+  transition: all 0.2s ease;
+}
+
+.danger-button:active {
+  transform: scale(0.96);
 }
 
 .danger-button[disabled] {
-  color: #d7a19a;
-  background: #fff7f4;
+  color: var(--yunxi-text-subtle);
+  background: var(--yunxi-surface-alt);
+  border-color: var(--yunxi-border);
 }
 
 .empty {
@@ -197,6 +266,6 @@
   align-items: center;
   justify-content: center;
   gap: 20rpx;
-  min-height: 420rpx;
+  min-height: 440rpx;
   color: var(--yunxi-text-secondary);
 }

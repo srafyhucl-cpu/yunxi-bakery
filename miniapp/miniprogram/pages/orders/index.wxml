@@ -6,14 +6,13 @@
       disabled="{{payingOrderId || cancellingOrderId}}"
       aria-label="返回"
     >
-      <text class="page-nav-back__icon">‹</text>
+      <text class="page-nav-back__icon"></text>
     </button>
     <view class="page-fixed-safe__title">我的订单</view>
   </view>
   <view class="page-pinned page-pinned--empty"></view>
   <scroll-view class="page-scroll" scroll-y enhanced show-scrollbar="{{false}}" bindscrolltolower="loadMore" lower-threshold="120">
     <view class="page">
-      <view class="section-title">我的订单</view>
       <session-notice
         wx:if="{{loginStateText}}"
         status-text="{{sessionView.statusText}}"
@@ -23,22 +22,23 @@
         icon-text="订"
         bind:action="goBack"
       ></session-notice>
-      <scroll-view class="filter-scroll" scroll-x enhanced show-scrollbar="{{false}}">
-        <view class="filter-tabs">
-          <button
-            wx:for="{{filterTabs}}"
-            wx:key="key"
-            class="filter-tab {{item.selected ? 'filter-tab-active' : ''}}"
-            data-key="{{item.key}}"
-            bindtap="selectFilter"
-          >
-            <text>{{item.label}}</text>
-            <text class="filter-count">{{item.count}}</text>
-          </button>
+      <view class="filter-tabs-bar">
+        <view
+          wx:for="{{filterTabs}}"
+          wx:key="key"
+          class="filter-tab-item {{item.selected ? 'is-active' : ''}}"
+          data-key="{{item.key}}"
+          bindtap="selectFilter"
+        >
+          <view class="filter-tab-content">
+            <text class="filter-tab-label">{{item.label}}</text>
+            <text wx:if="{{item.count > 0}}" class="filter-tab-badge">{{item.count}}</text>
+          </view>
+          <view class="filter-tab-indicator" wx:if="{{item.selected}}"></view>
         </view>
-      </scroll-view>
+      </view>
       <view wx:if="{{loadFailed && filteredOrders.length === 0}}" class="yunxi-state">
-        <view class="yunxi-state__icon">📡</view>
+        <view class="yunxi-state__icon">订单</view>
         <text class="yunxi-state__title">订单加载失败</text>
         <text class="yunxi-state__hint">网络开小差了，重试一下吧</text>
         <button class="primary-button yunxi-state__action" bindtap="retryLoad">重新加载</button>

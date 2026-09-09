@@ -4,7 +4,7 @@
   <scroll-view class="page-scroll" scroll-y enhanced show-scrollbar="{{false}}">
     <view class="page cart-page">
       <view wx:if="{{items.length === 0}}" class="yunxi-state">
-        <view class="yunxi-state__icon">🛒</view>
+        <view class="yunxi-state__icon">购</view>
         <text class="yunxi-state__title">购物车空空的</text>
         <text class="yunxi-state__hint">还没有选购商品哦，快去挑挑吧</text>
         <button class="primary-button yunxi-state__action" bindtap="goShopping">去选购</button>
@@ -22,7 +22,7 @@
           <view class="cart-info">
             <view class="cart-info__header">
               <text class="cart-title">{{item.title}}</text>
-              <text class="tag">现做</text>
+              <text class="tag">{{item.stockText}}</text>
             </view>
             <view class="cart-info__footer">
               <text class="cart-price yunxi-price">{{item.priceText}}</text>
@@ -56,16 +56,22 @@
           </view>
           <text class="recommend-name">{{item.title}}</text>
           <text class="recommend-sold">{{item.soldText}}</text>
-          <view class="recommend-bag"></view>
-          <text class="cart-price yunxi-price">{{item.priceText}}</text>
+          <view class="recommend-bottom">
+            <text class="cart-price yunxi-price">{{item.priceText}}</text>
+            <view
+              class="recommend-action {{item.isUnavailable ? 'is-muted' : ''}}"
+              data-id="{{item.id}}"
+              catchtap="addRecommendedProduct"
+            >{{item.actionText}}</view>
+          </view>
         </view>
       </view>
     </view>
   </scroll-view>
   
-  <view class="cart-footer">
+  <view wx:if="{{hasItems}}" class="cart-footer">
     <view>
-      <text class="muted">合计金额</text>
+      <text class="muted">商品合计 · 不含闪送费</text>
       <text class="cart-total">{{totalText}}</text>
     </view>
     <button class="primary-button" bindtap="checkout">

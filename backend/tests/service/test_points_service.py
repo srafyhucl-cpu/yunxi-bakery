@@ -80,7 +80,7 @@ async def _create_order(
             ],
             "receiverName": "积分测试",
             "receiverPhone": MOBILE,
-            "deliveryType": "delivery",
+            "deliveryType": "pickup",
             "deliveryAddress": "积分测试地址",
             "expectTime": "2026-08-20 19:00",
         },

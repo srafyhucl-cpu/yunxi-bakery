@@ -11,6 +11,7 @@ import {
 import { getProductDetail } from "../../services/products";
 import { getShopSettings } from "../../services/shop-settings";
 import { getMiniappSession } from "../../services/auth";
+import { requestDeliveryQuote } from "../../services/delivery";
 import {
   ADDRESS_PHONE_PATTERN,
   getSelectedAddress,
@@ -25,6 +26,7 @@ import {
   getDefaultCheckoutHourIndex,
   getCheckoutDateEnd,
   getCheckoutDateStart,
+  isCheckoutDateToday,
 } from "../../utils/checkout-time";
 import { formatFen } from "../../utils/money";
 import { goBackOrHome } from "../../utils/navigation";
@@ -64,6 +66,12 @@ function getCartItemLabel(item: CartItem): string {
   return item.title || item.productId;
 }
 
+function getPickupAddressForQuote(pickupAddress: string): string {
+  return pickupAddress || "北京市朝阳区云熙烘焙工坊";
+}
+
+let deliveryQuoteRequestSerial = 0;
+
 Page({
   data: {
     receiverName: "",
@@ -80,15 +88,18 @@ Page({
     dateStartValue: getCheckoutDateStart(),
     dateEndValue: getCheckoutDateEnd(),
     selectedDateValue: buildDefaultExpectTime().slice(0, 10),
-    hourOptions: buildCheckoutHourOptions("09:00-20:00"),
+    hourOptions: buildCheckoutHourOptions("09:00-19:30"),
     minuteOptions: CHECKOUT_MINUTE_OPTIONS,
-    selectedHourIndex: getDefaultCheckoutHourIndex(buildCheckoutHourOptions("09:00-20:00")),
+    selectedHourIndex: getDefaultCheckoutHourIndex(buildCheckoutHourOptions("09:00-19:30")),
     selectedMinuteIndex: 0,
+    businessHours: "09:00-19:30",
+    isSameDayOrder: isCheckoutDateToday(buildDefaultExpectTime().slice(0, 10)),
     totalText: "¥0.00",
     errorMessage: "",
     submitting: false,
     agreementAccepted: false,
     sessionView: buildMiniappSessionView(getMiniappSession()),
+    isLoggedIn: isMiniappLoggedIn(getMiniappSession()),
     loginStateText: "结算需要真实登录后使用",
     layoutStyle: getMiniappLayoutMetrics().pageShellStyle,
     availableCoupons: [] as Array<MemberCoupon & { disabled: boolean }>,
@@ -104,10 +115,18 @@ Page({
     estimateCouponFenText: "-¥0.00",
     estimateRemainFenText: "¥0.00",
     balanceDeductText: "-¥0.00",
+    checkoutItems: [] as CartItem[],
     pendingOrderId: "",
     pendingBarVisible: false,
     showCouponPanel: false,
-    orderLocked: false
+    orderLocked: false,
+    deliveryFeeFen: 0,
+    deliveryFeeText: "免运费",
+    deliveryQuoteId: "",
+    deliveryQuoteStatus: "not_applicable",
+    deliveryCalculating: false,
+    canSubmitOrder: true,
+    submitButtonText: "提交订单"
   },
   onShow() {
     void this.loadCheckout();
@@ -118,33 +137,45 @@ Page({
     }
     goBackOrHome();
   },
+  handleSessionAction() {
+    if (this.data.isLoggedIn) {
+      this.goBack();
+      return;
+    }
+    wx.switchTab({ url: ROUTES.profile });
+  },
   async loadCheckout() {
     const session = getMiniappSession();
     if (!isMiniappLoggedIn(session)) {
       this.setData({
         errorMessage: "请先登录后再结算",
         sessionView: buildMiniappSessionView(session),
-        loginStateText: "请先登录后再结算"
+        loginStateText: "请先登录后再结算",
+        isLoggedIn: false
       });
       return;
     }
     this.setData({
       sessionView: buildMiniappSessionView(session),
-      loginStateText: "已使用真实登录态加载结算信息"
+      loginStateText: "已使用真实登录态加载结算信息",
+      isLoggedIn: true
     });
     const totalFen = getCartItems().reduce((sum, item) => sum + item.priceFen * item.quantity, 0);
+    const checkoutItems = getCartItems();
     const shopSettings = await getShopSettings();
     await syncAddressBookFromBackend();
     const selectedAddress = getSelectedAddress();
-    const hourOptions = buildCheckoutHourOptions(shopSettings.businessHours);
-    const defaultHourIndex = getDefaultCheckoutHourIndex(hourOptions);
     const defaultExpectTime = buildDefaultExpectTime(shopSettings.businessHours);
+    const selectedDateValue = (this.data.expectTime || defaultExpectTime).slice(0, 10);
+    const hourOptions = buildCheckoutHourOptions(shopSettings.businessHours, selectedDateValue);
+    const defaultHourIndex = getDefaultCheckoutHourIndex(hourOptions);
     const shouldApplySelectedAddress =
       Boolean(selectedAddress) &&
       (this.data.selectedAddressId !== selectedAddress?.id ||
         (!this.data.receiverName && !this.data.receiverPhone && !this.data.deliveryAddress));
     this.setData({
       totalText: formatFen(totalFen),
+      checkoutItems,
       pickupNotice: shopSettings.pickupNotice,
       deliveryNotice: shopSettings.deliveryNotice,
       pickupAddress: shopSettings.pickupAddress,
@@ -165,10 +196,12 @@ Page({
         : "选择常用地址",
       dateStartValue: getCheckoutDateStart(),
       dateEndValue: getCheckoutDateEnd(),
+      businessHours: shopSettings.businessHours,
       hourOptions,
       selectedHourIndex: defaultHourIndex,
       expectTime: this.data.expectTime || defaultExpectTime,
-      selectedDateValue: (this.data.expectTime || defaultExpectTime).slice(0, 10)
+      selectedDateValue,
+      isSameDayOrder: isCheckoutDateToday(selectedDateValue)
     });
     // 资产区数据（余额/积分/可用券）用于展示与抵扣估算
     const [balance, points, couponsData] = await Promise.all([
@@ -195,11 +228,25 @@ Page({
       pointsEnabled: pending ? pending.pointsEnabled : false
     });
     this.refreshEstimate();
+    if (this.data.deliveryType === "delivery") {
+      void this.fetchDeliveryQuote();
+    } else {
+      this.refreshSubmitState();
+    }
   },
   updateField(event: WechatMiniprogram.Input) {
     const field = event.currentTarget.dataset.field as string;
+    const value = event.detail.value;
     this.setData({
-      [field]: event.detail.value
+      [field]: value
+    }, () => {
+      if (
+        this.data.deliveryType === "delivery" &&
+        ["deliveryAddress", "receiverName", "receiverPhone"].includes(field)
+      ) {
+        this.invalidateDeliveryQuote("quoting", "确认运费中...");
+        void this.fetchDeliveryQuote();
+      }
     });
   },
   openAddressBook() {
@@ -212,18 +259,30 @@ Page({
       deliveryType,
       deliveryAddress: deliveryType === "delivery" ? selectedAddress?.address || this.data.deliveryAddress : "",
       errorMessage: ""
+    }, () => {
+      if (deliveryType === "delivery") {
+        this.invalidateDeliveryQuote("quoting", "确认运费中...");
+      }
+      void this.fetchDeliveryQuote();
     });
   },
   selectExpectDate(event: WechatMiniprogram.PickerChange) {
     const selectedDateValue = String(event.detail.value);
+    const hourOptions = buildCheckoutHourOptions(this.data.businessHours, selectedDateValue);
+    const selectedHourIndex = getDefaultCheckoutHourIndex(hourOptions);
     this.setData({
       selectedDateValue,
+      hourOptions,
+      selectedHourIndex,
       expectTime: buildExpectTime(
         selectedDateValue,
-        this.data.hourOptions[this.data.selectedHourIndex] || "18",
+        hourOptions[selectedHourIndex] || "18",
         this.data.minuteOptions[this.data.selectedMinuteIndex] || "00"
       ),
+      isSameDayOrder: isCheckoutDateToday(selectedDateValue),
       errorMessage: ""
+    }, () => {
+      void this.refreshDeliveryQuoteForAppointment();
     });
   },
   selectExpectHour(event: WechatMiniprogram.PickerChange) {
@@ -238,6 +297,8 @@ Page({
         this.data.minuteOptions[this.data.selectedMinuteIndex] || "00"
       ),
       errorMessage: ""
+    }, () => {
+      void this.refreshDeliveryQuoteForAppointment();
     });
   },
   selectExpectMinute(event: WechatMiniprogram.PickerChange) {
@@ -250,11 +311,43 @@ Page({
       selectedMinuteIndex,
       expectTime: buildExpectTime(dateValue, hourValue, minuteValue),
       errorMessage: ""
+    }, () => {
+      void this.refreshDeliveryQuoteForAppointment();
     });
   },
   showValidationError(message: string) {
     this.setData({ errorMessage: message });
     wx.showToast({ title: message, icon: "none" });
+  },
+  refreshSubmitState() {
+    const hasItems = this.data.checkoutItems.length > 0;
+    const deliveryBlocked =
+      this.data.deliveryType === "delivery" &&
+      (this.data.deliveryCalculating ||
+        this.data.deliveryQuoteStatus !== "quoted" ||
+        !this.data.deliveryQuoteId);
+    let submitButtonText = "提交订单";
+    if (!hasItems) {
+      submitButtonText = "先去选购";
+    } else if (deliveryBlocked) {
+      submitButtonText = "先确认运费";
+    } else if (!this.data.agreementAccepted) {
+      submitButtonText = "请先同意协议";
+    }
+    this.setData({
+      canSubmitOrder: hasItems && !deliveryBlocked && this.data.agreementAccepted,
+      submitButtonText
+    });
+  },
+  invalidateDeliveryQuote(status: string, text: string) {
+    this.setData({
+      deliveryFeeFen: 0,
+      deliveryFeeText: text,
+      deliveryQuoteId: "",
+      deliveryQuoteStatus: status,
+      deliveryCalculating: true
+    });
+    this.refreshSubmitState();
   },
   buildCouponList(coupons: MemberCoupon[], goodsFen: number) {
     return coupons
@@ -281,21 +374,148 @@ Page({
   clearPendingOrder() {
     wx.removeStorageSync("yunxiPendingOrder");
   },
+  goShopping() {
+    wx.switchTab({ url: ROUTES.products });
+  },
+  async refreshDeliveryQuoteForAppointment() {
+    if (this.data.deliveryType === "delivery") {
+      await this.fetchDeliveryQuote();
+    }
+  },
+  async fetchDeliveryQuote() {
+    const requestSerial = ++deliveryQuoteRequestSerial;
+    if (this.data.deliveryType === "pickup") {
+      this.setData({
+        deliveryFeeFen: 0,
+        deliveryFeeText: "免运费",
+        deliveryQuoteId: "",
+        deliveryQuoteStatus: "not_applicable",
+        deliveryCalculating: false
+      });
+      this.refreshEstimate();
+      this.refreshSubmitState();
+      return;
+    }
+    const receiverAddress = this.data.deliveryAddress;
+    if (!receiverAddress) {
+      this.setData({
+        deliveryFeeFen: 0,
+        deliveryFeeText: "请先填写收货地址",
+        deliveryQuoteId: "",
+        deliveryQuoteStatus: "address_required",
+        deliveryCalculating: false
+      });
+      this.refreshEstimate();
+      this.refreshSubmitState();
+      return;
+    }
+    if (!normalizeText(this.data.receiverName)) {
+      this.setData({
+        deliveryFeeFen: 0,
+        deliveryFeeText: "请先填写联系人",
+        deliveryQuoteId: "",
+        deliveryQuoteStatus: "receiver_required",
+        deliveryCalculating: false
+      });
+      this.refreshEstimate();
+      this.refreshSubmitState();
+      return;
+    }
+    if (!ADDRESS_PHONE_PATTERN.test(normalizeText(this.data.receiverPhone))) {
+      this.setData({
+        deliveryFeeFen: 0,
+        deliveryFeeText: "请先填写正确的手机号",
+        deliveryQuoteId: "",
+        deliveryQuoteStatus: "receiver_phone_required",
+        deliveryCalculating: false
+      });
+      this.refreshEstimate();
+      this.refreshSubmitState();
+      return;
+    }
+    this.setData({
+      deliveryCalculating: true,
+      deliveryFeeText: "确认运费中...",
+      deliveryQuoteId: "",
+      deliveryQuoteStatus: "quoting"
+    });
+    this.refreshSubmitState();
+    try {
+      const items = getCartItems();
+      const quote = await requestDeliveryQuote({
+        requestId: `quote_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        fulfillmentMethod: "beijing_delivery",
+        pickupAddress: getPickupAddressForQuote(this.data.pickupAddress),
+        receiverName: normalizeText(this.data.receiverName),
+        receiverPhone: normalizeText(this.data.receiverPhone),
+        receiverAddress,
+        expectTime: this.data.expectTime,
+        itemCount: items.reduce((sum, item) => sum + item.quantity, 0),
+        goodsTotalFen: this.data.goodsFen,
+        items: items.map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity
+        }))
+      });
+      if (requestSerial !== deliveryQuoteRequestSerial) {
+        return;
+      }
+      if (quote?.status === "quoted" && quote.quoteId && typeof quote.deliveryFeeFen === "number") {
+        this.setData({
+          deliveryFeeFen: quote.deliveryFeeFen,
+          deliveryFeeText: formatFen(quote.deliveryFeeFen),
+          deliveryQuoteId: quote.quoteId,
+          deliveryQuoteStatus: "quoted",
+          deliveryCalculating: false
+        });
+        this.refreshSubmitState();
+      } else {
+        this.setData({
+          deliveryFeeFen: 0,
+          deliveryFeeText: quote?.message || "运费暂无法确认",
+          deliveryQuoteId: "",
+          deliveryQuoteStatus: quote?.status || "provider_unavailable",
+          deliveryCalculating: false
+        });
+        this.refreshSubmitState();
+      }
+    } catch {
+      if (requestSerial !== deliveryQuoteRequestSerial) {
+        return;
+      }
+      this.setData({
+        deliveryFeeFen: 0,
+        deliveryFeeText: "运费暂无法确认",
+        deliveryQuoteId: "",
+        deliveryQuoteStatus: "provider_unavailable",
+        deliveryCalculating: false
+      });
+      this.refreshSubmitState();
+    } finally {
+      if (requestSerial !== deliveryQuoteRequestSerial) {
+        return;
+      }
+      this.refreshEstimate();
+      this.refreshSubmitState();
+    }
+  },
   refreshEstimate() {
     const goodsFen = this.data.goodsFen;
+    const deliveryFeeFen = this.data.deliveryType === "delivery" ? this.data.deliveryFeeFen : 0;
+    const totalWithDelivery = goodsFen + deliveryFeeFen;
     const selected = this.data.availableCoupons.find(
       (coupon) => coupon.couponId === this.data.selectedCouponId
     );
     const couponFen = selected && !selected.disabled ? selected.valueFen : 0;
     const balanceFen = this.data.balanceEnabled ? this.data.balanceFen : 0;
-    const remainFen = Math.max(0, goodsFen - couponFen - balanceFen);
+    const remainFen = Math.max(0, totalWithDelivery - couponFen - balanceFen);
     this.setData({
       estimateCouponFen: couponFen,
       estimateRemainFen: remainFen,
       goodsFenText: formatFen(goodsFen),
       estimateCouponFenText: `-${formatFen(couponFen)}`,
       estimateRemainFenText: formatFen(remainFen),
-      balanceDeductText: `-${formatFen(Math.min(balanceFen, goodsFen))}`
+      balanceDeductText: `-${formatFen(Math.min(balanceFen, Math.max(0, totalWithDelivery - couponFen)))}`
     });
   },
   toggleCouponPanel() {
@@ -357,7 +577,7 @@ Page({
       return false;
     }
     if (this.data.deliveryType === "delivery" && !deliveryAddress) {
-      this.showValidationError("门店配送需要填写配送地址");
+      this.showValidationError("北京闪送需要填写配送地址");
       return false;
     }
     if (!expectTime) {
@@ -413,6 +633,8 @@ Page({
     this.setData({
       agreementAccepted: !this.data.agreementAccepted,
       errorMessage: ""
+    }, () => {
+      this.refreshSubmitState();
     });
   },
   openPolicy(event: WechatMiniprogram.TouchEvent) {
@@ -425,6 +647,10 @@ Page({
     }
     if (!isMiniappLoggedIn(getMiniappSession())) {
       this.showValidationError("请先登录后提交订单");
+      return;
+    }
+    if (this.data.deliveryType === "delivery" && (this.data.deliveryQuoteStatus !== "quoted" || !this.data.deliveryQuoteId || this.data.deliveryCalculating)) {
+      this.showValidationError("请先完成地址和闪送运费确认，再提交订单");
       return;
     }
     const cartItems = getCartItems();
@@ -455,7 +681,11 @@ Page({
           deliveryType: this.data.deliveryType,
           deliveryAddress: getOrderDeliveryAddress(this.data.deliveryType, this.data.deliveryAddress),
           expectTime: this.data.expectTime,
-          remark: buildOrderRemark(this.data.deliveryType, this.data.remark, this.data.deliveryAddress)
+          remark: buildOrderRemark(this.data.deliveryType, this.data.remark, this.data.deliveryAddress),
+          pickupAddress: getPickupAddressForQuote(this.data.pickupAddress),
+          fulfillmentMethod: this.data.deliveryType === "delivery" ? "beijing_delivery" : "pickup",
+          deliveryQuoteId: this.data.deliveryType === "delivery" ? this.data.deliveryQuoteId || undefined : undefined,
+          deliveryFeeFen: this.data.deliveryType === "delivery" ? this.data.deliveryFeeFen : 0
         });
         orderId = order.orderId;
         this.savePendingOrder(orderId);
@@ -472,7 +702,8 @@ Page({
         const applied = await applyPoints(orderId);
         pointsFen = applied.pointsFen || 0;
       }
-      const totalFen = this.data.goodsFen;
+      const deliveryFeeFen = this.data.deliveryType === "delivery" ? this.data.deliveryFeeFen : 0;
+      const totalFen = this.data.goodsFen + deliveryFeeFen;
       const remainFen = Math.max(0, totalFen - couponFen - pointsFen);
       const balance = await getBalance();
       const branch = buildPaymentBranch({
@@ -480,7 +711,15 @@ Page({
         balanceFen: this.data.balanceEnabled ? balance.balanceFen : 0,
         balanceEnabled: this.data.balanceEnabled
       });
-      await this.confirmAndPay(orderId, { totalFen, couponFen, pointsFen, remainFen, branch, balanceFen: balance.balanceFen });
+      await this.confirmAndPay(orderId, {
+        totalFen,
+        couponFen,
+        pointsFen,
+        remainFen,
+        branch,
+        balanceFen: balance.balanceFen,
+        deliveryFeeFen
+      });
     } catch (error) {
       const message = getErrorMessage(error, "提交失败，请稍后重试");
       this.setData({ errorMessage: message });
@@ -498,9 +737,10 @@ Page({
       remainFen: number;
       branch: PaymentBranch;
       balanceFen: number;
+      deliveryFeeFen?: number;
     }
   ): Promise<void> {
-    const { totalFen, couponFen, pointsFen, remainFen, branch, balanceFen } = summary;
+    const { totalFen, couponFen, pointsFen, remainFen, branch, balanceFen, deliveryFeeFen } = summary;
     let content = "";
     if (branch === "free") {
       content = "本单已由优惠全额抵扣，无需支付";
@@ -511,6 +751,9 @@ Page({
       content = `剩余应付 ${formatFen(remainFen)}\n余额抵扣 ${formatFen(balanceFen)}\n在线支付 ${formatFen(onlineFen)}`;
     } else {
       content = `实付 ${formatFen(remainFen)}（在线支付）`;
+    }
+    if (deliveryFeeFen && deliveryFeeFen > 0) {
+      content += `\n闪送运费 +${formatFen(deliveryFeeFen)}`;
     }
     if (couponFen > 0) {
       content += `\n优惠券 -${formatFen(couponFen)}`;

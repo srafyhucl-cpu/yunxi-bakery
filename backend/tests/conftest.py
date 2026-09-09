@@ -7,6 +7,7 @@
 
 import os
 from collections.abc import AsyncGenerator
+from datetime import datetime
 
 import aiosqlite
 import pytest
@@ -22,6 +23,18 @@ os.environ.setdefault("ADMIN_ALLOW_LEGACY_BEARER", "1")
 os.environ.setdefault("ADMIN_COOKIE_SECURE", "0")
 
 from app.database import close_db, init_db
+
+
+@pytest.fixture(autouse=True)
+def freeze_order_schedule_time(monkeypatch: pytest.MonkeyPatch) -> None:
+    """固定预约校验时钟，避免历史预约夹具随自然日期失效。"""
+    from app.service.order import schedule
+
+    monkeypatch.setattr(
+        schedule,
+        "_get_current_beijing_time",
+        lambda: datetime(2026, 6, 17, 12, 0),
+    )
 
 
 @pytest.fixture

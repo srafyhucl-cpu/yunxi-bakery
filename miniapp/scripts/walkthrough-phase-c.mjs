@@ -7,8 +7,9 @@ import fs from "node:fs";
 
 const WS = process.env.MINIAPP_AUTOMATOR_WS || "ws://127.0.0.1:9420";
 const OP_TIMEOUT = Number(process.env.OP_TIMEOUT || 12000);
+const SCREENSHOT_TIMEOUT = Number(process.env.SCREENSHOT_TIMEOUT || 30000);
 
-const PAGES = [
+const ALL_PAGES = [
   "pages/home/index",
   "pages/products/index",
   "pages/product-detail/index",
@@ -25,6 +26,12 @@ const PAGES = [
   "pages/coupons/index",
   "pages/recharge/index"
 ];
+const REQUESTED_PAGE = String(process.env.MINIAPP_WALKTHROUGH_PAGE || "").trim();
+const PAGES = REQUESTED_PAGE ? [REQUESTED_PAGE] : ALL_PAGES;
+
+if (REQUESTED_PAGE && !ALL_PAGES.includes(REQUESTED_PAGE)) {
+  throw new Error(`Unsupported page: ${REQUESTED_PAGE}`);
+}
 
 const consoleErrors = [];
 const report = [];
@@ -38,9 +45,9 @@ function withTimeout(promise, ms, label) {
   ]);
 }
 
-async function safe(fn, label, fallback = null) {
+async function safe(fn, label, fallback = null, timeoutMs = OP_TIMEOUT) {
   try {
-    return await withTimeout(fn(), OP_TIMEOUT, label);
+    return await withTimeout(fn(), timeoutMs, label);
   } catch (e) {
     return { __failed: true, message: `${label}: ${String(e.message || e).slice(0, 120)}`, fallback };
   }
@@ -117,11 +124,22 @@ async function main() {
 
     // 页面级报错从全局 console 流里取本时间窗新增
     shot: {
+      // 使用页面专属临时文件，截图成功且路由未变化后才替换正式文件。
+      const shotPath = `reports/devtools/.wt-${page.split("/")[1]}-${Date.now()}.png`;
+      const beforeShot = await safe(() => miniProgram.currentPage(), "currentPageBeforeScreenshot");
       const r = await safe(
-        () => miniProgram.screenshot({ path: `reports/devtools/wt-${page.split("/")[1]}.png` }),
-        "screenshot"
+        () => miniProgram.screenshot({ path: shotPath }),
+        "screenshot",
+        null,
+        SCREENSHOT_TIMEOUT
       );
       if (r?.__failed) entry.errors.push(r.message);
+      const afterShot = await safe(() => miniProgram.currentPage(), "currentPageAfterScreenshot");
+      if (beforeShot?.path !== page || afterShot?.path !== page) {
+        entry.errors.push(`screenshot route mismatch: before=${beforeShot?.path ?? "unknown"}, after=${afterShot?.path ?? "unknown"}`);
+      } else if (!r?.__failed && fs.existsSync(shotPath)) {
+        fs.renameSync(shotPath, `reports/devtools/wt-${page.split("/")[1]}.png`);
+      }
     }
 
     entry.elapsedMs = Date.now() - t0;
@@ -142,10 +160,11 @@ async function main() {
       2
     )
   );
-  console.log(`\ndone. report written. console warn/error total: ${consoleErrors.length}`);
+  const failedPages = report.filter((entry) => entry.errors.length > 0 || entry.currentPage !== entry.page);
+  console.log(`\ndone. report written. console warn/error total: ${consoleErrors.length}; page failures: ${failedPages.length}`);
 
   await safe(() => miniProgram.disconnect(), "disconnect");
-  process.exit(0);
+  process.exit(failedPages.length > 0 || consoleErrors.length > 0 ? 1 : 0);
 }
 
 function sleep(ms) {

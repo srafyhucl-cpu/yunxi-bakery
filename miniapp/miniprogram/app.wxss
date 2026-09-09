@@ -1,33 +1,60 @@
+/* ==========================================================================
+   芸熙烘焙：温暖精品烘焙 + 现代极简电商
+   ========================================================================== */
+
 page {
+  /* 基础间距与安全区尺寸 */
   --yunxi-page-gutter: 28rpx;
-  --yunxi-custom-nav-space: calc(env(safe-area-inset-top) + 18rpx);
+  --yunxi-custom-nav-space: calc(env(safe-area-inset-top) + 20rpx);
   --yunxi-page-bottom-space: calc(env(safe-area-inset-bottom) + 200rpx);
   --yunxi-tabbar-occupied-height: calc(env(safe-area-inset-bottom) + 128rpx);
   --yunxi-fixed-action-space: calc(env(safe-area-inset-bottom) + 276rpx);
-  --yunxi-page-bg: #F7F0E3;
-  --yunxi-surface: #FFFDF8;
-  --yunxi-surface-alt: #F2E7D2;
-  --yunxi-text-primary: #3A2B20;
-  --yunxi-text-secondary: #8A7660;
-  --yunxi-text-muted: #BCAF96;
-  --yunxi-accent: #6C9A63;
-  --yunxi-accent-deep: #4A7A41;
-  --yunxi-accent-soft: rgba(201, 165, 106, 0.12);
-  --yunxi-border: rgba(44, 37, 32, 0.08);
-  --yunxi-shadow: 0 16rpx 40rpx rgba(201, 165, 106, 0.15);
-  --yunxi-radius-lg: 32rpx;
-  --yunxi-radius-md: 24rpx;
-  --yunxi-radius-sm: 16rpx;
-  --yunxi-price: #111111;
-  --yunxi-deal: #C25B4E;
-  --yunxi-gold: #C9A56A;
-  --yunxi-card-shadow: 0 8rpx 24rpx rgba(44, 37, 32, 0.10);
+
+  /* 背景与表面系统 (方案 B：晨曦暖灰白 + 纯白卡片) */
+  --yunxi-page-bg: #F7F5F1;
+  --yunxi-surface: #FFFFFF;
+  --yunxi-surface-alt: #F1EEE8;
+
+  /* 品牌色系统 (森林墨绿系) */
+  --yunxi-brand: #3D332D;
+  --yunxi-brand-light: #625248;
+  --yunxi-brand-soft: rgba(61, 51, 45, 0.08);
+  --yunxi-accent: #3D332D;
+  --yunxi-accent-deep: #2B231F;
+  --yunxi-accent-soft: rgba(61, 51, 45, 0.08);
+
+  /* 点缀色 (焦糖烘烤金 + 法式烤栗红) */
+  --yunxi-gold: #B68A53;
+  --yunxi-gold-light: #D7B984;
+  --yunxi-gold-soft: rgba(182, 138, 83, 0.12);
+  --yunxi-price: #1C201D;
+  --yunxi-deal: #BA4E3D;
+
+  /* 文字排印阶梯 */
+  --yunxi-text-primary: #2B2724;
+  --yunxi-text-secondary: #665E58;
+  --yunxi-text-muted: #8E8780;
+  --yunxi-text-subtle: #B8B1A9;
+
+  /* 边框与阴影体系 */
+  --yunxi-border: rgba(61, 51, 45, 0.10);
+  --yunxi-border-medium: rgba(61, 51, 45, 0.20);
+  --yunxi-card-shadow: 0 4rpx 16rpx rgba(61, 51, 45, 0.04);
+  --yunxi-floating-shadow: 0 10rpx 24rpx rgba(61, 51, 45, 0.08);
+  --yunxi-shadow: 0 8rpx 24rpx rgba(61, 51, 45, 0.06);
+
+  /* 圆角规范 */
+  --yunxi-radius-sm: 8rpx;
+  --yunxi-radius-md: 10rpx;
+  --yunxi-radius-lg: 12rpx;
+  --yunxi-radius-full: 999rpx;
 
   height: 100vh;
   overflow: hidden;
   color: var(--yunxi-text-primary);
   background: var(--yunxi-page-bg);
   font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
 view,
@@ -38,17 +65,26 @@ textarea {
   box-sizing: border-box;
 }
 
-button {
+button,
+button:not([size="mini"]) {
   margin: 0;
   padding: 0;
+  width: auto;
+  min-height: 0;
   border-radius: 0;
   font: inherit;
   line-height: normal;
+  background-color: transparent;
+  box-sizing: border-box;
 }
 
 button::after {
   border: 0;
 }
+
+/* ==========================================================================
+   页面外壳与导航框架
+   ========================================================================== */
 
 .page-shell {
   height: 100vh;
@@ -63,48 +99,57 @@ button::after {
   flex: 0 0 var(--yunxi-custom-nav-space);
   min-height: var(--yunxi-custom-nav-space);
   background: #ffffff;
+  border-bottom: 1rpx solid rgba(61, 51, 45, 0.05);
+  z-index: 100;
 }
 
 .page-fixed-safe::after {
   content: "芸熙烘焙";
   position: absolute;
   left: 50%;
-  bottom: 18rpx;
+  bottom: 20rpx;
   transform: translateX(-50%);
   max-width: 360rpx;
-  color: #3A2B20;
-  font-size: 31rpx;
-  font-weight: 900;
-  letter-spacing: 0.12em;
+  color: var(--yunxi-text-primary);
+  font-size: 32rpx;
+  font-weight: 700;
+  letter-spacing: 0.04em;
   white-space: nowrap;
 }
 
 .page-fixed-safe__home {
   position: absolute;
   left: var(--yunxi-page-gutter);
-  bottom: 0;
+  bottom: 8rpx;
   display: none;
   align-items: center;
   justify-content: center;
-  width: 88rpx;
-  height: 88rpx;
-  color: var(--yunxi-accent-deep);
+  width: 68rpx;
+  height: 68rpx;
+  color: var(--yunxi-brand);
   font-size: 34rpx;
-  font-weight: 900;
+  font-weight: 800;
+}
+
+.page-fixed-safe__home:active {
+  opacity: 0.72;
 }
 
 .page-fixed-safe__title {
   position: absolute;
-  left: 116rpx;
-  right: 116rpx;
-  bottom: 18rpx;
+  left: 120rpx;
+  right: 120rpx;
+  bottom: 20rpx;
   display: none;
-  color: #3A2B20;
-  font-size: 31rpx;
-  font-weight: 900;
+  align-items: center;
+  justify-content: center;
+  color: var(--yunxi-text-primary);
+  font-size: 32rpx;
+  font-weight: 700;
   line-height: 1.2;
   text-align: center;
   white-space: nowrap;
+  pointer-events: none;
 }
 
 .page-fixed-safe.has-custom-title::after {
@@ -116,20 +161,33 @@ button::after {
   display: flex;
 }
 
+button.page-nav-back,
 .page-nav-back {
   position: absolute;
   left: var(--yunxi-page-gutter);
-  bottom: 0;
+  bottom: 12rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 88rpx;
-  height: 88rpx;
+  flex-shrink: 0;
+  width: 88rpx !important;
+  min-width: 88rpx !important;
+  max-width: 88rpx !important;
+  height: 88rpx !important;
+  min-height: 88rpx !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-sizing: border-box;
   color: var(--yunxi-text-primary);
   background: #ffffff;
   border: 1rpx solid var(--yunxi-border);
-  border-radius: 50%;
-  box-shadow: var(--yunxi-card-shadow);
+  border-radius: 50% !important;
+  box-shadow: 0 4rpx 14rpx rgba(61, 51, 45, 0.08);
+}
+
+.page-nav-back:active {
+  transform: scale(0.92);
+  opacity: 0.85;
 }
 
 .page-nav-back[disabled] {
@@ -141,55 +199,23 @@ button::after {
 }
 
 .page-nav-back__icon {
-  margin-top: -4rpx;
-  font-size: 54rpx;
-  line-height: 1;
-  font-weight: 700;
+  display: block;
+  flex-shrink: 0;
+  width: 20rpx;
+  height: 20rpx;
+  margin-left: 6rpx;
+  border: solid currentColor;
+  border-width: 0 4rpx 4rpx 0;
+  border-radius: 2rpx;
+  transform: rotate(135deg);
 }
 
 .page-pinned {
   flex: 0 0 auto;
   padding: 0 var(--yunxi-page-gutter) 18rpx;
   background: #ffffff;
-  border-bottom: 1rpx solid rgba(122, 90, 58, 0.08);
-  box-shadow: 0 10rpx 24rpx rgba(54, 103, 56, 0.045);
-}
-
-.product-art.cake-yellow .product-art-base {
-  background: #F7EEDC;
-  border-bottom-color: #8bbf74;
-}
-
-/* 玻璃拟态与动画 */
-.glass-panel {
-  background: rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(20px);
-  border: 1rpx solid rgba(255, 255, 255, 0.8);
-  box-shadow: 0 12rpx 36rpx rgba(0, 0, 0, 0.04);
-}
-
-.hover-scale {
-  transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.2s ease;
-}
-
-.hover-scale:active {
-  transform: scale(0.96);
-  opacity: 0.9;
-}
-
-.fade-in {
-  animation: fadeIn 0.4s ease-out forwards;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(12rpx);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  border-bottom: 1rpx solid var(--yunxi-border);
+  box-shadow: 0 8rpx 20rpx rgba(61, 51, 45, 0.03);
 }
 
 .page-pinned--empty {
@@ -202,11 +228,7 @@ button::after {
 .page-scroll {
   flex: 1;
   min-height: 0;
-  background:
-    radial-gradient(circle at 10% 5%, rgba(201, 165, 106, 0.45), transparent 45%),
-    radial-gradient(circle at 90% 25%, rgba(229, 175, 110, 0.35), transparent 50%),
-    radial-gradient(circle at 30% 75%, rgba(201, 165, 106, 0.25), transparent 60%),
-    var(--yunxi-page-bg);
+  background: var(--yunxi-page-bg);
 }
 
 .page-top-spacer {
@@ -219,80 +241,150 @@ button::after {
   padding: 24rpx var(--yunxi-page-gutter) var(--yunxi-page-bottom-space);
 }
 
+/* ==========================================================================
+   全局玻璃拟态与动效
+   ========================================================================== */
+
+.glass-panel {
+  background: #FFFFFF;
+  border: 1rpx solid var(--yunxi-border);
+  box-shadow: var(--yunxi-card-shadow);
+}
+
+.hover-scale {
+  transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.2s ease;
+}
+
+.hover-scale:active {
+  transform: scale(0.97);
+  opacity: 0.92;
+}
+
+.fade-in {
+  animation: fadeIn 0.35s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10rpx);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ==========================================================================
+   通用排版与按钮
+   ========================================================================== */
+
 .section-title {
-  margin: 24rpx 0 16rpx;
+  margin: 28rpx 0 16rpx;
   font-size: 34rpx;
-  font-weight: 700;
+  font-weight: 800;
+  color: var(--yunxi-text-primary);
+  letter-spacing: 0.02em;
 }
 
 .muted {
-  color: var(--yunxi-text-secondary);
+  color: var(--yunxi-text-muted);
   font-size: 26rpx;
 }
 
+button.primary-button,
 .primary-button {
   display: flex;
   align-items: center;
   justify-content: center;
+  width: auto;
+  min-width: 0;
   min-height: 88rpx;
-  padding: 0 28rpx;
+  padding: 0 32rpx;
   color: #ffffff;
-  background: linear-gradient(135deg, #7BBA6E 0%, #428036 100%);
-  border-radius: 999rpx;
+  background: var(--yunxi-brand);
+  border-radius: var(--yunxi-radius-sm);
+  font-size: 30rpx;
   font-weight: 700;
-  box-shadow: 0 16rpx 32rpx rgba(66, 128, 54, 0.3);
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  box-shadow: 0 6rpx 14rpx rgba(61, 51, 45, 0.16);
+  transition: all 0.2s ease;
+}
+
+.primary-button:active {
+  transform: scale(0.97);
+  opacity: 0.94;
 }
 
 .primary-button[disabled] {
-  color: rgba(255, 255, 255, 0.86);
-  background: linear-gradient(180deg, #b8c7b0 0%, #8fa08b 100%);
+  color: rgba(255, 255, 255, 0.8);
+  background: #A3B5AC;
   box-shadow: none;
 }
 
+button.ghost-button,
 .ghost-button {
   display: flex;
   align-items: center;
   justify-content: center;
+  width: auto;
+  min-width: 0;
   min-height: 88rpx;
-  padding: 0 24rpx;
-  color: var(--yunxi-accent-deep);
-  background: rgba(255, 255, 255, 0.92);
-  border: 1rpx solid var(--yunxi-border);
-  border-radius: 999rpx;
+  padding: 0 28rpx;
+  color: var(--yunxi-brand);
+  background: #ffffff;
+  border: 2rpx solid var(--yunxi-border-medium);
+  border-radius: var(--yunxi-radius-sm);
+  font-size: 28rpx;
   font-weight: 700;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.ghost-button:active {
+  background: var(--yunxi-surface-alt);
+  transform: scale(0.97);
 }
 
 .ghost-button[disabled] {
   color: var(--yunxi-text-muted);
-  background: rgba(245, 248, 243, 0.86);
-  border-color: rgba(122, 90, 58, 0.08);
+  background: var(--yunxi-surface-alt);
+  border-color: var(--yunxi-border);
 }
 
 .bakery-panel {
-  background: rgba(255, 255, 255, 0.94);
+  background: #ffffff;
   border: 1rpx solid var(--yunxi-border);
-  border-radius: var(--yunxi-radius-lg);
-  box-shadow: var(--yunxi-shadow);
+  border-radius: var(--yunxi-radius-md);
+  box-shadow: var(--yunxi-card-shadow);
 }
 
 .bakery-section-heading {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12rpx;
-  margin: 16rpx 0 20rpx;
-  color: var(--yunxi-accent-deep);
+  gap: 16rpx;
+  margin: 32rpx 0 20rpx;
+  color: var(--yunxi-brand);
   font-size: 28rpx;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: 0.12em;
 }
 
 .bakery-section-heading::before,
 .bakery-section-heading::after {
   content: "";
-  width: 28rpx;
+  width: 32rpx;
   height: 2rpx;
-  background: rgba(201, 165, 106, 0.65);
+  background: var(--yunxi-gold);
+  opacity: 0.7;
 }
 
 .bakery-feature-icon,
@@ -302,10 +394,11 @@ button::after {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #5C3D24;
-  font-weight: 700;
-  background: radial-gradient(circle at 30% 24%, #FBF3E2, #C9A56A 74%);
-  box-shadow: 0 8rpx 16rpx rgba(201, 165, 106, 0.2);
+  color: #ffffff;
+  font-weight: 800;
+  background: var(--yunxi-brand);
+  border-radius: var(--yunxi-radius-md);
+  box-shadow: 0 8rpx 20rpx rgba(61, 51, 45, 0.18);
 }
 
 .bakery-feature-icon::after,
@@ -313,108 +406,23 @@ button::after {
 .bakery-status-icon::after {
   content: "";
   position: absolute;
-  inset: 10rpx;
-  border: 2rpx solid rgba(255, 255, 255, 0.82);
-  border-radius: 14rpx;
+  inset: 6rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.25);
+  border-radius: calc(var(--yunxi-radius-md) - 6rpx);
 }
 
-.bakery-photo {
-  position: relative;
-  overflow: hidden;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.74), rgba(255, 255, 255, 0) 28%),
-    linear-gradient(135deg, #F7EEDC 0%, #ffffff 58%, #EBD9B8 100%);
-}
+/* ==========================================================================
+   通用卡片、步进器、徽标、价格、骨架屏
+   ========================================================================== */
 
-.bakery-photo::before {
-  content: "";
-  position: absolute;
-  left: 50%;
-  bottom: 18rpx;
-  width: 74%;
-  height: 18rpx;
-  transform: translateX(-50%);
-  border-radius: 999rpx;
-  background: radial-gradient(circle, rgba(154, 116, 76, 0.24), transparent 70%);
-}
-
-.bakery-photo.cake-pink::after,
-.bakery-photo.cake-cream::after,
-.bakery-photo.cake-choco::after,
-.bakery-photo.cake-yellow::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  bottom: 26rpx;
-  width: 128rpx;
-  height: 128rpx;
-  transform: translateX(-50%);
-  border-radius: 50%;
-}
-
-.bakery-photo.cake-pink::after {
-  background:
-    radial-gradient(circle at 48% 18%, #fff1ef 0 14%, transparent 15%),
-    radial-gradient(circle at 38% 26%, #efb7a5 0 10%, transparent 11%),
-    radial-gradient(circle at 62% 25%, #e4a296 0 10%, transparent 11%),
-    radial-gradient(circle at 50% 62%, #d07a65 0 52%, #9b5e3e 53% 61%, transparent 62%);
-}
-
-.bakery-photo.cake-cream::after {
-  background:
-    radial-gradient(circle at 38% 26%, #fff8eb 0 12%, transparent 13%),
-    radial-gradient(circle at 60% 24%, #f1dcc0 0 11%, transparent 12%),
-    radial-gradient(circle at 50% 62%, #fff5e4 0 52%, #ecdabc 53% 61%, transparent 62%);
-}
-
-.bakery-photo.cake-choco::after {
-  background:
-    radial-gradient(circle at 40% 24%, #f5d6c1 0 9%, transparent 10%),
-    radial-gradient(circle at 58% 22%, #d4a382 0 10%, transparent 11%),
-    radial-gradient(circle at 50% 62%, #6e402e 0 52%, #573222 53% 61%, transparent 62%);
-}
-
-.bakery-photo.cake-yellow::after {
-  background:
-    radial-gradient(circle at 50% 16%, #fffdf5 0 12%, transparent 13%),
-    radial-gradient(circle at 50% 62%, #f1ce76 0 52%, #deb555 53% 61%, transparent 62%);
-}
-
-/* 一期整改共享组件：白底卡、徽标、价格、占位、骨架、空态（各页复用，不重复定义） */
 .yunxi-card {
   background: #ffffff;
   border-radius: var(--yunxi-radius-md);
+  border: 1rpx solid var(--yunxi-border);
   box-shadow: var(--yunxi-card-shadow);
 }
 
-/* 分区标题：中文名 + 英文小字 + 两侧短线 */
-.yunxi-section-head {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6rpx;
-  padding: 12rpx 0 4rpx;
-}
-
-.yunxi-section-head__title {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-  color: var(--yunxi-text-primary);
-  font-size: 30rpx;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-}
-
-.yunxi-section-head__title::before,
-.yunxi-section-head__title::after {
-  content: "";
-  width: 40rpx;
-  height: 2rpx;
-  background: rgba(201, 165, 106, 0.6);
-}
-
-/* 统一步进器：圆形减号描边、加号深绿实心（购物车与详情页复用） */
+/* 统一步进器 */
 .yunxi-stepper {
   display: flex;
   align-items: center;
@@ -430,23 +438,24 @@ button::after {
   font-size: 26rpx;
   font-weight: 800;
   border-radius: 50%;
+  transition: all 0.15s ease;
 }
 
 .yunxi-stepper__btn--minus {
-  color: var(--yunxi-text-secondary);
+  color: var(--yunxi-brand);
   background: #ffffff;
-  border: 1rpx solid var(--yunxi-border);
+  border: 2rpx solid var(--yunxi-border-medium);
 }
 
 .yunxi-stepper__btn--plus {
   color: #ffffff;
-  background: var(--yunxi-accent-deep);
-  border: 1rpx solid var(--yunxi-accent-deep);
+  background: var(--yunxi-brand);
+  border: 2rpx solid var(--yunxi-brand);
 }
 
 .yunxi-stepper__btn:active {
   transform: scale(0.9);
-  opacity: 0.9;
+  opacity: 0.88;
 }
 
 .yunxi-stepper__val {
@@ -457,12 +466,13 @@ button::after {
   text-align: center;
 }
 
+/* 徽标体系 */
 .yunxi-badge {
   display: inline-flex;
   align-items: center;
   min-height: 36rpx;
   padding: 0 14rpx;
-  border-radius: 999rpx;
+  border-radius: var(--yunxi-radius-full);
   font-size: 20rpx;
   font-weight: 800;
   line-height: 1.4;
@@ -481,83 +491,80 @@ button::after {
 
 .yunxi-badge.is-hot {
   color: #ffffff;
-  background: var(--yunxi-accent-deep);
+  background: var(--yunxi-brand);
 }
 
 .yunxi-badge.is-limited {
-  color: #8A5A1E;
-  background: #FDF3E3;
+  color: #BA4E3D;
+  background: #FDF1EE;
+  border: 1rpx solid rgba(186, 78, 61, 0.2);
 }
 
+/* 价格展示 */
 .yunxi-price {
   color: var(--yunxi-price);
   font-weight: 900;
+  letter-spacing: 0;
 }
 
 .yunxi-price__unit {
   margin-left: 4rpx;
   color: var(--yunxi-text-muted);
   font-size: 22rpx;
-  font-weight: 600;
+  font-weight: 500;
 }
 
+/* 芯片标签 */
 .yunxi-chip {
-  padding: 10rpx 20rpx;
+  padding: 8rpx 20rpx;
   color: var(--yunxi-text-secondary);
-  background: #ffffff;
-  border: 1rpx solid var(--yunxi-border);
-  border-radius: 999rpx;
+  background: var(--yunxi-surface-alt);
+  border-radius: var(--yunxi-radius-full);
   font-size: 24rpx;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.4;
   white-space: nowrap;
 }
 
+/* 优雅通透的占位图 */
 .yunxi-image-fallback {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 100%;
   height: 100%;
-  background: linear-gradient(135deg, #F2E7D2 0%, #FFFFFF 60%, #EBD9B8 100%);
+  background: var(--yunxi-surface-alt);
 }
 
 .yunxi-image-fallback__mark {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 96rpx;
-  height: 96rpx;
-  color: var(--yunxi-accent-deep);
-  background: rgba(255, 255, 255, 0.9);
-  border: 1rpx solid rgba(122, 90, 58, 0.14);
+  width: 88rpx;
+  height: 88rpx;
+  color: var(--yunxi-brand);
+  background: rgba(255, 255, 255, 0.95);
+  border: 1rpx solid var(--yunxi-border-medium);
   border-radius: 50%;
-  font-size: 44rpx;
+  font-size: 40rpx;
   font-weight: 900;
+  box-shadow: 0 4rpx 16rpx rgba(61, 51, 45, 0.08);
 }
 
+/* 骨架屏 */
 .yunxi-skeleton {
-  background: linear-gradient(90deg, #EAE0CE 25%, #F8F3E8 50%, #EAE0CE 75%);
-  background-size: 200% 100%;
-  animation: yunxiSkeletonShimmer 1.2s ease-in-out infinite;
+  background: #E8E2DA;
 }
 
-@keyframes yunxiSkeletonShimmer {
-  from {
-    background-position: 200% 0;
-  }
-  to {
-    background-position: -200% 0;
-  }
-}
 
+/* 统一状态占位区 (空态/报错) */
 .yunxi-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 12rpx;
-  padding: 72rpx 40rpx;
+  padding: 80rpx 40rpx;
   text-align: center;
 }
 
@@ -565,29 +572,30 @@ button::after {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 160rpx;
-  height: 160rpx;
-  margin-bottom: 12rpx;
+  width: 140rpx;
+  height: 140rpx;
+  margin-bottom: 16rpx;
   background: #ffffff;
   border: 1rpx solid var(--yunxi-border);
-  border-radius: 48rpx;
+  border-radius: 40rpx;
   box-shadow: var(--yunxi-card-shadow);
-  font-size: 72rpx;
+  font-size: 64rpx;
 }
 
 .yunxi-state__title {
   color: var(--yunxi-text-primary);
-  font-size: 30rpx;
+  font-size: 32rpx;
   font-weight: 800;
 }
 
 .yunxi-state__hint {
-  color: var(--yunxi-text-secondary);
-  font-size: 24rpx;
+  color: var(--yunxi-text-muted);
+  font-size: 26rpx;
   line-height: 1.5;
+  max-width: 480rpx;
 }
 
 .yunxi-state__action {
   min-width: 240rpx;
-  margin-top: 16rpx;
+  margin-top: 24rpx;
 }
