@@ -7333,7 +7333,7 @@ backend/docs/harness-engineering/core/evidence-index.md 仅作为历史镜像。
 - generated_at: 2026-09-09
 - evidence_type: verification/miniapp-dead-code-cleanup
 - file: local:miniapp/miniprogram/services/chat.ts; local:miniapp/miniprogram/services/config.ts; local:miniapp/miniprogram/services/coupons.ts; local:miniapp/miniprogram/services/group-registrations.ts; local:miniapp/miniprogram/services/http.ts; local:miniapp/miniprogram/services/points.ts; local:miniapp/miniprogram/types/page-config.ts; local:miniapp/miniprogram/utils/address-book.ts
-- commit_sha: pending-code-commit
+- commit_sha: ac85162b1f121d8d28ff0533ee9ccb8aac774a1f
 - command: `cd miniapp && npm run typecheck`; `npm exec -- tsc --noEmit --noUnusedLocals --noUnusedParameters`; `npm run check:miniapp`; `npm run check:page-api-coverage`; `npm run audit:buttons`; `npm run audit:button-styles`; `git diff --check`; 删除符号扫描
 - result: pass
 - related_logbook: 2026-09-09 - chore(miniapp): 清理确认无调用方的前端死代码

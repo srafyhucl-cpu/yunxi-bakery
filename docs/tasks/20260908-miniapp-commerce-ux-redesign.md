@@ -4,7 +4,7 @@
 > owner: AI 员工
 > status: active
 > status_label: 进行中（active）
-> as_of_commit: 789fd3451044b56aa385a1fe71fe2c52eafc73fe
+> as_of_commit: ac85162b1f121d8d28ff0533ee9ccb8aac774a1f
 > version: 0.133.0-p2trial.3
 > branch: main
 > allowed_paths: miniapp/, backend/app/api/channels/storefront/, backend/app/service/order/, backend/app/service/delivery/, backend/app/repository/, backend/app/models/, backend/app/migrations/, backend/tests/, docs/superpowers/, docs/tasks/
@@ -52,7 +52,7 @@
 
 ## 当前基线
 
-- `as_of_commit`: `789fd3451044b56aa385a1fe71fe2c52eafc73fe`
+- `as_of_commit`: `ac85162b1f121d8d28ff0533ee9ccb8aac774a1f`
 - `version`: `0.133.0-p2trial.3`
 - `branch`: `main`
 - `workspace_state`: `clean`
