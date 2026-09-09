@@ -20,10 +20,3 @@ export function getCategoryById(categoryId: string): CatalogCategory | undefined
   return CATALOG_CATEGORIES.find((category) => category.id === categoryId);
 }
 
-export function getCategoriesByIds(categoryIds: string[]): CatalogCategory[] {
-  const byId = new Map(CATALOG_CATEGORIES.map((category) => [category.id, category]));
-  return categoryIds
-    .map((categoryId) => byId.get(categoryId))
-    .filter((category): category is CatalogCategory => Boolean(category));
-}
-

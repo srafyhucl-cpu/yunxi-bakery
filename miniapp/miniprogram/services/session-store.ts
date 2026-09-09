@@ -93,11 +93,6 @@ export function getMiniappSession(): MiniappSession {
   return getStoredSession() || buildAnonymousSession();
 }
 
-export function getMiniappUserId(): string {
-  const session = getMiniappSession();
-  return isUsableMiniappSession(session) ? session.userId : "";
-}
-
 export function buildDemoSession(): MiniappSession {
   return {
     ...buildAnonymousSession(),

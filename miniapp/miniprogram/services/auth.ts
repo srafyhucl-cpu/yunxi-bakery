@@ -111,4 +111,4 @@ export async function ensureMiniappSession(
   }
 }
 
-export { getMiniappSession, getMiniappUserId, persistDemoMiniappSession } from "./session-store";
+export { getMiniappSession, persistDemoMiniappSession } from "./session-store";
