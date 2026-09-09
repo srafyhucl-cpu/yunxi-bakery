@@ -7393,7 +7393,7 @@ backend/docs/harness-engineering/core/evidence-index.md 仅作为历史镜像。
 - generated_at: 2026-09-09
 - evidence_type: verification/miniapp-dead-code-cleanup
 - file: local:miniapp/scripts/phasec-step3.mjs; local:LOGBOOK.md; local:docs/tasks/20260908-miniapp-commerce-ux-redesign.md
-- commit_sha: pending-current-commit
+- commit_sha: 855babb149be8d38ea46925c143448f535519fcc
 - command: `cd miniapp && npm run typecheck`; `npm run check:miniapp`; `npm run check:page-api-coverage`; `npm run audit:buttons`; `npm run audit:button-styles`; `npm exec -- tsc --noEmit --noUnusedLocals --noUnusedParameters`; `git diff --check`
 - result: pass
 - related_logbook: 2026-09-09 - chore(miniapp): 删除已被现有验证覆盖的孤立走查脚本
