@@ -18,9 +18,9 @@
           status-text="{{sessionView.statusText}}"
           badge-text="{{sessionView.badgeText}}"
           description="{{loginStateText}}"
-          action-text="订单列表"
+          action-text="去登录"
           icon-text="详"
-          bind:action="goOrders"
+          bind:action="goProfile"
         ></session-notice>
       </view>
       <view wx:elif="{{loading && !order}}" class="empty">订单加载中...</view>

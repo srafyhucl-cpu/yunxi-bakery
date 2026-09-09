@@ -7,6 +7,10 @@
   padding-bottom: 220rpx;
 }
 
+.detail-empty-state {
+  padding-top: 160rpx;
+}
+
 .detail-content {
   display: flex;
   flex-direction: column;

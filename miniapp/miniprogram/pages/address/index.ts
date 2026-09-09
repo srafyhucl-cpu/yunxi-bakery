@@ -10,6 +10,7 @@ import {
 import { getMiniappSession } from "../../services/auth";
 import { getMiniappLayoutMetrics } from "../../utils/layout";
 import { goBackOrHome } from "../../utils/navigation";
+import { ROUTES } from "../../constants/routes";
 import { buildMiniappSessionView, isMiniappLoggedIn } from "../../utils/session";
 import type { AddressBookItem } from "../../services/address";
 
@@ -56,6 +57,9 @@ Page({
       return;
     }
     goBackOrHome();
+  },
+  goProfile() {
+    wx.switchTab({ url: ROUTES.profile });
   },
   async reloadAddresses() {
     if (!isMiniappLoggedIn(getMiniappSession())) {

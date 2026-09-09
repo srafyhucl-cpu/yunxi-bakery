@@ -4,6 +4,7 @@ const path = require("node:path");
 
 const WS_ENDPOINT = process.env.MINIAPP_AUTOMATOR_WS || "ws://127.0.0.1:9420";
 const reportsDir = "d:/Project/YunxiBakery/miniapp/reports/devtools";
+const AUTH_STORAGE_KEYS = ["miniappSession", "miniappUserId"];
 
 const TAB_BAR_PAGES = new Set([
   "pages/home/index",
@@ -129,7 +130,71 @@ async function inspectCommerceState(page, pageDef, result) {
   result.errors.push(...commerce.errors);
 }
 
-async function verifyPage(miniProgram, pageDef, viewportWidth) {
+async function inspectSessionAndAuthState(page, pageDef, result) {
+  const data = await page.data();
+  const sessionView = data.sessionView || {};
+  const notice = await page.$(".session-notice");
+  const action = await page.$(".session-notice__button");
+
+  if (notice) {
+    if (!action && sessionView.loggedIn === false) {
+      result.errors.push(pageDef.path + ": 未登录会话提示缺少登录操作");
+    }
+    if (action) {
+      const text = (await action.text()).trim();
+      const size = await action.size();
+      const ariaLabel = (await action.attribute("aria-label")) || "";
+      result.sessionNotice = {
+        actionText: text,
+        actionAriaLabel: ariaLabel,
+        actionSize: size.width + "x" + size.height
+      };
+      if (!text) {
+        result.errors.push(pageDef.path + ": 会话提示操作按钮为空白");
+      }
+      if (size.width < 48 || size.height < 44) {
+        result.errors.push(pageDef.path + ": 会话提示操作按钮尺寸过小");
+      }
+      if (ariaLabel && ariaLabel !== text) {
+        result.errors.push(pageDef.path + ": 会话提示 aria-label 与按钮文本不一致");
+      }
+    }
+  }
+
+  if (sessionView.loggedIn === false && [
+    "pages/orders/index",
+    "pages/address/index",
+    "pages/order-detail/index"
+  ].includes(pageDef.path)) {
+    const actionText = action ? (await action.text()).trim() : "";
+    if (actionText !== "去登录") {
+      result.errors.push(pageDef.path + ": 未登录 CTA 应为去登录");
+    }
+  }
+
+  if (pageDef.path === "pages/recharge/index" && data.loggedIn === false) {
+    const loginButton = await page.$(".recharge-page .empty-panel button");
+    const loginText = loginButton ? (await loginButton.text()).trim() : "";
+    result.rechargeAuth = { hasLoginButton: Boolean(loginButton), loginText };
+    if (loginText !== "去登录") {
+      result.errors.push("pages/recharge/index: 未登录充值空态缺少去登录按钮");
+    }
+  }
+
+  if (pageDef.path === "pages/address/index" && sessionView.loggedIn === false) {
+    if (await page.$(".address-header") || await page.$(".address-form") || await page.$(".address-add")) {
+      result.errors.push("pages/address/index: 未登录时仍展示地址业务操作");
+    }
+  }
+
+  if (pageDef.path === "pages/orders/index" && sessionView.loggedIn === false) {
+    if (await page.$(".filter-tabs-bar") || await page.$(".order-list")) {
+      result.errors.push("pages/orders/index: 未登录时仍展示订单业务内容");
+    }
+  }
+}
+
+async function verifyPage(miniProgram, pageDef, viewportWidth, screenshotPrefix = "final") {
   const result = {
     page: pageDef.path,
     type: pageDef.type,
@@ -153,6 +218,12 @@ async function verifyPage(miniProgram, pageDef, viewportWidth) {
     }
 
     await inspectCommerceState(page, pageDef, result);
+    await inspectSessionAndAuthState(page, pageDef, result);
+
+    const screenshotName = `${screenshotPrefix}-${pageDef.path.split("/")[1]}.png`;
+    const screenshotPath = path.join(reportsDir, screenshotName);
+    await miniProgram.screenshot({ path: screenshotPath });
+    result.screenshot = path.relative(process.cwd(), screenshotPath).replace(/\\/g, "/");
 
     // 1. 检查 Navbar
     const fixedSafe = await page.$(".page-fixed-safe");
@@ -245,6 +316,45 @@ async function verifyPage(miniProgram, pageDef, viewportWidth) {
   return result;
 }
 
+async function captureLoggedOutStates(miniProgram, viewportWidth) {
+  const originalStorage = {};
+  for (const key of AUTH_STORAGE_KEYS) {
+    originalStorage[key] = await miniProgram.callWxMethod("getStorageSync", key);
+    await miniProgram.callWxMethod("removeStorageSync", key);
+  }
+
+  const pageDefs = ALL_15_PAGES.filter((pageDef) => [
+    "pages/orders/index",
+    "pages/order-detail/index",
+    "pages/recharge/index",
+    "pages/address/index"
+  ].includes(pageDef.path));
+  const results = [];
+
+  try {
+    for (const pageDef of pageDefs) {
+      const result = await verifyPage(miniProgram, pageDef, viewportWidth, "final-logged-out");
+      const sessionView = (await (await miniProgram.currentPage()).data()).sessionView || {};
+      if (pageDef.path !== "pages/recharge/index" && sessionView.loggedIn !== false) {
+        result.errors.push(pageDef.path + ": 清除登录存储后页面仍显示已连接会话");
+        result.passed = false;
+      }
+      results.push(result);
+    }
+  } finally {
+    for (const key of AUTH_STORAGE_KEYS) {
+      const value = originalStorage[key];
+      if (value === undefined || value === null || value === "") {
+        await miniProgram.callWxMethod("removeStorageSync", key);
+      } else {
+        await miniProgram.callWxMethod("setStorageSync", key, value);
+      }
+    }
+  }
+
+  return results;
+}
+
 async function main() {
   fs.mkdirSync(reportsDir, { recursive: true });
   console.log(`Connecting to WeChat DevTools at ${WS_ENDPOINT}...`);
@@ -278,6 +388,19 @@ async function main() {
     }
   }
 
+  console.log("\nAuditing deterministic logged-out states...");
+  const loggedOutStates = await captureLoggedOutStates(miniProgram, viewportWidth);
+  const loggedOutPassed = loggedOutStates.filter((result) => result.passed).length;
+  const loggedOutFailed = loggedOutStates.length - loggedOutPassed;
+  for (const result of loggedOutStates) {
+    if (!result.passed) {
+      totalFail++;
+      for (const err of result.errors) {
+        console.log(`  x ${err}`);
+      }
+    }
+  }
+
   await miniProgram.disconnect();
   console.log("\nDisconnected from DevTools.");
 
@@ -288,6 +411,9 @@ async function main() {
     failed: totalFail,
     status: totalFail === 0 ? "PASS" : "FAIL",
     pages: results,
+    loggedOutPassed,
+    loggedOutFailed,
+    loggedOutStates,
   };
 
   const reportPath = path.join(reportsDir, "all-pages-devtools-audit.json");

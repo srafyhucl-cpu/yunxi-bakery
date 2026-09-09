@@ -218,24 +218,25 @@
   color: rgba(255, 255, 255, 0.7);
 }
 
-.card-action-btn {
-  width: 88rpx !important;
-  min-width: 88rpx !important;
+.profile-page button.card-action-btn {
+  width: 128rpx !important;
+  min-width: 128rpx !important;
   height: 88rpx;
   min-height: 88rpx;
-  line-height: 68rpx;
-  padding: 0 28rpx;
+  line-height: 1.2;
+  padding: 0 12rpx;
   box-sizing: border-box;
   color: #1A2E26;
   background: var(--yunxi-gold-light);
   border-radius: var(--yunxi-radius-sm);
   font-size: 22rpx;
   font-weight: 800;
+  white-space: nowrap;
   margin: 0;
   box-shadow: 0 6rpx 16rpx rgba(0, 0, 0, 0.2);
 }
 
-.card-action-btn[disabled] {
+.profile-page button.card-action-btn[disabled] {
   background: rgba(255, 255, 255, 0.2) !important;
   color: rgba(255, 255, 255, 0.5) !important;
 }

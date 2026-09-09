@@ -24,6 +24,19 @@ Component({
       value: "登"
     }
   },
+  data: {
+    hasAction: false,
+    actionLabel: ""
+  },
+  observers: {
+    actionText(value: string) {
+      const actionLabel = String(value || "").trim();
+      this.setData({
+        hasAction: actionLabel.length > 0,
+        actionLabel
+      });
+    }
+  },
   methods: {
     handleAction() {
       this.triggerEvent("action");

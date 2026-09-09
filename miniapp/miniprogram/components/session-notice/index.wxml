@@ -4,11 +4,10 @@
     <text class="session-notice__title">{{statusText}} · {{badgeText}}</text>
     <text class="session-notice__desc">{{description}}</text>
   </view>
-  <view
-    wx:if="{{actionText}}"
+  <button
+    wx:if="{{hasAction}}"
     class="session-notice__button"
-    role="button"
-    aria-label="{{actionText}}"
+    aria-label="{{actionLabel}}"
     bindtap="handleAction"
-  >{{actionText}}</view>
+  >{{actionLabel}}</button>
 </view>

@@ -1,3 +1,17 @@
+## [2026-09-09] - verify(miniapp): 本地后端启动与 DevTools 商品购买链路复核
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260909-miniapp-runtime-r19
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 启动本地后端后复核 MiniApp 商品优先 UI/UX、逐页面渲染和商品购买链路。
+implementation: 使用 `python -m uvicorn app.main:app --host 127.0.0.1 --port 7001` 启动本地服务；修复本地商品验证器对绝对 CDN 图片 URL 的处理，并适配有赞迁移态分类计数未回填；修复会话 CTA、充值/会员按钮、订单详情会话刷新、商品详情空态和动态导航安全区；DevTools 热重载异常时通过标准 CLI 重载项目并恢复 Automator。全页脚本新增逐页截图与确定性未登录状态检查。
+verification: `/ready` 返回 503 degraded，原因是本地 mock 支付/未配置微信支付等上线门禁，不影响只读商品验证；`npm run check:local-miniapp-products`、`npm run devtools:verify-all-pages`（15/15 页面 + 4/4 未登录态，19 张最新截图并逐页目视复核）、`npm run devtools:product-purchase-path`、`npm run devtools:commerce-states`、`npm run devtools:checkout-delivery-states`、`npm run devtools:same-day-scheduling` 均通过；静态类型、页面、API 覆盖、按钮审计也通过。
+evidence: `miniapp/reports/local-miniapp-products/latest.json`；`miniapp/reports/devtools/all-pages-devtools-audit.json`；`miniapp/reports/devtools/final-*.png`；`miniapp/reports/devtools/final-logged-out-*.png`；`miniapp/reports/devtools/product-purchase-path-audit.json`；`miniapp/reports/devtools/commerce-state-audit.json`；`miniapp/reports/devtools/checkout-delivery-state-audit.json`；`miniapp/reports/devtools/same-day-scheduling-audit.json`
+limitations: 仍未完成真实微信支付、真实闪送开放平台报价/建单/回调和生产上线验收；当前仅为本地开发调试证据。
+
 ## [2026-09-09] - chore(miniapp): 清理客服页重复时间格式化包装
 
 task_id: T-MINIAPP-COMMERCE-UX-REDESIGN

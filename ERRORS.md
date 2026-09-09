@@ -1578,3 +1578,52 @@ python -B backend/scripts/check_mistake_ledger.py
 - linked_trace: 20260908-miniapp-commerce-ux-redesign
 - linked_files: ERRORS.md；miniapp/scripts/audit-miniapp-button-styles.mjs；miniapp/miniprogram/pages/chat/index.wxml；miniapp/miniprogram/pages/checkout/index.wxss；miniapp/miniprogram/pages/products/index.ts
 - next_time_signal: UI/UX 收口中出现脚本名不确定、正则含特殊字符或补丁超过单页上下文时，先停止批量操作，改成路径清单、固定字符串扫描和单文件小补丁。
+
+补充复发记录（同一错误条目，2026-09-09）：收口检索截图调用时再次使用了未闭合分组的正则，`rg` 报 `unclosed group`。已立即停止该写法，后续按本条既有防线使用 `rg -F` 固定字符串检索；该失败未修改文件或业务数据。
+
+## M-20260909-066：本地商品验证器错误拼接绝对图片 URL
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: medium
+- symptom: 执行 `cd miniapp && npm run check:local-miniapp-products` 时，商品列表和详情接口已返回数据，但图片检查把绝对地址拼成 `http://127.0.0.1:7001https://img.yzcdn.cn/...`，Node `fetch` 以 `ERR_INVALID_URL` 退出。
+- root_cause: 验证脚本将所有资源路径无条件与本地 API 基址拼接，未区分外部绝对 URL 和本地相对路径；同时把有赞迁移态下 `productCount=0` 的分类元数据误当成必须可过滤出商品。
+- impact: 只读商品验证未生成有效报告；没有修改商品、订单、支付、配送数据，也没有影响运行中的后端。
+- fix: 增加统一 URL 解析函数：`http://` 和 `https://` 地址直接请求，相对路径才补本地 API 基址；商品接口和图片代理检查共用该函数。分类检查改为仅在后端回填非零 `productCount` 时验证过滤结果，未回填时记录跳过原因并交由 MiniApp 懒加载路径验证。
+- new_guardrail: 任何本地 API 资源检查必须先处理绝对 URL；迁移态分类计数为零时不得强制构造分类商品结果；验证器异常退出时，必须检查报告时间戳和退出堆栈，不能将接口前置成功误判为完整验证通过。
+- verification: 修复后重新运行 `npm run check:local-miniapp-products`，并核对 `miniapp/reports/local-miniapp-products/latest.json` 的状态与时间戳。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: ERRORS.md；miniapp/scripts/check-local-miniapp-products.mjs
+- next_time_signal: 商品数据含外部图片、视频或 CDN URL 时，先用 URL 解析函数归一化，再执行资源请求。
+
+补充验证（同一错误条目）：修复后 `npm run check:local-miniapp-products` 已通过；分类元数据当前 `productCount=0`，检查器按迁移态记录跳过分类过滤硬断言，未伪造结果。
+
+## M-20260909-067：DevTools 热重载异常导致页面空白与组件 not-found
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: medium
+- symptom: 微信开发者工具自动化已连接，但商品、会员、充值、结算四页页面栈存在而内容节点、`page.data()` 和截图内容为空；控制台重复输出 `Component is not found in path "wx://not-found"`，商品购买路径等待真实商品超时。
+- root_cause: 本次 DevTools 项目热重载/编译状态异常，表现为页面编译产物未挂载；源码静态检查和本地后端接口均正常。
+- impact: 该轮运行态检查先产生 `9/15`、`11/15` 失败和购买路径超时，不能作为 UI 代码缺陷结论；没有修改商品、订单、支付、配送数据。
+- fix: 通过微信开发者工具 CLI 标准入口关闭并重新打开当前项目，再以 `cli auto --auto-port 9420 --port 13836 --trust-project` 恢复自动化；恢复后页面节点、真实商品数据和截图均正常。
+- new_guardrail: DevTools 出现页面栈存在但 `elementMap`/`page.data()` 为空或 `wx://not-found` 时，先保存失败报告与截图，重载项目并重新启用 Automator；恢复前不得改写 CSS 或把空白页面当成 UI 验收结果。
+- verification: 重载后 `npm run devtools:verify-all-pages` 为 `PASS (15/15)`；`npm run devtools:product-purchase-path`、`npm run devtools:commerce-states`、`npm run devtools:checkout-delivery-states`、`npm run devtools:same-day-scheduling` 均为 `PASS`。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: ERRORS.md；miniapp/reports/devtools/all-pages-devtools-audit.json；miniapp/scripts/verify-all-15-pages-devtools.cjs
+- next_time_signal: 先判断页面是否真实挂载，再分析 UI 选择器；同类异常先重载项目并记录前后报告，不重复盲改页面样式。
+
+## M-20260909-068：结构断言通过但截图仍暴露空白按钮、会话漂移和导航重叠
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: medium
+- symptom: `npm run devtools:verify-all-pages` 曾返回 `15/15 PASS`，但目视旧截图和新截图后仍发现充值“去登录”按钮背景透明、订单详情清除登录存储后仍显示“已连接”、返回按钮与系统状态栏重叠、商品详情空态图标压住导航标题，以及会员卡操作按钮对比度不足或换行。
+- root_cause: 原脚本主要检查路由、节点存在、尺寸和横向溢出，没有为每页保存与报告绑定的最新截图，也没有确定性切换未登录态或检查会话数据刷新；页面级按钮样式还被全局 `button:not([size="mini"])` 更高优先级覆盖，自定义导航又一度绕过 `layout.ts` 的动态胶囊高度。
+- impact: 自动报告可能给出通过但实际展示仍不专业，直接影响登录引导、会员入口和空态可用性；未造成订单、支付、配送或客户数据写入。
+- fix: 全页脚本改为每页保存 `final-*.png`，额外清除并恢复会话存储，验证订单、订单详情、充值和地址四个未登录态；会话 CTA 使用原生按钮与 88rpx 触控高度；充值和会员按钮使用页面级高优先级样式；订单详情先刷新会话再处理缺失订单号；导航恢复动态高度；商品详情空态增加顶部间距。
+- new_guardrail: MiniApp UI/UX 收口必须同时满足结构断言、确定性状态断言和逐页最新截图目视复核；报告必须记录截图路径，未登录态必须验证页面数据而不只检查按钮文本；全局按钮重置或导航高度变化后必须复查选择器优先级和状态栏/胶囊位置。
+- verification: 本地后端启动条件下，`npm run devtools:verify-all-pages` 最终为 `15/15 PASS`，额外未登录态 `4/4 PASS`；报告 `miniapp/reports/devtools/all-pages-devtools-audit.json` 绑定 15 张 `final-*.png` 与 4 张 `final-logged-out-*.png`，并完成逐页目视复核。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: ERRORS.md；miniapp/miniprogram/app.wxss；miniapp/miniprogram/components/session-notice/index.*；miniapp/miniprogram/pages/order-detail/index.ts；miniapp/miniprogram/pages/recharge/index.wxss；miniapp/miniprogram/pages/profile/index.wxss；miniapp/miniprogram/pages/product-detail/index.wxml；miniapp/miniprogram/pages/product-detail/index.wxss；miniapp/scripts/verify-all-15-pages-devtools.cjs；miniapp/reports/devtools/all-pages-devtools-audit.json
+- next_time_signal: 自动化显示全页通过但截图仍有空白控件、状态矛盾或标题遮挡时，立即判定视觉验收未完成并补状态与截图断言，不能只调高尺寸阈值。

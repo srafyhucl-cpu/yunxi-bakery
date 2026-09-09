@@ -11,6 +11,7 @@
       <view wx:if="{{!loggedIn}}" class="empty-panel glass-panel">
         <text class="empty-title">请先登录</text>
         <text class="empty-subtitle">登录后使用余额充值</text>
+        <button class="primary-btn" bindtap="goLogin">去登录</button>
       </view>
       <block wx:elif="{{!ready}}">
         <view class="empty-panel glass-panel">

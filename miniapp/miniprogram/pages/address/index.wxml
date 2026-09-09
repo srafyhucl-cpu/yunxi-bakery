@@ -14,24 +14,24 @@
   <scroll-view class="page-scroll" scroll-y enhanced show-scrollbar="{{false}}">
     <view class="page address-page">
       <session-notice
-        wx:if="{{loginStateText}}"
+        wx:if="{{!sessionView.loggedIn}}"
         status-text="{{sessionView.statusText}}"
         badge-text="{{sessionView.badgeText}}"
         description="{{loginStateText}}"
-        action-text="返回"
+        action-text="去登录"
         icon-text="址"
-        bind:action="goBack"
+        bind:action="goProfile"
       ></session-notice>
-      <view class="address-header">
+      <view wx:if="{{sessionView.loggedIn}}" class="address-header">
         <view class="address-header__info">
           <text class="address-subtitle">{{mode === 'select' ? '选择后将自动回填结算信息' : '管理常用联系人和配送地址'}}</text>
         </view>
         <button class="ghost-button address-add" bindtap="startCreate" disabled="{{savingAddress}}">＋ 新增</button>
       </view>
 
-      <view wx:if="{{errorMessage}}" class="address-error">{{errorMessage}}</view>
+      <view wx:if="{{sessionView.loggedIn && errorMessage}}" class="address-error">{{errorMessage}}</view>
 
-      <view wx:if="{{editing}}" class="address-form bakery-panel">
+      <view wx:if="{{sessionView.loggedIn && editing}}" class="address-form bakery-panel">
         <input placeholder="联系人" value="{{draft.receiverName}}" data-field="receiverName" bindinput="updateDraftField" />
         <input placeholder="手机号，例：18800000000" type="number" maxlength="11" value="{{draft.receiverPhone}}" data-field="receiverPhone" bindinput="updateDraftField" />
         <textarea placeholder="收货地址，如小区、楼栋、门牌号" value="{{draft.address}}" data-field="address" bindinput="updateDraftField" />
@@ -50,12 +50,12 @@
         </view>
       </view>
 
-      <view wx:elif="{{addresses.length === 0}}" class="address-empty bakery-panel">
+      <view wx:elif="{{sessionView.loggedIn && addresses.length === 0}}" class="address-empty bakery-panel">
         <text class="address-empty-title">还没有收货地址</text>
         <text class="address-empty-text">先新增一个常用地址，结算时会自动带出联系人和电话。</text>
       </view>
 
-      <view wx:else class="address-list">
+      <view wx:elif="{{sessionView.loggedIn}}" class="address-list">
         <view wx:for="{{addresses}}" wx:key="id" class="address-card bakery-panel" data-id="{{item.id}}" bindtap="chooseAddress">
           <view class="address-card-main">
             <view class="address-card-title">

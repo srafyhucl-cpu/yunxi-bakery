@@ -5,7 +5,7 @@
 page {
   /* 基础间距与安全区尺寸 */
   --yunxi-page-gutter: 28rpx;
-  --yunxi-custom-nav-space: calc(env(safe-area-inset-top) + 20rpx);
+  --yunxi-custom-nav-space: 112rpx;
   --yunxi-page-bottom-space: calc(env(safe-area-inset-bottom) + 200rpx);
   --yunxi-tabbar-occupied-height: calc(env(safe-area-inset-bottom) + 128rpx);
   --yunxi-fixed-action-space: calc(env(safe-area-inset-bottom) + 276rpx);
@@ -97,7 +97,10 @@ button::after {
 .page-fixed-safe {
   position: relative;
   flex: 0 0 var(--yunxi-custom-nav-space);
+  width: 100%;
+  height: var(--yunxi-custom-nav-space);
   min-height: var(--yunxi-custom-nav-space);
+  box-sizing: border-box;
   background: #ffffff;
   border-bottom: 1rpx solid rgba(61, 51, 45, 0.05);
   z-index: 100;

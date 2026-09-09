@@ -119,6 +119,9 @@ Page({
     }
     goBackOrHome();
   },
+  goProfile() {
+    wx.switchTab({ url: ROUTES.profile });
+  },
   async loadOrders(refresh: boolean) {
     const session = getMiniappSession();
     if (!isMiniappLoggedIn(session)) {

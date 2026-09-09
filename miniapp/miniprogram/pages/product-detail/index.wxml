@@ -108,7 +108,7 @@
           </scroll-view>
         </view>
       </view>
-      <view wx:else class="yunxi-state">
+      <view wx:else class="yunxi-state detail-empty-state">
         <view class="yunxi-state__icon">芸</view>
         <text class="yunxi-state__title">{{unavailableText}}</text>
         <text wx:if="{{loadFailed}}" class="yunxi-state__hint">网络开小差了，重试一下吧</text>

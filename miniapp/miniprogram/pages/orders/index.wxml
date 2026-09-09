@@ -14,15 +14,15 @@
   <scroll-view class="page-scroll" scroll-y enhanced show-scrollbar="{{false}}" bindscrolltolower="loadMore" lower-threshold="120">
     <view class="page">
       <session-notice
-        wx:if="{{loginStateText}}"
+        wx:if="{{!sessionView.loggedIn}}"
         status-text="{{sessionView.statusText}}"
         badge-text="{{sessionView.badgeText}}"
         description="{{loginStateText}}"
-        action-text="返回"
+        action-text="去登录"
         icon-text="订"
-        bind:action="goBack"
+        bind:action="goProfile"
       ></session-notice>
-      <view class="filter-tabs-bar">
+      <view wx:if="{{sessionView.loggedIn}}" class="filter-tabs-bar">
         <view
           wx:for="{{filterTabs}}"
           wx:key="key"
@@ -37,16 +37,16 @@
           <view class="filter-tab-indicator" wx:if="{{item.selected}}"></view>
         </view>
       </view>
-      <view wx:if="{{loadFailed && filteredOrders.length === 0}}" class="yunxi-state">
+      <view wx:if="{{sessionView.loggedIn && loadFailed && filteredOrders.length === 0}}" class="yunxi-state">
         <view class="yunxi-state__icon">订单</view>
         <text class="yunxi-state__title">订单加载失败</text>
         <text class="yunxi-state__hint">网络开小差了，重试一下吧</text>
         <button class="primary-button yunxi-state__action" bindtap="retryLoad">重新加载</button>
       </view>
-      <view wx:elif="{{filteredOrders.length === 0}}" class="empty">
+      <view wx:elif="{{sessionView.loggedIn && filteredOrders.length === 0}}" class="empty">
         <text>{{loading ? '订单加载中...' : emptyText}}</text>
       </view>
-      <view wx:else class="order-list">
+      <view wx:elif="{{sessionView.loggedIn}}" class="order-list">
         <view wx:for="{{filteredOrders}}" wx:key="id" class="order-card yunxi-card" data-id="{{item.id}}" bindtap="openOrder">
           <view class="order-header">
             <text class="order-id">{{item.id}}</text>
@@ -91,7 +91,7 @@
           </view>
         </view>
       </view>
-      <view wx:if="{{filteredOrders.length > 0}}" class="list-footer">
+      <view wx:if="{{sessionView.loggedIn && filteredOrders.length > 0}}" class="list-footer">
         <text wx:if="{{loadingMore}}">正在加载更多订单...</text>
         <text wx:elif="{{loadFailed}}">加载失败，<text bindtap="retryLoad" class="retry-link">点击重试</text></text>
         <text wx:elif="{{!hasMore}}">没有更多订单</text>

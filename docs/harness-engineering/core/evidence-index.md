@@ -1,3 +1,24 @@
+## E-20260909-022：本地后端与微信开发者工具商品购买链路复核
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260909-miniapp-runtime-r19
+- generated_at: 2026-09-09
+- evidence_type: verification/miniapp-runtime-backend-and-devtools
+- file: local:miniapp/reports/local-miniapp-products/latest.json; local:miniapp/reports/devtools/all-pages-devtools-audit.json; local:miniapp/reports/devtools/final-home.png; local:miniapp/reports/devtools/final-products.png; local:miniapp/reports/devtools/final-cart.png; local:miniapp/reports/devtools/final-chat.png; local:miniapp/reports/devtools/final-profile.png; local:miniapp/reports/devtools/final-orders.png; local:miniapp/reports/devtools/final-order-detail.png; local:miniapp/reports/devtools/final-coupons.png; local:miniapp/reports/devtools/final-points.png; local:miniapp/reports/devtools/final-recharge.png; local:miniapp/reports/devtools/final-address.png; local:miniapp/reports/devtools/final-checkout.png; local:miniapp/reports/devtools/final-product-detail.png; local:miniapp/reports/devtools/final-policy.png; local:miniapp/reports/devtools/final-group-registration.png; local:miniapp/reports/devtools/final-logged-out-orders.png; local:miniapp/reports/devtools/final-logged-out-order-detail.png; local:miniapp/reports/devtools/final-logged-out-recharge.png; local:miniapp/reports/devtools/final-logged-out-address.png; local:miniapp/reports/devtools/product-purchase-path-audit.json; local:miniapp/reports/devtools/commerce-state-audit.json; local:miniapp/reports/devtools/checkout-delivery-state-audit.json; local:miniapp/reports/devtools/same-day-scheduling-audit.json; local:miniapp/miniprogram/app.wxss; local:miniapp/miniprogram/components/session-notice/index.wxss; local:miniapp/scripts/check-local-miniapp-products.mjs; local:ERRORS.md
+- commit_sha: pending-local-changes
+- command: backend local uvicorn on 127.0.0.1:7001; `cd miniapp && npm run check:local-miniapp-products`; `npm run devtools:verify-all-pages`; `npm run devtools:product-purchase-path`; `npm run devtools:commerce-states`; `npm run devtools:checkout-delivery-states`; `npm run devtools:same-day-scheduling`; static type/page/API/button gates
+- result: partial
+- related_logbook: 20260909-miniapp-runtime-r19
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地开发服务、页面结构、商品购买链路和配送状态；不含真实支付、闪送凭证、客户地址或生产写入。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 本地后端提供 50 个商品和 34 个分类，商品详情与 CDN 图片检查通过；微信开发者工具 iPhone 12/13（390px）逐页 `15/15 PASS`，额外未登录状态 `4/4 PASS`，报告绑定 19 张最新截图并完成逐页目视复核；真实在售商品路径完成目录→详情→加购→购物车，商品、结算配送和当天预订边界审计均通过。
+- failure_class: none_after_recovery
+- replayable: yes
+- residual_risks: `/ready` 仍为 503 degraded（mock 支付开启、微信支付未配置、企微员工认证未配置）；真实认证、真实闪送开放平台、真实支付和生产验收未执行；项目上线边界保持 No-Go。
+
 ## E-20260909-011：商品目录快速预订与购物车推荐商品化收口
 
 - trace_id: 20260908-miniapp-commerce-ux-redesign

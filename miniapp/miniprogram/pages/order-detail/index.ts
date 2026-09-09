@@ -113,10 +113,6 @@ Page({
   },
   async loadOrder(orderId?: string) {
     const targetOrderId = orderId || this.data.orderId;
-    if (!targetOrderId) {
-      wx.showToast({ title: "订单号缺失", icon: "none" });
-      return;
-    }
     const session = getMiniappSession();
     if (!isMiniappLoggedIn(session)) {
       this.setData({
@@ -125,6 +121,16 @@ Page({
         sessionView: buildMiniappSessionView(session),
         loginStateText: "请先登录后查看订单详情"
       });
+      return;
+    }
+    if (!targetOrderId) {
+      this.setData({
+        order: null,
+        canLoadOrder: true,
+        sessionView: buildMiniappSessionView(session),
+        loginStateText: "已登录，当前未指定订单"
+      });
+      wx.showToast({ title: "订单号缺失", icon: "none" });
       return;
     }
     this.setData({
@@ -204,6 +210,9 @@ Page({
       return;
     }
     wx.reLaunch({ url: ROUTES.orders });
+  },
+  goProfile() {
+    wx.switchTab({ url: ROUTES.profile });
   },
   goChat() {
     if (this.data.loading || this.data.paying || this.data.cancelling) {

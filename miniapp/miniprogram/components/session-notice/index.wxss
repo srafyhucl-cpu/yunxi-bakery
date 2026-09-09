@@ -49,11 +49,13 @@
   line-height: 1.45;
 }
 
-.session-notice__button {
+.session-notice__button,
+button.session-notice__button {
+  flex: 0 0 auto;
   width: auto !important;
   min-width: 120rpx !important;
-  height: 60rpx !important;
-  min-height: 60rpx !important;
+  height: 88rpx !important;
+  min-height: 88rpx !important;
   padding: 0 28rpx !important;
   margin: 0 !important;
   border-radius: var(--yunxi-radius-sm);
@@ -61,6 +63,9 @@
   background: var(--yunxi-brand);
   font-size: 24rpx;
   font-weight: 600;
+  line-height: 1.2 !important;
+  white-space: nowrap;
+  text-align: center;
   display: flex;
   align-items: center;
   justify-content: center;

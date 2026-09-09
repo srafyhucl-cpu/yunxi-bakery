@@ -19,6 +19,7 @@ import { getMiniappLayoutMetrics } from "../../utils/layout";
 import { isMiniappLoggedIn } from "../../utils/session";
 import { getMiniappSession } from "../../services/auth";
 import { goBackOrHome } from "../../utils/navigation";
+import { ROUTES } from "../../constants/routes";
 
 const STATUS_TEXT: Record<string, string> = {
   unpaid: "待支付",
@@ -139,6 +140,9 @@ Page({
         }
       }
     });
+  },
+  goLogin() {
+    wx.switchTab({ url: ROUTES.profile });
   },
   goBack() {
     goBackOrHome();
