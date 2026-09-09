@@ -7386,3 +7386,23 @@ backend/docs/harness-engineering/core/evidence-index.md 仅作为历史镜像。
 - failure_class: none
 - replayable: yes
 - residual_risks: 微信开发者工具最新运行态、真实认证、真实闪送、真实支付和生产验收仍未验证。
+## E-20260909-020：MiniApp 孤立走查脚本清理与静态门禁
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260909-miniapp-cleanup-r17
+- generated_at: 2026-09-09
+- evidence_type: verification/miniapp-dead-code-cleanup
+- file: local:miniapp/scripts/phasec-step3.mjs; local:LOGBOOK.md; local:docs/tasks/20260908-miniapp-commerce-ux-redesign.md
+- commit_sha: pending-current-commit
+- command: `cd miniapp && npm run typecheck`; `npm run check:miniapp`; `npm run check:page-api-coverage`; `npm run audit:buttons`; `npm run audit:button-styles`; `npm exec -- tsc --noEmit --noUnusedLocals --noUnusedParameters`; `git diff --check`
+- result: pass
+- related_logbook: 2026-09-09 - chore(miniapp): 删除已被现有验证覆盖的孤立走查脚本
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 删除无现行入口且职责已被当前分页面验证覆盖的旧走查脚本；历史执行记录和证据索引保留，不删除报告或业务数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: `phasec-step3.mjs` 无 npm 入口、无现行调用方；删除后静态、类型、页面/API 覆盖和按钮审计保持通过。
+- failure_class: none
+- replayable: yes
+- residual_risks: 微信开发者工具截图级视觉验收、真实认证、真实闪送、真实支付和生产验收仍未验证。

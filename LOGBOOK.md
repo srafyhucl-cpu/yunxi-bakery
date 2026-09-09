@@ -1,3 +1,17 @@
+## [2026-09-09] - chore(miniapp): 删除已被现有验证覆盖的孤立走查脚本
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260909-miniapp-cleanup-r17
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 清理 MiniApp 中可证明不再需要的代码，保持商品、库存、配送、订单、支付、会员和当前验收能力完整。
+implementation: 删除 `miniapp/scripts/phasec-step3.mjs`。该脚本没有 npm 入口、没有现行脚本调用方，且其商品详情、购物车、结算、会员资产、订单和客服走查职责已由当前分页面 DevTools 验证脚本及定向门禁覆盖；历史 LOGBOOK 和证据记录保留，不回写或删除。
+verification: 删除前完成 MiniApp 源码与脚本引用盘点；删除后运行 `cd miniapp && npm run typecheck`、`npm run check:miniapp`、`npm run check:page-api-coverage`、`npm run audit:buttons`、`npm run audit:button-styles`、`npm exec -- tsc --noEmit --noUnusedLocals --noUnusedParameters` 和 `git diff --check`。
+cleanup_boundary: 未删除 `miniapp/reports/`、`node_modules/`、业务服务、mock 回退、支付/配送能力或其他仍有 npm/门禁/证据引用的验收脚本；未创建临时文件。
+limitations: 微信开发者工具截图级视觉验收、真实认证、真实闪送、真实支付和生产验收仍未完成；本轮清理不改变这些上线边界。
+
 ## [2026-09-09] - refactor(miniapp): 商品目录快速预订与购物车推荐商品化收口
 
 task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
