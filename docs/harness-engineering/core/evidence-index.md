@@ -7366,3 +7366,23 @@ backend/docs/harness-engineering/core/evidence-index.md 仅作为历史镜像。
 - failure_class: none
 - replayable: yes
 - residual_risks: 微信开发者工具当前运行态、真实认证、真实闪送、真实支付和像素级截图未在本轮验证。
+## E-20260909-019：MiniApp 最后一批可证明冗余清理
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260909-miniapp-cleanup-r16
+- generated_at: 2026-09-09
+- evidence_type: verification/miniapp-dead-code-cleanup
+- file: local:miniapp/miniprogram/utils/order-summary.ts; local:miniapp/miniprogram/pages/order-detail/index.wxss; local:LOGBOOK.md; local:docs/tasks/20260908-miniapp-commerce-ux-redesign.md
+- commit_sha: pending
+- command: `cd miniapp && npm run typecheck`; `npm run check:miniapp`; `npm run check:page-api-coverage`; `npm run audit:buttons`; `npm run audit:button-styles`; `npm exec -- tsc --noEmit --noUnusedLocals --noUnusedParameters`; `git diff --check`
+- result: pass
+- related_logbook: 2026-09-09 - chore(miniapp): 清理最后一批可证明冗余
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录可证明冗余的导出边界和 CSS 选择器清理；不含客户、地址、登录凭证、闪送凭证、支付数据或生产写入。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 删除 `OrderFulfillmentMethod` 的无必要公共导出和订单详情中不会被模板生成的 CSS 选择器；未发现可安全删除的页面、服务文件、mock 回退、支付门禁或验收脚本。
+- failure_class: none
+- replayable: yes
+- residual_risks: 微信开发者工具最新运行态、真实认证、真实闪送、真实支付和生产验收仍未验证。

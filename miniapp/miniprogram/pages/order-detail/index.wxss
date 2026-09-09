@@ -226,7 +226,6 @@
   margin-top: 10rpx;
 }
 
-button.order-actions__button,
 .order-actions button {
   flex: 1;
   width: auto !important;

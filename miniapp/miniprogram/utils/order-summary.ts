@@ -1,4 +1,4 @@
-export type OrderFulfillmentMethod = "pickup" | "beijing_delivery";
+type OrderFulfillmentMethod = "pickup" | "beijing_delivery";
 
 export interface OrderAmountSnapshot {
   totalFen: number;

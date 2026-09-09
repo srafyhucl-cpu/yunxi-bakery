@@ -17870,3 +17870,15 @@ scope: 清理 MiniApp 中已确认无调用方的前端死代码，并复核是�
 implementation: 删除 `miniapp/miniprogram/services/http.ts` 中无调用方的 `ApiResponse<TData>` 导出类型。文件级盘点保留了仍被页面、服务、npm 入口、历史验收记录或质量门禁使用的代码，包括 `phasec-step3.mjs`、mock 兜底、会员/支付门禁和地址同步能力。
 verification: `cd miniapp && npm run typecheck` 退出码 0；`npm exec -- tsc --noEmit --noUnusedLocals --noUnusedParameters` 退出码 0；`npm run check:miniapp` 退出码 0（15 页面、15 路由）；`npm run check:page-api-coverage` 退出码 0（15 页面、34 API terms、9 boundaries）；`npm run audit:buttons` 退出码 0（104 controls）；`npm run audit:button-styles` 退出码 0（104 controls、0 failures、0 warnings）；`git diff --check` 退出码 0。
 limitations: 本轮未删除报告、审计资产、业务数据或仍有历史复核用途的脚本；微信开发者工具当前运行态、真实认证、真实闪送、真实支付和像素级截图仍不在本轮验证范围。
+## [2026-09-09] - chore(miniapp): 清理最后一批可证明冗余
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260909-miniapp-cleanup-r16
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 在不影响商品、库存、配送、订单、支付、会员和验收能力的前提下，继续清理 MiniApp 中可由调用关系证明为冗余的代码。
+implementation: 删除 `utils/order-summary.ts` 中不需要对外暴露的 `OrderFulfillmentMethod` 导出；删除 `pages/order-detail/index.wxss` 中不会被模板生成的 `button.order-actions__button` 选择器，保留实际使用的 `.order-actions button` 规则。文件级盘点、未使用符号检查和历史证据复核均未支持删除页面、服务文件、mock 回退、支付门禁或验收脚本。
+verification: `cd miniapp && npm run typecheck` 退出码 0；`npm run check:miniapp` 退出码 0（15 页面、15 路由）；`npm run check:page-api-coverage` 退出码 0（15 页面、34 API terms、9 boundaries）；`npm run audit:buttons` 退出码 0（104 controls）；`npm run audit:button-styles` 退出码 0（104 controls、0 failures、0 warnings）；`npm exec -- tsc --noEmit --noUnusedLocals --noUnusedParameters` 退出码 0；`git diff --check` 退出码 0。
+cleanup_boundary: 未删除有效报告、业务数据、node_modules、页面和服务文件；未创建临时文件。微信开发者工具最新运行态、真实认证、真实闪送、真实支付和生产验收仍未验证。

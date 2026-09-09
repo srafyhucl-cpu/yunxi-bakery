@@ -178,3 +178,10 @@
 - 删除 4 组确认无引用的 WXSS 规则：旧页面顶部占位间距、未使用的状态图标变体、首页旧销量文本、充值页旧日期类和政策页旧标题类；动态商品徽标和页面状态类未删除。
 - `npm run typecheck`、`npm run check:miniapp`、`npm run check:page-api-coverage`、`npm run audit:buttons`、`npm run audit:button-styles`、`npm exec -- tsc --noEmit --noUnusedLocals --noUnusedParameters` 均通过。
 - 当前清理提交为 `d06b0ba`；本轮不改变业务行为，也不替代微信开发者工具运行态、真实认证、真实闪送或真实支付验收。
+
+## 无用前端代码清理补充（2026-09-09，run_id: 20260909-miniapp-cleanup-r16）
+
+- 文件级、导出级和动态 class 复核未发现可安全删除的页面、服务文件、商品/页面 mock 回退、支付门禁或验收脚本。
+- 删除 `utils/order-summary.ts` 中不需要对外暴露的 `OrderFulfillmentMethod` 导出；删除 `pages/order-detail/index.wxss` 中不会被模板生成的 `button.order-actions__button` 选择器，保留实际使用的 `.order-actions button` 规则。
+- `npm run typecheck`、`npm run check:miniapp`、`npm run check:page-api-coverage`、`npm run audit:buttons`、`npm run audit:button-styles`、`npm exec -- tsc --noEmit --noUnusedLocals --noUnusedParameters` 和 `git diff --check` 均通过。
+- 本轮不改变业务行为；未删除有效报告、业务数据、node_modules 或其他不确定用途的文件。
