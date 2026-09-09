@@ -7346,3 +7346,23 @@ backend/docs/harness-engineering/core/evidence-index.md 仅作为历史镜像。
 - failure_class: none
 - replayable: yes
 - residual_risks: 微信开发者工具截图级视觉验收、真实认证、真实闪送、真实支付和生产验收仍未验证。
+## E-20260909-018：MiniApp 无调用方前端类型清理
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260909-miniapp-commerce-ux-redesign-r14
+- generated_at: 2026-09-09
+- evidence_type: verification/miniapp-dead-code-cleanup
+- file: local:miniapp/miniprogram/services/http.ts; local:LOGBOOK.md; local:PROJECT-STATE.md
+- commit_sha: f7e270ae92e0f84cb3a75ea4cbf6f35c1b01f727
+- command: `cd miniapp && npm run typecheck`; `npm exec -- tsc --noEmit --noUnusedLocals --noUnusedParameters`; `npm run check:miniapp`; `npm run check:page-api-coverage`; `npm run audit:buttons`; `npm run audit:button-styles`; `git diff --check`
+- result: pass
+- related_logbook: 2026-09-09 - chore(miniapp): 删除无调用方的 ApiResponse 类型
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录无调用方类型删除和前端静态门禁；未删除业务数据、报告资产、真实凭证或验收脚本。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 删除 `services/http.ts` 中未被 MiniApp 页面、服务或脚本引用的 `ApiResponse<TData>` 导出类型；符号级和文件级盘点未发现第二个可安全删除的候选。
+- failure_class: none
+- replayable: yes
+- residual_risks: 微信开发者工具当前运行态、真实认证、真实闪送、真实支付和像素级截图未在本轮验证。
