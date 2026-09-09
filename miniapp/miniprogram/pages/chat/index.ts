@@ -12,7 +12,7 @@ import {
   sendChatMessage,
 } from "../../services/chat";
 import { getErrorMessage } from "../../services/http";
-import { formatMsgTime as formatMsgTimeUtil } from "../../utils/time-format";
+import { formatMsgTime } from "../../utils/time-format";
 import { ROUTES } from "../../constants/routes";
 import { getMiniappSession } from "../../services/auth";
 import { getMiniappLayoutMetrics } from "../../utils/layout";
@@ -23,12 +23,6 @@ import { buildMiniappSessionView, isMiniappLoggedIn } from "../../utils/session"
 function normalizeRole(role: string): "user" | "assistant" {
   if (role === "user") return "user";
   return "assistant"; // bot / ai / system / assistant 全部归一
-}
-
-/** 将 ISO 时间字符串格式化为 HH:MM */
-function formatMsgTime(iso: string): string {
-  // iOS 兼容：归一化空格分隔时间串后再 new Date（见 utils/time-format.ts）
-  return formatMsgTimeUtil(iso);
 }
 
 /** 归一化并注入 timeText 到消息列表 */

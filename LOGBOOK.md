@@ -1,3 +1,17 @@
+## [2026-09-09] - chore(miniapp): 清理客服页重复时间格式化包装
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260909-miniapp-cleanup-r18
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 清理 MiniApp 客服页面中已被公共工具完整覆盖的重复包装，保持消息时间展示、商品选购、订单、配送、支付和会员能力不变。
+implementation: 删除 `miniapp/miniprogram/pages/chat/index.ts` 中仅转发给 `utils/time-format.ts` 的本地 `formatMsgTime` 包装函数；页面改为直接导入已经覆盖 iOS 空格分隔时间兼容逻辑的公共函数。
+verification: `cd miniapp && npm run typecheck`、`node --test tests/utils/time-format.test.ts`（5/5）、`npm run check:miniapp`、`npm run check:page-api-coverage`、`npm run audit:buttons`（104 controls）、`npm run audit:button-styles`（104 controls，0 failures，0 warnings）和 `git diff --check` 均通过。
+cleanup_boundary: 已盘点页面、服务、配置、mock 回退、npm 入口和 DevTools 脚本；未删除业务模块、环境文件、业务数据、有效报告、依赖目录或其他 Agent 工件。
+limitations: 本轮不构成微信开发者工具像素级视觉验收、真实认证、真实闪送、真实支付或生产验收。
+
 ## [2026-09-09] - chore(miniapp): 删除已被现有验证覆盖的孤立走查脚本
 
 task_id: T-MINIAPP-COMMERCE-UX-REDESIGN

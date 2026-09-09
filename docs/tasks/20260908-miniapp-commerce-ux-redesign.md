@@ -24,6 +24,7 @@
 - 已删除 3 个无调用方导出符号：`getCategoriesByIds`、`getMiniappUserId` 和 `IS_LOCAL_BACKEND`；未删除任何页面、服务文件、商品回退、配送/支付能力或验收脚本。
 - 可重建缓存按白名单清理；业务数据、有效报告、环境文件和历史证据保留。
 - 已删除 `miniapp/scripts/phasec-step3.mjs`：该脚本没有 npm 入口或现行调用方，职责已由当前分页面 DevTools 验证脚本覆盖；历史记录保留，未删除报告或其他验收脚本。
+- 已删除客服页仅转发公共 `formatMsgTime` 的本地包装函数，页面直接使用已覆盖 iOS 时间解析兼容性的 `utils/time-format.ts`；未改变消息展示结果或客服业务行为。
 
 ## 首发范围
 
