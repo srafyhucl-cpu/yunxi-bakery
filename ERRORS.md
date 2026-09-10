@@ -1627,3 +1627,35 @@ python -B backend/scripts/check_mistake_ledger.py
 - linked_trace: 20260908-miniapp-commerce-ux-redesign
 - linked_files: ERRORS.md；miniapp/miniprogram/app.wxss；miniapp/miniprogram/components/session-notice/index.*；miniapp/miniprogram/pages/order-detail/index.ts；miniapp/miniprogram/pages/recharge/index.wxss；miniapp/miniprogram/pages/profile/index.wxss；miniapp/miniprogram/pages/product-detail/index.wxml；miniapp/miniprogram/pages/product-detail/index.wxss；miniapp/scripts/verify-all-15-pages-devtools.cjs；miniapp/reports/devtools/all-pages-devtools-audit.json
 - next_time_signal: 自动化显示全页通过但截图仍有空白控件、状态矛盾或标题遮挡时，立即判定视觉验收未完成并补状态与截图断言，不能只调高尺寸阈值。
+
+补充复发记录（同一错误条目，2026-09-09）：全页审计与商品购买路径共用 `ws://127.0.0.1:9420` 并行执行时，购买路径切页导致全页审计的商品页对象被销毁，出现 `Missing .page-fixed-safe container` 和 `page destroyed`，结果为 14/15。已确认购买路径独立通过，其余页面正常；后续所有共享同一 Automator 会话的 DevTools 脚本必须串行运行，失败脚本单独重跑后才能形成最终证据。
+
+## M-20260909-069：结算异常状态只有禁用结果，缺少原因与恢复动作证据
+
+- status: guarded
+- first_seen: 2026-09-09
+- severity: medium
+- symptom: 结算页 DevTools 审计能够确认报价未成功时提交按钮被禁用，但所有失败状态主要共用“未取得有效闪送报价前，不能提交订单”，没有验证地址缺失、报价过期、超出范围和平台不可用是否给出不同原因及下一步动作。
+- root_cause: 自动化只断言 `canSubmitOrder`、按钮文案和旧的警告节点存在，没有把用户可理解的状态指引、恢复动作、触控尺寸和每个状态的截图纳入验收。
+- impact: 结构测试可能通过，但顾客在预订为主的购买流程中无法判断应补地址、重新报价、改自提还是联系客服，增加下单中断和客服沟通成本；未造成订单、支付、配送或客户数据写入。
+- fix: 结算页按 `quoting`、信息缺失、`expired`、`address_out_of_range`、`provider_unavailable` 和未知失败状态生成标题、解释和恢复动作；DevTools 审计逐状态断言文案、44px 触控目标并保存对应截图。
+- new_guardrail: 交易状态验收必须同时检查提交可用性、顾客可理解的原因、可恢复动作和最新截图；异常状态不能只验证按钮禁用。
+- verification: 本轮将运行 `npm run typecheck`、`npm run check:miniapp`、`npm run audit:buttons`、`npm run audit:button-styles`、`npm run devtools:checkout-delivery-states`，并核对每个状态的截图路径。
+- linked_trace: `20260908-miniapp-commerce-ux-redesign`
+- linked_files: `ERRORS.md`；`miniapp/miniprogram/pages/checkout/index.ts`；`miniapp/miniprogram/pages/checkout/index.wxml`；`miniapp/miniprogram/pages/checkout/index.wxss`；`miniapp/scripts/verify-devtools-checkout-delivery-states.cjs`
+- next_time_signal: 任何交易状态脚本若只检查 `disabled` 或 `canSubmitOrder`，先补原因、恢复动作、触控尺寸和截图，再引用为 UX 验收证据。
+
+## M-20260910-070：DevTools 长会话跨 17:00 截止后模块级 data 初始值冻结，审计误报当天登记回归
+
+- status: guarded
+- first_seen: 2026-09-10
+- severity: medium
+- symptom: 串行复跑 `npm run devtools:same-day-scheduling` 失败：`isSameDayRegistration` 实际 false、预期 true（北京 09:55，早于 17:00 截止），且缺少“当天登记由门店客服确认”提示；同批全页审计与购买链路均通过，疑似产品回归。
+- root_cause: 群内登记页 `Page({ data: { dateStartValue: getCheckoutDateStart(), isSameDayRegistration: isCheckoutDateToday(...) } })` 的初始化表达式在模块首次加载时求值一次并冻结；DevTools 会话从前一天 17:00 后一直存活，`reLaunch` 只重建页面实例、不会重新执行模块求值，日期起点和当天标记停留在昨天的求值结果。`cli open` 对已打开项目不触发模拟器重载，误以为已重载。
+- impact: 仅影响本地验证判定，导致审计误报 FAIL；未造成产品代码或业务数据变化。真实用户冷启动会重新求值；小程序跨 17:00 常驻时日期起点可能陈旧，属低频边界体验问题，本轮不扩大修复范围。
+- fix: 用 `D:\微信web开发者工具\cli.bat quit` 完全退出 IDE，再 `cli.bat auto --project D:\Project\YunxiBakery\miniapp --auto-port 9420` 重启并重编译，模块级 data 重新求值后 same-day 审计串行复跑 PASS。
+- new_guardrail: DevTools 长会话跨天或跨 17:00 截止后，任何时间敏感审计 FAIL 先判定是否模块级 data 陈旧：先 `quit` + `auto` 重载项目再串行复跑，复跑仍 FAIL 才判定为产品回归，不要先改产品代码。
+- verification: 重载后 `npm run devtools:same-day-scheduling` PASS；同批串行证据：`npm run devtools:verify-all-pages`（15/15 PASS + 未登录态）、`npm run devtools:product-purchase-path` PASS、`npm run devtools:commerce-states` PASS、`npm run devtools:checkout-delivery-states` PASS；定向静态门禁 `npm run typecheck`、`npm run check:miniapp`、`npm run audit:buttons`（106 控件）、`npm run audit:button-styles`（0 失败 0 警告）通过。
+- linked_trace: `20260908-miniapp-commerce-ux-redesign`
+- linked_files: `ERRORS.md`；`miniapp/miniprogram/pages/group-registration/index.ts`；`miniapp/miniprogram/utils/checkout-time.ts`；`miniapp/scripts/verify-devtools-same-day-scheduling.cjs`；`miniapp/reports/devtools/same-day-scheduling-audit.json`
+- next_time_signal: 时间敏感审计依赖页面模块级初始值时，先确认 DevTools 会话的模块求值时间早于被测时间边界（17:00 / 午夜），先重载再判回归。

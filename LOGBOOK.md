@@ -1,3 +1,17 @@
+## [2026-09-10] - verify(miniapp): 串行复跑 DevTools 全页与结算配送状态审计并收口结算指引改动
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260910-miniapp-serial-rerun-r20
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 收口结算页闪送异常状态指引（标题、原因、恢复动作）及审计脚本升级，串行复跑全页与购买链路审计，排查并解除 same-day 审计误报。
+implementation: 结算页按 quoting、信息缺失、expired、address_out_of_range、provider_unavailable 和未知失败状态生成用户可理解的标题、解释与恢复动作（完善信息 / 重新确认 / 联系客服），动作按钮满足 44px 触控目标；审计脚本逐状态断言文案、触控尺寸并保存对应截图。same-day 审计 FAIL 定性为 DevTools 长会话跨 17:00 截止后模块级 data 初始值冻结（群内登记页 dateStartValue/isSameDayRegistration 在模块加载时求值一次并冻结，reLaunch 不重建），通过 cli quit + cli auto --auto-port 9420 重载项目复跑恢复，详见 ERRORS.md M-20260910-070。
+verification: npm run typecheck、npm run check:miniapp（15 页 15 路由）、npm run audit:buttons（106 控件）、npm run audit:button-styles（0 失败 0 警告）、npm run devtools:checkout-delivery-states、npm run devtools:verify-all-pages（15/15 PASS + 未登录态）、npm run devtools:product-purchase-path、npm run devtools:commerce-states 均 PASS；npm run devtools:same-day-scheduling 首跑 FAIL（误报），DevTools 重载后串行复跑 PASS。全部 DevTools 脚本串行执行，未并行共享 Automator 会话。
+evidence: miniapp/reports/devtools/checkout-delivery-state-audit.json；miniapp/reports/devtools/all-pages-devtools-audit.json；miniapp/reports/devtools/product-purchase-path-audit.json；miniapp/reports/devtools/commerce-state-audit.json；miniapp/reports/devtools/same-day-scheduling-audit.json；miniapp/reports/devtools/final-checkout-state-*.png
+limitations: 仍未完成真实微信支付、真实闪送开放平台报价/建单/回调和生产上线验收；当前仅为本地开发调试证据。
+
 ## [2026-09-09] - verify(miniapp): 本地后端启动与 DevTools 商品购买链路复核
 
 task_id: T-MINIAPP-COMMERCE-UX-REDESIGN

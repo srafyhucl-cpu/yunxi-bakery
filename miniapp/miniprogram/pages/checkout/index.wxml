@@ -144,7 +144,15 @@
           <text>闪送运费</text>
           <text class="{{deliveryType === 'pickup' ? 'fee-free' : ''}}">{{deliveryFeeText}}</text>
         </view>
-        <text wx:if="{{deliveryType === 'delivery' && deliveryQuoteStatus !== 'quoted'}}" class="amount-warning">未取得有效闪送报价前，不能提交订单</text>
+        <view wx:if="{{deliveryType === 'delivery' && deliveryQuoteStatus !== 'quoted'}}" class="delivery-guidance">
+          <text class="delivery-guidance__title">{{deliveryGuidanceTitle}}</text>
+          <text class="delivery-guidance__text">{{deliveryGuidanceText}}</text>
+          <button
+            wx:if="{{deliveryGuidanceActionText}}"
+            class="ghost-button delivery-guidance__action"
+            bindtap="handleDeliveryGuidance"
+          >{{deliveryGuidanceActionText}}</button>
+        </view>
         <view class="amount-row"><text>优惠券</text><text>{{estimateCouponFenText}}</text></view>
         <view class="amount-row"><text>积分抵扣</text><text>{{pointsEnabled ? '提交后计算' : '-'}}</text></view>
         <view class="amount-row"><text>余额抵扣</text><text>{{balanceEnabled ? balanceDeductText : '-'}}</text></view>

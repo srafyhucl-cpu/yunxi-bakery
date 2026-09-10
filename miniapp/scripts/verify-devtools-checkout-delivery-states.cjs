@@ -23,7 +23,10 @@ async function waitForPage(miniProgram) {
 
 async function readSubmitState(page) {
   const data = await page.data();
-  const warning = await page.$(".amount-warning");
+  const guidance = await page.$(".delivery-guidance");
+  const guidanceTitle = await page.$(".delivery-guidance__title");
+  const guidanceText = await page.$(".delivery-guidance__text");
+  const guidanceAction = await page.$(".delivery-guidance__action");
   const submit = await page.$(".checkout-footer__submit");
   return {
     canSubmitOrder: data.canSubmitOrder,
@@ -31,7 +34,11 @@ async function readSubmitState(page) {
     deliveryQuoteStatus: data.deliveryQuoteStatus,
     deliveryFeeText: data.deliveryFeeText,
     deliveryCalculating: data.deliveryCalculating,
-    warningText: warning ? (await warning.text()).trim() : "",
+    guidanceVisible: Boolean(guidance),
+    guidanceTitle: guidanceTitle ? (await guidanceTitle.text()).trim() : "",
+    guidanceText: guidanceText ? (await guidanceText.text()).trim() : "",
+    guidanceActionText: guidanceAction ? (await guidanceAction.text()).trim() : "",
+    guidanceActionSize: guidanceAction ? await guidanceAction.size() : null,
     submitDisabled: submit ? Boolean(await submit.property("disabled")) : null
   };
 }
@@ -40,6 +47,7 @@ async function applyState(page, state) {
   await page.setData({
     isLoggedIn: true,
     loginStateText: "已使用本地审计态加载结算信息",
+    errorMessage: "",
     checkoutItems: [
       {
         productId: "delivery-state-audit",
@@ -73,6 +81,7 @@ async function applyState(page, state) {
     pendingBarVisible: false,
     submitting: false,
   });
+  await page.callMethod("refreshSubmitState");
   await sleep(120);
 }
 
@@ -99,7 +108,8 @@ async function main() {
         estimateRemainFenText: "¥198.00",
       },
       expectDisabled: true,
-      expectWarning: true,
+      expectGuidanceTitle: "还需要补充收货信息",
+      expectActionText: "完善信息",
     },
     {
       name: "quoting",
@@ -114,7 +124,40 @@ async function main() {
         estimateRemainFenText: "¥198.00",
       },
       expectDisabled: true,
-      expectWarning: true,
+      expectGuidanceTitle: "正在确认闪送运费",
+      expectActionText: "",
+    },
+    {
+      name: "expired",
+      state: {
+        deliveryFeeFen: 0,
+        deliveryFeeText: "报价已过期",
+        deliveryQuoteId: "",
+        deliveryQuoteStatus: "expired",
+        deliveryCalculating: false,
+        canSubmitOrder: false,
+        submitButtonText: "先确认运费",
+        estimateRemainFenText: "¥198.00",
+      },
+      expectDisabled: true,
+      expectGuidanceTitle: "闪送报价已过期",
+      expectActionText: "重新确认",
+    },
+    {
+      name: "address_out_of_range",
+      state: {
+        deliveryFeeFen: 0,
+        deliveryFeeText: "当前地址超出配送范围",
+        deliveryQuoteId: "",
+        deliveryQuoteStatus: "address_out_of_range",
+        deliveryCalculating: false,
+        canSubmitOrder: false,
+        submitButtonText: "先确认运费",
+        estimateRemainFenText: "¥198.00",
+      },
+      expectDisabled: true,
+      expectGuidanceTitle: "当前地址暂不支持闪送",
+      expectActionText: "联系客服",
     },
     {
       name: "provider_unavailable",
@@ -129,7 +172,8 @@ async function main() {
         estimateRemainFenText: "¥198.00",
       },
       expectDisabled: true,
-      expectWarning: true,
+      expectGuidanceTitle: "暂时无法确认闪送费",
+      expectActionText: "联系客服",
     },
     {
       name: "quoted",
@@ -144,7 +188,8 @@ async function main() {
         estimateRemainFenText: "¥224.00",
       },
       expectDisabled: false,
-      expectWarning: false,
+      expectGuidanceTitle: "",
+      expectActionText: "",
     },
   ];
 
@@ -158,13 +203,30 @@ async function main() {
     for (const scenario of scenarios) {
       await applyState(page, scenario.state);
       const observed = await readSubmitState(page);
-      report.checks.push({ name: scenario.name, observed });
+      const screenshotPath = `reports/devtools/final-checkout-state-${scenario.name}.png`;
+      const scrollView = await page.$(".page-scroll");
+      if (!scrollView) {
+        throw new Error("结算页缺少可滚动内容区");
+      }
+      await scrollView.scrollTo(0, 760);
+      await sleep(160);
+      await miniProgram.screenshot({ path: screenshotPath });
+      report.checks.push({ name: scenario.name, observed, screenshot: screenshotPath });
 
       if (observed.submitDisabled !== scenario.expectDisabled) {
         report.errors.push(scenario.name + " 提交按钮禁用态错误：" + observed.submitDisabled);
       }
-      if (Boolean(observed.warningText) !== scenario.expectWarning) {
-        report.errors.push(scenario.name + " 报价提示显示状态错误：" + (observed.warningText || "空"));
+      if (observed.guidanceTitle !== scenario.expectGuidanceTitle) {
+        report.errors.push(scenario.name + " 报价指引标题错误：" + (observed.guidanceTitle || "空"));
+      }
+      if (observed.guidanceActionText !== scenario.expectActionText) {
+        report.errors.push(scenario.name + " 恢复动作错误：" + (observed.guidanceActionText || "空"));
+      }
+      if (scenario.expectDisabled !== observed.guidanceVisible) {
+        report.errors.push(scenario.name + " 报价指引显示状态错误");
+      }
+      if (observed.guidanceActionSize && (observed.guidanceActionSize.width < 44 || observed.guidanceActionSize.height < 44)) {
+        report.errors.push(scenario.name + " 恢复动作触控区域过小");
       }
       if (scenario.expectDisabled && observed.submitButtonText !== "先确认运费") {
         report.errors.push(scenario.name + " 禁用态按钮文案错误：" + observed.submitButtonText);

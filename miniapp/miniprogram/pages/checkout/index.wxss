@@ -391,6 +391,41 @@ textarea {
   line-height: 1.45;
 }
 
+.delivery-guidance {
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+  margin: 8rpx 0 4rpx;
+  padding: 14rpx 16rpx;
+  background: #FFF8F1;
+  border: 1rpx solid #F1D4B7;
+  border-radius: var(--yunxi-radius-sm);
+}
+
+.delivery-guidance__title {
+  color: var(--yunxi-text-primary);
+  font-size: 23rpx;
+  font-weight: 700;
+}
+
+.delivery-guidance__text {
+  color: var(--yunxi-text-muted);
+  font-size: 21rpx;
+  line-height: 1.45;
+}
+
+button.delivery-guidance__action {
+  align-self: flex-start;
+  min-width: 144rpx;
+  min-height: 88rpx;
+  margin: 4rpx 0 0;
+  padding: 0 18rpx;
+  color: var(--yunxi-text-primary);
+  background: #FFFFFF;
+  border: 1rpx solid var(--yunxi-border-strong);
+  font-size: 22rpx;
+}
+
 /* 待支付提示 */
 .pending-bar {
   margin-top: 20rpx;

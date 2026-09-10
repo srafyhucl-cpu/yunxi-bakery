@@ -70,6 +70,52 @@ function getPickupAddressForQuote(pickupAddress: string): string {
   return pickupAddress || "北京市朝阳区云熙烘焙工坊";
 }
 
+function getDeliveryGuidance(status: string, calculating: boolean): {
+  title: string;
+  text: string;
+  actionText: string;
+  actionType: "address" | "chat" | "none";
+} {
+  if (calculating || status === "quoting") {
+    return {
+      title: "正在确认闪送运费",
+      text: "请稍候，运费确认后才能提交订单。",
+      actionText: "",
+      actionType: "none"
+    };
+  }
+  if (status === "address_required" || status === "receiver_required" || status === "receiver_phone_required") {
+    return {
+      title: "还需要补充收货信息",
+      text: "填写联系人、手机号和收货地址后，才能计算北京闪送费。",
+      actionText: "完善信息",
+      actionType: "address"
+    };
+  }
+  if (status === "address_out_of_range") {
+    return {
+      title: "当前地址暂不支持闪送",
+      text: "可以改为到店自提，或联系客服确认其他履约安排。",
+      actionText: "联系客服",
+      actionType: "chat"
+    };
+  }
+  if (status === "expired") {
+    return {
+      title: "闪送报价已过期",
+      text: "地址或配送情况可能发生变化，请重新确认运费。",
+      actionText: "重新确认",
+      actionType: "address"
+    };
+  }
+  return {
+    title: "暂时无法确认闪送费",
+    text: "当前不能按 0 元运费提交订单，可联系客服协助确认。",
+    actionText: "联系客服",
+    actionType: "chat"
+  };
+}
+
 let deliveryQuoteRequestSerial = 0;
 
 Page({
@@ -125,6 +171,10 @@ Page({
     deliveryQuoteId: "",
     deliveryQuoteStatus: "not_applicable",
     deliveryCalculating: false,
+    deliveryGuidanceTitle: "",
+    deliveryGuidanceText: "",
+    deliveryGuidanceActionText: "",
+    deliveryGuidanceActionType: "none" as "address" | "chat" | "none",
     canSubmitOrder: true,
     submitButtonText: "提交订单"
   },
@@ -334,10 +384,28 @@ Page({
     } else if (!this.data.agreementAccepted) {
       submitButtonText = "请先同意协议";
     }
+    const deliveryGuidance = getDeliveryGuidance(this.data.deliveryQuoteStatus, this.data.deliveryCalculating);
     this.setData({
       canSubmitOrder: hasItems && !deliveryBlocked && this.data.agreementAccepted,
-      submitButtonText
+      submitButtonText,
+      deliveryGuidanceTitle: deliveryGuidance.title,
+      deliveryGuidanceText: deliveryGuidance.text,
+      deliveryGuidanceActionText: deliveryGuidance.actionText,
+      deliveryGuidanceActionType: deliveryGuidance.actionType
     });
+  },
+  handleDeliveryGuidance() {
+    if (this.data.deliveryGuidanceActionType === "chat") {
+      wx.switchTab({ url: ROUTES.chat });
+      return;
+    }
+    if (this.data.deliveryGuidanceActionType === "address") {
+      if (this.data.deliveryQuoteStatus === "expired") {
+        void this.fetchDeliveryQuote();
+        return;
+      }
+      this.openAddressBook();
+    }
   },
   invalidateDeliveryQuote(status: string, text: string) {
     this.setData({
