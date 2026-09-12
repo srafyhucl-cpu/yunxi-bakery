@@ -2,7 +2,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   buildOrderAmountView,
+  formatOrderDisplayId,
   isBeijingDelivery,
+  maskReceiverPhone,
   type OrderAmountSnapshot,
 } from "../../miniprogram/utils/order-summary.ts";
 
@@ -17,6 +19,22 @@ function order(overrides: Partial<OrderAmountSnapshot>): OrderAmountSnapshot {
     ...overrides,
   };
 }
+
+test("订单列表手机号只展示脱敏后的联系信息", () => {
+  assert.equal(maskReceiverPhone("18800000000"), "188****0000");
+  assert.equal(maskReceiverPhone(" 19900001234 "), "199****1234");
+  assert.equal(maskReceiverPhone("400-800-1234"), "400****1234");
+  assert.equal(maskReceiverPhone(""), "手机号待确认");
+});
+
+test("订单列表使用可读短号，保留日期和尾号", () => {
+  assert.equal(
+    formatOrderDisplayId("mp_20260912_6f4b2c21_30fc29b0"),
+    "2026-09-12 · 30FC29B0"
+  );
+  assert.equal(formatOrderDisplayId("short-order"), "short-order");
+  assert.equal(formatOrderDisplayId(""), "待同步");
+});
 
 test("自提订单展示商品金额、零运费和服务端应付金额", () => {
   const view = buildOrderAmountView(order({}));

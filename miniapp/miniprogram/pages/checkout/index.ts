@@ -39,6 +39,7 @@ import { executePreparedPayment } from "../../utils/order-payment";
 import {
   buildPaymentBranch,
   classifyCouponStatus,
+  resolveAssetToggle,
   type MemberCoupon,
   type PaymentBranch
 } from "../../utils/member-assets";
@@ -146,13 +147,13 @@ Page({
     agreementAccepted: false,
     sessionView: buildMiniappSessionView(getMiniappSession()),
     isLoggedIn: isMiniappLoggedIn(getMiniappSession()),
-    loginStateText: "结算需要真实登录后使用",
+    loginStateText: "登录后即可结算",
     layoutStyle: getMiniappLayoutMetrics().pageShellStyle,
     availableCoupons: [] as Array<MemberCoupon & { disabled: boolean }>,
     selectedCouponId: "",
     pointsEnabled: false,
     pointsBalance: 0,
-    balanceEnabled: true,
+    balanceEnabled: false,
     balanceFen: 0,
     goodsFen: 0,
     estimateCouponFen: 0,
@@ -207,7 +208,7 @@ Page({
     }
     this.setData({
       sessionView: buildMiniappSessionView(session),
-      loginStateText: "已使用真实登录态加载结算信息",
+      loginStateText: "订单将关联到当前微信身份",
       isLoggedIn: true
     });
     const totalFen = getCartItems().reduce((sum, item) => sum + item.priceFen * item.quantity, 0);
@@ -267,22 +268,36 @@ Page({
     const pendingBarVisible =
       pending !== null &&
       pending.signature === getCartItems().map((item) => `${item.productId}:${item.quantity}`).join(",");
+    const balanceFen = balance ? balance.balanceFen : 0;
+    const pointsBalance = points ? points.pointsBalance : 0;
+    const requestedBalanceEnabled = pending && typeof pending.balanceEnabled === "boolean"
+      ? pending.balanceEnabled
+      : balanceFen > 0;
     this.setData({
       goodsFen,
-      balanceFen: balance ? balance.balanceFen : 0,
-      pointsBalance: points ? points.pointsBalance : 0,
+      balanceFen,
+      pointsBalance,
       availableCoupons,
       pendingOrderId: pending ? pending.orderId : "",
       pendingBarVisible,
       selectedCouponId: pending ? pending.couponId : "",
-      pointsEnabled: pending ? pending.pointsEnabled : false
+      pointsEnabled: pending ? pending.pointsEnabled : false,
+      balanceEnabled: requestedBalanceEnabled
     });
-    this.refreshEstimate();
+    this.applyAssetAvailability();
     if (this.data.deliveryType === "delivery") {
       void this.fetchDeliveryQuote();
     } else {
       this.refreshSubmitState();
     }
+  },
+  applyAssetAvailability() {
+    this.setData({
+      pointsEnabled: resolveAssetToggle(this.data.pointsEnabled, this.data.pointsBalance),
+      balanceEnabled: resolveAssetToggle(this.data.balanceEnabled, this.data.balanceFen)
+    }, () => {
+      this.refreshEstimate();
+    });
   },
   updateField(event: WechatMiniprogram.Input) {
     const field = event.currentTarget.dataset.field as string;
@@ -433,10 +448,17 @@ Page({
       orderId,
       signature,
       couponId: this.data.selectedCouponId,
-      pointsEnabled: this.data.pointsEnabled
+      pointsEnabled: this.data.pointsEnabled,
+      balanceEnabled: this.data.balanceEnabled
     });
   },
-  readPendingOrder(): { orderId: string; signature: string; couponId: string; pointsEnabled: boolean } | null {
+  readPendingOrder(): {
+    orderId: string;
+    signature: string;
+    couponId: string;
+    pointsEnabled: boolean;
+    balanceEnabled?: boolean;
+  } | null {
     return wx.getStorageSync("yunxiPendingOrder") || null;
   },
   clearPendingOrder() {
@@ -612,7 +634,13 @@ Page({
       wx.showToast({ title: "积分已应用，如需取消请取消订单", icon: "none" });
       return;
     }
-    this.setData({ pointsEnabled: Boolean(event.detail.value) });
+    if (this.data.pointsBalance <= 0) {
+      this.setData({ pointsEnabled: false });
+      return;
+    }
+    this.setData({
+      pointsEnabled: resolveAssetToggle(Boolean(event.detail.value), this.data.pointsBalance)
+    });
     this.refreshEstimate();
   },
   togglePointsRow() {
@@ -620,14 +648,28 @@ Page({
       wx.showToast({ title: "积分已应用，如需取消请取消订单", icon: "none" });
       return;
     }
+    if (this.data.pointsBalance <= 0) {
+      wx.showToast({ title: "当前没有可用积分", icon: "none" });
+      return;
+    }
     this.setData({ pointsEnabled: !this.data.pointsEnabled });
     this.refreshEstimate();
   },
   onBalanceSwitch(event: WechatMiniprogram.SwitchChange) {
-    this.setData({ balanceEnabled: Boolean(event.detail.value) });
+    if (this.data.balanceFen <= 0) {
+      this.setData({ balanceEnabled: false });
+      return;
+    }
+    this.setData({
+      balanceEnabled: resolveAssetToggle(Boolean(event.detail.value), this.data.balanceFen)
+    });
     this.refreshEstimate();
   },
   toggleBalanceRow() {
+    if (this.data.balanceFen <= 0) {
+      wx.showToast({ title: "当前没有可用余额", icon: "none" });
+      return;
+    }
     this.setData({ balanceEnabled: !this.data.balanceEnabled });
     this.refreshEstimate();
   },
@@ -874,9 +916,11 @@ Page({
       pendingOrderId: pending.orderId,
       selectedCouponId: pending.couponId,
       pointsEnabled: pending.pointsEnabled,
+      balanceEnabled: pending.balanceEnabled === true,
       pendingBarVisible: false,
       orderLocked: true
     });
+    this.applyAssetAvailability();
     wx.showToast({ title: "已恢复待支付订单，积分与已选券已锁定，请确认支付", icon: "none" });
   },
   async cancelPendingOrder() {

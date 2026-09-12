@@ -21,16 +21,16 @@
           <!-- 头像边框 -->
           <view class="profile-avatar-frame">
             <view class="profile-avatar">
-              {{sessionView.loggedIn ? (sessionView.name ? sessionView.name[0] : '林') : '👤'}}
+              {{sessionView.loggedIn ? (memberProps.name ? memberProps.name[0] : '微') : '我'}}
             </view>
           </view>
           <!-- 资料文字 -->
           <view class="profile-meta">
             <view class="profile-name-row">
-              <text class="profile-name">{{sessionView.loggedIn ? (sessionView.name || '微信用户') : '未登录用户'}}</text>
-              <text wx:if="{{sessionView.loggedIn}}" class="profile-level-badge">VIP 会员</text>
+              <text class="profile-name">{{sessionView.loggedIn ? (memberProps.name || '微信用户') : '未登录用户'}}</text>
+              <text wx:if="{{sessionView.loggedIn}}" class="profile-level-badge">{{memberProps.levelText}}</text>
             </view>
-            <text class="profile-subtext">{{sessionView.loggedIn ? sessionView.statusText : '登录解锁更多会员权益'}}</text>
+            <text class="profile-subtext">{{sessionView.loggedIn ? memberProps.levelText + ' · 微信身份已登录' : '登录后可查看订单和会员资产'}}</text>
           </view>
         </view>
       </view>
@@ -82,7 +82,6 @@
           </view>
           <view class="card-footer-row">
             <text class="card-validity">有效期: {{memberProps.cardValidity || '永久有效'}}</text>
-            <text class="card-number">编号 8888 6666</text>
           </view>
         </view>
       </view>

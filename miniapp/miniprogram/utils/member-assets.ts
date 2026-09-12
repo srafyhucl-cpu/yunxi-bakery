@@ -103,6 +103,10 @@ export function buildPaymentBranch(params: {
   return "online";
 }
 
+export function resolveAssetToggle(requested: boolean, availableAmount: number): boolean {
+  return requested && Number.isFinite(availableAmount) && availableAmount > 0;
+}
+
 export function isValidRechargeAmount(amountFen: number): boolean {
   return (
     Number.isInteger(amountFen) &&

@@ -1738,3 +1738,18 @@ python -B backend/scripts/check_mistake_ledger.py
 - linked_trace: 20260908-miniapp-commerce-ux-redesign
 - linked_files: ERRORS.md；miniapp/miniprogram/app.wxss；miniapp/miniprogram/pages/checkout/index.wxml；miniapp/miniprogram/pages/checkout/index.wxss；miniapp/miniprogram/pages/address/index.wxml；miniapp/miniprogram/pages/address/index.wxss；miniapp/miniprogram/pages/group-registration/index.wxml；miniapp/miniprogram/pages/group-registration/index.wxss；miniapp/scripts/check-miniapp.mjs；miniapp/scripts/verify-all-15-pages-devtools.cjs
 - next_time_signal: 表单页面新增 input/textarea 时，必须同时补常驻标签并跑静态与 DevTools 断言；placeholder 只能作为输入示例，不能作为字段名称。
+
+## M-20260912-076：DevTools 布尔属性断言把空字符串误判为未禁用
+
+- status: guarded
+- first_seen: 2026-09-12
+- severity: low
+- symptom: 结算页零余额/零积分状态审计确认页面数据已为 `false`、WXML 也已渲染 `disabled`，但首次运行仍报“积分/余额抵扣开关未禁用”；报告记录 `pointsDisabled` 与 `balanceDisabled` 均为空字符串。
+- root_cause: `miniprogram-automator` 对存在的布尔属性返回空字符串表示真值，而不是返回 `"true"`；测试脚本错误要求布尔属性必须等于 `true` 或 `"true"`。
+- impact: 真实正确的界面会被审计误报为失败，若直接相信首轮结果会制造无效修复和重复试错。
+- fix: 运行态断言改为“属性不存在（`null`）才视为未禁用”；同时保留页面数据、开关状态和零资产说明文案三重校验。
+- new_guardrail: DevTools 布尔属性只按存在性判断，不按字符串值比较；首次出现属性断言失败时必须先记录 `attribute()` 原始值再修改页面。
+- verification: 修正断言后 `npm run devtools:commerce-states` PASS；报告记录 `pointsEnabled=false`、`balanceEnabled=false`、`pointsDisabled=""`、`balanceDisabled=""`，并保留零资产截图。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: ERRORS.md；miniapp/scripts/verify-devtools-commerce-states.cjs；miniapp/reports/devtools/commerce-state-audit.json
+- next_time_signal: 新增 DevTools 断言涉及 `disabled`、`checked`、`hidden` 等布尔属性时，先读取并记录原始 `attribute()` 返回值，禁止凭浏览器 DOM 习惯假设为 `"true"`。

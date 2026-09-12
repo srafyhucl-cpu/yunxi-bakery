@@ -72,7 +72,7 @@ Page({
     this.setData({
       canUseChat: loggedIn,
       sessionView: buildMiniappSessionView(session),
-      loginStateText: loggedIn ? "已连接在线客服" : "请先登录后使用客服"
+      loginStateText: loggedIn ? "客服在线，可直接咨询" : "请先登录后使用客服"
     });
     if (!loggedIn) {
       this.setData({

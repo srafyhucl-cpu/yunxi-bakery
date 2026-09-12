@@ -320,6 +320,14 @@ textarea {
   color: var(--yunxi-text-secondary);
 }
 
+.benefit-value.is-muted {
+  color: var(--yunxi-text-muted);
+}
+
+.asset-switch[disabled] {
+  opacity: 0.45;
+}
+
 .benefit-arrow {
   font-size: 22rpx;
   color: var(--yunxi-text-subtle);

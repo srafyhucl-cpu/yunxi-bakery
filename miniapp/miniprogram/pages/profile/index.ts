@@ -110,12 +110,12 @@ Page({
         sessionView: buildMiniappSessionView(session),
         loginStateText:
           isMiniappLoggedIn(session)
-            ? "已使用真实登录态进入个人中心"
+            ? "会员信息已关联当前微信身份"
             : "请先登录后使用个人中心",
         loaded: true
       });
 
-      // 仅在真实登录态有效时才拉取资产，未登录绝不盲目请求受保护接口
+      // 仅在登录状态有效时拉取资产，未登录不请求受保护接口
       if (isMiniappLoggedIn(session)) {
         void this.loadMemberAssets();
       } else {

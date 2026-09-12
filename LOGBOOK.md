@@ -1,3 +1,17 @@
+## [2026-09-12] - fix(miniapp): 顾客端资产状态、订单信息与会员展示收口
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260912-miniapp-customer-polish-r24
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 修复结算页零余额/零积分仍显示抵扣开启、订单列表原始工程订单号与未脱敏手机号、个人中心 VIP/普通会员矛盾与虚假编号、全站登录态工程文案，以及头像昵称读取错误。
+implementation: 新增 `resolveAssetToggle` 统一约束资产可用性，零资产时积分和余额开关关闭、禁用并显示“暂无可用”；订单列表使用 `formatOrderDisplayId` 展示日期加重合短号，`maskReceiverPhone` 脱敏为 138****0000，并分行标注收货人与期望时间；个人中心等级、昵称和头像改为读取 memberSummary 的 levelText/name，删除硬编码编号，未登录头像不再使用 emoji；结算、地址、订单、订单详情、群内登记和个人中心的文案改为微信身份、已登录、订单已关联等顾客语言，结算金额提示改为提交时系统确认。
+verification: `npm run typecheck`、`npm run check:miniapp`（15 页 15 路由）、`npm run check:page-api-coverage`（15 页 34 API 术语 9 边界）、`npm run test:member-assets`（12/12）、`npm run test:order-summary`（6/6）、`npm run check:observability-contract`、`npm run audit:buttons`（106 控件）、`npm run audit:button-styles`（0 失败 0 警告）均通过；`npm run devtools:commerce-states` PASS，报告记录零资产开关 false/禁用、订单短号与脱敏手机号、会员等级“普通会员”无虚假编号/emoji；`npm run devtools:verify-all-pages` 15/15 PASS、4/4 未登录态 PASS；`npm run devtools:checkout-delivery-states`、`npm run devtools:product-purchase-path` 均 PASS。
+evidence: miniapp/reports/devtools/commerce-state-audit.json；miniapp/reports/devtools/all-pages-devtools-audit.json；miniapp/reports/devtools/final-checkout-zero-assets.png；miniapp/reports/devtools/final-orders-readable-meta.png；miniapp/reports/devtools/final-profile-member-summary.png；ERRORS.md M-20260912-076
+limitations: 仍是本地开发服务与 DevTools 模拟器验收，不代表真实微信认证、真实闪送开放平台报价/建单/回调、真实微信支付或生产上线已通过；商品迁移素材的水印与构图问题仍需门店提供统一新图。
+
 ## [2026-09-12] - fix(miniapp): 表单字段常驻标签与触控高度收口
 
 task_id: T-MINIAPP-COMMERCE-UX-REDESIGN

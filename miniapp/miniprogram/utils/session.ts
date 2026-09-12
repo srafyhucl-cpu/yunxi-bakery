@@ -21,10 +21,10 @@ export function buildMiniappSessionView(session: MiniappSession | null | undefin
   return {
     userId: session?.userId || "",
     openid: session?.openid || "",
-    statusText: isDemo ? "演示会话" : "微信登录",
-    badgeText: loggedIn ? "已连接" : "未就绪",
-    hintText: loggedIn ? "当前使用真实登录态" : "请先登录后继续使用",
-    actionText: loggedIn ? "重新登录" : "去登录",
+    statusText: isDemo ? "体验账号" : "微信身份",
+    badgeText: loggedIn ? "已登录" : "未登录",
+    hintText: loggedIn ? "当前身份可用于查询订单和会员资产" : "登录后可查询订单和会员资产",
+    actionText: loggedIn ? "刷新信息" : "去登录",
     loggedIn
   };
 }

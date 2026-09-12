@@ -12,7 +12,11 @@ import { ROUTES } from "../../constants/routes";
 import { getMiniappSession } from "../../services/auth";
 import { getMiniappLayoutMetrics } from "../../utils/layout";
 import { goBackOrHome } from "../../utils/navigation";
-import { buildOrderAmountView } from "../../utils/order-summary";
+import {
+  buildOrderAmountView,
+  formatOrderDisplayId,
+  maskReceiverPhone,
+} from "../../utils/order-summary";
 import { payOrderById } from "../../utils/order-payment";
 import { buildMiniappSessionView, isMiniappLoggedIn } from "../../utils/session";
 
@@ -20,6 +24,9 @@ interface OrderView extends OrderSummary {
   statusText: string;
   paymentStatusText: string;
   totalText: string;
+  orderNoText: string;
+  receiverContactText: string;
+  expectTimeText: string;
   canPay: boolean;
   canCancel: boolean;
 }
@@ -46,6 +53,9 @@ function buildOrderView(order: OrderSummary): OrderView {
     statusText: statusText(order.status),
     paymentStatusText: paymentStatusText(order.paymentStatus),
     totalText: amountView.totalText,
+    orderNoText: formatOrderDisplayId(order.id),
+    receiverContactText: `${order.receiverName || "收货人待确认"} · ${maskReceiverPhone(order.receiverPhone)}`,
+    expectTimeText: order.expectTime || "待确认",
     canPay: canPayOrder(order),
     canCancel: canUserCancelOrder(order),
   };
@@ -84,7 +94,7 @@ Page({
     activeFilter: DEFAULT_ORDER_LIST_FILTER as OrderListFilterKey,
     emptyText: getEmptyText(DEFAULT_ORDER_LIST_FILTER),
     sessionView: buildMiniappSessionView(getMiniappSession()),
-    loginStateText: "订单需要真实登录后查看",
+    loginStateText: "登录后可查看与当前微信身份关联的订单",
     canUseOrders: false,
     loading: false,
     loadingMore: false,
@@ -150,7 +160,7 @@ Page({
       const mergedOrders = refresh ? pageOrders : [...this.data.allOrders, ...pageOrders];
       this.setData({
         sessionView: buildMiniappSessionView(session),
-        loginStateText: "已使用真实登录态加载订单",
+        loginStateText: "订单已关联当前微信身份",
         canUseOrders: true,
         hasMore: page.hasMore,
         currentPage: page.page

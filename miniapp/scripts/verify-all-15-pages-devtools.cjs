@@ -431,6 +431,25 @@ async function inspectSessionAndAuthState(page, pageDef, result) {
   }
 }
 
+// 顾客可见区域不得泄露登录态实现、演示模式、虚假会员等级或占位头像。
+async function inspectCustomerFacingCopy(page, pageDef, result) {
+  const pageRoot = await page.$(".page");
+  if (!pageRoot) {
+    return;
+  }
+  const text = (await pageRoot.text()).trim();
+  const banned = ["真实登录态", "演示会话", "VIP 会员", "8888 6666", "👤"];
+  const matched = banned.filter((item) => text.includes(item));
+  result.customerCopy = {
+    ok: matched.length === 0,
+    matched,
+    textLength: text.length
+  };
+  for (const item of matched) {
+    result.errors.push(`${pageDef.path}: 顾客可见区域仍包含工程或占位文案“${item}”`);
+  }
+}
+
 async function verifyPage(miniProgram, pageDef, viewportWidth, screenshotPrefix = "final") {
   const result = {
     page: pageDef.path,
@@ -456,6 +475,7 @@ async function verifyPage(miniProgram, pageDef, viewportWidth, screenshotPrefix 
 
     await inspectCommerceState(page, pageDef, result);
     await inspectSessionAndAuthState(page, pageDef, result);
+    await inspectCustomerFacingCopy(page, pageDef, result);
 
     const screenshotName = `${screenshotPrefix}-${pageDef.path.split("/")[1]}.png`;
     const screenshotPath = path.join(reportsDir, screenshotName);
@@ -580,7 +600,7 @@ async function captureLoggedOutStates(miniProgram, viewportWidth) {
       const result = await verifyPage(miniProgram, pageDef, viewportWidth, "final-logged-out");
       const sessionView = (await (await miniProgram.currentPage()).data()).sessionView || {};
       if (pageDef.path !== "pages/recharge/index" && sessionView.loggedIn !== false) {
-        result.errors.push(pageDef.path + ": 清除登录存储后页面仍显示已连接会话");
+        result.errors.push(pageDef.path + ": 清除登录存储后页面仍显示已登录会话");
         result.passed = false;
       }
       results.push(result);

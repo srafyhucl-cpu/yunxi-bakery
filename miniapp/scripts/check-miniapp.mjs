@@ -222,6 +222,22 @@ const LABELED_FORM_PAGES = new Set([
   "pages/group-registration/index",
 ]);
 
+const FORBIDDEN_CUSTOMER_COPY = [
+  { text: "真实登录态", hint: "应改为顾客可理解的登录或微信身份文案" },
+  { text: "演示会话", hint: "应改为体验账号等顾客语言" },
+  { text: "VIP 会员", hint: "会员等级必须来自 memberSummary 配置" },
+  { text: "8888 6666", hint: "不得展示虚假会员编号" },
+];
+
+// 顾客可见文案不得泄露实现细节，也不得用硬编码伪装会员等级或编号。
+function checkCustomerFacingCopy(source, pagePath) {
+  for (const item of FORBIDDEN_CUSTOMER_COPY) {
+    if (source.includes(item.text)) {
+      fail(`${pagePath} 包含不应面向顾客展示的文案“${item.text}”：${item.hint}`);
+    }
+  }
+}
+
 function checkFormFieldLabels(source, pagePath) {
   if (!LABELED_FORM_PAGES.has(pagePath)) {
     return;
@@ -644,6 +660,8 @@ for (const pagePath of appPages) {
   checkButtonLoadingDisabled(wxmlSource, pagePath);
   checkImageErrorFallback(wxmlSource, pagePath);
   checkFormFieldLabels(wxmlSource, pagePath);
+  checkCustomerFacingCopy(tsSource, `${pagePath}.ts`);
+  checkCustomerFacingCopy(wxmlSource, `${pagePath}.wxml`);
   checkFixedSafeHomeAction(wxmlSource, methods, pagePath);
   checkDynamicLinksUseUnifiedNavigation(tsSource, wxmlSource, pagePath);
   for (const handler of handlers) {

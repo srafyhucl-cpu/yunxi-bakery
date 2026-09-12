@@ -90,7 +90,7 @@ Page({
       sessionView: buildMiniappSessionView(session),
       canSubmitRegistration: loggedIn,
       loginStateText: loggedIn
-        ? "已使用真实微信身份提交登记，门店客服会按此身份跟进"
+        ? "登记将关联当前微信身份，门店客服会按此身份跟进"
         : "请先登录后提交群内登记，避免登记记录无法归属到你",
       loginActionText: loggedIn ? "查看身份" : "去登录"
     });

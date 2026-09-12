@@ -4,6 +4,7 @@ import {
   classifyCouponStatus,
   mapPointsSourceLabel,
   buildPaymentBranch,
+  resolveAssetToggle,
   isValidRechargeAmount,
   MIN_RECHARGE_FEN,
   MAX_RECHARGE_FEN,
@@ -11,6 +12,13 @@ import {
 } from "../../miniprogram/utils/member-assets.ts";
 
 const NOW = new Date("2026-08-14T12:00:00+08:00");
+
+test("零资产不允许保持抵扣开关开启", () => {
+  assert.equal(resolveAssetToggle(true, 0), false);
+  assert.equal(resolveAssetToggle(true, -1), false);
+  assert.equal(resolveAssetToggle(false, 100), false);
+  assert.equal(resolveAssetToggle(true, 100), true);
+});
 
 function coupon(overrides: Partial<MemberCoupon>): MemberCoupon {
   return {

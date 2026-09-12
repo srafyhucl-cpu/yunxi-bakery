@@ -249,9 +249,6 @@
   color: rgba(255, 255, 255, 0.5);
 }
 
-.card-number {
-  letter-spacing: 0.1em;
-}
 
 /* 订单与服务面板 */
 .panel-card {

@@ -140,14 +140,14 @@
         </view>
         <view class="benefit-row" bindtap="togglePointsRow">
           <text class="benefit-label">积分抵扣</text>
-          <switch checked="{{pointsEnabled}}" disabled="{{orderLocked}}" color="#3D332D" bindchange="onPointsSwitch" />
-          <text class="benefit-value">{{orderLocked ? '积分已应用' : '可用 ' + pointsBalance + ' 积分'}}</text>
+          <switch class="asset-switch asset-switch--points" checked="{{pointsEnabled}}" disabled="{{orderLocked || pointsBalance <= 0}}" color="#3D332D" bindchange="onPointsSwitch" />
+          <text class="benefit-value {{pointsBalance <= 0 && !orderLocked ? 'is-muted' : ''}}">{{orderLocked ? '积分已应用' : (pointsBalance > 0 ? '可用 ' + pointsBalance + ' 积分' : '暂无可用积分')}}</text>
         </view>
         <text wx:if="{{orderLocked}}" class="benefit-note">积分已应用，取消请先取消订单</text>
         <view class="benefit-row" bindtap="toggleBalanceRow">
           <text class="benefit-label">余额抵扣</text>
-          <switch checked="{{balanceEnabled}}" color="#3D332D" bindchange="onBalanceSwitch" />
-          <text class="benefit-value">可用 {{balanceFen / 100}} 元</text>
+          <switch class="asset-switch asset-switch--balance" checked="{{balanceEnabled}}" disabled="{{balanceFen <= 0}}" color="#3D332D" bindchange="onBalanceSwitch" />
+          <text class="benefit-value {{balanceFen <= 0 ? 'is-muted' : ''}}">{{balanceFen > 0 ? '可用 ' + balanceFen / 100 + ' 元' : '暂无可用余额'}}</text>
         </view>
       </view>
 
@@ -170,7 +170,7 @@
         <view class="amount-row"><text>积分抵扣</text><text>{{pointsEnabled ? '提交后计算' : '-'}}</text></view>
         <view class="amount-row"><text>余额抵扣</text><text>{{balanceEnabled ? balanceDeductText : '-'}}</text></view>
         <view class="amount-row amount-total"><text>实付（估算）</text><text>{{estimateRemainFenText}}</text></view>
-        <text class="amount-note">运费在支付前确定并一并支付，最终金额以确认页为准</text>
+        <text class="amount-note">运费在支付前确定并一并支付，最终金额以提交订单时系统确认结果为准</text>
       </view>
 
       <view wx:if="{{isLoggedIn && checkoutItems.length && pendingBarVisible}}" class="pending-bar">

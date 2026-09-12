@@ -102,7 +102,7 @@ Page({
     cancelling: false,
     paying: false,
     sessionView: buildMiniappSessionView(getMiniappSession()),
-    loginStateText: "订单详情需要真实登录后查看",
+    loginStateText: "登录后可查看订单详情",
     canLoadOrder: false,
     layoutStyle: getMiniappLayoutMetrics().pageShellStyle
   },
@@ -136,7 +136,7 @@ Page({
     this.setData({
       canLoadOrder: true,
       sessionView: buildMiniappSessionView(session),
-      loginStateText: "已使用真实登录态加载订单详情"
+      loginStateText: "订单详情已关联当前微信身份"
     });
     this.setData({ loading: true });
     try {

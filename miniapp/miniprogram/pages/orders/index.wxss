@@ -113,11 +113,39 @@
   font-size: 24rpx;
 }
 
+.order-id-block {
+  display: flex;
+  align-items: baseline;
+  min-width: 0;
+  gap: 8rpx;
+}
+
+.order-id-label {
+  flex-shrink: 0;
+  color: var(--yunxi-text-muted);
+  font-size: 22rpx;
+}
+
 .order-id {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--yunxi-text-secondary);
+  font-size: 24rpx;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.order-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+}
+
+.order-meta__line {
+  display: block;
+  line-height: 1.45;
 }
 
 .order-title {

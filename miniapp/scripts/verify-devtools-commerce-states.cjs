@@ -182,6 +182,177 @@ async function main() {
     if (unavailableData.canPurchase === false && unavailableActions) {
       report.errors.push("不可购买商品仍展示购买操作");
     }
+
+    await miniProgram.callWxMethod("setStorageSync", CART_STORAGE_KEY, [
+      {
+        productId: "checkout-asset-state-item",
+        title: "结算资产状态样本",
+        imageUrl: "",
+        priceFen: 19800,
+        quantity: 1
+      }
+    ]);
+    const checkout = await navigateAndWait(miniProgram, "pages/checkout/index");
+    await checkout.setData({
+      isLoggedIn: true,
+      sessionView: {
+        ...((await checkout.data()).sessionView || {}),
+        statusText: "微信身份",
+        badgeText: "已登录",
+        actionText: "刷新信息",
+        hintText: "当前身份可用于查询订单和会员资产",
+        loggedIn: true
+      },
+      loginStateText: "订单将关联到当前微信身份",
+      errorMessage: "",
+      totalText: "¥198.00",
+      checkoutItems: [
+        {
+          productId: "checkout-asset-state-item",
+          title: "结算资产状态样本",
+          imageUrl: "",
+          priceFen: 19800,
+          priceText: "¥198.00",
+          quantity: 1
+        }
+      ],
+      goodsFen: 19800,
+      pointsBalance: 0,
+      balanceFen: 0,
+      pointsEnabled: true,
+      balanceEnabled: true
+    });
+    await checkout.callMethod("applyAssetAvailability");
+    await sleep(300);
+    const checkoutAssetData = await checkout.data();
+    const pointsSwitch = await checkout.$(".asset-switch--points");
+    const balanceSwitch = await checkout.$(".asset-switch--balance");
+    const benefitPanel = await checkout.$(".benefit-panel");
+    const checkoutText = benefitPanel ? await benefitPanel.text() : "";
+    const pointsDisabled = pointsSwitch ? (await pointsSwitch.attribute("disabled")) : null;
+    const balanceDisabled = balanceSwitch ? (await balanceSwitch.attribute("disabled")) : null;
+    report.checks.push({
+      page: checkout.path,
+      state: "zero-member-assets",
+      pointsEnabled: checkoutAssetData.pointsEnabled,
+      balanceEnabled: checkoutAssetData.balanceEnabled,
+      pointsBalance: checkoutAssetData.pointsBalance,
+      balanceFen: checkoutAssetData.balanceFen,
+      pointsDisabled,
+      balanceDisabled,
+      benefitText: checkoutText.trim()
+    });
+    if (checkoutAssetData.pointsEnabled !== false || checkoutAssetData.balanceEnabled !== false) {
+      report.errors.push("零积分或零余额时抵扣开关仍保持开启");
+    }
+    if (!pointsSwitch || !balanceSwitch) {
+      report.errors.push("结算页缺少积分或余额抵扣开关");
+    } else if (pointsDisabled === null) {
+      report.errors.push("零积分时积分抵扣开关未禁用");
+    }
+    if (balanceSwitch && balanceDisabled === null) {
+      report.errors.push("零余额时余额抵扣开关未禁用");
+    }
+    if (!checkoutText.includes("暂无可用积分") || !checkoutText.includes("暂无可用余额")) {
+      report.errors.push("零资产抵扣项缺少明确的不可用说明");
+    }
+    await miniProgram.screenshot({ path: "reports/devtools/final-checkout-zero-assets.png" });
+
+    const orders = await navigateAndWait(miniProgram, "pages/orders/index");
+    const ordersData = await orders.data();
+    await orders.setData({
+      canUseOrders: true,
+      sessionView: { ...(ordersData.sessionView || {}), loggedIn: true },
+      filteredOrders: [
+        {
+          id: "mp_20260912_6f4b2c21_30fc29b0",
+          statusText: "制作中",
+          paymentStatusText: "已支付",
+          itemTitle: "草莓奶油蛋糕",
+          itemCount: 1,
+          orderNoText: "2026-09-12 · 30FC29B0",
+          receiverContactText: "张三 · 188****0000",
+          expectTimeText: "2026-09-13 15:00",
+          createdAt: "2026-09-12 10:30",
+          totalText: "¥198.00",
+          canPay: false,
+          canCancel: false
+        }
+      ]
+    });
+    await sleep(300);
+    const orderNo = await orders.$(".order-id");
+    const orderMeta = await orders.$(".order-meta");
+    const orderNoText = orderNo ? (await orderNo.text()).trim() : "";
+    const orderMetaText = orderMeta ? (await orderMeta.text()).trim() : "";
+    report.checks.push({
+      page: orders.path,
+      state: "readable-order-meta",
+      orderNoText,
+      orderMetaText,
+      hasReadableOrderNo: orderNoText.includes("2026-09-12 · 30FC29B0"),
+      hasMaskedPhone: orderMetaText.includes("188****0000"),
+      hasRawPhone: orderMetaText.includes("18800000000")
+    });
+    if (!orderNoText.includes("2026-09-12 · 30FC29B0") || orderNoText.includes("mp_2026")) {
+      report.errors.push("订单列表仍展示原始长工程订单号或缺少可读短号");
+    }
+    if (!orderMetaText.includes("收货人：张三 · 188****0000") || orderMetaText.includes("18800000000")) {
+      report.errors.push("订单列表联系信息缺少字段标签、手机号未脱敏或仍拼接成不可读字符串");
+    }
+    if (!orderMetaText.includes("期望时间：2026-09-13 15:00")) {
+      report.errors.push("订单列表期望时间缺少字段标签或格式不完整");
+    }
+    await miniProgram.screenshot({ path: "reports/devtools/final-orders-readable-meta.png" });
+
+    const profile = await navigateAndWait(miniProgram, "pages/profile/index", true);
+    const profileData = await profile.data();
+    await profile.setData({
+      sessionView: {
+        ...(profileData.sessionView || {}),
+        statusText: "微信身份",
+        badgeText: "已登录",
+        actionText: "刷新信息",
+        hintText: "当前身份可用于查询订单和会员资产",
+        loggedIn: true
+      },
+      memberProps: {
+        greeting: "HI",
+        name: "张三",
+        levelText: "普通会员",
+        cardSubtitle: "累计消费升级会员等级",
+        cardValidity: "永久有效",
+        points: 0,
+        coupons: 0,
+        balanceFen: 0,
+        benefitCardCount: 0
+      },
+      assetBalanceFen: 0,
+      assetPoints: 0,
+      assetCouponCount: 0,
+      balanceText: "¥0.00",
+      assetsLoaded: true
+    });
+    await sleep(300);
+    const profileRoot = await profile.$(".page");
+    const profileText = profileRoot ? await profileRoot.text() : "";
+    const levelBadge = await profile.$(".profile-level-badge");
+    const levelBadgeText = levelBadge ? (await levelBadge.text()).trim() : "";
+    report.checks.push({
+      page: profile.path,
+      state: "truthful-member-summary",
+      levelBadgeText,
+      hasVipCopy: profileText.includes("VIP 会员"),
+      hasFakeNumber: profileText.includes("8888 6666"),
+      hasAvatarPlaceholder: profileText.includes("👤")
+    });
+    if (levelBadgeText !== "普通会员") {
+      report.errors.push("个人中心会员等级未使用 memberSummary 的真实配置");
+    }
+    if (profileText.includes("VIP 会员") || profileText.includes("8888 6666") || profileText.includes("👤")) {
+      report.errors.push("个人中心仍存在矛盾会员等级、虚假会员编号或占位头像");
+    }
+    await miniProgram.screenshot({ path: "reports/devtools/final-profile-member-summary.png" });
   } finally {
     await miniProgram.callWxMethod("removeStorageSync", CART_STORAGE_KEY);
     await miniProgram.disconnect();

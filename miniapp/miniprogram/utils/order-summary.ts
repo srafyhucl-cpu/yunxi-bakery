@@ -45,3 +45,35 @@ export function buildOrderAmountView(order: OrderAmountSnapshot): OrderAmountVie
     deliveryFeePending,
   };
 }
+
+export function maskReceiverPhone(phone?: string): string {
+  const normalized = (phone || "").trim();
+  if (/^\d{11}$/.test(normalized)) {
+    return `${normalized.slice(0, 3)}****${normalized.slice(-4)}`;
+  }
+  if (!normalized) {
+    return "手机号待确认";
+  }
+  if (normalized.length <= 7) {
+    return normalized;
+  }
+  return `${normalized.slice(0, 3)}****${normalized.slice(-4)}`;
+}
+
+export function formatOrderDisplayId(orderId: string): string {
+  const normalized = orderId.trim();
+  if (!normalized) {
+    return "待同步";
+  }
+  const parts = normalized.split("_").filter(Boolean);
+  const datePart = parts.find((part) => /^\d{8}$/.test(part));
+  const suffix = parts.length > 1 ? parts[parts.length - 1] : "";
+  if (datePart && suffix && suffix !== datePart) {
+    const dateText = `${datePart.slice(0, 4)}-${datePart.slice(4, 6)}-${datePart.slice(6, 8)}`;
+    return `${dateText} · ${suffix.slice(-8).toUpperCase()}`;
+  }
+  if (normalized.length > 18) {
+    return `${normalized.slice(0, 8)}…${normalized.slice(-8)}`;
+  }
+  return normalized;
+}

@@ -41,7 +41,7 @@ Page({
     draft: buildEmptyDraft(),
     errorMessage: "",
     sessionView: buildMiniappSessionView(getMiniappSession()),
-    loginStateText: "地址管理需要真实登录后使用",
+    loginStateText: "登录后可管理常用收货地址",
     layoutStyle: getMiniappLayoutMetrics().pageShellStyle
   },
   onLoad(query: Record<string, string | undefined>) {
@@ -73,7 +73,7 @@ Page({
     }
     this.setData({
       sessionView: buildMiniappSessionView(getMiniappSession()),
-      loginStateText: "已使用真实登录态加载地址"
+      loginStateText: "地址已关联当前微信身份"
     });
     const addresses = await syncAddressBookFromBackend();
     this.setData({ addresses });
