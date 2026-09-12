@@ -1693,3 +1693,33 @@ python -B backend/scripts/check_mistake_ledger.py
 - linked_trace: 20260908-miniapp-commerce-ux-redesign
 - linked_files: ERRORS.md；backend/.secrets.baseline；docs/harness-engineering/core/secrets-baseline-changes.md；backend/docs/harness-engineering/core/secrets-baseline-changes.md；backend/scripts/verify_secrets_baseline.py；docs/harness-engineering/core/evidence-index.md
 - next_time_signal: 若再次出现“根文档已登记但守卫仍报未匹配”，先检查是否遗漏 `backend/docs/.../secrets-baseline-changes.md`；中期应让守卫只读仓库根 canonical 文档、旧镜像改为指针，不得用跳过钩子代替修复。
+
+## M-20260912-073：首页图片缺少加载失败降级，同类能力没有横向对齐
+
+- status: guarded
+- first_seen: 2026-09-12
+- severity: medium
+- symptom: 购物车、商品列表、商品详情早在历史整改中已有 `imageFailed` + `binderror` + `.yunxi-image-fallback`，但首页商品卡与品牌轮播只判断“图片地址是否为空”，`<image>` 没有 `binderror`；本地默认品牌轮播的占位元素还保留 `image-placeholder skeleton-shimmer` 两个已无任何 WXSS 定义的类名。
+- root_cause: 图片降级按页面各自实现，没有全局静态门禁；历史清理删除 `.skeleton-shimmer` 样式时只回收了 CSS，未回收仍引用它的骨架元素。
+- impact: 首页是“商品优先”重构后的首屏，一旦有赞迁移 CDN 图失效或弱网加载失败，首页会出现破图/空白且没有任何占位反馈，直接影响下单信任；默认空图轮播依赖父容器底色，缺少可独立成立的降级样式。
+- fix: 首页补齐 `imageFailed` 状态与 `onHomeProductImageError` / `onHeroImageError` 回调，WXML 改为“图片存在且未失败”才渲染 `<image>`，并补 `binderror` 与占位分支；`.home-hero__fallback` 增加品牌底色，删除失效类名。
+- new_guardrail: `miniapp/scripts/check-miniapp.mjs` 新增 `checkImageErrorFallback`：逐页扫描 `<image>`，缺少 `binderror` 即以“页面:行号”失败；`verify-all-15-pages-devtools.cjs` 首页新增降级探针（临时置不可达图片地址，断言 `imageFailed`、占位渲染与货架高度稳定）。
+- verification: 变异验证——临时移除 `pages/cart/index.wxml` 的图片 `binderror` 后 `npm run check:miniapp` 退出码 1 并精确报出 `pages/cart/index.wxml:17`，恢复后退出码 0；`npm run devtools:verify-all-pages` 15/15 PASS，首页探针记录商品图占位 0→1、货架高度 929px→929px、轮播占位 128px。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: ERRORS.md；miniapp/miniprogram/pages/home/index.ts；miniapp/miniprogram/pages/home/index.wxml；miniapp/miniprogram/pages/home/index.wxss；miniapp/scripts/check-miniapp.mjs；miniapp/scripts/verify-all-15-pages-devtools.cjs
+- next_time_signal: 新增任何 `<image>` 前先确认 `check:miniapp` 的 binderror 门禁；DevTools 沙箱不会为不可达域名触发真实 `binderror`，运行态断言必须保留“直接调用回调”兜底并在结论中写明触发方式，不得把直接调用写成真实事件。
+
+## M-20260912-074：版本表头契约与 backend 旧镜像漂移，sync_version 测试长期失败
+
+- status: guarded
+- first_seen: 2026-09-12
+- severity: medium
+- symptom: `python -m pytest backend/tests/scripts/test_sync_version.py -q --no-cov` 在本轮开始时的干净工作区即失败：断言 `当前本地代码版本为 \`0.133.0-p2trial.3\`` 未出现在 `backend/项目进度与配置清单.md` 前 5 行；根目录同名文件同样只剩下“当前本地代码版本以 `backend/VERSION` 为准”的宽松表述。
+- root_cause: 进度清单表头被改成指向版本文件的宽松描述，但测试契约仍要求字面版本号；Monorepo 迁移后 `backend/项目进度与配置清单.md` 成为停在 2026-09-09 的旧镜像，后续每轮只更新根副本，两份副本的漂移没有被任何门禁发现。
+- impact: 版本一致性测试长期为红，任何全量回归都会被这一项拖红，真实回归信号被噪声掩盖；旧镜像还停留在 2026-09-09，无法作为项目进度权威源。
+- fix: 根目录与 `backend/` 两份 `项目进度与配置清单.md` 表头恢复为包含字面版本号的“当前本地代码版本为 \`0.133.0-p2trial.3\`”。
+- new_guardrail: 每轮收口先跑 `python -m pytest backend/tests/scripts/test_sync_version.py -q --no-cov`；改动 VERSION 或进度表头时两份副本必须同步，否则视为未收口。
+- verification: 修复前 `python -m pytest backend/tests/scripts/test_sync_version.py -q --no-cov` 退出码 1（`test_repository_progress_header_matches_version_file` 断言失败）；修复后同一命令 4 项全过、退出码 0。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: ERRORS.md；项目进度与配置清单.md；backend/项目进度与配置清单.md；backend/tests/scripts/test_sync_version.py
+- next_time_signal: 若全量回归出现 `test_repository_progress_header_matches_version_file` 失败，先看两份进度清单第 3 行是否被改回宽松描述；中期应把 `backend/项目进度与配置清单.md` 收敛为指向根 canonical 文件的指针，而不是继续双写。

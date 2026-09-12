@@ -17951,3 +17951,17 @@ implementation: 首页 `.shelf-head__copy` 限制文案宽度，`shelf-head__eye
 verification: 串行执行 `npm run devtools:verify-all-pages`（15/15 PASS + 未登录态 4 项）与 `npm run devtools:checkout-delivery-states`（PASS，新增表单布局断言：备注框 93px、日期选择器 341/341 独占整行、协议行 80px、协议链接 72x45）；`npm run typecheck`、`npm run check:miniapp`（15 页 15 路由）、`npm run check:page-api-coverage`、`npm run audit:buttons`（106 控件）、`npm run audit:button-styles`（0 失败 0 警告）通过；对全部 15 页最新截图完成逐页目视复核。
 evidence: miniapp/reports/devtools/all-pages-devtools-audit.json；miniapp/reports/devtools/final-*.png；miniapp/reports/devtools/checkout-delivery-state-audit.json；miniapp/reports/devtools/final-checkout-state-*.png；docs/harness-engineering/core/evidence-index.md（E-20260912-001）
 limitations: 仍未完成真实微信支付、真实闪送开放平台报价/建单/回调与生产上线验收；本次结论仅覆盖本地后端 + DevTools 开发调试态。部分商品图沿用有赞迁移素材，带水印与构图不一致问题属于素材层，需门店提供新图后另行处理。
+
+## [2026-09-12] - fix(miniapp): 首页商品图与品牌轮播加载失败降级
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260912-miniapp-home-image-fallback-r22
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 对齐首页与商品页/购物车/详情页的图片失败降级能力，补齐首页商品卡与品牌轮播的 binderror 占位，并把“所有图片必须有失败降级”升级为静态门禁与 DevTools 运行态断言。
+implementation: 首页 `HeroItemView`/`ProductCardView` 增加 `imageFailed`，新增 `onHomeProductImageError` 与 `onHeroImageError`（按商品 ID / 轮播 ID 定位并写回 `blocks[i].products[j].imageFailed`、`blocks[i].heroItems[j].imageFailed`）；WXML 统一为“图片存在且未失败”才渲染 `<image>`，并补 `binderror` 与占位分支；`.home-hero__fallback` 补品牌底色并删除已无样式定义的 `image-placeholder skeleton-shimmer`；`check-miniapp.mjs` 新增 `checkImageErrorFallback` 守卫（逐页扫描 `<image>`，缺少 `binderror` 直接失败）；`verify-all-15-pages-devtools.cjs` 新增首页降级探针：把商品图与轮播图临时指向不可达地址，观察真实 `binderror`，6 秒内未触发时回落为直接调用回调并如实记录触发方式，随后恢复原始数据。
+verification: 变异验证——临时移除 `pages/cart/index.wxml` 图片的 `binderror` 后 `npm run check:miniapp` 退出码 1 并输出 `pages/cart/index.wxml:17 的 <image> 缺少 binderror 加载失败降级`，恢复后退出码 0；`npm run typecheck`、`npm run check:miniapp`（15 页 15 路由）、`npm run devtools:verify-all-pages` 15/15 PASS（首页商品图 `imageFailed=true`、占位 0→1、货架高度 929px→929px；轮播占位高度 128px；两项触发方式均为“直接调用失败回调”，DevTools 沙箱未为不可达域名触发真实事件）。
+evidence: miniapp/reports/devtools/all-pages-devtools-audit.json（pages[0].homeImageFallback）；miniapp/reports/devtools/final-home.png；docs/harness-engineering/core/evidence-index.md（E-20260912-002）
+limitations: DevTools 自动化环境未能在 6 秒内为不可达域名触发真实 `binderror`，降级渲染由直接调用回调验证，真实事件链路仅由静态门禁保证；真实微信支付、真实闪送、生产验收仍未覆盖。

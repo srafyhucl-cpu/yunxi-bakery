@@ -204,6 +204,17 @@ function checkWxmlTagBalance(source, pagePath) {
   }
 }
 
+// 图片加载失败必须有降级回调：首页/商品/购物车/详情统一避免破图与空白占位。
+function checkImageErrorFallback(source, pagePath) {
+  for (const match of source.matchAll(/<image\b[^>]*?\/?>/gs)) {
+    if (/\bbinderror\s*=/.test(match[0])) {
+      continue;
+    }
+    const lineNumber = source.slice(0, match.index).split("\n").length;
+    fail(`${pagePath}.wxml:${lineNumber} 的 <image> 缺少 binderror 加载失败降级`);
+  }
+}
+
 function checkButtonLoadingDisabled(source, pagePath) {
   for (const { tag, line } of extractButtonTags(source)) {
     if (/\sloading=/.test(tag) && !/\sdisabled=/.test(tag)) {
@@ -613,6 +624,7 @@ for (const pagePath of appPages) {
   checkWxmlTagBalance(wxmlSource, pagePath);
   checkButtonHasAction(wxmlSource, pagePath);
   checkButtonLoadingDisabled(wxmlSource, pagePath);
+  checkImageErrorFallback(wxmlSource, pagePath);
   checkFixedSafeHomeAction(wxmlSource, methods, pagePath);
   checkDynamicLinksUseUnifiedNavigation(tsSource, wxmlSource, pagePath);
   for (const handler of handlers) {

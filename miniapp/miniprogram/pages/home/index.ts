@@ -25,6 +25,7 @@ import type {
 type HeroItemView = LinkTarget & {
   id: string;
   imageUrl: string;
+  imageFailed: boolean;
   title: string;
   subtitle: string;
   eyebrow: string;
@@ -55,6 +56,7 @@ const HOME_HERO_BLOCK: PageBlock = {
 
 interface ProductCardView extends CatalogProduct {
   priceText: string;
+  imageFailed: boolean;
   imageClass: string;
   badgeText: string;
   deliveryTip?: string;
@@ -133,6 +135,7 @@ function buildHeroCarousel(block: PageBlock): HomeBlockView {
     heroItems: heroItems.map((item, index) => ({
       id: item.id || `${block.id}-${index}`,
       imageUrl: normalizeImageUrl(item.imageUrl || ""),
+      imageFailed: false,
       title: item.title || "芸熙烘焙",
       subtitle: item.subtitle || "每日现制 / 手作奶油 / 礼赠场景",
       eyebrow: item.eyebrow || "YUNXI BAKE",
@@ -212,6 +215,7 @@ async function buildHomeBlocks(config: ShopPageConfig): Promise<HomeBlockView[]>
         ...product,
         priceText: `自提价 ${formatFen(product.priceFen)}`,
         imageClass: getProductImageClass(product),
+        imageFailed: false,
         badgeText: product.stock > 0 ? "可预订" : product.isActive ? "暂时售罄" : "已下架",
         deliveryTip: product.stock > 0 ? "提前1天预订 · 闪送/自取" : "可咨询客服或先看其他商品",
         isUnavailable: !product.isActive || product.stock <= 0,
@@ -287,6 +291,42 @@ Page({
     wx.navigateTo({
       url: `${ROUTES.productDetail}?id=${productId}`
     });
+  },
+  onHeroImageError(event: WechatMiniprogram.TouchEvent) {
+    // 轮播图运行时加载失败：按轮播项定位并切换降级背景，避免首页首屏出现破图
+    const slideId = event.currentTarget.dataset.slideId as string;
+    if (!slideId) {
+      return;
+    }
+    const updates: Record<string, boolean> = {};
+    this.data.blocks.forEach((block, blockIndex) => {
+      (block.heroItems || []).forEach((slide, slideIndex) => {
+        if (slide.id === slideId && !slide.imageFailed) {
+          updates[`blocks[${blockIndex}].heroItems[${slideIndex}].imageFailed`] = true;
+        }
+      });
+    });
+    if (Object.keys(updates).length > 0) {
+      this.setData(updates);
+    }
+  },
+  onHomeProductImageError(event: WechatMiniprogram.TouchEvent) {
+    // 商品图运行时加载失败：按商品定位全部货架命中项并切换占位，保持卡片尺寸稳定
+    const productId = event.currentTarget.dataset.id as string;
+    if (!productId) {
+      return;
+    }
+    const updates: Record<string, boolean> = {};
+    this.data.blocks.forEach((block, blockIndex) => {
+      (block.products || []).forEach((product, productIndex) => {
+        if (product.id === productId && !product.imageFailed) {
+          updates[`blocks[${blockIndex}].products[${productIndex}].imageFailed`] = true;
+        }
+      });
+    });
+    if (Object.keys(updates).length > 0) {
+      this.setData(updates);
+    }
   },
   refreshCartSummary() {
     const cartItems = getCartItems();

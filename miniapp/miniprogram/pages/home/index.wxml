@@ -21,9 +21,9 @@
             indicator-color="rgba(111, 77, 47, 0.22)"
           >
             <swiper-item wx:for="{{item.heroItems}}" wx:key="id" wx:for-item="slide">
-              <view class="home-hero__slide" data-link-type="{{slide.linkType}}" data-link-target="{{slide.linkTarget}}" bindtap="handleHeroTap">
-                <image wx:if="{{slide.imageUrl}}" class="home-hero__image" src="{{slide.imageUrl}}" mode="aspectFill" lazy-load="{{true}}" />
-                <view wx:else class="home-hero__fallback image-placeholder skeleton-shimmer"></view>
+              <view class="home-hero__slide" data-slide-id="{{slide.id}}" data-link-type="{{slide.linkType}}" data-link-target="{{slide.linkTarget}}" bindtap="handleHeroTap">
+                <image wx:if="{{slide.imageUrl && !slide.imageFailed}}" class="home-hero__image" src="{{slide.imageUrl}}" mode="aspectFill" lazy-load="{{true}}" binderror="onHeroImageError" />
+                <view wx:else class="home-hero__fallback"></view>
                 <view class="home-hero__copy">
                   <text class="home-hero__eyebrow">{{slide.eyebrow}}</text>
                   <text class="home-hero__title">{{slide.title}}</text>
@@ -110,7 +110,7 @@
               >
                 <view class="product-image bakery-photo {{product.imageClass}}">
                   <view class="product-badge">{{product.badgeText}}</view>
-                  <image wx:if="{{product.imageUrl}}" class="product-cover" src="{{product.imageUrl}}" mode="aspectFill" lazy-load="{{true}}" />
+                  <image wx:if="{{product.imageUrl && !product.imageFailed}}" class="product-cover" src="{{product.imageUrl}}" mode="aspectFill" lazy-load="{{true}}" data-id="{{product.id}}" binderror="onHomeProductImageError" />
                   <view wx:else class="yunxi-image-fallback">
                     <text class="yunxi-image-fallback__mark">芸</text>
                   </view>

@@ -55,6 +55,122 @@ async function navigateAndWait(miniProgram, pageDef) {
   return miniProgram.currentPage();
 }
 
+async function readHomeImageFailed(page, collectionKey, blockIndex, itemIndex) {
+  const data = await page.data();
+  return data.blocks?.[blockIndex]?.[collectionKey]?.[itemIndex]?.imageFailed === true;
+}
+
+async function waitForHomeImageFailure(page, collectionKey, blockIndex, itemIndex) {
+  for (let attempt = 0; attempt < 30; attempt++) {
+    await sleep(200);
+    if (await readHomeImageFailed(page, collectionKey, blockIndex, itemIndex)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// 首页图片降级验证：触发真实失败回调，确认占位渲染且货架高度不跳动。
+async function inspectHomeImageFallback(page, result) {
+  const audit = { ok: true, details: [], errors: [] };
+  result.homeImageFallback = audit;
+  const shelf = await page.$(".shelf");
+  const shelfBefore = shelf ? await shelf.size() : null;
+  const fallbackBefore = await page.$$(".shelf .product-card .yunxi-image-fallback");
+  const data = await page.data();
+  const blocks = Array.isArray(data.blocks) ? data.blocks : [];
+  const brokenImageUrl = "https://yunxi.invalid/miniapp-image-fallback.png";
+  let productTarget = null;
+  let heroTarget = null;
+  blocks.forEach((block, blockIndex) => {
+    (block.products || []).forEach((product, productIndex) => {
+      if (!productTarget && product.imageUrl && !product.imageFailed) {
+        productTarget = { blockIndex, productIndex, id: product.id, imageUrl: product.imageUrl };
+      }
+    });
+    (block.heroItems || []).forEach((slide, slideIndex) => {
+      if (!heroTarget) {
+        heroTarget = { blockIndex, slideIndex, id: slide.id, imageUrl: slide.imageUrl };
+      }
+    });
+  });
+
+  if (productTarget) {
+    const productPath = `blocks[${productTarget.blockIndex}].products[${productTarget.productIndex}]`;
+    await page.setData({
+      [`${productPath}.imageUrl`]: brokenImageUrl,
+      [`${productPath}.imageFailed`]: false,
+    });
+    let failed = await waitForHomeImageFailure(page, "products", productTarget.blockIndex, productTarget.productIndex);
+    let trigger = "真实 binderror 事件";
+    if (!failed) {
+      trigger = "直接调用失败回调（真实事件未在 6s 内触发）";
+      await page.callMethod("onHomeProductImageError", {
+        currentTarget: { dataset: { id: productTarget.id } },
+      });
+      await sleep(300);
+      failed = await readHomeImageFailed(page, "products", productTarget.blockIndex, productTarget.productIndex);
+    }
+    const fallbacks = await page.$$(".shelf .product-card .yunxi-image-fallback");
+    const shelfAfter = shelf ? await shelf.size() : null;
+    audit.details.push(
+      `商品图降级：imageFailed=${failed}，占位从 ${fallbackBefore.length} 增至 ${fallbacks.length}，触发方式=${trigger}`
+    );
+    if (shelfBefore && shelfAfter) {
+      audit.details.push(`货架高度：${shelfBefore.height}px -> ${shelfAfter.height}px`);
+    }
+    if (!failed || fallbacks.length <= fallbackBefore.length) {
+      audit.errors.push("首页商品图加载失败后未切换到可视占位");
+    }
+    if (shelfBefore && shelfAfter && Math.abs(shelfBefore.height - shelfAfter.height) > 1) {
+      audit.errors.push(`首页商品图降级后货架高度跳动：${shelfBefore.height}px -> ${shelfAfter.height}px`);
+    }
+    await page.setData({
+      [`${productPath}.imageUrl`]: productTarget.imageUrl,
+      [`${productPath}.imageFailed`]: false,
+    });
+  } else {
+    audit.details.push("首页无可用商品图，跳过商品图降级验证");
+  }
+
+  if (heroTarget) {
+    const heroPath = `blocks[${heroTarget.blockIndex}].heroItems[${heroTarget.slideIndex}]`;
+    await page.setData({
+      [`${heroPath}.imageUrl`]: brokenImageUrl,
+      [`${heroPath}.imageFailed`]: false,
+    });
+    let failed = await waitForHomeImageFailure(page, "heroItems", heroTarget.blockIndex, heroTarget.slideIndex);
+    let trigger = "真实 binderror 事件";
+    if (!failed) {
+      trigger = "直接调用失败回调（真实事件未在 6s 内触发）";
+      await page.callMethod("onHeroImageError", {
+        currentTarget: { dataset: { slideId: heroTarget.id } },
+      });
+      await sleep(300);
+      failed = await readHomeImageFailed(page, "heroItems", heroTarget.blockIndex, heroTarget.slideIndex);
+    }
+    const heroFallback = await page.$(".home-hero__fallback");
+    const heroFallbackSize = heroFallback ? await heroFallback.size() : null;
+    audit.details.push(
+      `轮播图降级：imageFailed=${failed}，占位高度=${heroFallbackSize ? heroFallbackSize.height : 0}px，触发方式=${trigger}`
+    );
+    if (!failed || !heroFallbackSize || heroFallbackSize.height <= 0) {
+      audit.errors.push("首页轮播图加载失败后未切换到可视占位");
+    }
+    await page.setData({
+      [`${heroPath}.imageUrl`]: heroTarget.imageUrl,
+      [`${heroPath}.imageFailed`]: false,
+    });
+  } else {
+    audit.details.push("首页轮播图无可用图片，跳过轮播降级验证");
+  }
+
+  if (audit.errors.length > 0) {
+    audit.ok = false;
+    result.errors.push(...audit.errors);
+  }
+}
+
 async function inspectCommerceState(page, pageDef, result) {
   const commerce = { ok: true, details: [], errors: [] };
   const data = await page.data();
@@ -259,6 +375,10 @@ async function verifyPage(miniProgram, pageDef, viewportWidth, screenshotPrefix 
     const screenshotPath = path.join(reportsDir, screenshotName);
     await miniProgram.screenshot({ path: screenshotPath });
     result.screenshot = path.relative(process.cwd(), screenshotPath).replace(/\\/g, "/");
+
+    if (pageDef.path === "pages/home/index") {
+      await inspectHomeImageFallback(page, result);
+    }
 
     // 1. 检查 Navbar
     const fixedSafe = await page.$(".page-fixed-safe");
