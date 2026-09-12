@@ -5,7 +5,7 @@
 > 中文优先：人类可读内容使用中文；`task_id`、`trace_id`、`status`、`owner`、`branch`、`as_of_commit`、`version` 和路径保持稳定机器字段。
 > 最小阅读集：所有 Agent 先读 `AGENTS.md` 与本文件；执行具体任务时再读对应 `docs/tasks/*.md`，按需读取专业契约。
 
-**最后更新**：2026-09-12（as_of_commit: `3637a9f8e9d9123dae1bb25384f56fc98db94b73`；version: `0.133.0-p2trial.3`）
+**最后更新**：2026-09-12（as_of_commit: `6ca743bde1faaa16b3eb53b16fa604a0f54f61a6`；version: `0.133.0-p2trial.3`）
 
 > 当前状态口径：P1 承接验证已于 2026-08-30 经项目负责人确认正式关闭；P2 准备段已完成，真人执行段已阻塞（blocked），尚未启动。Harness P0 与中文治理控制面已完成，版本号以 `backend/VERSION` 为准，代码快照以当前 `git rev-parse HEAD` 为准。
 
@@ -14,7 +14,7 @@
 
 ```yaml
 updated_at: 2026-09-12
-as_of_commit: 3637a9f8e9d9123dae1bb25384f56fc98db94b73
+as_of_commit: 6ca743bde1faaa16b3eb53b16fa604a0f54f61a6
 version: 0.133.0-p2trial.3
 current_branch: main
 workspace_state: clean
@@ -64,7 +64,7 @@ state_owner: 项目负责人＋AI 员工
 | T-AUDIT-CLOSEOUT-20260906 | 审计复核收口执行（部署恢复/全量前置/凭证审计） | active | 进行中（active） | P0 | OpenCode | main | 220a8fe0dcd1126dfe43e3745667a3f7f58fc262 | T-AUDIT-REMEDIATION-20260906 | trace: 20260906-audit-remediation-final；run_id: 20260906-audit-remediation-final5；E-20260906-015；收口计划执行中 | 按计划 Task 1→5 执行并收口证据，保持 No-Go 直至门禁与负责人动作完成 |
 | T-AUDIT-GO-LIVE-20260906 | 最终上线收口执行（三态识别/测试治理/凭证与验收） | active | 进行中（active） | P0 | OpenCode | main | 220a8fe0dcd1126dfe43e3745667a3f7f58fc262 | T-AUDIT-CLOSEOUT-20260906 | trace: 20260906-audit-remediation-final；run_id: 20260906-audit-remediation-final6；E-20260906-016；全量 1854 项退出码 0 | 三态识别与测试治理已代码完成但负责人动作缺失，保持 No-Go；M-20260906-003 关闭前禁止上线 |
 | T-MINIAPP-DISPLAY-POLISH-01 | MiniApp 全页面与次级交互链路大厂级统一整改及 DevTools 走查 | active | 进行中（active） | P1 | AI 员工 | main | b738ecf8192e4dc30a5a3f829158ba6d337fe1f1 | — | trace: 20260908-miniapp-console-zero-error；DevTools 控制台 0 warning / 0 error；全 15 页面自动化走查 15/15 PASS；单测与门禁通过 | 保持 DevTools 实机高保真与大厂验收标准，推进二期业务闭环 |
-| T-MINIAPP-COMMERCE-UX-REDESIGN | MiniApp 商品优先型 UI/UX 与北京闪送履约重构 | active | 进行中（active） | P1 | AI 员工 | main | 3637a9f8e9d9123dae1bb25384f56fc98db94b73 | T-MINIAPP-DISPLAY-POLISH-01 | trace: 20260908-miniapp-commerce-ux-redesign；E-20260909-001,E-20260909-002,E-20260909-003,E-20260909-004,E-20260909-005,E-20260909-006,E-20260909-007,E-20260909-008,E-20260909-009,E-20260909-010,E-20260909-011,E-20260909-012,E-20260909-013,E-20260909-014,E-20260909-015,E-20260909-017,E-20260909-018,E-20260909-019,E-20260909-020,E-20260909-021,E-20260909-022,E-20260912-001；商品优先核心购买链路、全页面视觉统一、未登录结算收敛、商品/订单金额明细、营业时段同步、当天预约边界、商品目录清单化、空购物车结算收敛、商品目录触控目标、展示语言收敛、商品目录快速预订、购物车服务商品推荐、按钮样式零警告、无用前端代码清理和本轮本地后端+DevTools 运行态复核已完成；本轮额外修复本地商品验证器的绝对 CDN URL 处理、迁移态空分类计数假设、会话 CTA 触控尺寸及全局安全区布局，未删除任何商品、配送、支付或验收能力；源码、类型、页面结构、API 覆盖、商品 API、15 页面运行态、真实在售商品购买路径、商品状态、结算配送和当天预约边界均通过；20260910 结算闪送状态指引与串行复测收口（run_id: 20260910-miniapp-serial-rerun-r20，same-day 误报按 M-20260910-070 重载后复跑 PASS；20260912 表单与货架层级视觉修复收口（run_id: 20260912-miniapp-form-visual-r21；ERRORS: M-20260912-071；E-20260912-001） | 后台保存 09:00-19:30 运营配置；获得受控测试授权后复核真实认证结算与报价状态；真实闪送平台资料到位后验证报价、订单金额快照、创建运单和回调幂等；真实支付、生产验收和正式上线仍未验证；`/ready` 为本地测试降级态，不可作为生产就绪 |
+| T-MINIAPP-COMMERCE-UX-REDESIGN | MiniApp 商品优先型 UI/UX 与北京闪送履约重构 | active | 进行中（active） | P1 | AI 员工 | main | 6ca743bde1faaa16b3eb53b16fa604a0f54f61a6 | T-MINIAPP-DISPLAY-POLISH-01 | trace: 20260908-miniapp-commerce-ux-redesign；E-20260909-001,E-20260909-002,E-20260909-003,E-20260909-004,E-20260909-005,E-20260909-006,E-20260909-007,E-20260909-008,E-20260909-009,E-20260909-010,E-20260909-011,E-20260909-012,E-20260909-013,E-20260909-014,E-20260909-015,E-20260909-017,E-20260909-018,E-20260909-019,E-20260909-020,E-20260909-021,E-20260909-022,E-20260912-001,E-20260912-002；商品优先核心购买链路、全页面视觉统一、未登录结算收敛、商品/订单金额明细、营业时段同步、当天预约边界、商品目录清单化、空购物车结算收敛、商品目录触控目标、展示语言收敛、商品目录快速预订、购物车服务商品推荐、按钮样式零警告、无用前端代码清理和本轮本地后端+DevTools 运行态复核已完成；本轮额外修复本地商品验证器的绝对 CDN URL 处理、迁移态空分类计数假设、会话 CTA 触控尺寸及全局安全区布局，未删除任何商品、配送、支付或验收能力；源码、类型、页面结构、API 覆盖、商品 API、15 页面运行态、真实在售商品购买路径、商品状态、结算配送和当天预约边界均通过；20260910 结算闪送状态指引与串行复测收口（run_id: 20260910-miniapp-serial-rerun-r20，same-day 误报按 M-20260910-070 重载后复跑 PASS；20260912 表单与货架层级视觉修复收口（run_id: 20260912-miniapp-form-visual-r21；ERRORS: M-20260912-071；E-20260912-001）；20260912 首页图片加载失败降级与版本文本漂移修复收口（run_id: 20260912-miniapp-home-image-fallback-r22；ERRORS: M-20260912-073、M-20260912-074；E-20260912-002） | 后台保存 09:00-19:30 运营配置；获得受控测试授权后复核真实认证结算与报价状态；真实闪送平台资料到位后验证报价、订单金额快照、创建运单和回调幂等；真实支付、生产验收和正式上线仍未验证；`/ready` 为本地测试降级态，不可作为生产就绪 |
 
 ## 状态视图（只引用主表 task_id）
 

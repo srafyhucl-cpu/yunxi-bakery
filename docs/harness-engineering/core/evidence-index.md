@@ -7467,3 +7467,23 @@ backend/docs/harness-engineering/core/evidence-index.md 仅作为历史镜像。
 - failure_class: none_after_recovery
 - replayable: yes
 - residual_risks: 仍未完成真实微信支付、真实闪送开放平台报价/建单/回调与生产上线验收；商品图沿用有赞迁移素材的水印与构图问题属素材层，需门店提供新图。
+## E-20260912-002：MiniApp 首页商品图与品牌轮播加载失败降级验证
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260912-miniapp-home-image-fallback-r22
+- generated_at: 2026-09-12
+- evidence_type: verification/miniapp-image-fallback-and-version-header-fix
+- file: local:miniapp/reports/devtools/all-pages-devtools-audit.json; local:miniapp/reports/devtools/final-home.png; local:miniapp/miniprogram/pages/home/index.ts; local:miniapp/miniprogram/pages/home/index.wxml; local:miniapp/miniprogram/pages/home/index.wxss; local:miniapp/scripts/check-miniapp.mjs; local:miniapp/scripts/verify-all-15-pages-devtools.cjs; local:ERRORS.md; local:LOGBOOK.md; local:项目进度与配置清单.md; local:backend/项目进度与配置清单.md
+- commit_sha: 6ca743bde1faaa16b3eb53b16fa604a0f54f61a6
+- command: backend local uvicorn on 127.0.0.1:7001; `D:\微信web开发者工具\cli.bat auto --project D:\Project\YunxiBakery\miniapp --auto-port 9420`; `cd miniapp && npm run check:miniapp`（含变异验证）; `npm run typecheck`; `npm run devtools:verify-all-pages`; `python -m pytest backend/tests/scripts/test_sync_version.py -q --no-cov`
+- result: partial
+- related_logbook: 2026-09-12 - fix(miniapp): 首页商品图与品牌轮播加载失败降级
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地开发服务、页面降级断言与 DevTools 审计报告；不含真实支付、闪送凭证、客户地址或生产写入。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 首页商品卡与品牌轮播补齐 `imageFailed` 状态、`binderror` 与占位分支（购物车/商品列表/详情此前已具备）；`check-miniapp.mjs` 新增“所有 `<image>` 必须带 binderror”静态门禁并通过变异验证（临时移除购物车图片 binderror 后退出码 1，精确定位 `pages/cart/index.wxml:17`，恢复后退出码 0）；DevTools 全页审计 15/15 PASS，首页新增降级探针记录商品图占位 0→1、货架高度 929px→929px、轮播占位 128px；同轮修复进度清单表头版本文本漂移，`test_sync_version.py` 由 1 项断言失败恢复为 4 项通过。
+- failure_class: none_after_recovery
+- replayable: yes
+- residual_risks: DevTools 自动化环境未能在 6 秒内为不可达域名触发真实 `binderror`，降级渲染由直接调用回调验证，真实事件链路仅由静态门禁覆盖；真实微信支付、真实闪送开放平台与生产验收仍未验证。
