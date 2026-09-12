@@ -7487,3 +7487,24 @@ backend/docs/harness-engineering/core/evidence-index.md 仅作为历史镜像。
 - failure_class: none_after_recovery
 - replayable: yes
 - residual_risks: DevTools 自动化环境未能在 6 秒内为不可达域名触发真实 `binderror`，降级渲染由直接调用回调验证，真实事件链路仅由静态门禁覆盖；真实微信支付、真实闪送开放平台与生产验收仍未验证。
+
+## E-20260912-003：MiniApp 表单字段常驻标签与触控高度验证
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260912-miniapp-form-labels-r23
+- generated_at: 2026-09-12
+- evidence_type: verification/miniapp-form-field-labels-and-touch-targets
+- file: local:miniapp/reports/devtools/all-pages-devtools-audit.json; local:miniapp/reports/devtools/final-address.png; local:miniapp/reports/devtools/final-checkout.png; local:miniapp/reports/devtools/final-group-registration.png; local:miniapp/miniprogram/app.wxss; local:miniapp/miniprogram/pages/checkout/index.wxml; local:miniapp/miniprogram/pages/checkout/index.wxss; local:miniapp/miniprogram/pages/address/index.wxml; local:miniapp/miniprogram/pages/address/index.wxss; local:miniapp/miniprogram/pages/group-registration/index.wxml; local:miniapp/miniprogram/pages/group-registration/index.wxss; local:miniapp/scripts/check-miniapp.mjs; local:miniapp/scripts/verify-all-15-pages-devtools.cjs; local:ERRORS.md; local:LOGBOOK.md; local:项目进度与配置清单.md
+- commit_sha: b2444a3c091bfe524a08b1ee0df278cb35ad209f
+- command: backend local uvicorn on 127.0.0.1:7001; `cd miniapp && npm run typecheck`; `npm run check:miniapp`（含变异验证）; `npm run check:page-api-coverage`; `npm run audit:buttons`; `npm run audit:button-styles`; `npm run devtools:verify-all-pages`; 使用 D:\Work\python3.13.2\python.exe 运行治理与 sync_version 定向检查
+- result: partial
+- related_logbook: 2026-09-12 - fix(miniapp): 表单字段常驻标签与触控高度收口
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地开发服务、页面字段标签布局与 DevTools 结构化断言；不含真实支付、闪送凭证、客户地址或生产写入。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 结算、地址和群内登记三个表单页的全部 input/textarea 改为常驻标签加控件，输入后不再丢失字段含义，控件最小高度统一为 88rpx；静态守卫按页面比较控件与标签数量，变异移除地址页“联系人”标签后精确失败，恢复后通过；DevTools 全页审计为 15/15 PASS，地址页控件为 333x45、333x45、333x93px，结算页为 341x45、341x45、341x45、341x93px，群内登记为 333x45、333x45、333x45、273x45、333x93px，标签均无重叠。
+- failure_class: none_after_recovery
+- replayable: yes
+- residual_risks: 仍是本地开发与模拟器验收，不代表真实认证、真实闪送开放平台报价/建单/回调、真实微信支付或生产上线已通过。
