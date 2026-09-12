@@ -7454,7 +7454,7 @@ backend/docs/harness-engineering/core/evidence-index.md 仅作为历史镜像。
 - generated_at: 2026-09-12
 - evidence_type: verification/miniapp-form-and-shelf-visual-fix
 - file: local:miniapp/reports/devtools/all-pages-devtools-audit.json; local:miniapp/reports/devtools/final-home.png; local:miniapp/reports/devtools/final-products.png; local:miniapp/reports/devtools/final-checkout.png; local:miniapp/reports/devtools/final-group-registration.png; local:miniapp/reports/devtools/final-address.png; local:miniapp/reports/devtools/checkout-delivery-state-audit.json; local:miniapp/reports/devtools/final-checkout-state-quoted.png; local:miniapp/miniprogram/pages/home/index.wxml; local:miniapp/miniprogram/pages/home/index.wxss; local:miniapp/miniprogram/pages/checkout/index.wxml; local:miniapp/miniprogram/pages/checkout/index.wxss; local:miniapp/miniprogram/pages/group-registration/index.wxml; local:miniapp/miniprogram/pages/group-registration/index.wxss; local:miniapp/miniprogram/pages/address/index.wxss; local:miniapp/scripts/verify-all-15-pages-devtools.cjs; local:miniapp/scripts/verify-devtools-checkout-delivery-states.cjs; local:ERRORS.md; local:LOGBOOK.md
-- commit_sha: pending-local-changes
+- commit_sha: 3637a9f8e9d9123dae1bb25384f56fc98db94b73
 - command: backend local uvicorn on 127.0.0.1:7001; `D:\微信web开发者工具\cli.bat auto --project D:\Project\YunxiBakery\miniapp --auto-port 9420`; `cd miniapp && npm run devtools:verify-all-pages`; `npm run devtools:checkout-delivery-states`; `npm run typecheck`; `npm run check:miniapp`; `npm run check:page-api-coverage`; `npm run audit:buttons`; `npm run audit:button-styles`
 - result: partial
 - related_logbook: 2026-09-12 - fix(miniapp): 修复货架标题层级与表单控件窄屏视觉缺陷
