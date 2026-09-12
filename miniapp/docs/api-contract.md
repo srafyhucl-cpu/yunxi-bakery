@@ -306,8 +306,10 @@ Query：
 - `categoryId` 可选，分类 ID。
 - `ids` 可选，逗号分隔商品 ID。
 - `featured` 可选，是否只返回主推商品。
+- `sort` 可选，传 `popular` 时按真实销量降序返回（同 `item_no` 同款合并销量）；不传或其他值时按商品更新时间降序返回。顾客端商品页固定使用 `popular`，不再按更新时间伪造人气。
 - `categoryId` 可传 `youzan-classification-{classificationId}`，后端按 `classification_ids_json` 精确过滤。
 - `categoryId` 可传 `youzan-tag-{tagId}`，后端按有赞商品 `tag_ids_json` 精确过滤，用于旧分组兼容。
+- `soldText` 是后端按真实 `sold_num` 生成的销量文案（如 `已售 999`）。接口不返回 `招牌`、`热卖`、`新品`、`限量` 等营销徽标字段，小程序也不得按列表位置或标签关键字本地推断；商品卡只展示有数据来源的 `现货`、`暂时售罄`、`已下架`。
 - 商品响应同时返回稳定 `categoryId` 与可展示的 `categoryName`；小程序左侧分类优先使用 `GET /product-categories` 驱动，分类接口不可用时才按商品字段兜底聚合。
 
 ```json
@@ -320,7 +322,7 @@ Query：
       "subtitle": "适合生日和聚会",
       "imageUrl": "/api/v1/miniapp/products/p_001/image",
       "priceFen": 19800,
-      "soldText": "近期热卖",
+      "soldText": "已售 999",
       "categoryId": "youzan-classification-40606522",
       "categoryName": "生日蛋糕",
       "stock": 20,
@@ -349,7 +351,7 @@ Query：
     "subtitle": "适合生日和聚会",
     "imageUrl": "/api/v1/miniapp/products/p_001/image",
     "priceFen": 19800,
-    "soldText": "近期热卖",
+    "soldText": "已售 999",
     "categoryId": "birthday-cake",
     "categoryName": "生日蛋糕",
     "stock": 20,

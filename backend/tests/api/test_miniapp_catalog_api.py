@@ -246,3 +246,29 @@ async def test_miniapp_product_image_proxy_rejects_missing_and_unsafe_images(
     assert empty_response.status_code == 404
     assert unsafe_response.status_code == 404
     assert _FakeImageClient.requested_urls == []
+
+
+@pytest.mark.asyncio
+async def test_miniapp_products_api_supports_popular_sort(
+    db: aiosqlite.Connection,
+    app: FastAPI,
+) -> None:
+    """商品列表接口应支持 sort=popular，按真实销量返回顾客端主顺序。"""
+    await seed_miniapp_product(db, item_id=73001, title="API 低销量商品", sold_num=4)
+    await seed_miniapp_product(db, item_id=73002, title="API 高销量商品", sold_num=520)
+    await seed_miniapp_product(db, item_id=73003, title="API 中销量商品", sold_num=66)
+
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as client:
+        response = await client.get(
+            "/api/v1/miniapp/products", params={"sort": "popular"}
+        )
+
+    assert response.status_code == 200
+    assert [product["id"] for product in response.json()["data"]] == [
+        "73002",
+        "73003",
+        "73001",
+    ]

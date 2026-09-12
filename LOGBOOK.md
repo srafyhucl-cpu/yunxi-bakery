@@ -1,3 +1,17 @@
+## [2026-09-12] - fix(miniapp): 商品目录真实销量排序与伪营销徽标清理
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260912-miniapp-popular-catalog-r25
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 修正商品目录主列表与分类列表的人气排序和商品卡徽标来源，使数百个 SKU 的顾客端展示以真实销量为准，删除无法核对来源的营销标签。
+implementation: 目录服务新增 `sort=popular` 映射到仓储 `soldNum`，仓储对未知值回退更新时间序且只使用白名单列名；有赞分类路径同步支持排序；小程序商品 service 新增 `sort` 参数并纳入缓存键，商品页首次加载与分类懒加载固定传 `sort=popular`；页面删除 `getBadgeKind`/`getBadgeText` 位置与关键字推断，徽标只保留真实库存/上下架和商品标签中的 `现货`，`wx:if` 控制空文本不渲染；API 契约文档补充 `sort` 参数与“禁止本地推断营销徽标”口径。
+verification: 后端定向测试 14 passed（`backend/tests/service/test_catalog.py`、`backend/tests/api/test_miniapp_catalog_api.py`，含更新时间序与销量序相反的样例）；真实库 `youzan_products.sold_num` 前八为 934/542/340/319/287/270/243/237，与 `GET /api/v1/miniapp/products?sort=popular` 返回顺序一致；`npm run typecheck`、`npm run check:miniapp`（15 页 15 路由）、`npm run check:page-api-coverage`、`npm run audit:buttons`（106 控件）、`npm run audit:button-styles`（0 失败 0 警告）通过；DevTools 串行审计：`devtools:commerce-states` PASS（`badgeTexts=[]`、销量序列 934→191 降序）、`devtools:product-purchase-path` PASS、`devtools:verify-all-pages` 15/15 PASS、`devtools:checkout-delivery-states` PASS。
+evidence: miniapp/reports/devtools/commerce-state-audit.json；miniapp/reports/devtools/all-pages-devtools-audit.json；miniapp/reports/devtools/product-purchase-path-audit.json；miniapp/reports/devtools/checkout-delivery-state-audit.json；miniapp/reports/devtools/final-products.png；ERRORS.md M-20260912-077
+limitations: 仍是本地开发服务与 DevTools 模拟器验收，不代表真实微信认证、真实闪送开放平台报价/建单/回调、真实微信支付或生产上线已通过；`sold_num` 依赖有赞同步与对账任务持续回写，若长时间不同步会再次偏离真实人气；分类目录中“原材料展示区域”“双节新品”等仍是有赞侧分类命名，需门店在后台维护。
+
 ## [2026-09-12] - fix(miniapp): 顾客端资产状态、订单信息与会员展示收口
 
 task_id: T-MINIAPP-COMMERCE-UX-REDESIGN

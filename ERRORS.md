@@ -1753,3 +1753,18 @@ python -B backend/scripts/check_mistake_ledger.py
 - linked_trace: 20260908-miniapp-commerce-ux-redesign
 - linked_files: ERRORS.md；miniapp/scripts/verify-devtools-commerce-states.cjs；miniapp/reports/devtools/commerce-state-audit.json
 - next_time_signal: 新增 DevTools 断言涉及 `disabled`、`checked`、`hidden` 等布尔属性时，先读取并记录原始 `attribute()` 返回值，禁止凭浏览器 DOM 习惯假设为 `"true"`。
+
+## M-20260912-077：商品目录用更新时间冒充人气，营销徽标由前端本地推断
+
+- status: guarded
+- first_seen: 2026-09-12
+- severity: medium
+- symptom: 顾客端商品页“全部商品”和分类列表实际按 `updated_at DESC` 排列，最近被后台编辑过的商品排在数百个 SKU 的最前面；商品卡上的 `招牌`、`热卖`、`新品`、`限量` 由页面按列表位置和标签关键字本地推断，没有销量或后台配置来源。
+- root_cause: 目录接口早期只暴露 `categoryId` / `ids` / `featured` 过滤，没有排序参数，页面只能拿到更新时间序；为了让卡片“看起来丰富”，`toProductView` 又用 `isFirst` 和标签关键字生成徽标，缺少数据契约与门禁。
+- impact: 顾客进店先看到的是最近改过的商品而不是真实畅销品，畅销品被压在长列表后面；把没有依据的商品标成“招牌/热卖”属于误导商品信息，会损害经营 12 年门店的可信度。未造成订单、支付或库存写入错误。
+- fix: 目录服务与仓储新增 `sort=popular`，按 `youzan_products.sold_num`（同 `item_no` 合并销量）降序，未知值回退更新时间序且不拼接原始字符串；商品页首次加载与分类懒加载固定传 `sort=popular`；删除 `getBadgeKind` / `getBadgeText` 推断，徽标只保留可核对来源的 `现货`（商品标签）、`暂时售罄`、`已下架`，无依据时 `wx:if` 不渲染。
+- new_guardrail: `backend/tests/service/test_catalog.py` 新增更新时间序与销量序相反的样例，`backend/tests/api/test_miniapp_catalog_api.py` 覆盖 `?sort=popular`；`verify-devtools-commerce-states.cjs` 断言商品目录徽标只允许 `现货`、`暂时售罄`、`已下架`，并校验活动商品 `已售 N` 数字降序。
+- verification: `python -B -m pytest backend/tests/service/test_catalog.py backend/tests/api/test_miniapp_catalog_api.py -q --no-cov` 14 passed；真实库查询 `youzan_products` 按 `sold_num` 降序前八为 934/542/340/319/287/270/243/237，与 `GET /api/v1/miniapp/products?sort=popular` 返回顺序一致；`npm run typecheck`、`npm run check:miniapp`（15 页 15 路由）、`npm run check:page-api-coverage`（15 页 34 术语 9 边界）、`npm run audit:buttons`（106 控件）、`npm run audit:button-styles`（0 失败 0 警告）通过；`npm run devtools:commerce-states` PASS，报告 `catalog-badges-and-popularity` 记录 `badgeTexts=[]`、`soldNumbers=[934,542,340,319,287,270,243,237,236,227,218,191]`、`salesOrderedDescending=true`；`npm run devtools:product-purchase-path`、`npm run devtools:verify-all-pages`（15/15）、`npm run devtools:checkout-delivery-states` 均 PASS。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: ERRORS.md；backend/app/service/catalog/application.py；backend/app/api/channels/storefront/catalog.py；backend/app/repository/youzan_repo.py；backend/tests/service/test_catalog.py；backend/tests/api/test_miniapp_catalog_api.py；miniapp/miniprogram/pages/products/index.ts；miniapp/miniprogram/pages/products/index.wxml；miniapp/miniprogram/services/products.ts；miniapp/miniprogram/app.wxss；miniapp/scripts/verify-devtools-commerce-states.cjs；miniapp/docs/api-contract.md
+- next_time_signal: 新增目录排序或商品卡徽标时，先确认数据源字段是否真实存在；排序参数必须经服务层白名单映射，禁止把用户字符串拼进 SQL，也禁止用位置、标签关键字或页面文案推断营销标签。

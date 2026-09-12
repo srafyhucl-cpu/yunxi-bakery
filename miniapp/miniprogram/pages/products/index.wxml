@@ -61,7 +61,7 @@
             bindtap="openProduct"
           >
             <view class="product-image">
-              <text class="yunxi-badge {{product.badgeClass}} product-badge">{{product.badgeText}}</text>
+              <text wx:if="{{product.badgeText}}" class="yunxi-badge {{product.badgeClass}} product-badge">{{product.badgeText}}</text>
               <image
                 wx:if="{{product.imageUrl && !product.imageFailed}}"
                 class="product-cover"
@@ -140,7 +140,7 @@
                 bindtap="openProduct"
               >
                 <view class="product-image">
-                  <text class="yunxi-badge {{product.badgeClass}} product-badge">{{product.badgeText}}</text>
+                  <text wx:if="{{product.badgeText}}" class="yunxi-badge {{product.badgeClass}} product-badge">{{product.badgeText}}</text>
                   <image
                     wx:if="{{product.imageUrl && !product.imageFailed}}"
                     class="product-cover"

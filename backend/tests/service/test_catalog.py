@@ -224,3 +224,76 @@ async def test_list_categories_and_filter_by_youzan_tag(
     ]
     assert [product["id"] for product in products] == ["66002"]
     assert products[0]["categoryName"] == "下午茶甜品"
+
+
+async def test_list_products_popular_sort_uses_real_sales_instead_of_updated_at(
+    db: aiosqlite.Connection,
+    service: CatalogApplicationService,
+) -> None:
+    """sort=popular 应按真实销量排序，不能退化为更新时间或标签推测。"""
+    await seed_catalog_product(
+        db,
+        item_id=67001,
+        title="最新上架但销量最低",
+        sold_num=3,
+        updated_at="2026-06-20 10:00:00",
+    )
+    await seed_catalog_product(
+        db,
+        item_id=67002,
+        title="销量最高但更新时间最早",
+        sold_num=900,
+        updated_at="2026-06-10 10:00:00",
+    )
+    await seed_catalog_product(
+        db,
+        item_id=67003,
+        title="销量居中",
+        sold_num=120,
+        updated_at="2026-06-15 10:00:00",
+    )
+
+    default_products = await service.list_products()
+    popular_products = await service.list_products(sort="popular")
+
+    assert [product["id"] for product in default_products] == [
+        "67001",
+        "67003",
+        "67002",
+    ]
+    assert [product["id"] for product in popular_products] == [
+        "67002",
+        "67003",
+        "67001",
+    ]
+
+
+async def test_list_products_popular_sort_applies_to_youzan_category(
+    db: aiosqlite.Connection,
+    service: CatalogApplicationService,
+) -> None:
+    """分类懒加载传 sort=popular 时，有赞分类路径同样按真实销量排序。"""
+    await seed_catalog_product(
+        db,
+        item_id=67101,
+        title="分类内低销量",
+        sold_num=5,
+        updated_at="2026-06-20 10:00:00",
+        tag_ids=["281476346"],
+        category_title="生日蛋糕",
+    )
+    await seed_catalog_product(
+        db,
+        item_id=67102,
+        title="分类内高销量",
+        sold_num=800,
+        updated_at="2026-06-10 10:00:00",
+        tag_ids=["281476346"],
+        category_title="生日蛋糕",
+    )
+
+    products = await service.list_products(
+        category_id="youzan-tag-281476346", sort="popular"
+    )
+
+    assert [product["id"] for product in products] == ["67102", "67101"]

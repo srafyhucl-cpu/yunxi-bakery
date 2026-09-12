@@ -129,6 +129,7 @@ class YouzanProductRepo(BaseRepository):
         category_key: str,
         *,
         limit: int = 50,
+        sort_by: str = "",
     ) -> list[dict]:
         """按稳定分类 key 查询在售商品宽表。"""
         column = "tag_ids_json"
@@ -146,13 +147,16 @@ class YouzanProductRepo(BaseRepository):
                 raw_id = category_key.replace(prefix, "", 1)
                 break
         like = f'%"{raw_id}"%'
+        order_column = "sold_num" if sort_by == "soldNum" else "updated_at"
         rows = await self._db.execute_fetchall(
             "SELECT item_id, title, alias, price_fen, stock, image, is_active, "
             "skus_json, item_props_json, desc, tags, tag_ids_json, "
             "classification_ids_json, group_ids_json, second_group_ids_json, leaf_category_ids_json "
             "FROM youzan_products WHERE is_active = 1 AND "
             + column
-            + " LIKE ? ORDER BY updated_at DESC, item_id DESC LIMIT ?",
+            + " LIKE ? ORDER BY "
+            + order_column
+            + " DESC, item_id DESC LIMIT ?",
             (like, limit),
         )
         return [dict(row) for row in rows]

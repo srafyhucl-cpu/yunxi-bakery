@@ -13,6 +13,7 @@ interface ListProductsOptions {
   ids?: string[];
   categoryId?: string;
   featured?: boolean;
+  sort?: "popular";
   limit?: number;
 }
 
@@ -50,6 +51,9 @@ function buildProductsPath(options: ListProductsOptions): string {
   }
   if (options.featured) {
     params.push("featured=true");
+  }
+  if (options.sort) {
+    params.push(`sort=${encodeURIComponent(options.sort)}`);
   }
   if (options.limit) {
     params.push(`limit=${encodeURIComponent(String(options.limit))}`);
@@ -103,7 +107,8 @@ function buildProductsCacheKey(options: ListProductsOptions = {}): string {
   return JSON.stringify({
     ids: options.ids ?? [],
     categoryId: options.categoryId ?? "",
-    featured: Boolean(options.featured)
+    featured: Boolean(options.featured),
+    sort: options.sort ?? "",
   });
 }
 

@@ -16,7 +16,6 @@ interface CategorySection {
   products: CatalogProduct[];
 }
 
-type BadgeKind = "" | "flagship" | "new" | "hot" | "limited";
 
 interface ProductView extends CatalogProduct {
   priceText: string;
@@ -189,31 +188,24 @@ function buildSectionsFromProducts(products: CatalogProduct[]): CategorySectionV
 
 
 
-function getBadgeKind(product: CatalogProduct, isFirst: boolean): BadgeKind {
-  // 徽标四类本地映射：分区首位为招牌，标签含新品或限量关键字跟随标签，其余走热卖
-  if (isFirst) {
-    return "flagship";
-  }
-  if (product.tags.some((tag) => tag.includes("新品"))) {
-    return "new";
-  }
-  if (product.tags.some((tag) => tag.includes("限量"))) {
-    return "limited";
-  }
-  return "hot";
+interface ProductBadge {
+  text: string;
+  className: string;
 }
 
-function getBadgeText(kind: BadgeKind): string {
-  if (kind === "flagship") {
-    return "招牌";
+function getTruthfulBadge(product: CatalogProduct): ProductBadge {
+  // 徽标只表达可核对的事实：下架状态、真实库存，以及商品标签中的现货标记。
+  // 招牌/热卖/新品/限量没有数据来源，不再本地推断展示。
+  if (!product.isActive) {
+    return { text: "已下架", className: "is-inactive" };
   }
-  if (kind === "new") {
-    return "新品";
+  if (product.stock <= 0) {
+    return { text: "暂时售罄", className: "is-sold-out" };
   }
-  if (kind === "limited") {
-    return "限量";
+  if (product.tags.some((tag) => tag.trim() === "现货")) {
+    return { text: "现货", className: "is-in-stock" };
   }
-  return "热卖";
+  return { text: "", className: "" };
 }
 
 function getStockText(product: CatalogProduct): string {
@@ -242,15 +234,15 @@ function getPurchaseHint(product: CatalogProduct): string {
   return "自提价展示，闪送费下单前确认";
 }
 
-function toProductView(product: CatalogProduct, isFirst = false): ProductView {
-  const badgeKind = getBadgeKind(product, isFirst);
+function toProductView(product: CatalogProduct): ProductView {
+  const badge = getTruthfulBadge(product);
   const isUnavailable = !product.isActive || product.stock <= 0;
   return {
     ...product,
     priceText: formatFen(product.priceFen),
     imageClass: getProductImageClass(product),
-    badgeText: getBadgeText(badgeKind),
-    badgeClass: badgeKind ? `is-${badgeKind}` : "",
+    badgeText: badge.text,
+    badgeClass: badge.className,
     imageFailed: false,
     isUnavailable,
     stockText: getStockText(product),
@@ -263,7 +255,7 @@ function buildSectionView(section: CategorySection): CategorySectionView {
   return {
     ...section,
     countLabel: String(section.products.length),
-    products: section.products.map((product, index) => toProductView(product, index === 0)),
+    products: section.products.map((product) => toProductView(product)),
     loaded: true
   };
 }
@@ -391,7 +383,7 @@ Page<ProductsPageData, WechatMiniprogram.IAnyObject>({
     try {
       // 商品与分类独立结算：主列表失败整页可重试，分类失败降级为本地分区分组
       const [productsResult, categoriesResult] = await Promise.allSettled([
-        listProducts({ limit: FULL_CATALOG_LIMIT }),
+        listProducts({ limit: FULL_CATALOG_LIMIT, sort: "popular" }),
         listProductCategories()
       ]);
       if (productsResult.status === "rejected") {
@@ -447,7 +439,7 @@ Page<ProductsPageData, WechatMiniprogram.IAnyObject>({
           id: ALL_PRODUCTS_CATEGORY_ID,
           title: "全部商品",
           subtitle: "人气汇聚",
-          products: products.map((product, index) => toProductView(product, index === 0)),
+          products: products.map((product) => toProductView(product)),
           loaded: true,
           countLabel: String(products.length),
           hasMatches: products.length > 0
@@ -511,7 +503,7 @@ Page<ProductsPageData, WechatMiniprogram.IAnyObject>({
     );
 
     this.setData({
-      globalSearchResults: matchedProducts.map((product, index) => toProductView(product, index === 0))
+      globalSearchResults: matchedProducts.map((product) => toProductView(product))
     });
   },
   onSearchInput(event: WechatMiniprogram.Input) {
@@ -542,8 +534,8 @@ Page<ProductsPageData, WechatMiniprogram.IAnyObject>({
     if (!section.loaded && section.id !== ALL_PRODUCTS_CATEGORY_ID) {
       this.setData({ loading: true });
       try {
-        const products = await listProducts({ categoryId: section.id });
-        const productViews = products.map((product, index) => toProductView(product, index === 0));
+        const products = await listProducts({ categoryId: section.id, sort: "popular" });
+        const productViews = products.map((product) => toProductView(product));
 
         // 将新商品合并到 allProducts 和“全部商品”分区
         const { allProducts, categorySections } = this.data;

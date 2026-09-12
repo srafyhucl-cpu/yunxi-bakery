@@ -7529,3 +7529,24 @@ backend/docs/harness-engineering/core/evidence-index.md 仅作为历史镜像。
 - failure_class: none_after_recovery
 - replayable: yes
 - residual_risks: 商品图仍有有赞迁移素材的水印与构图差异，需门店提供统一新图；仍未完成真实微信认证、真实闪送开放平台报价/建单/回调、真实微信支付或生产上线验收。
+
+## E-20260912-005：MiniApp 商品目录真实销量排序与真伪徽标清理验证
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260912-miniapp-popular-catalog-r25
+- generated_at: 2026-09-12
+- evidence_type: verification/miniapp-popular-catalog-order-and-truthful-badges
+- file: local:miniapp/reports/devtools/commerce-state-audit.json; local:miniapp/reports/devtools/all-pages-devtools-audit.json; local:miniapp/reports/devtools/product-purchase-path-audit.json; local:miniapp/reports/devtools/checkout-delivery-state-audit.json; local:miniapp/reports/devtools/final-products.png; local:backend/app/service/catalog/application.py; local:backend/app/api/channels/storefront/catalog.py; local:backend/app/repository/youzan_repo.py; local:backend/tests/service/test_catalog.py; local:backend/tests/api/test_miniapp_catalog_api.py; local:miniapp/miniprogram/pages/products/index.ts; local:miniapp/miniprogram/pages/products/index.wxml; local:miniapp/miniprogram/services/products.ts; local:miniapp/miniprogram/app.wxss; local:miniapp/scripts/verify-devtools-commerce-states.cjs; local:miniapp/docs/api-contract.md; local:ERRORS.md; local:LOGBOOK.md
+- commit_sha: (待提交后回写)
+- command: `python -B -m pytest backend/tests/service/test_catalog.py backend/tests/api/test_miniapp_catalog_api.py -q --no-cov`; backend local uvicorn on 127.0.0.1:7001; `GET /api/v1/miniapp/products?sort=popular&limit=8`; `cd miniapp && npm run typecheck`; `npm run check:miniapp`; `npm run check:page-api-coverage`; `npm run audit:buttons`; `npm run audit:button-styles`; `npm run devtools:commerce-states`; `npm run devtools:product-purchase-path`; `npm run devtools:verify-all-pages`; `npm run devtools:checkout-delivery-states`
+- result: pass
+- related_logbook: 2026-09-12 - fix(miniapp): 商品目录真实销量排序与伪营销徽标清理
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地商品目录运行态、排序断言与模拟器截图；不含真实客户、地址、登录凭证、闪送凭证、支付数据或生产写入。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 目录接口新增 `sort=popular` 并按 `youzan_products.sold_num`（同 `item_no` 合并销量）降序返回，未知值回退更新时间序且列名走白名单；商品页首次加载与分类懒加载固定使用 `popular`；删除前端按列表位置/标签关键字推断的 `招牌/热卖/新品/限量` 徽标，只保留 `现货`、`暂时售罄`、`已下架`。定向测试 14 passed；真实库 `sold_num` 前八 934/542/340/319/287/270/243/237 与接口返回顺序一致；DevTools 报告 `badgeTexts=[]`、`soldNumbers=[934,542,340,319,287,270,243,237,236,227,218,191]`、`salesOrderedDescending=true`，全页 15/15、购买路径与结算配送审计均通过。
+- failure_class: none_after_recovery
+- replayable: yes
+- residual_risks: `sold_num` 依赖有赞同步与对账任务持续回写，长期不同步会再次偏离真实人气；有赞侧分类命名（如“原材料展示区域”）仍需门店后台维护；仍未完成真实微信认证、真实闪送开放平台报价/建单/回调、真实微信支付或生产上线验收。

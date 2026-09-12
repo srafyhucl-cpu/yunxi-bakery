@@ -19,6 +19,7 @@ from app.service.catalog.serialization import (
 from app.service.security.url_policy import fetch_limited_remote_image
 
 DEFAULT_PRODUCT_LIMIT = 50
+PRODUCT_SORT_POPULAR = "popular"
 MAX_IDS_QUERY = 50
 IMAGE_FETCH_TIMEOUT_SECONDS = 8.0
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
@@ -56,6 +57,7 @@ class CatalogApplicationService:
         ids: str = "",
         category_id: str = "",
         featured: bool = False,
+        sort: str = "",
         limit: int = DEFAULT_PRODUCT_LIMIT,
     ) -> list[dict]:
         """按装修货架、分类或推荐位返回商品目录。"""
@@ -63,8 +65,9 @@ class CatalogApplicationService:
             return await self._list_products_by_ids(ids)
 
         featured_titles = await self._get_featured_titles(featured)
+        sort_by = "soldNum" if sort == PRODUCT_SORT_POPULAR else ""
         if category_id.startswith("youzan-") and self._youzan_product_repo is not None:
-            entries = await self._list_entries_by_youzan_category(category_id)
+            entries = await self._list_entries_by_youzan_category(category_id, sort_by)
             if entries:
                 return [
                     await self._serializer.serialize_product(
@@ -81,6 +84,7 @@ class CatalogApplicationService:
             limit=max(limit, 1),
             is_active=1,
             featured_titles=featured_titles,
+            sort_by=sort_by,
         )
         if featured_titles is not None:
             entries = self._sort_entries_by_titles(entries, featured_titles)
@@ -149,7 +153,7 @@ class CatalogApplicationService:
         return products
 
     async def _list_entries_by_youzan_category(
-        self, category_id: str
+        self, category_id: str, sort_by: str = ""
     ) -> list[KnowledgeEntry]:
         if self._youzan_product_repo is None:
             return []
@@ -157,6 +161,7 @@ class CatalogApplicationService:
         products = await self._youzan_product_repo.list_products_by_category_key(
             category_key,
             limit=DEFAULT_PRODUCT_LIMIT,
+            sort_by=sort_by,
         )
         entries: list[KnowledgeEntry] = []
         for product in products:

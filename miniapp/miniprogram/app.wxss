@@ -478,25 +478,16 @@ button.ghost-button,
   white-space: nowrap;
 }
 
-.yunxi-badge.is-flagship {
-  color: #ffffff;
-  background: var(--yunxi-text-primary);
-}
-
-.yunxi-badge.is-new {
-  color: #ffffff;
-  background: var(--yunxi-gold);
-}
-
-.yunxi-badge.is-hot {
+.yunxi-badge.is-in-stock {
   color: #ffffff;
   background: var(--yunxi-brand);
 }
 
-.yunxi-badge.is-limited {
-  color: #BA4E3D;
-  background: #FDF1EE;
-  border: 1rpx solid rgba(186, 78, 61, 0.2);
+.yunxi-badge.is-sold-out,
+.yunxi-badge.is-inactive {
+  color: var(--yunxi-text-secondary);
+  background: var(--yunxi-surface-alt);
+  border: 1rpx solid var(--yunxi-border);
 }
 
 /* 价格展示 */

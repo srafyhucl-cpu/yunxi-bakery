@@ -135,6 +135,52 @@ async function main() {
       report.errors.push("商品目录未渲染活动分类商品清单");
     }
 
+    const catalogBadges = await catalog.$$(".product-badge");
+    const catalogBadgeTexts = [];
+    for (const badge of catalogBadges) {
+      catalogBadgeTexts.push((await badge.text()).trim());
+    }
+    const allowedCatalogBadgeTexts = new Set(["现货", "暂时售罄", "已下架"]);
+    const forbiddenCatalogBadgeTexts = new Set(["招牌", "热卖", "新品", "限量"]);
+    const invalidCatalogBadgeTexts = catalogBadgeTexts.filter(
+      (text) => text && !allowedCatalogBadgeTexts.has(text)
+    );
+    const inferredCatalogBadgeTexts = catalogBadgeTexts.filter((text) =>
+      forbiddenCatalogBadgeTexts.has(text)
+    );
+    const catalogActiveProducts = Array.isArray(catalogData.activeProducts)
+      ? catalogData.activeProducts
+      : [];
+    const catalogSoldNumbers = catalogActiveProducts
+      .map((product) => {
+        const match = /^已售\s*(\d+)$/.exec(String(product.soldText || "").trim());
+        return match ? Number(match[1]) : null;
+      })
+      .filter((value) => value !== null);
+    const catalogSalesOrdered = catalogSoldNumbers.every(
+      (value, index) => index === 0 || catalogSoldNumbers[index - 1] >= value
+    );
+
+    report.checks.push({
+      page: catalog.path,
+      state: "catalog-badges-and-popularity",
+      badgeTexts: catalogBadgeTexts,
+      soldNumbers: catalogSoldNumbers,
+      salesOrderedDescending: catalogSalesOrdered
+    });
+
+    if (invalidCatalogBadgeTexts.length > 0 || inferredCatalogBadgeTexts.length > 0) {
+      const rejectedTexts = Array.from(
+        new Set([...invalidCatalogBadgeTexts, ...inferredCatalogBadgeTexts])
+      ).join("、");
+      report.errors.push(`商品目录出现无数据来源的营销徽标：${rejectedTexts}`);
+    }
+    if (catalogSoldNumbers.length >= 2 && !catalogSalesOrdered) {
+      report.errors.push(
+        `商品目录未按真实销量降序排列：${catalogSoldNumbers.join("、")}`
+      );
+    }
+
     await miniProgram.callWxMethod("removeStorageSync", CART_STORAGE_KEY);
     const home = await navigateAndWait(miniProgram, "pages/home/index", true);
     const homeAction = await waitForElement(home, ".product-action", "首页商品预订按钮");
