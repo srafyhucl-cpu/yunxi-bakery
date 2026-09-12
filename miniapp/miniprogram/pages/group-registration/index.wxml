@@ -30,7 +30,17 @@
         <input placeholder="联系人" value="{{customerName}}" data-field="customerName" bindinput="updateField" />
         <input placeholder="手机号，例：18800000000" type="number" maxlength="11" value="{{customerPhone}}" data-field="customerPhone" bindinput="updateField" />
         <input placeholder="登记商品，例：草莓奶油蛋糕" value="{{productName}}" data-field="productName" bindinput="updateField" />
-        <input placeholder="数量" type="number" value="{{quantityText}}" data-field="quantityText" bindinput="updateField" />
+        <view class="quantity-field">
+          <text class="quantity-field__label">数量</text>
+          <input
+            class="quantity-field__input"
+            placeholder="1"
+            type="number"
+            value="{{quantityText}}"
+            data-field="quantityText"
+            bindinput="updateField"
+          />
+        </view>
 
         <view class="fulfillment-tabs">
           <button
@@ -52,6 +62,7 @@
         <view class="time-grid">
           <picker
             mode="date"
+            class="time-grid__date"
             value="{{selectedDateValue}}"
             start="{{dateStartValue}}"
             end="{{dateEndValue}}"

@@ -80,6 +80,7 @@ textarea {
 }
 
 textarea {
+  height: 180rpx;
   min-height: 180rpx;
   padding-top: 24rpx;
 }

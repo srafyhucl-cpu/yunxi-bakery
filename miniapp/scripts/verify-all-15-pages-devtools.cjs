@@ -84,6 +84,41 @@ async function inspectCommerceState(page, pageDef, result) {
           commerce.errors.push("商品优先：首页品牌轮播未排在商品货架之后");
         }
       }
+      const shelfEyebrow = await page.$(".shelf-head__eyebrow");
+      const shelfTitle = await page.$(".shelf-head__title");
+      const shelfSubtitle = await page.$(".shelf-head__subtitle");
+      const shelfLink = await page.$(".shelf-head__link");
+      if (!shelfEyebrow || !shelfTitle) {
+        commerce.errors.push("商品货架缺少标题层级（eyebrow/title）");
+      } else {
+        const eyebrowOffset = await shelfEyebrow.offset();
+        const eyebrowSize = await shelfEyebrow.size();
+        const titleOffset = await shelfTitle.offset();
+        const titleSize = await shelfTitle.size();
+        const subtitleOffset = shelfSubtitle ? await shelfSubtitle.offset() : null;
+        const linkOffset = shelfLink ? await shelfLink.offset() : null;
+        const linkSize = shelfLink ? await shelfLink.size() : null;
+        commerce.details.push(
+          `货架标题层级：鲜制=${eyebrowOffset.top}px，标题=${titleOffset.top}px${subtitleOffset ? `，副标题=${subtitleOffset.top}px` : ""}`
+        );
+        if (eyebrowOffset.top + eyebrowSize.height > titleOffset.top + 1) {
+          commerce.errors.push("货架标题层级未垂直排列：eyebrow 与标题重叠");
+        }
+        if (subtitleOffset && titleOffset.top + titleSize.height > subtitleOffset.top + 1) {
+          commerce.errors.push("货架标题层级未垂直排列：标题与副标题重叠");
+        }
+        if (linkOffset && linkSize) {
+          const overlapX =
+            Math.min(titleOffset.left + titleSize.width, linkOffset.left + linkSize.width) -
+            Math.max(titleOffset.left, linkOffset.left);
+          const overlapY =
+            Math.min(titleOffset.top + titleSize.height, linkOffset.top + linkSize.height) -
+            Math.max(titleOffset.top, linkOffset.top);
+          if (overlapX > 1 && overlapY > 1) {
+            commerce.errors.push("商品货架标题与“查看更多”入口相互重叠");
+          }
+        }
+      }
     }
   }
 

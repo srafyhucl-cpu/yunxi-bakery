@@ -131,6 +131,7 @@ button.delivery-tab:active,
 }
 
 .time-grid {
+  flex-wrap: wrap;
   display: flex;
   gap: 16rpx;
 }
@@ -138,6 +139,11 @@ button.delivery-tab:active,
 .time-grid picker {
   flex: 1;
   min-width: 0;
+}
+
+
+.time-grid picker.time-grid__date {
+  flex: 1 0 100%;
 }
 
 .time-picker,
@@ -174,6 +180,7 @@ textarea {
 }
 
 textarea {
+  height: 180rpx;
   min-height: 180rpx;
   padding-top: 24rpx;
 }
@@ -208,12 +215,29 @@ textarea {
 }
 
 .agreement-copy {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4rpx;
+  flex: 1;
+  min-width: 0;
   color: var(--yunxi-text-secondary);
   font-size: 24rpx;
   line-height: 1.6;
+}
+
+.agreement-copy__intro {
+  display: block;
+}
+
+.agreement-links {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8rpx;
+}
+
+.agreement-links__join {
+  display: inline-flex;
+  align-items: center;
+  min-height: 88rpx;
+  color: var(--yunxi-text-secondary);
 }
 
 .agreement-link {

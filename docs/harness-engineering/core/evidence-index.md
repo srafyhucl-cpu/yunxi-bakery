@@ -7447,3 +7447,23 @@ backend/docs/harness-engineering/core/evidence-index.md 仅作为历史镜像。
 - failure_class: none
 - replayable: yes
 - residual_risks: 微信开发者工具截图级视觉验收、真实认证、真实闪送、真实支付和生产验收仍未验证。
+## E-20260912-001：MiniApp 货架标题层级与表单窄屏视觉缺陷修复验证
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260912-miniapp-form-visual-r21
+- generated_at: 2026-09-12
+- evidence_type: verification/miniapp-form-and-shelf-visual-fix
+- file: local:miniapp/reports/devtools/all-pages-devtools-audit.json; local:miniapp/reports/devtools/final-home.png; local:miniapp/reports/devtools/final-products.png; local:miniapp/reports/devtools/final-checkout.png; local:miniapp/reports/devtools/final-group-registration.png; local:miniapp/reports/devtools/final-address.png; local:miniapp/reports/devtools/checkout-delivery-state-audit.json; local:miniapp/reports/devtools/final-checkout-state-quoted.png; local:miniapp/miniprogram/pages/home/index.wxml; local:miniapp/miniprogram/pages/home/index.wxss; local:miniapp/miniprogram/pages/checkout/index.wxml; local:miniapp/miniprogram/pages/checkout/index.wxss; local:miniapp/miniprogram/pages/group-registration/index.wxml; local:miniapp/miniprogram/pages/group-registration/index.wxss; local:miniapp/miniprogram/pages/address/index.wxss; local:miniapp/scripts/verify-all-15-pages-devtools.cjs; local:miniapp/scripts/verify-devtools-checkout-delivery-states.cjs; local:ERRORS.md; local:LOGBOOK.md
+- commit_sha: pending-local-changes
+- command: backend local uvicorn on 127.0.0.1:7001; `D:\微信web开发者工具\cli.bat auto --project D:\Project\YunxiBakery\miniapp --auto-port 9420`; `cd miniapp && npm run devtools:verify-all-pages`; `npm run devtools:checkout-delivery-states`; `npm run typecheck`; `npm run check:miniapp`; `npm run check:page-api-coverage`; `npm run audit:buttons`; `npm run audit:button-styles`
+- result: partial
+- related_logbook: 2026-09-12 - fix(miniapp): 修复货架标题层级与表单控件窄屏视觉缺陷
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地开发服务、页面布局尺寸断言与 DevTools 截图；不含真实支付、闪送凭证、客户地址或生产写入。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 首页货架标题层级由挤行恢复为块级堆叠（鲜制 98px、标题 113.3px、副标题 135.5px），全页审计仍为 15/15 PASS 并新增标题重叠断言；结算页与群内登记页备注框高度由默认约 150px 收敛到 93px，日期选择器 341/341 独占整行且不再换行，协议区高度 80px、协议链接触控 72x45，数量字段恢复常驻标签；结算配送状态审计新增上述布局断言后 PASS。
+- failure_class: none_after_recovery
+- replayable: yes
+- residual_risks: 仍未完成真实微信支付、真实闪送开放平台报价/建单/回调与生产上线验收；商品图沿用有赞迁移素材的水印与构图问题属素材层，需门店提供新图。

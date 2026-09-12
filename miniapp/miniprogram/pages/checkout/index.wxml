@@ -85,6 +85,7 @@
         <view class="time-grid">
           <picker
             mode="date"
+            class="time-grid__date"
             value="{{selectedDateValue}}"
             start="{{dateStartValue}}"
             end="{{dateEndValue}}"
@@ -170,10 +171,12 @@
       <view wx:if="{{isLoggedIn && checkoutItems.length}}" class="agreement-row hover-scale fade-in" bindtap="toggleAgreementAccepted">
         <text class="agreement-check {{agreementAccepted ? 'is-checked' : ''}}">{{agreementAccepted ? '✓' : ''}}</text>
         <view class="agreement-copy">
-          <text>我已阅读并同意</text>
-          <text class="agreement-link" data-type="agreement" catchtap="openPolicy">《用户协议》</text>
-          <text>和</text>
-          <text class="agreement-link" data-type="privacy" catchtap="openPolicy">《隐私政策》</text>
+          <text class="agreement-copy__intro">我已阅读并同意</text>
+          <view class="agreement-links">
+            <text class="agreement-link" data-type="agreement" catchtap="openPolicy">《用户协议》</text>
+            <text class="agreement-links__join">和</text>
+            <text class="agreement-link" data-type="privacy" catchtap="openPolicy">《隐私政策》</text>
+          </view>
         </view>
       </view>
     </view>

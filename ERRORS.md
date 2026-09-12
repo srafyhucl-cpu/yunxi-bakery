@@ -1581,6 +1581,8 @@ python -B backend/scripts/check_mistake_ledger.py
 
 补充复发记录（同一错误条目，2026-09-09）：收口检索截图调用时再次使用了未闭合分组的正则，`rg` 报 `unclosed group`。已立即停止该写法，后续按本条既有防线使用 `rg -F` 固定字符串检索；该失败未修改文件或业务数据。
 
+补充复发记录（同一错误条目，2026-09-12）：改写 D 盘临时探针脚本时，把“删除同一路径 + 新增同一路径”放进同一批补丁，`apply_patch` 连续以 `multiple operations target ...` 拒绝；重复提交同一形态的调用只会重复失败，不会部分写入。已停止该写法，改为直接扩展现有结算页审计脚本增加布局断言，并用 Node/PowerShell 固定字符串核验目标。后续遇到同类拒绝，立即改用单文件替换或复用既有脚本承载断言。
+
 ## M-20260909-066：本地商品验证器错误拼接绝对图片 URL
 
 - status: guarded
@@ -1630,6 +1632,8 @@ python -B backend/scripts/check_mistake_ledger.py
 
 补充复发记录（同一错误条目，2026-09-09）：全页审计与商品购买路径共用 `ws://127.0.0.1:9420` 并行执行时，购买路径切页导致全页审计的商品页对象被销毁，出现 `Missing .page-fixed-safe container` 和 `page destroyed`，结果为 14/15。已确认购买路径独立通过，其余页面正常；后续所有共享同一 Automator 会话的 DevTools 脚本必须串行运行，失败脚本单独重跑后才能形成最终证据。
 
+补充复发记录（同一错误条目，2026-09-12）：首页修复后再次出现“自动化通过但截图不合格”——`npm run devtools:verify-all-pages` 为 15/15 PASS，但 `final-home.png` 显示“今日鲜制”“今日推荐”“按需预订，新鲜制作”三层货架文案挤在同一行。原因是 `shelf-head__eyebrow/title/subtitle` 使用行内 `text` 且未声明 `display: block`，父容器也未约束副本宽度。已改为块级堆叠并新增货架标题层级与“查看更多”入口重叠断言，复跑后标题层级为 98px / 113.3px / 135.5px 且仍为 15/15 PASS。
+
 ## M-20260909-069：结算异常状态只有禁用结果，缺少原因与恢复动作证据
 
 - status: guarded
@@ -1659,3 +1663,33 @@ python -B backend/scripts/check_mistake_ledger.py
 - linked_trace: `20260908-miniapp-commerce-ux-redesign`
 - linked_files: `ERRORS.md`；`miniapp/miniprogram/pages/group-registration/index.ts`；`miniapp/miniprogram/utils/checkout-time.ts`；`miniapp/scripts/verify-devtools-same-day-scheduling.cjs`；`miniapp/reports/devtools/same-day-scheduling-audit.json`
 - next_time_signal: 时间敏感审计依赖页面模块级初始值时，先确认 DevTools 会话的模块求值时间早于被测时间边界（17:00 / 午夜），先重载再判回归。
+
+## M-20260912-071：依赖原生默认样式的移动端表单在窄屏出现异常高度、换行与字段失去标签
+
+- status: guarded
+- first_seen: 2026-09-12
+- severity: medium
+- symptom: 逐页目视复核发现：结算页与群内登记页备注 `textarea` 实际高度约 150px，远超设计的 180rpx；两个页面三列时间栅格把“日期：2026-09-12”挤成两行；结算页协议文案在 flex 换行后出现“我已阅读并同意 …… 和 / 《用户协议》 《隐私政策》”的错位排版；群内登记页数量输入预填 “1” 后 placeholder “数量” 不再显示，字段含义丢失。
+- root_cause: 页面只声明 `min-height` 而未覆盖微信 `textarea` 的默认高度；时间栅格用三等分 `flex: 1` 承载较长的日期文本；协议行把整句拆成多个 flex item 且链接触控高度参与换行；数量输入依赖 placeholder 充当标签，预填值后必然失去说明。这些问题均不触发结构断言，只能靠真实尺寸测量与截图发现。
+- impact: 顾客在预订结算和群内登记时看到异常空白的备注框、断行日期和含义不明的“1”输入框，降低表单可信度并增加填错与来回沟通成本；未造成订单、支付、配送或客户数据写入。
+- fix: 备注 `textarea` 显式声明 `height: 180rpx`；日期选择器新增 `time-grid__date` 类并独占整行（`flex: 1 0 100%`，同时用 `.time-grid picker.time-grid__date` 提高优先级避免被 `.time-grid picker` 覆盖），小时与分钟并排一行；协议区改为“说明行 + 链接行”两段结构，链接保持 44px 触控目标；数量输入改为带常驻“数量”标签的行内字段。
+- new_guardrail: 表单类页面必须同时满足结构断言、布局尺寸断言和逐页截图目视复核。备注框高度、日期选择器是否独占整行与是否换行、协议行高度、协议链接触控尺寸已写入 `verify-devtools-checkout-delivery-states.cjs` 断言；数值输入不得只靠 placeholder 说明含义。
+- verification: `npm run devtools:checkout-delivery-states` PASS（备注框 93px、日期选择器 341/341 独占整行、协议行 80px、协议链接 72x45）；`npm run devtools:verify-all-pages` 15/15 PASS 并附 4 个未登录态；`npm run typecheck`、`npm run check:miniapp`、`npm run audit:buttons`（106 控件）、`npm run audit:button-styles`（0 失败 0 警告）通过；逐页截图目视复核通过。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: ERRORS.md；miniapp/miniprogram/pages/checkout/index.wxml；miniapp/miniprogram/pages/checkout/index.wxss；miniapp/miniprogram/pages/group-registration/index.wxml；miniapp/miniprogram/pages/group-registration/index.wxss；miniapp/miniprogram/pages/address/index.wxss；miniapp/scripts/verify-devtools-checkout-delivery-states.cjs；miniapp/scripts/verify-all-15-pages-devtools.cjs
+- next_time_signal: 页面一旦使用原生 `textarea`、三等分时间栅格或 placeholder 充当标签，必须先量取真实尺寸并查看截图，不能以结构断言通过作为验收结论。
+
+## M-20260912-072：Monorepo 迁移后 secrets 守卫仍读 backend 旧镜像，受控记录需双写
+
+- status: guarded
+- first_seen: 2026-09-12
+- severity: medium
+- symptom: 提交 MiniApp 视觉收口时 `detect-secrets-hook` 阻断，命中 `docs/harness-engineering/core/evidence-index.md` 的 3 条历史误报（企微消息 ID 与 `check-secret-hygiene` 脚本名）；按受控流程把 3 条并入 `backend/.secrets.baseline` 并在根目录 `docs/harness-engineering/core/secrets-baseline-changes.md` 登记后，`verify_secrets_baseline.py` 仍报“未找到与本次 HEAD→index 哈希对匹配的受控记录”。
+- root_cause: `backend/scripts/verify_secrets_baseline.py` 的 `ROOT_DIR` 为 `backend/`，而 `_git_show` 又把 `:0:/docs/...` 改写成 `:0:./docs/...`（相对 cwd），于是受控记录实际读取 `backend/docs/harness-engineering/core/secrets-baseline-changes.md` 这份迁移前旧镜像；同一守卫的 staged 校验用 `:/` 前缀却读仓库根同名文件，一份守卫同时读两份文件。
+- impact: 守卫不会放行真实密钥（仍会阻断），但合法的误报白名单流程在根文档登记后仍被误判，并要求同一记录双写；本次通过两份记录同步解除阻断，未绕过硬编码密钥门禁，未修改业务代码或数据。
+- fix: 受控更新 `backend/.secrets.baseline`，为 `docs\harness-engineering\core\evidence-index.md` 增加 3 条 allowlist（登记 old/new 哈希、命令、版本、trace_id、approved_by），并将同一记录同步到 `backend/docs/...` 旧镜像，使 `verify_secrets_baseline.py` 通过。
+- new_guardrail: `.secrets.baseline` 受控更新后必须同时跑 `python -B backend/scripts/verify_secrets_baseline.py` 与 `detect-secrets-hook --baseline backend/.secrets.baseline <changed file>` 复核；守卫路径统一前，受控记录需在 `docs/` 与 `backend/docs/` 两份登记，且禁止用 `--no-verify` 绕过。
+- verification: `python -B backend/scripts/verify_secrets_baseline.py` 输出 `[secrets-baseline] OK：.secrets.baseline 状态一致且符合受控流程`、退出码 0；`detect-secrets-hook --baseline backend/.secrets.baseline docs/harness-engineering/core/evidence-index.md` 退出码 0；两份记录文件均为 33 行且 `Compare-Object` 无差异。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: ERRORS.md；backend/.secrets.baseline；docs/harness-engineering/core/secrets-baseline-changes.md；backend/docs/harness-engineering/core/secrets-baseline-changes.md；backend/scripts/verify_secrets_baseline.py；docs/harness-engineering/core/evidence-index.md
+- next_time_signal: 若再次出现“根文档已登记但守卫仍报未匹配”，先检查是否遗漏 `backend/docs/.../secrets-baseline-changes.md`；中期应让守卫只读仓库根 canonical 文档、旧镜像改为指针，不得用跳过钩子代替修复。

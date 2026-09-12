@@ -91,7 +91,7 @@
 
         <view wx:elif="{{item.type === 'productShelf'}}" class="shelf">
           <view class="shelf-head">
-            <view>
+            <view class="shelf-head__copy">
               <text class="shelf-head__eyebrow">今日鲜制</text>
               <text class="shelf-head__title">{{item.props.title}}</text>
               <text wx:if="{{item.props.subtitle}}" class="shelf-head__subtitle">{{item.props.subtitle}}</text>

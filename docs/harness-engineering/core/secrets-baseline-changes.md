@@ -23,3 +23,11 @@
 - version: detect-secrets 1.5.0
 - trace_id: 20260825-p1-walkthrough-tooling
 - approved_by: 项目负责人（20260825-p1-walkthrough-tooling 收口指令授权；误报为 npm scripts 命令名含 secret 字样，非真实密钥）
+
+## [2026-09-12] - secrets baseline 受控更新
+- old_sha256: f13005d3750eace622e8397c7a539c1d3f9f0b6f1f0aa735875070a9fc37cbcc
+- new_sha256: 09e9ec5d15891fe9ed6297217446044df0cdcc3dfabe87baf5a907e3fc11c57c
+- command: detect-secrets scan --no-verify "docs/harness-engineering/core/evidence-index.md"（提取 3 条标准条目合并入 results["docs\harness-engineering\core\evidence-index.md"]，行尾保持 CRLF）
+- version: detect-secrets 1.5.0
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- approved_by: 项目负责人（2026-09-12 MiniApp 货架与表单视觉收口授权；3 条命中均为历史证据文本中的企微消息 ID 与 check-secret-hygiene 脚本名，不含真实密钥）

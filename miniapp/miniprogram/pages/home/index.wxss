@@ -351,7 +351,13 @@
   padding: 0 4rpx;
 }
 
+.shelf-head__copy {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .shelf-head__eyebrow {
+  display: block;
   margin-bottom: 4rpx;
   color: var(--yunxi-gold);
   font-size: 20rpx;
@@ -361,6 +367,7 @@
 }
 
 .shelf-head__title {
+  display: block;
   color: var(--yunxi-text-primary);
   font-size: 36rpx;
   line-height: 1.2;
@@ -368,6 +375,7 @@
 }
 
 .shelf-head__subtitle {
+  display: block;
   margin-top: 6rpx;
   color: var(--yunxi-text-muted);
   font-size: 24rpx;

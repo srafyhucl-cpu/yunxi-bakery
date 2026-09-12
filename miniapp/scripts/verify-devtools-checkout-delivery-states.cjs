@@ -43,6 +43,28 @@ async function readSubmitState(page) {
   };
 }
 
+async function readFormLayout(page) {
+  const textarea = await page.$("textarea");
+  const timeGrid = await page.$(".time-grid");
+  const datePicker = await page.$(".time-grid__date");
+  const dateFace = await page.$(".time-grid__date .time-picker");
+  const agreementRow = await page.$(".agreement-row");
+  const agreementLinks = await page.$$(".agreement-link");
+  const sizeOf = async (element) => (element ? await element.size() : null);
+  const linkSizes = [];
+  for (const link of agreementLinks) {
+    linkSizes.push(await link.size());
+  }
+  return {
+    textarea: await sizeOf(textarea),
+    timeGrid: await sizeOf(timeGrid),
+    datePicker: await sizeOf(datePicker),
+    dateFace: await sizeOf(dateFace),
+    agreementRow: await sizeOf(agreementRow),
+    agreementLinks: linkSizes,
+  };
+}
+
 async function applyState(page, state) {
   await page.setData({
     isLoggedIn: true,
@@ -246,6 +268,33 @@ async function main() {
     }
     if (invalidated.deliveryQuoteStatus !== "quoting" || invalidated.deliveryFeeText !== "确认运费中...") {
       report.errors.push("旧报价失效后的报价状态或运费文案错误");
+    }
+    const layout = await readFormLayout(page);
+    report.checks.push({ name: "checkout_form_layout", observed: layout });
+    if (!layout.textarea || layout.textarea.height < 80 || layout.textarea.height > 120) {
+      report.errors.push("备注输入框高度异常：" + (layout.textarea ? layout.textarea.height : "缺失"));
+    }
+    if (!layout.timeGrid || !layout.datePicker || !layout.dateFace) {
+      report.errors.push("结算页时间选择区域结构缺失");
+    } else {
+      if (layout.datePicker.width < layout.timeGrid.width * 0.9) {
+        report.errors.push(
+          "日期选择器未独占整行：" + layout.datePicker.width + "/" + layout.timeGrid.width
+        );
+      }
+      if (layout.dateFace.height > 60) {
+        report.errors.push("日期选择文案发生换行，高度=" + layout.dateFace.height);
+      }
+    }
+    if (!layout.agreementRow) {
+      report.errors.push("结算页缺少协议勾选行");
+    } else if (layout.agreementRow.height > 110) {
+      report.errors.push("协议勾选行高度异常：" + layout.agreementRow.height);
+    }
+    for (const link of layout.agreementLinks) {
+      if (!link || link.width < 44 || link.height < 44) {
+        report.errors.push("协议链接触控区域不足 44px：" + JSON.stringify(link));
+      }
     }
     report.status = report.errors.length === 0 ? "PASS" : "FAIL";
   } catch (error) {

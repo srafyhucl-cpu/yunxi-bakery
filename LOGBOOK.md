@@ -17938,3 +17938,16 @@ scope: 在不影响商品、库存、配送、订单、支付、会员和验收�
 implementation: 删除 `utils/order-summary.ts` 中不需要对外暴露的 `OrderFulfillmentMethod` 导出；删除 `pages/order-detail/index.wxss` 中不会被模板生成的 `button.order-actions__button` 选择器，保留实际使用的 `.order-actions button` 规则。文件级盘点、未使用符号检查和历史证据复核均未支持删除页面、服务文件、mock 回退、支付门禁或验收脚本。
 verification: `cd miniapp && npm run typecheck` 退出码 0；`npm run check:miniapp` 退出码 0（15 页面、15 路由）；`npm run check:page-api-coverage` 退出码 0（15 页面、34 API terms、9 boundaries）；`npm run audit:buttons` 退出码 0（104 controls）；`npm run audit:button-styles` 退出码 0（104 controls、0 failures、0 warnings）；`npm exec -- tsc --noEmit --noUnusedLocals --noUnusedParameters` 退出码 0；`git diff --check` 退出码 0。
 cleanup_boundary: 未删除有效报告、业务数据、node_modules、页面和服务文件；未创建临时文件。微信开发者工具最新运行态、真实认证、真实闪送、真实支付和生产验收仍未验证。
+## [2026-09-12] - fix(miniapp): 修复货架标题层级与表单控件窄屏视觉缺陷
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260912-miniapp-form-visual-r21
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 修复首页货架标题三层文案挤行，以及结算页、群内登记页、地址页表单在 390px 视口下备注框异常高度、日期换行、协议文案错位与数量字段缺少标签的问题；把视觉约束转为 DevTools 布局断言。
+implementation: 首页 `.shelf-head__copy` 限制文案宽度，`shelf-head__eyebrow/title/subtitle` 改为块级堆叠，并在全页审计新增货架标题层级与“查看更多”入口重叠断言；结算页与群内登记页备注 `textarea` 显式声明 `height: 180rpx`；日期选择器新增 `time-grid__date` 并独占整行（`.time-grid picker.time-grid__date { flex: 1 0 100% }`，避免被 `.time-grid picker` 的优先级覆盖），小时与分钟并排一行；协议区改为“说明行 + 链接行”，链接触控保持 44px；群内登记数量输入改为带常驻“数量”标签的行内字段；地址页备注 `textarea` 同步修正高度。提交时 `detect-secrets-hook` 命中证据文档 3 条历史误报（企微消息 ID 与 `check-secret-hygiene` 脚本名），按受控流程更新 `backend/.secrets.baseline` 并同步登记 `docs/` 与 `backend/docs/` 两份 `secrets-baseline-changes.md`。过程记录见 ERRORS.md M-20260912-071、M-20260912-072 及 M-20260909-068、M-20260909-065 复发记录。
+verification: 串行执行 `npm run devtools:verify-all-pages`（15/15 PASS + 未登录态 4 项）与 `npm run devtools:checkout-delivery-states`（PASS，新增表单布局断言：备注框 93px、日期选择器 341/341 独占整行、协议行 80px、协议链接 72x45）；`npm run typecheck`、`npm run check:miniapp`（15 页 15 路由）、`npm run check:page-api-coverage`、`npm run audit:buttons`（106 控件）、`npm run audit:button-styles`（0 失败 0 警告）通过；对全部 15 页最新截图完成逐页目视复核。
+evidence: miniapp/reports/devtools/all-pages-devtools-audit.json；miniapp/reports/devtools/final-*.png；miniapp/reports/devtools/checkout-delivery-state-audit.json；miniapp/reports/devtools/final-checkout-state-*.png；docs/harness-engineering/core/evidence-index.md（E-20260912-001）
+limitations: 仍未完成真实微信支付、真实闪送开放平台报价/建单/回调与生产上线验收；本次结论仅覆盖本地后端 + DevTools 开发调试态。部分商品图沿用有赞迁移素材，带水印与构图不一致问题属于素材层，需门店提供新图后另行处理。
