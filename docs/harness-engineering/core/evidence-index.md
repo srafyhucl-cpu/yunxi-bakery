@@ -7537,7 +7537,7 @@ backend/docs/harness-engineering/core/evidence-index.md 仅作为历史镜像。
 - generated_at: 2026-09-12
 - evidence_type: verification/miniapp-popular-catalog-order-and-truthful-badges
 - file: local:miniapp/reports/devtools/commerce-state-audit.json; local:miniapp/reports/devtools/all-pages-devtools-audit.json; local:miniapp/reports/devtools/product-purchase-path-audit.json; local:miniapp/reports/devtools/checkout-delivery-state-audit.json; local:miniapp/reports/devtools/final-products.png; local:backend/app/service/catalog/application.py; local:backend/app/api/channels/storefront/catalog.py; local:backend/app/repository/youzan_repo.py; local:backend/tests/service/test_catalog.py; local:backend/tests/api/test_miniapp_catalog_api.py; local:miniapp/miniprogram/pages/products/index.ts; local:miniapp/miniprogram/pages/products/index.wxml; local:miniapp/miniprogram/services/products.ts; local:miniapp/miniprogram/app.wxss; local:miniapp/scripts/verify-devtools-commerce-states.cjs; local:miniapp/docs/api-contract.md; local:ERRORS.md; local:LOGBOOK.md
-- commit_sha: (待提交后回写)
+- commit_sha: 81606d8a74994b937663f0a3c944200d204b8740
 - command: `python -B -m pytest backend/tests/service/test_catalog.py backend/tests/api/test_miniapp_catalog_api.py -q --no-cov`; backend local uvicorn on 127.0.0.1:7001; `GET /api/v1/miniapp/products?sort=popular&limit=8`; `cd miniapp && npm run typecheck`; `npm run check:miniapp`; `npm run check:page-api-coverage`; `npm run audit:buttons`; `npm run audit:button-styles`; `npm run devtools:commerce-states`; `npm run devtools:product-purchase-path`; `npm run devtools:verify-all-pages`; `npm run devtools:checkout-delivery-states`
 - result: pass
 - related_logbook: 2026-09-12 - fix(miniapp): 商品目录真实销量排序与伪营销徽标清理
