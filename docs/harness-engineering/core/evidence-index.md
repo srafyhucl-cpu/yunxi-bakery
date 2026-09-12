@@ -7508,3 +7508,24 @@ backend/docs/harness-engineering/core/evidence-index.md 仅作为历史镜像。
 - failure_class: none_after_recovery
 - replayable: yes
 - residual_risks: 仍是本地开发与模拟器验收，不代表真实认证、真实闪送开放平台报价/建单/回调、真实微信支付或生产上线已通过。
+
+## E-20260912-004：MiniApp 零资产状态、订单信息与会员展示收口验证
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260912-miniapp-customer-polish-r24
+- generated_at: 2026-09-12
+- evidence_type: verification/miniapp-customer-facing-assets-orders-and-member-summary
+- file: local:miniapp/reports/devtools/commerce-state-audit.json; local:miniapp/reports/devtools/all-pages-devtools-audit.json; local:miniapp/reports/devtools/final-checkout-zero-assets.png; local:miniapp/reports/devtools/final-orders-readable-meta.png; local:miniapp/reports/devtools/final-profile-member-summary.png; local:miniapp/miniprogram/pages/checkout/index.ts; local:miniapp/miniprogram/pages/checkout/index.wxml; local:miniapp/miniprogram/pages/orders/index.ts; local:miniapp/miniprogram/pages/orders/index.wxml; local:miniapp/miniprogram/pages/profile/index.wxml; local:miniapp/miniprogram/utils/member-assets.ts; local:miniapp/miniprogram/utils/order-summary.ts; local:miniapp/miniprogram/utils/session.ts; local:miniapp/scripts/check-miniapp.mjs; local:miniapp/scripts/verify-all-15-pages-devtools.cjs; local:miniapp/scripts/verify-devtools-commerce-states.cjs; local:miniapp/tests/utils/member-assets.test.ts; local:miniapp/tests/utils/order-summary.test.ts; local:ERRORS.md; local:LOGBOOK.md
+- commit_sha: a7aec450243722ee4ed07b658e0105ab9cbc9853
+- command: backend local uvicorn on 127.0.0.1:7001; `cd miniapp && npm run typecheck`; `npm run check:miniapp`; `npm run check:page-api-coverage`; `npm run test:member-assets`; `npm run test:order-summary`; `npm run check:observability-contract`; `npm run audit:buttons`; `npm run audit:button-styles`; `npm run devtools:commerce-states`; `npm run devtools:verify-all-pages`; `npm run devtools:checkout-delivery-states`; `npm run devtools:product-purchase-path`; `D:\Work\python3.13.2\python.exe -B backend\scripts\check_mistake_ledger.py`; `python -B backend\scripts\check_evidence_index.py`; `python -B -m pytest backend\tests\scripts\test_sync_version.py -q --no-cov`
+- result: partial
+- related_logbook: 2026-09-12 - fix(miniapp): 顾客端资产状态、订单信息与会员展示收口
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地页面状态、结构断言与合成订单样本截图；手机号样本使用虚构值，不含真实客户、地址、登录凭证、闪送凭证、支付数据或生产写入。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 结算页零积分和零余额时开关自动关闭并禁用，显示“暂无可用”；订单列表改为日期加重合短号并分行标注收货人与期望时间，手机号脱敏为 `188****0000`；个人中心等级、昵称和头像读取 memberSummary 配置，删除 `VIP 会员` 矛盾文案与 `8888 6666` 假编号；全站登录态工程文案与结算金额说明改为顾客语言；全页 DevTools 审计 15/15、未登录态 4/4、commerce-states、结算配送和商品购买链路均通过，静态与按钮审计零失败。
+- failure_class: none_after_recovery
+- replayable: yes
+- residual_risks: 商品图仍有有赞迁移素材的水印与构图差异，需门店提供统一新图；仍未完成真实微信认证、真实闪送开放平台报价/建单/回调、真实微信支付或生产上线验收。
