@@ -598,3 +598,17 @@ button.ghost-button,
   min-width: 240rpx;
   margin-top: 24rpx;
 }
+
+/* 表单字段：常驻标签 + 控件，避免用户输入后失去字段含义 */
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.form-field__label {
+  font-size: 24rpx;
+  line-height: 1.4;
+  color: var(--yunxi-text-secondary);
+  letter-spacing: 0;
+}

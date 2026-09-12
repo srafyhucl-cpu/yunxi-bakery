@@ -74,14 +74,23 @@
         <text class="address-picker-action">选择</text>
       </view>
       <view wx:if="{{isLoggedIn && checkoutItems.length}}" class="form fade-in">
-        <input placeholder="联系人" value="{{receiverName}}" data-field="receiverName" bindinput="updateField" />
-        <input placeholder="手机号，例：18800000000" type="number" maxlength="11" value="{{receiverPhone}}" data-field="receiverPhone" bindinput="updateField" />
-        <input
-          placeholder="{{deliveryType === 'delivery' ? '配送地址' : '自提备注，可填写门店/取货说明'}}"
-          value="{{deliveryAddress}}"
-          data-field="deliveryAddress"
-          bindinput="updateField"
-        />
+        <view class="form-field">
+          <text class="form-field__label">联系人</text>
+          <input placeholder="请输入联系人姓名" value="{{receiverName}}" data-field="receiverName" bindinput="updateField" />
+        </view>
+        <view class="form-field">
+          <text class="form-field__label">手机号</text>
+          <input placeholder="请输入 11 位手机号" type="number" maxlength="11" value="{{receiverPhone}}" data-field="receiverPhone" bindinput="updateField" />
+        </view>
+        <view class="form-field">
+          <text class="form-field__label">{{deliveryType === 'delivery' ? '配送地址' : '自提备注'}}</text>
+          <input
+            placeholder="{{deliveryType === 'delivery' ? '如：小区、楼栋、门牌号' : '如：到店取货说明'}}"
+            value="{{deliveryAddress}}"
+            data-field="deliveryAddress"
+            bindinput="updateField"
+          />
+        </view>
         <view class="time-grid">
           <picker
             mode="date"
@@ -102,7 +111,10 @@
         </view>
         <view class="time-preview">期望时间：{{expectTime || '未选择'}}</view>
         <text wx:if="{{isSameDayOrder}}" class="time-preview">当天订单需客服确认制作与履约安排，不承诺即时制作或即时配送。</text>
-        <textarea placeholder="备注，如生日牌文字、忌口等" value="{{remark}}" data-field="remark" bindinput="updateField" />
+        <view class="form-field">
+          <text class="form-field__label">订单备注</text>
+          <textarea placeholder="如：生日牌文字、忌口等" value="{{remark}}" data-field="remark" bindinput="updateField" />
+        </view>
       </view>
       <view wx:if="{{isLoggedIn && checkoutItems.length}}" class="benefit-panel">
         <view class="benefit-row" bindtap="toggleCouponPanel">

@@ -1723,3 +1723,18 @@ python -B backend/scripts/check_mistake_ledger.py
 - linked_trace: 20260908-miniapp-commerce-ux-redesign
 - linked_files: ERRORS.md；项目进度与配置清单.md；backend/项目进度与配置清单.md；backend/tests/scripts/test_sync_version.py
 - next_time_signal: 若全量回归出现 `test_repository_progress_header_matches_version_file` 失败，先看两份进度清单第 3 行是否被改回宽松描述；中期应把 `backend/项目进度与配置清单.md` 收敛为指向根 canonical 文件的指针，而不是继续双写。
+
+## M-20260912-075：表单字段只靠 placeholder 说明含义，常驻标签修复未横向覆盖
+
+- status: guarded
+- first_seen: 2026-09-12
+- severity: medium
+- symptom: 群内登记数量字段在 M-20260912-071 中改为常驻标签后，结算页和地址页的联系人、手机号、地址、备注，以及群内登记其余字段仍只靠 placeholder 表达含义；用户一旦输入内容，字段说明即消失，完成核对时只能靠字段顺序猜测。
+- root_cause: 上一轮只修复了截图中暴露的数量输入，没有按表单控件类型横向盘点；静态门禁也只覆盖图片降级，没有把“输入控件必须有常驻标签”纳入检查。
+- impact: 顾客填写姓名、手机号、闪送地址和生日牌/忌口备注时更容易把内容填错位置，增加客服核对与来回沟通成本；未造成订单、支付、配送或客户数据写入。
+- fix: 全局新增 `.form-field` / `.form-field__label`，结算、地址和群内登记三个页面的全部输入控件统一改为常驻标签加控件；数量字段保留行内标签；输入控件最小高度统一为 88rpx，运行时保持 45px 或 93px 触控高度。
+- new_guardrail: `check-miniapp.mjs` 新增 `checkFormFieldLabels`，对结算、地址、群内登记逐页比较 input/textarea 数量与常驻标签数量；`verify-all-15-pages-devtools.cjs` 新增运行态检查，校验标签非空、与控件不重叠、控件高度不低于 44px，并自动处理空购物车与地址空态样本。
+- verification: 变异验证——临时移除地址页“联系人”标签后 `npm run check:miniapp` 退出码 1，精确报 `pages/address/index.wxml 有 3 个输入控件但只有 2 个常驻字段标签`，恢复后退出码 0；`npm run devtools:verify-all-pages` 最终 15/15 PASS，地址页控件为 333x45、333x45、333x93px，结算页为 341x45、341x45、341x45、341x93px，群内登记为 333x45、333x45、333x45、273x45、333x93px，标签均无重叠。
+- linked_trace: 20260908-miniapp-commerce-ux-redesign
+- linked_files: ERRORS.md；miniapp/miniprogram/app.wxss；miniapp/miniprogram/pages/checkout/index.wxml；miniapp/miniprogram/pages/checkout/index.wxss；miniapp/miniprogram/pages/address/index.wxml；miniapp/miniprogram/pages/address/index.wxss；miniapp/miniprogram/pages/group-registration/index.wxml；miniapp/miniprogram/pages/group-registration/index.wxss；miniapp/scripts/check-miniapp.mjs；miniapp/scripts/verify-all-15-pages-devtools.cjs
+- next_time_signal: 表单页面新增 input/textarea 时，必须同时补常驻标签并跑静态与 DevTools 断言；placeholder 只能作为输入示例，不能作为字段名称。

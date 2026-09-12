@@ -215,6 +215,24 @@ function checkImageErrorFallback(source, pagePath) {
   }
 }
 
+// 表单页输入控件必须带常驻标签：placeholder 不能独自承担字段含义。
+const LABELED_FORM_PAGES = new Set([
+  "pages/checkout/index",
+  "pages/address/index",
+  "pages/group-registration/index",
+]);
+
+function checkFormFieldLabels(source, pagePath) {
+  if (!LABELED_FORM_PAGES.has(pagePath)) {
+    return;
+  }
+  const controlCount = Array.from(source.matchAll(/<(?:input|textarea)\b/g)).length;
+  const labelCount = Array.from(source.matchAll(/class="(?:form-field__label|quantity-field__label)[^"]*"/g)).length;
+  if (controlCount > 0 && labelCount < controlCount) {
+    fail(`${pagePath}.wxml 有 ${controlCount} 个输入控件但只有 ${labelCount} 个常驻字段标签`);
+  }
+}
+
 function checkButtonLoadingDisabled(source, pagePath) {
   for (const { tag, line } of extractButtonTags(source)) {
     if (/\sloading=/.test(tag) && !/\sdisabled=/.test(tag)) {
@@ -625,6 +643,7 @@ for (const pagePath of appPages) {
   checkButtonHasAction(wxmlSource, pagePath);
   checkButtonLoadingDisabled(wxmlSource, pagePath);
   checkImageErrorFallback(wxmlSource, pagePath);
+  checkFormFieldLabels(wxmlSource, pagePath);
   checkFixedSafeHomeAction(wxmlSource, methods, pagePath);
   checkDynamicLinksUseUnifiedNavigation(tsSource, wxmlSource, pagePath);
   for (const handler of handlers) {

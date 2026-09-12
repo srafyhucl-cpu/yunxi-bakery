@@ -171,6 +171,92 @@ async function inspectHomeImageFallback(page, result) {
   }
 }
 
+// 表单字段标签验证：输入控件必须有常驻标签，且标签在控件上方不重叠。
+async function inspectFormFieldLabels(page, pageDef, result) {
+  const audit = { ok: true, details: [], errors: [] };
+  result.formFieldLabels = audit;
+  let fields = await page.$$(".form-field, .quantity-field");
+  let enteredEditMode = false;
+  let seededCheckoutItems = false;
+  if (fields.length === 0 && pageDef.path === "pages/checkout/index") {
+    await page.setData({
+      isLoggedIn: true,
+      checkoutItems: [
+        {
+          productId: "form-label-audit",
+          title: "表单标签审计样本",
+          imageUrl: "",
+          priceFen: 1000,
+          priceText: "¥10.00",
+          quantity: 1,
+        },
+      ],
+    });
+    await sleep(300);
+    fields = await page.$$(".form-field, .quantity-field");
+    seededCheckoutItems = fields.length > 0;
+  }
+  if (fields.length === 0 && pageDef.path === "pages/address/index") {
+    await page.callMethod("startCreate");
+    await sleep(400);
+    fields = await page.$$(".form-field, .quantity-field");
+    enteredEditMode = fields.length > 0;
+  }
+  if (fields.length === 0) {
+    audit.details.push("当前页面状态未渲染表单字段，跳过常驻标签断言");
+    return;
+  }
+  let labeledControls = 0;
+  for (let index = 0; index < fields.length; index++) {
+    const field = fields[index];
+    const label = (await field.$(".form-field__label")) || (await field.$(".quantity-field__label"));
+    const controls = await field.$$("input, textarea");
+    if (!label || controls.length === 0) {
+      audit.errors.push(`第 ${index + 1} 个表单字段缺少常驻标签或输入控件`);
+      continue;
+    }
+    labeledControls += controls.length;
+    const labelText = (await label.text()).trim();
+    const labelSize = await label.size();
+    const labelOffset = await label.offset();
+    const controlSize = await controls[0].size();
+    const controlOffset = await controls[0].offset();
+    const layout = controlOffset.left >= labelOffset.left + labelSize.width - 1 ? "行内" : "上方";
+    audit.details.push(`${labelText || "无标签"}：${layout}标签，控件 ${controlSize.width}x${controlSize.height}px`);
+    if (!labelText) {
+      audit.errors.push(`第 ${index + 1} 个表单字段标签文案为空`);
+    }
+    const overlapX =
+      Math.min(labelOffset.left + labelSize.width, controlOffset.left + controlSize.width) -
+      Math.max(labelOffset.left, controlOffset.left);
+    const overlapY =
+      Math.min(labelOffset.top + labelSize.height, controlOffset.top + controlSize.height) -
+      Math.max(labelOffset.top, controlOffset.top);
+    if (overlapX > 1 && overlapY > 1) {
+      audit.errors.push(`表单字段“${labelText}”标签与输入控件重叠`);
+    }
+    if (controlSize.height < 44) {
+      audit.errors.push(`表单字段“${labelText}”输入控件高度不足 44px：${controlSize.height}px`);
+    }
+  }
+  const allControls = await page.$$("input, textarea");
+  if (allControls.length > labeledControls) {
+    audit.errors.push(`存在 ${allControls.length - labeledControls} 个未使用常驻标签的输入控件`);
+  }
+  if (enteredEditMode) {
+    await page.callMethod("cancelEdit");
+    await sleep(200);
+  }
+  if (seededCheckoutItems) {
+    await page.setData({ checkoutItems: [] });
+    await sleep(200);
+  }
+  if (audit.errors.length > 0) {
+    audit.ok = false;
+    result.errors.push(...audit.errors);
+  }
+}
+
 async function inspectCommerceState(page, pageDef, result) {
   const commerce = { ok: true, details: [], errors: [] };
   const data = await page.data();
@@ -378,6 +464,9 @@ async function verifyPage(miniProgram, pageDef, viewportWidth, screenshotPrefix 
 
     if (pageDef.path === "pages/home/index") {
       await inspectHomeImageFallback(page, result);
+    }
+    if (pageDef.path === "pages/checkout/index" || pageDef.path === "pages/address/index" || pageDef.path === "pages/group-registration/index") {
+      await inspectFormFieldLabels(page, pageDef, result);
     }
 
     // 1. 检查 Navbar

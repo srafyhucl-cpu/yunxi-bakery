@@ -70,7 +70,7 @@ button.address-add,
 input,
 textarea {
   width: 100%;
-  min-height: 84rpx;
+  min-height: 88rpx;
   padding: 0 24rpx;
   background: var(--yunxi-surface-alt);
   border: 1rpx solid var(--yunxi-border);

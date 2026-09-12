@@ -1,3 +1,17 @@
+## [2026-09-12] - fix(miniapp): 表单字段常驻标签与触控高度收口
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260912-miniapp-form-labels-r23
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 修复结算、地址和群内登记表单仅靠 placeholder 表达字段含义的问题，统一常驻标签和移动端触控高度，并把约束纳入静态与 DevTools 门禁。
+implementation: `app.wxss` 新增 `.form-field` / `.form-field__label`；结算页联系人、手机号、配送地址/自提备注、订单备注，地址页联系人、手机号、收货地址，群内登记联系人、手机号、登记商品、配送地址、备注均改为常驻标签加控件；数量行保留既有行内常驻标签；三个页面的输入控件最小高度统一为 88rpx（运行时 45px 或 93px）。
+verification: 变异验证——临时移除地址页“联系人”标签后 `npm run check:miniapp` 退出码 1，精确报 `pages/address/index.wxml 有 3 个输入控件但只有 2 个常驻字段标签`，恢复后退出码 0；`npm run typecheck`、`npm run check:miniapp`（15 页 15 路由）、`npm run check:page-api-coverage`、`npm run audit:buttons`（106 控件）、`npm run audit:button-styles`（0 失败 0 警告）通过；`npm run devtools:verify-all-pages` 最终 PASS（15/15，未登录态通过），地址页字段为 333x45、333x45、333x93px，结算页为 341x45、341x45、341x45、341x93px，群内登记为 333x45、333x45、333x45、273x45、333x93px，标签均在控件上方或行内且无重叠。
+evidence: miniapp/reports/devtools/all-pages-devtools-audit.json；miniapp/reports/devtools/final-address.png；miniapp/reports/devtools/final-checkout.png；miniapp/reports/devtools/final-group-registration.png；ERRORS.md M-20260912-075
+limitations: 仍是本地开发与模拟器验收，不代表真实认证、真实闪送报价/建单/回调、真实微信支付或生产上线已通过。
+
 ## [2026-09-10] - verify(miniapp): 串行复跑 DevTools 全页与结算配送状态审计并收口结算指引改动
 
 task_id: T-MINIAPP-COMMERCE-UX-REDESIGN

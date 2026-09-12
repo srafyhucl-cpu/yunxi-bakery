@@ -32,9 +32,18 @@
       <view wx:if="{{sessionView.loggedIn && errorMessage}}" class="address-error">{{errorMessage}}</view>
 
       <view wx:if="{{sessionView.loggedIn && editing}}" class="address-form bakery-panel">
-        <input placeholder="联系人" value="{{draft.receiverName}}" data-field="receiverName" bindinput="updateDraftField" />
-        <input placeholder="手机号，例：18800000000" type="number" maxlength="11" value="{{draft.receiverPhone}}" data-field="receiverPhone" bindinput="updateDraftField" />
-        <textarea placeholder="收货地址，如小区、楼栋、门牌号" value="{{draft.address}}" data-field="address" bindinput="updateDraftField" />
+        <view class="form-field">
+          <text class="form-field__label">联系人</text>
+          <input placeholder="请输入联系人姓名" value="{{draft.receiverName}}" data-field="receiverName" bindinput="updateDraftField" />
+        </view>
+        <view class="form-field">
+          <text class="form-field__label">手机号</text>
+          <input placeholder="请输入 11 位手机号" type="number" maxlength="11" value="{{draft.receiverPhone}}" data-field="receiverPhone" bindinput="updateDraftField" />
+        </view>
+        <view class="form-field">
+          <text class="form-field__label">收货地址</text>
+          <textarea placeholder="如：小区、楼栋、门牌号" value="{{draft.address}}" data-field="address" bindinput="updateDraftField" />
+        </view>
         <view class="address-switch">
           <text>设为默认地址</text>
           <switch checked="{{draft.isDefault}}" bindchange="toggleDraftDefault" color="#3D332D" />
