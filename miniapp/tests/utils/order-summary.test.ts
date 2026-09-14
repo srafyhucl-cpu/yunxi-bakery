@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   buildOrderAmountView,
+  formatPaymentMethodText,
   formatOrderDisplayId,
   isBeijingDelivery,
   maskReceiverPhone,
@@ -34,6 +35,15 @@ test("订单列表使用可读短号，保留日期和尾号", () => {
   );
   assert.equal(formatOrderDisplayId("short-order"), "short-order");
   assert.equal(formatOrderDisplayId(""), "待同步");
+});
+
+test("订单支付方式只展示顾客可理解文案", () => {
+  assert.equal(formatPaymentMethodText("wechat"), "微信支付");
+  assert.equal(formatPaymentMethodText("balance"), "余额支付");
+  assert.equal(formatPaymentMethodText("combined"), "组合支付");
+  assert.equal(formatPaymentMethodText("mock"), "门店确认");
+  assert.equal(formatPaymentMethodText(""), "待确认");
+  assert.equal(formatPaymentMethodText("unknown_internal_code"), "待确认");
 });
 
 test("自提订单展示商品金额、零运费和服务端应付金额", () => {

@@ -8,9 +8,11 @@
   <view class="page-pinned page-pinned--empty"></view>
   <scroll-view class="page-scroll" scroll-y enhanced show-scrollbar="{{false}}">
     <view class="page points-page">
-      <view wx:if="{{!loggedIn}}" class="empty-panel glass-panel">
-        <text class="empty-title">请先登录</text>
-        <button class="primary-btn" bindtap="goLogin">去登录</button>
+      <view wx:if="{{!loggedIn}}" class="yunxi-state yunxi-state--page">
+        <view class="yunxi-state__icon yunxi-state__icon--star" aria-hidden="true"></view>
+        <text class="yunxi-state__title">登录后查看积分</text>
+        <text class="yunxi-state__hint">登录后可查看积分余额与获取、抵扣记录</text>
+        <button class="primary-button yunxi-state__action" bindtap="goLogin">去登录</button>
       </view>
       <block wx:else>
         <view class="balance-panel glass-panel fade-in">
@@ -20,12 +22,17 @@
         <view wx:if="{{loading}}" class="empty-panel glass-panel">
           <text class="empty-title">加载中...</text>
         </view>
-        <view wx:elif="{{loadFailed}}" class="empty-panel glass-panel">
-          <text class="empty-title">加载失败，请稍后重试</text>
+        <view wx:elif="{{loadFailed}}" class="yunxi-state yunxi-state--page">
+          <view class="yunxi-state__icon yunxi-state__icon--wifi-off" aria-hidden="true"></view>
+          <text class="yunxi-state__title">积分明细加载失败</text>
+          <text class="yunxi-state__hint">网络开小差了，重试一下吧</text>
+          <button class="primary-button yunxi-state__action" bindtap="retryLoad">重新加载</button>
         </view>
-        <view wx:elif="{{rows.length === 0}}" class="empty-panel glass-panel">
-          <text class="empty-title">暂无积分记录</text>
-          <text class="empty-subtitle">下单消费可获得积分奖励</text>
+        <view wx:elif="{{rows.length === 0}}" class="yunxi-state yunxi-state--page">
+          <view class="yunxi-state__icon yunxi-state__icon--star" aria-hidden="true"></view>
+          <text class="yunxi-state__title">暂无积分记录</text>
+          <text class="yunxi-state__hint">下单消费可获得积分奖励</text>
+          <button class="primary-button yunxi-state__action" bindtap="goProducts">去选购</button>
         </view>
         <view wx:else class="ledger-list">
           <view wx:for="{{rows}}" wx:key="index" class="ledger-row">

@@ -1,5 +1,5 @@
 <view class="session-notice">
-  <view class="session-notice__icon">{{iconText}}</view>
+<view class="session-notice__icon session-notice__icon--{{iconKey}}" aria-hidden="true"></view>
   <view class="session-notice__copy">
     <text class="session-notice__title">{{statusText}} · {{badgeText}}</text>
     <text class="session-notice__desc">{{description}}</text>

@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import automator from "miniprogram-automator";
+import { assertRealApiReachable, resolveRealApiBaseUrl } from "./lib/real-api-preflight.mjs";
 
 const root = process.cwd();
 const reportsRoot = path.join(root, "reports", "button-runtime");
@@ -34,11 +35,17 @@ function summarizePayload(payload) {
 
 async function main() {
   fs.mkdirSync(reportsRoot, { recursive: true });
+  const apiBaseUrl = resolveRealApiBaseUrl();
+  try {
+    await assertRealApiReachable(apiBaseUrl);
+  } catch (error) {
+    console.error(`${error.message}；本轮真实链路检查跳过，不覆盖上一份报告。`);
+    process.exit(2);
+  }
   const miniProgram = await automator.connect({ wsEndpoint });
   let runtimeResult;
   try {
-    runtimeResult = await miniProgram.evaluate(function () {
-      const apiBaseUrl = "https://yunxifood.cn";
+    runtimeResult = await miniProgram.evaluate(function (apiBaseUrl) {
       const authPath = "/api/v1/miniapp/auth/login";
       const targets = [
         { name: "order list", path: "/api/v1/miniapp/orders" },
@@ -174,7 +181,7 @@ async function main() {
           };
         });
       });
-    });
+    }, apiBaseUrl);
   } finally {
     await miniProgram.disconnect();
   }

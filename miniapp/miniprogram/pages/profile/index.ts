@@ -18,16 +18,16 @@ import type { MemberSummaryProps } from "../../types/page-config";
 interface OrderEntry {
   id: string;
   title: string;
-  iconText: string;
+  iconKey: "wallet" | "clock" | "truck" | "rotate-ccw";
   linkType: string;
   linkTarget: string;
 }
 
 const PROFILE_ORDER_ENTRIES: OrderEntry[] = [
-  { id: "to-pay", title: "待付款", iconText: "付", linkType: "page", linkTarget: "orders" },
-  { id: "making", title: "制作中", iconText: "制", linkType: "page", linkTarget: "orders" },
-  { id: "delivery", title: "待配送", iconText: "送", linkType: "page", linkTarget: "orders" },
-  { id: "refund", title: "退款/售后", iconText: "售", linkType: "policy", linkTarget: "afterSales" },
+  { id: "to-pay", title: "待付款", iconKey: "wallet", linkType: "page", linkTarget: "orders" },
+  { id: "making", title: "制作中", iconKey: "clock", linkType: "page", linkTarget: "orders" },
+  { id: "delivery", title: "待配送", iconKey: "truck", linkType: "page", linkTarget: "orders" },
+  { id: "refund", title: "退款/售后", iconKey: "rotate-ccw", linkType: "policy", linkTarget: "afterSales" },
 ];
 
 function normalizeMemberSummaryProps(props: Partial<MemberSummaryProps>): MemberSummaryProps {
@@ -53,7 +53,7 @@ Page({
     assetCouponCount: 0 as number | null,
     assetsLoaded: false,
     rechargeReady: RECHARGE_READY,
-    serviceItems: [] as Array<{ id: string; title: string; iconText: string; subtitle?: string; linkType: string; linkTarget: string }>,
+    serviceItems: [] as Array<{ id: string; title: string; iconKey: string; subtitle?: string; linkType: string; linkTarget: string }>,
     session: getMiniappSession(),
     sessionView: buildMiniappSessionView(getMiniappSession()),
     loginStateText: "个人中心需要登录后使用",
@@ -96,11 +96,11 @@ Page({
       const memberProps = normalizeMemberSummaryProps(rawProps);
 
       const serviceItems = [
-        { id: "shop-phone", title: "客服电话", iconText: "电", subtitle: shopSettings.customerPhone, linkType: "phone", linkTarget: shopSettings.customerPhone },
-        { id: "shop-wechat", title: "客服微信", iconText: "微", subtitle: shopSettings.customerWechat, linkType: "wechat", linkTarget: shopSettings.customerWechat },
-        { id: "shop-after-sales", title: shopSettings.afterSalesPolicyTitle || "售后政策", iconText: "售", linkType: "policy", linkTarget: "afterSales" },
-        { id: "shop-agreement", title: shopSettings.userAgreementTitle || "用户协议", iconText: "协", linkType: "policy", linkTarget: "agreement" },
-        { id: "shop-privacy", title: shopSettings.privacyPolicyTitle || "隐私政策", iconText: "隐", linkType: "policy", linkTarget: "privacy" }
+        { id: "shop-phone", title: "客服电话", iconKey: "phone", subtitle: shopSettings.customerPhone, linkType: "phone", linkTarget: shopSettings.customerPhone },
+        { id: "shop-wechat", title: "客服微信", iconKey: "message-circle", subtitle: shopSettings.customerWechat, linkType: "wechat", linkTarget: shopSettings.customerWechat },
+        { id: "shop-after-sales", title: shopSettings.afterSalesPolicyTitle || "售后政策", iconKey: "shield-check", linkType: "policy", linkTarget: "afterSales" },
+        { id: "shop-agreement", title: shopSettings.userAgreementTitle || "用户协议", iconKey: "file-text", linkType: "policy", linkTarget: "agreement" },
+        { id: "shop-privacy", title: shopSettings.privacyPolicyTitle || "隐私政策", iconKey: "lock", linkType: "policy", linkTarget: "privacy" }
       ];
 
       this.setData({

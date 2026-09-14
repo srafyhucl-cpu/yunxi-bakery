@@ -48,6 +48,7 @@ class OrderApplicationService:
         product_repo: YouzanProductRepo,
         inventory_repo: YouzanInventoryRepo,
         config_repo: ConfigRepo,
+        schedule_service: OrderScheduleService | None = None,
         event_repo: OrderEventRepo | None = None,
         stored_value_service: StoredValueService | None = None,
         delivery_service: DeliveryApplicationService | None = None,
@@ -55,7 +56,9 @@ class OrderApplicationService:
         self._order_repo = order_repo
         self._serialization_service = OrderSerializationService()
         inventory_service = OrderInventoryService(product_repo, inventory_repo)
-        schedule_service = OrderScheduleService(ShopOperationsService(config_repo))
+        resolved_schedule_service = schedule_service or OrderScheduleService(
+            ShopOperationsService(config_repo)
+        )
         payment_service = OrderPaymentRuntimeService(
             order_repo,
             event_repo=event_repo,
@@ -68,7 +71,7 @@ class OrderApplicationService:
             order_repo=order_repo,
             session_repo=session_repo,
             inventory_service=inventory_service,
-            schedule_service=schedule_service,
+            schedule_service=resolved_schedule_service,
             timeline_service=self._timeline_service,
             delivery_service=delivery_service,
         )

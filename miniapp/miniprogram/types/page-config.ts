@@ -54,7 +54,7 @@ export interface HeroCarouselProps {
 }
 
 export interface QuickLinksProps {
-  items: Array<LinkTarget & { id: string; title: string; subtitle: string; iconText: string }>;
+  items: Array<LinkTarget & { id: string; title: string; subtitle: string; iconKey?: string; iconText?: string }>;
 }
 
 export interface NoticeListProps {

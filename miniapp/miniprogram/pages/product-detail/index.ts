@@ -5,6 +5,9 @@ import {
   getDescriptionBlocks,
   getDisplaySpecs,
   getDisplayTags,
+  getProductPriceText,
+  getProductPurchaseHint,
+  isProductPurchasable,
   type DescriptionBlock
 } from "../../utils/bakery";
 import { ROUTES } from "../../constants/routes";
@@ -21,23 +24,29 @@ interface RelatedProductView {
 
 // 搭配推荐位数量：横滑一条刚好铺满又不喧宾夺主
 const RELATED_PRODUCT_LIMIT = 4;
+// 推荐位只放可下单商品，过滤后需要回填，因此多取几条候选。
+const RELATED_PRODUCT_FETCH_LIMIT = RELATED_PRODUCT_LIMIT + 4;
 
 interface ProductDetailView extends CatalogProduct {
   priceText: string;
   imageFailed: boolean;
   displaySubtitle: string;
+  displayFulfillment: string;
   specChips: string[];
   tagChips: string[];
   descriptionBlocks: DescriptionBlock[];
 }
 
 function canPurchaseProduct(product: CatalogProduct | null): boolean {
-  return Boolean(product?.isActive && product.stock > 0);
+  return Boolean(product && isProductPurchasable(product) && product.isActive && product.stock > 0);
 }
 
 function getUnavailableText(product: CatalogProduct | null): string {
   if (!product) {
     return "商品加载中";
+  }
+  if (!isProductPurchasable(product)) {
+    return "仅供展示";
   }
   if (!product.isActive) {
     return "暂不可售";
@@ -80,11 +89,21 @@ Page({
     addingToCart: false,
     buyingNow: false,
     canPurchase: false,
+    isDisplayOnly: false,
     unavailableText: "商品加载中",
-    layoutStyle: getMiniappLayoutMetrics().pageShellStyle
+    layoutStyle: getMiniappLayoutMetrics().pageShellStyle,
+    navSolid: false
   },
   onLoad(query) {
     void this.loadProduct(query);
+  },
+  // 首屏悬浮栏压在商品大图上保持透明，滚动后切实底，避免正文穿透到状态栏和返回控件
+  onScroll(event: WechatMiniprogram.ScrollViewScroll) {
+    const nextSolid = event.detail.scrollTop > 8;
+    if (nextSolid === this.data.navSolid) {
+      return;
+    }
+    this.setData({ navSolid: nextSolid });
   },
   retryLoad() {
     // 加载失败重试：用进入时记录的商品复位后重新加载
@@ -102,9 +121,9 @@ Page({
   },
   async loadProduct(query: Record<string, string | undefined>) {
     const productId = typeof query.id === "string" ? query.id.trim() : "";
-    this.setData({ loading: true, loadFailed: false, lastProductId: productId, unavailableText: "商品加载中", canPurchase: false });
+    this.setData({ loading: true, loadFailed: false, lastProductId: productId, unavailableText: "商品加载中", canPurchase: false, isDisplayOnly: false });
     if (!productId) {
-      this.setData({ loading: false, product: null, unavailableText: "商品不存在", canPurchase: false });
+      this.setData({ loading: false, product: null, unavailableText: "商品不存在", canPurchase: false, isDisplayOnly: false });
       wx.showToast({ title: "商品不存在", icon: "none" });
       return;
     }
@@ -117,13 +136,14 @@ Page({
         loadFailed: true,
         product: null,
         unavailableText: "商品加载失败",
+        isDisplayOnly: false,
         canPurchase: false
       });
       wx.showToast({ title: "商品加载失败，请稍后重试", icon: "none" });
       return;
     }
     if (!product) {
-      this.setData({ loading: false, product: null, unavailableText: "商品不存在", canPurchase: false });
+      this.setData({ loading: false, product: null, unavailableText: "商品不存在", canPurchase: false, isDisplayOnly: false });
       wx.showToast({ title: "商品不存在", icon: "none" });
       return;
     }
@@ -131,6 +151,7 @@ Page({
       loading: false,
       loadFailed: false,
       canPurchase: canPurchaseProduct(product),
+      isDisplayOnly: !isProductPurchasable(product),
       unavailableText: getUnavailableText(product),
       purchaseQty: 1,
       product: {
@@ -138,6 +159,9 @@ Page({
         imageFailed: false,
         priceText: formatFen(product.priceFen),
         displaySubtitle: getDisplaySubtitle(product),
+        displayFulfillment: canPurchaseProduct(product)
+          ? getProductPurchaseHint(product)
+          : "当前暂不可售，请咨询客服",
         specChips: getDisplaySpecs(product),
         tagChips: getDisplayTags(product),
         descriptionBlocks: getDescriptionBlocks(product.description || "")
@@ -148,14 +172,14 @@ Page({
   async loadRelatedProducts(productId: string) {
     // 搭配推荐：精选商品去重去己，失败静默不打断主流程
     try {
-      const related = (await listProducts({ featured: true, limit: RELATED_PRODUCT_LIMIT + 1 }))
-        .filter((item) => item.id !== productId)
+      const related = (await listProducts({ featured: true, limit: RELATED_PRODUCT_FETCH_LIMIT }))
+        .filter((item) => item.id !== productId && isProductPurchasable(item))
         .slice(0, RELATED_PRODUCT_LIMIT)
         .map((item) => ({
           id: item.id,
           title: item.title,
           imageUrl: item.imageUrl,
-          priceText: formatFen(item.priceFen),
+          priceText: getProductPriceText(item, formatFen(item.priceFen)),
           imageFailed: false
         }));
       this.setData({ relatedProducts: related });

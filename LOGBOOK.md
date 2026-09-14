@@ -1,3 +1,566 @@
+## [2026-09-14] - fix(miniapp): 首页快捷入口图标键白名单与真实后端全页复测
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260914-miniapp-quick-link-icon-allowlist-r57
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 后端装修配置下发的 `iconKey` 只要匹配小写连字符就会直接拼进样式类，未定义样式的键会渲染成空白图标底座；这是 r56 图标收口的同源遗漏。
+implementation: `pages/home/index.ts` 的 `resolveQuickLinkIconKey()` 由 `/^[a-z-]+$/` 收紧为 `/^(points|recharge|link)$/`，未命中时先按 id/跳转目标/标题识别积分与充值，再统一回退 `link`；`check-miniapp.mjs` 的 `checkIconSurfaceConsistency()` 增加源码断言锁住白名单。
+verification: `npm run typecheck`、`npm run check:miniapp`（15 页 / 15 路由）PASS；后端保持 `127.0.0.1:7001` 健康（PID 8948，`0.133.0-p2trial.3`，未重启）；`devtools:service-smoke` 真实接口 4/4 PASS；`MINIAPP_API_BASE=http://127.0.0.1:7001 npm run devtools:verify-all-pages` 15/15 页 + 8/8 未登录态 PASS（首页无回归；当前线上装修配置未下发 `quickLinks` 块，白名单路径由静态守卫、typecheck 与 r56 的 DevTools 注入验证共同覆盖）；`devtools:verify-commerce-flows`、`devtools:product-purchase-path` PASS。
+evidence: docs/harness-engineering/core/evidence-index.md E-20260914-012（update_20260914_r56b）；miniapp/reports/devtools/all-pages-devtools-audit.json；miniapp/reports/devtools/miniapp-commerce-flows.json；miniapp/reports/devtools/product-purchase-path-audit.json；miniapp/reports/button-runtime/devtools-service-smoke-20260914-091900.json
+limitations: 本轮只收紧小程序展示层图标键解析与静态守卫，未触碰订单、支付、退款与配送后端逻辑；真机、真实微信支付/退款、真实闪送与生产验收仍未执行；闪送开放平台资料与测试权限、有赞分类-商品接口 IP 白名单仍为外部阻塞。
+## [2026-09-14] - fix(miniapp): 首页履约、快捷入口与客服空态图标收口
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260914-miniapp-content-icons-r56
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 继续逐页目视评审后，发现 r55 之前的同类缺陷仍有三处：首页履约说明用“预/送/时”单字充当图标，首页快捷入口 mock 回退把“积分/充值”文字渲染进图标底座，客服未登录空态用“客服”二字充当图标。
+implementation: 首页快捷入口新增 `iconKey` 契约并保留 `iconText` 兼容，`resolveQuickLinkIconKey()` 按配置键、id、跳转目标与标题解析 points/recharge/link；首页履约卡改成 booking/delivery/hours 三个无文字线性图标；客服空态改成 support 线性图标并补 `aria-hidden`；`check-miniapp.mjs` 新增 `checkIconSurfaceConsistency()` 与全量 WXSS `[image omitted]` 字面量守卫 `checkWxssDataUriIntegrity()`；`verify-all-15-pages-devtools.cjs` 新增服务承诺、快捷入口与客服空态的“无文字 + 背景图 + 尺寸 + aria”运行态断言。
+verification: `npm run typecheck`、`npm run check:miniapp`（15 页 / 15 路由）PASS；`devtools:verify-all-pages` PASS（15/15 页 + 8/8 未登录态；服务承诺图标 16×16px、客服空态图标 72×72px，均有背景图且无文字）；快捷入口回退态由 DevTools 注入验证为 2 个 24×24px 无文字图标；`devtools:verify-commerce-flows`、`devtools:product-purchase-path`、`devtools:commerce-states`、触控扫描（13 页 47 选择器）均 PASS；后端保持 `127.0.0.1:7001` 健康（PID 8948，`0.133.0-p2trial.3`）未重启。
+recovery: 首轮全页审计报首页 3 枚图标缺少背景图，根因是补丁把终端展示的 `[image omitted]` 写进了 WXSS；按工作区已有可用 data URI 前缀批量修正后复跑 PASS，并新增 WXSS 字面量扫描守卫。详见 ERRORS.md M-20260914-025。
+evidence: ERRORS.md M-20260914-025；miniapp/reports/devtools/all-pages-devtools-audit.json；miniapp/reports/devtools/final-home-promise-icons.png；miniapp/reports/devtools/final-home-quick-links-icons.png；miniapp/reports/devtools/final-logged-out-chat.png；miniapp/reports/devtools/miniapp-commerce-flows.json；miniapp/reports/devtools/product-purchase-path-audit.json；miniapp/reports/devtools/commerce-state-audit.json；miniapp/reports/button-visual/button-touch-targets-20260914-090718.json；docs/harness-engineering/core/evidence-index.md E-20260914-012
+limitations: 本轮仅改小程序展示层与守卫，未触碰订单、支付、退款、配送后端逻辑；真机、真实微信支付/退款、真实闪送与生产验收仍未执行；闪送开放平台资料与测试权限、有赞分类-商品接口 IP 白名单仍为外部阻塞。
+
+## [2026-09-14] - fix(miniapp): 空态与身份徽标图标线性化
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260914-miniapp-empty-state-icons-r55
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 逐页目视评审截图后发现同一类缺陷的更大面积残留：13 处空态/登录引导在 140rpx 白底圆角方块内渲染单个汉字或标点（址/购/结/券/详/单/订/分/充/芸/!），群内登记与个人中心的身份徽标用“登/我”单汉字。
+implementation: `app.wxss` 为 13 个空态图标 key（map-pin/shopping-cart/shopping-bag/clipboard-check/ticket/receipt/file-question/package/loader/wifi-off/star/cake/wallet）定义内联线性图标并去掉文字字号；13 处页面 WXML 改为 `yunxi-state__icon--<key>` 并补 `aria-hidden`；`session-notice` 组件把 `iconText` 换成 `iconKey`（log-in/user-check），个人中心与群内登记两个调用方同步；`check-miniapp.mjs` 新增 `checkEmptyStateIcons()`（禁止文字占位、要求 key 对应背景图规则与 `aria-hidden`、禁止向会话提示传 `icon-text`）。
+verification: `npm run typecheck`、`npm run check:miniapp`（15 页 / 15 路由）、`node --check scripts/verify-all-15-pages-devtools.cjs` 均 PASS；后端保持 `127.0.0.1:7001` 健康（PID 8948）未重启。
+full_regression: `devtools:verify-all-pages` PASS（15/15 页 + 8/8 未登录态；登录引导图标实测 72×72px、`iconBackground=set`、`iconText` 为空；群内登记身份徽标 31×31px 且无文字）；`devtools:commerce-states`、`devtools:checkout-delivery-states`、`devtools:registration-policy`、`devtools:verify-commerce-flows`、`devtools:product-purchase-path` 均 PASS；触控扫描首轮因 automator 超时中止（未写报告），重试 PASS（13 页 47 选择器）。
+evidence: ERRORS.md M-20260914-024（guarded，空态与身份徽标用单汉字/标点充当图标）；miniapp/reports/devtools/all-pages-devtools-audit.json；miniapp/reports/devtools/final-group-registration.png；miniapp/reports/devtools/final-logged-out-orders.png；miniapp/reports/devtools/commerce-state-audit.json；miniapp/reports/devtools/checkout-delivery-state-audit.json；miniapp/reports/devtools/registration-policy-audit.json；miniapp/reports/devtools/miniapp-commerce-flows.json；miniapp/reports/devtools/product-purchase-path-audit.json；miniapp/reports/button-visual/button-touch-targets-20260914-081148.json；docs/harness-engineering/core/evidence-index.md E-20260914-011
+limitations: 新增空态 icon key 必须同时在 `app.wxss` 定义背景图规则，否则会被静态守卫与全页审计拦下；触控扫描首次 automator 超时属环境阻塞，未伪报 PASS；本轮未触碰商品、订单、支付、退款与闪送后端逻辑；真机、真实微信支付/退款、真实闪送与生产验收仍未执行；闪送开放平台资料与测试权限、有赞分类-商品接口 IP 白名单仍为外部阻塞。
+
+## [2026-09-14] - fix(miniapp): 会员中心入口图标线性化与支付方式顾客口径收口
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260914-miniapp-profile-icons-and-payment-copy-r54
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 逐页目视评审后修复两处已确认的顾客可见缺陷：会员中心“我的订单”与“特色服务”用单汉字冒充图标（现场渲染接近空白方块）；订单详情“支付方式”把开发口径“MVP 模拟支付”直接展示给顾客。
+implementation: `pages/profile/index.ts` 把 `iconText` 改为 `iconKey`（wallet/clock/truck/rotate-ccw 与 phone/message-circle/shield-check/file-text/lock），`index.wxml` 改为按 `iconKey` 渲染的装饰图标节点并补 `aria-hidden`，`index.wxss` 为 9 个 key 定义内联线性图标（订单 40rpx、服务 24rpx 圆底 + 30rpx 字形）；`utils/order-summary.ts` 新增 `formatPaymentMethodText()`，订单详情统一走该映射；`check-miniapp.mjs` 新增 `checkProfileShortcutIcons()` 与支付方式文案守卫；`verify-all-15-pages-devtools.cjs` 的 `inspectProfileShortcuts()` 改为断言背景图可渲染、无文字占位、尺寸不小于 16px；`verify-miniapp-commerce-flows.cjs` 与 `scan-miniapp-button-touch-targets.mjs` 夹具同步为 `iconKey`。
+verification: 后端本地 `127.0.0.1:7001` 健康（0.133.0-p2trial.3，未重启）；`npm run typecheck`、`npm run check:miniapp`（15 页 / 15 路由）、`npm run test:order-summary` 7/7 全部 PASS；`devtools:verify-commerce-flows`、`devtools:product-purchase-path`、`devtools:checkout-delivery-states`、`devtools:registration-policy`、`devtools:commerce-states` 均 PASS。
+full_regression: `devtools:verify-all-pages` PASS（15/15 页 + 8/8 未登录态；会员中心订单图标 4 个、服务图标 5 个，均有背景图、无文字占位）；`scan:button-touch-targets` PASS（13 页 47 选择器）；首轮审计曾以“订单/服务入口图标缺少可渲染背景图标”FAIL，原因是新增 WXSS 里 data URI 前缀被写成了工具输出里的脱敏占位符，修正 9 处后复跑通过。
+evidence: ERRORS.md M-20260914-021（guarded，订单详情展示开发支付口径）、M-20260914-022（guarded，会员中心单汉字冒充图标）、M-20260914-023（guarded，脱敏占位符被写进 WXSS）；miniapp/reports/devtools/all-pages-devtools-audit.json；miniapp/reports/devtools/final-profile.png；miniapp/reports/devtools/miniapp-commerce-flows.json；miniapp/reports/devtools/product-purchase-path-audit.json；miniapp/reports/devtools/commerce-state-audit.json；miniapp/reports/devtools/checkout-delivery-state-audit.json；miniapp/reports/devtools/registration-policy-audit.json；miniapp/reports/button-visual/button-touch-targets-20260914-073503.json；docs/harness-engineering/core/evidence-index.md E-20260914-010
+limitations: 图标为内联 data URI，新增 `iconKey` 必须同时补 WXSS 修饰类，否则会被全页审计拦下；本轮未触碰商品、订单、支付、退款、闪送等后端逻辑；真机、真实微信支付/退款、真实闪送与生产验收仍未执行；闪送开放平台资料与测试权限、有赞分类-商品接口 IP 白名单仍为外部阻塞。
+
+## [2026-09-14] - fix(miniapp): 预约时间控件可识别性与登录引导文案收口
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260914-miniapp-time-picker-affordance-and-login-copy-r53
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 逐页目视评审 15 页与 8 个未登录态截图后，修复三处已确认的 UI/UX 缺陷：预约时间选择器缺少可点击指示且与只读预览同构、登录引导空态副文案重复标题、结算金额面板用“-¥0.00”表示零抵扣；同时修正一处登录引导文案过长导致换行的回归。
+implementation: 结算与群内登记页的日期/小时/分钟 picker face 增加 `time-picker__chevron` 下拉指示与 `time-picker__value` 省略处理，`.time-preview` 去掉背景与边框改为次要文字行；订单/订单详情/地址/优惠券/积分登录空态副文案改为补充登录后可获得的信息；`utils/money.ts` 新增 `formatDeductionFen()`（抵扣额 ≤0 输出“-”），结算页优惠券与余额抵扣统一接入；`check-miniapp.mjs` 新增 `checkTimePickerAffordance()`、`checkDeductionPlaceholder()`、`checkLoginStateHintCopy()`；`verify-devtools-checkout-delivery-states.cjs` 与 `verify-devtools-registration-policy.cjs` 新增下拉指示、预览背景与抵扣占位符运行态断言。
+verification: `npm run typecheck`、`check:miniapp`（15 页 / 15 路由）、`test:money` 3/3、`test:address` 2/2、`test:bakery` 9/9、`test:checkout-time` 5/5、`test:order-summary` 6/6 全部 PASS；`devtools:checkout-delivery-states` PASS（`timeChevrons` 3 个实测 6×6、`timePreviewBackground=rgba(0, 0, 0, 0)`、`estimateCouponFen=0` 时 `estimateCouponFenText="-"`、`balanceDeductText="-"`）；`devtools:registration-policy` PASS（`pickerFaces=3`、`chevrons=3`、`previewBackground` 透明）。
+full_regression: `devtools:verify-all-pages` PASS（15/15 页 + 8/8 未登录态；中间版本曾因地址登录引导文案 23 字换行报 FAIL，压缩到 17 字后复跑通过）、`devtools:verify-commerce-flows` PASS、`devtools:commerce-states` PASS、`devtools:product-purchase-path` PASS、`scan:button-touch-targets` PASS（13 页 47 选择器）。
+evidence: ERRORS.md M-20260914-017（guarded，时间选择器不可识别）、M-20260914-018（guarded，登录空态副文案重复标题）、M-20260914-019（guarded，“-¥0.00”零抵扣占位）、M-20260914-020（guarded，结构化补丁定位失败）；miniapp/reports/devtools/all-pages-devtools-audit.json；miniapp/reports/devtools/checkout-delivery-state-audit.json；miniapp/reports/devtools/registration-policy-audit.json；miniapp/reports/devtools/miniapp-commerce-flows.json；miniapp/reports/devtools/commerce-state-audit.json；miniapp/reports/devtools/product-purchase-path-audit.json；miniapp/reports/button-visual/button-touch-targets-20260914-062039.json；docs/harness-engineering/core/evidence-index.md E-20260914-009
+limitations: 登录引导副文案受单行宽度约束，后续加长会被全页审计拦下；历史行政区-only 地址仍保留原记录仅作提示；本轮未触碰商品、支付、退款与闪送逻辑；真机、真实微信支付/退款、真实闪送与生产验收仍未执行；闪送开放平台资料与测试权限、有赞分类-商品接口 IP 白名单仍为外部阻塞。
+
+## [2026-09-14] - fix(miniapp): 商品详情服务入口图标与收货地址可履约性收口
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260914-miniapp-service-entry-and-address-guard-r52
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 商品详情底部“询 / 购”单汉字占位入口替换为标准线性图标与无障碍标签；地址保存前后端同时增加最小可履约粒度校验，历史行政区-only 地址以可见提示暴露但不删除不改写；商品详情悬浮导航去掉背景色过渡，消除回顶时读到过渡中间值的误判。
+implementation: `pages/product-detail/index.wxml` 改用标准线性聊天/购物车图标并补 `aria-label`，`index.wxss` 与全局 TabBar 统一 19×19px 风格；新增 `utils/address.ts`（`isAddressDetailedEnough` / `getAddressDetailText`）定义最小粒度，`utils/address-book.ts` 保存前拦截，地址页对历史不完整地址标记 `needsDetailHint` 并提示“地址信息不完整，请编辑补充小区、楼栋或门牌号”，后端 `service/customer/address_support.py` 用同一口径拒绝行政区-only 地址；商品详情悬浮导航改为 `transition: box-shadow 0.18s ease`，背景色不再参与过渡。
+verification: 重启本地后端（`127.0.0.1:7001`，PID 8948，version `0.133.0-p2trial.3`）后实调地址接口：`北京市东城区` 返回 `400 {"detail":"请补充小区、楼栋或门牌号"}`，完整地址返回 `200` 且测试记录与临时 token 已清理；`npm run typecheck`、`npm run check:miniapp`（15 页 / 15 路由）、`npm run test:bakery`（9/9）、`npm run test:address`（2/2）通过；`pytest -q -o addopts="" tests/service/test_customer_address.py tests/api/test_miniapp_address_api.py tests/api/test_admin_address_api.py` 17/17 通过。
+full_regression: `npm run devtools:product-purchase-path` PASS（服务图标 2 个、无文字、19×19、footer gap 14.44px）；`npm run devtools:verify-all-pages` PASS（15/15 页 + 8/8 未登录态，悬浮栏双向断言通过：滚动态 `rgb(255,255,255)`、回顶 `rgba(0,0,0,0)`）；`npm run devtools:commerce-states` PASS；`npm run scan:button-touch-targets` PASS（13 页 47 选择器）。
+evidence: ERRORS.md M-20260914-015（guarded，单汉字冒充图标）、M-20260914-016（guarded，行政区-only 地址进入履约链路）；miniapp/reports/devtools/final-product-detail-footer.png；miniapp/reports/devtools/final-product-detail.png；miniapp/reports/devtools/evidence-address-completeness.png；miniapp/reports/button-visual/button-touch-targets-20260914-052019.json；docs/harness-engineering/core/evidence-index.md E-20260914-008
+limitations: 历史行政区-only 地址仍保留在原记录中（只提示不自动改写），需顾客或客服主动补全；地址最小粒度是启发式口径（长度与行政区后缀判断），未经微信地址解析或地图校验；闪送开放平台资料与测试权限、有赞分类-商品接口 IP 白名单仍为外部阻塞；真机、真实微信支付/退款、真实闪送与生产验收仍未执行。
+
+## [2026-09-14] - fix(miniapp): 非卖品占位价与库存口径修复
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260914-miniapp-display-only-price-truthfulness-r51
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 修复非卖品仍把有赞同步占位价与“库存充足”当真实售价展示的问题：价格统一收敛为“非卖品”，目录卡不再显示库存胶囊，详情页隐藏自提价与库存元信息，购物车推荐与详情搭配推荐位只承载可下单商品。
+implementation: `utils/bakery.ts` 新增 `getProductPriceText()`（非卖品输出“非卖品”、可售商品原样返回）；首页、商品目录、购物车推荐与详情页搭配推荐全部改走该口径；`pages/products/index.wxml` 非卖品隐藏库存胶囊并给价格加 `is-display-only` 样式，首页与购物车推荐价格同样加该类；`pages/product-detail/index.wxml` 的 `.detail-meta`（门店自提价 + 库存文案）改由 `!isDisplayOnly` 条件渲染；`pages/cart/index.ts` 推荐位过滤 `isPurchasable=false` 并取 12 条候选回填 4 条，`pages/product-detail/index.ts` 搭配推荐同样过滤非卖品（候选 8 条回填 4 条）；`scripts/check-miniapp.mjs` 的 `checkDisplayOnlyProductGuard()` 新增价格函数、三页价格样式类、目录库存胶囊、详情元信息与推荐位过滤断言；`scripts/verify-devtools-display-only-products.cjs` 新增目录卡价格渲染断言（“非卖品”与 ¥/“库存充足”互斥）、详情标题区文本断言与搭配推荐断言，并新增 `evidence-display-only-list-after.png` 证据。
+verification: 本地后端 `127.0.0.1:7001`（PID 21892，version `0.133.0-p2trial.3`）健康；`npm run typecheck`、`npm run test:bakery`（9/9）、`npm run check:miniapp`（15 页 15 路由）通过；`npm run devtools:display-only-products` PASS：4 张搜索结果卡 `priceText=非卖品`、`renderedWithFakePrice=[]`、详情页 `hasDetailMeta=false`、搭配推荐无“非卖品/¥99999”，截图 `evidence-display-only-list-after.png` 与 `display-only-product-detail.png` 目视确认无 ¥99999 与“库存充足”；接口复核 5 款展示型商品仍返回 `priceFen=9999900/160000/114000`、`stock=99999+`、`soldText=库存充足`，说明收敛发生在前端展示口径而非篡改同步数据。
+full_regression: 改动落在小程序展示口径与两处推荐位，不改后端接口、金额、履约或支付逻辑；运行态复跑 `devtools:verify-all-pages`（15/15 页 + 8/8 未登录态）、`devtools:product-search`（19 项）、`devtools:product-purchase-path`、`devtools:verify-commerce-flows`、`devtools:checkout-delivery-states`、`devtools:commerce-states`、`scan:button-touch-targets`（13 页 47 选择器）全部 PASS；按测试节奏约束未重复跑后端全量。
+evidence: ERRORS.md M-20260914-012（guarded，非卖品占位价与库存口径）、M-20260914-013（guarded，搜索空态文案轮询）、M-20260914-014（guarded，日志工具写入旧镜像）、M-20260913-137（延续 guarded）；miniapp/reports/devtools/display-only-products-audit.json；miniapp/reports/devtools/evidence-display-only-list-after.png；miniapp/reports/devtools/display-only-product-detail.png；miniapp/reports/devtools/product-search-audit.json；miniapp/reports/button-visual/button-touch-targets-20260914-043537.json；docs/harness-engineering/core/evidence-index.md E-20260914-007
+limitations: 展示型判定仍是商品标题关键词的保守口径（M-20260913-137），有赞侧正式“仅展示”分组待客服/店主确认；5 款非卖品的占位价格字段仍保留在同步数据里，只是不再展示，接入正式分组后需复核读模型；真机、真实微信支付/退款、真实闪送与生产验收仍未执行；闪送开放平台资料与测试权限、有赞分类-商品接口 IP 白名单仍为外部阻塞。
+
+## [2026-09-14] - fix(miniapp): 展示型商品只读收敛与运行态回归收口
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260914-miniapp-display-only-purchase-guard-r50
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 把 5 款标题自述“非卖品 / 勿拍 / 虚拟价格 / 仅供展示”的有赞同步商品收敛为只读展示条目：目录卡不再生成预订动作，详情页不再出现数量步进器、履约卡与购买按钮，并在后端下单链路二次拦截，避免只靠前端隐藏按钮。
+implementation: 新增 `backend/app/service/catalog/purchasability.py`（标题标记 `非卖品`、`勿拍`、`虚拟价格`、`仅供展示`）；`service/catalog/serialization.py` 商品读模型新增 `isPurchasable`；`repository/youzan_repo.py` 的 `get_prices_and_stocks()` 返回 `title`；`service/order/inventory.py` 在下单校验中逐单拦截并抛出 `商品仅供展示，不可下单: <productId>`；小程序 `types/catalog.ts` 新增可选字段，`utils/bakery.ts` 新增 `isProductPurchasable()` 并输出“仅供展示 / 查看 / 仅用于原料或产品展示，不参与下单”，home、products、cart、product-detail 四页阻断展示型商品进入快捷预订、推荐加购、加购与立即购买；`pages/product-detail/index.wxml` 新增只读说明卡并隐藏数量、履约卡与购买动作；`scripts/check-miniapp.mjs` 新增 `checkDisplayOnlyProductGuard()` 静态防线；新增运行态审计 `scripts/verify-devtools-display-only-products.cjs`（npm `devtools:display-only-products`）。
+verification: 本地后端重启后运行于 `127.0.0.1:7001`（PID 21892）；`GET /api/v1/miniapp/products` 翻页拉全 310 款，恰好 5 款 `isPurchasable=false`（4487996522、4589335101、5552189607、4589414115、5552190749），其余 305 款保持 `true`；用服务端签发的前台会话直连 `POST /api/v1/miniapp/orders`，5 款全部返回 `400 {"detail":"商品仅供展示，不可下单: <id>"}`；`npm run typecheck`、`npm run test:bakery`（9/9）、`npm run check:miniapp`（15 页 15 路由）、`npm run devtools:display-only-products` PASS（目录卡 `actionText=查看`、`badgeText=仅供展示`；详情页 `canPurchase=false` 且无步进器/履约卡/购买按钮；强制调用 `addToCart`/`buyNow` 后购物车仍为空；截图 `display-only-product-detail.png` 采集成功）；`python -B -m pytest -q -o addopts="" tests/service/test_catalog.py tests/service/test_order.py` 48/48 通过。
+full_regression: 后端改动落在商品读模型与下单校验，执行商品/订单定向回归；运行态以重启后的 7001 为基准复跑 `devtools:verify-all-pages`（15/15 页 + 8/8 未登录态）、`devtools:product-purchase-path`、`devtools:product-search`（19 项）、`devtools:verify-commerce-flows`、`devtools:checkout-delivery-states`、`scan:button-touch-targets`（13 页 47 选择器）全部 PASS。
+evidence: ERRORS.md M-20260913-137（guarded，读模型 + 下单拦截 + 运行态审计）；miniapp/reports/devtools/display-only-products-audit.json；miniapp/reports/devtools/display-only-product-detail.png；miniapp/reports/devtools/all-pages-devtools-audit.json；miniapp/reports/devtools/product-search-audit.json；miniapp/reports/devtools/product-purchase-path-audit.json；miniapp/reports/devtools/miniapp-commerce-flows.json；miniapp/reports/devtools/checkout-delivery-state-audit.json；miniapp/reports/button-visual/button-touch-targets-20260914-033503.json；docs/harness-engineering/core/evidence-index.md E-20260914-006
+limitations: 展示型判定当前来自商品标题关键词，是业务确认前的保守收敛，不等于有赞侧的正式“仅展示”分组；待客服/店主确认后应改为分组或标签口径。验证环境仍是 DevTools 模拟器与本地后端，真机、真实微信支付/退款、真实闪送与生产验收未执行。
+
+## [2026-09-14] - fix(miniapp): 购物车减号语义、结算底栏金额来源与全页视觉取证收口
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260914-miniapp-visual-evidence-and-cart-stepper-r49
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 修复购物车数量为 1 时减号被渲染成“✕”的语义混淆；给结算固定栏补“估算金额是否含闪送费”的次要说明；把全页审计的商品页与商品详情页从搜索残留态、空态改为默认目录态与真实商品取证，并给审计加后端健康前置门禁。
+implementation: `pages/cart/index.wxml` 减量控件固定渲染 `-`，移除语义仍由数量为 1 的确认弹窗承担；`pages/checkout/index.ts` 新增 `buildFooterAmountNote()`，按自提/已报价/报价中/未报价四种状态输出 `自提价 · 免运费`、`已含闪送费 ¥26.00`、`闪送费确认中，暂未计入`、`闪送费未计入，提交前确认`，并在 `refreshEstimate()` 同步刷新，`index.wxml`/`index.wxss` 新增 `checkout-footer__note` 次要明细行；`scripts/check-miniapp.mjs` 新增 `checkCartDecreaseButtonSemantics()` 与 `checkCheckoutFooterAmountSource()` 静态守卫；`scripts/verify-devtools-product-purchase-path.cjs` 新增数量为 1 时减号文案与 44px 触控断言；`scripts/verify-devtools-checkout-delivery-states.cjs` 新增四种闪送状态与自提态的底栏说明断言；`scripts/verify-all-15-pages-devtools.cjs` 新增 `preparePageState()`（商品页清搜索残留、断言空搜索词与非空商品列表、复原到顶部，商品详情页带真实在售商品 ID 并等待商品渲染）、`waitForDetailNavBackground()`（按 alpha 轮询到稳定值）与 `probeBackendHealth()` 前置门禁。
+verification: 本地后端 `127.0.0.1:7001`（version `0.133.0-p2trial.3`）健康；`npm run typecheck`、`npm run check:miniapp`（15 页 15 路由）通过；`devtools:verify-all-pages` 15/15 页 + 8/8 未登录态 PASS，报告记录商品页 `searchText=""`、`productCount=12`、`catalogTotal=310`，详情页 `productId=3610295088`、`canPurchase=true`，悬浮栏 `scrolledBackground=rgba(255,255,255,0.984)` 且 `errors=[]`；`devtools:product-purchase-path` PASS，新增 `cart-stepper-minus-at-one` 记录 `quantity=1`、`text="-"`、`size=45x45`；`devtools:checkout-delivery-states` PASS，底栏实测 `已含闪送费 ¥26.00` 与自提 `自提价 · 免运费`；`devtools:verify-commerce-flows` PASS；`scan:button-touch-targets` PASS（13 页 46 选择器）；前置门禁反向验证：`MINIAPP_API_BASE=http://127.0.0.1:7999` 时脚本 `EXIT=2` 且保留上一份 PASS 报告。
+full_regression: 本轮只改小程序购物车、结算展示与 DevTools 审计脚本，不改后端接口、金额计算、报价绑定或支付逻辑；按测试节奏约束执行受影响页面的定向运行态审计与前端静态门禁，未重复跑后端全量。
+evidence: ERRORS.md M-20260914-005（购物车减号语义）、M-20260914-006（视觉证据默认态与真实商品取证）、M-20260914-007（过渡中间值假失败）、M-20260914-008（审计前置门禁）；miniapp/reports/devtools/all-pages-devtools-audit.json；miniapp/reports/devtools/product-purchase-path-audit.json；miniapp/reports/devtools/checkout-delivery-state-audit.json；miniapp/reports/devtools/miniapp-commerce-flows.json；miniapp/reports/button-visual/button-touch-targets-20260914-021520.json；docs/harness-engineering/core/evidence-index.md E-20260914-005
+limitations: 验证环境仍是 DevTools 模拟器与本地后端，真机、真实微信支付/退款、真实闪送与生产验收未执行；有赞分类接口因 IP 白名单返回空数组，分类导航当前降级为单一“全部商品”分区（M-20260913-115）；商品详情取证样本取当前销量排序第一个在售商品，后续如接入更多品类可再固定一个蛋糕类样本。
+
+## [2026-09-14] - refactor(miniapp): 商品目录改为服务端分页搜索
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260914-miniapp-products-server-pagination-r48
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 把商品目录从“进页先拉全量目录再本地过滤”改为后端分页：首屏 12 条、搜索结果每页 30 条、分类切换与触底加载全部以服务端 `meta` 为准，并保留滚动锚点复位与请求竞态保护。
+implementation: `services/products.ts` 新增 `fetchProductListing()`（解析 `meta.total/limit/offset/hasMore`）并把 `offset`、`keyword` 纳入商品列表缓存键；`pages/products/index.ts` 重写为服务端分页实现，删除 `FULL_CATALOG_LIMIT` 全量缓存与本地 `slice` 渲染，搜索输入加 300ms 防抖并用请求序号丢弃过期响应，触底加载用 `meta.offset + meta.limit` 续页，分类只保留元数据并在切换时重新拉页；`index.wxml`/`index.wxss` 增加搜索中、搜索失败与分类加载骨架态；`miniapp/docs/api-contract.md` 补齐 `keyword`、`limit<=100`、`offset` 与 `meta` 契约。
+verification: 本地后端 `127.0.0.1:7001`（PID 14876，version `0.133.0-p2trial.3`）健康；`npm run typecheck`、`npm run check:miniapp`（15 页 15 路由）、`npm run check:page-api-coverage` 通过；DevTools 真实接口冒烟 4/4 PASS；`devtools:product-search` 19 项 PASS（首屏 12/310 与服务端一致；“蛋糕”命中 310 款时首屏只渲染 30 张并按服务端顺序翻页至尾部；分类切换与关键词切换后 scrollTop 由 900 复位；夹具分类用完切回原分类并恢复 12 款）；`devtools:verify-commerce-flows`、`devtools:product-purchase-path`、`devtools:verify-all-pages`（15/15 页 + 8/8 未登录态）、`scan:button-touch-targets`（13 页 46 选择器）均 PASS。
+full_regression: 本轮只改小程序商品目录取数与渲染，未改后端、金额、履约或支付逻辑；按测试节奏约束执行商品相关定向测试与既有运行态审计，未重复跑后端全量。
+evidence: ERRORS.md M-20260914-003（guarded，补前端端到端复核）、M-20260914-004（guarded，静态检查器 Page 正则）；miniapp/reports/devtools/product-search-audit.json；miniapp/reports/devtools/miniapp-commerce-flows.json；miniapp/reports/devtools/product-purchase-path-audit.json；miniapp/reports/devtools/all-pages-devtools-audit.json；docs/harness-engineering/core/evidence-index.md E-20260914-004
+limitations: 有赞分类接口仍因 IP 白名单返回空数组，分类导航当前降级为单一“全部商品”分区（M-20260913-115）；验证环境仍是 DevTools 模拟器与本地后端，真机、真实微信支付/退款、真实闪送与生产验收未执行。
+
+## [2026-09-14] - test(miniapp): 结算自提态审计夹具与本地运行态复测
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260914-miniapp-checkout-pickup-audit-r47
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 修正结算审计自提状态注入复用配送地址、历史预约时间和配送报价的问题，并在本地后端与 DevTools 运行态复核购买前状态。
+implementation: `verify-devtools-checkout-delivery-states.cjs` 的 `applyState()` 改为按北京时间生成明天 15:00，注入后依次调用 `syncExpectTimeSchedule()`、`refreshEstimate()` 和 `refreshSubmitState()`；配送态才写入配送地址和地址摘要，自提态显式清空地址并注入 `not_applicable`、`免运费`、`¥198.00`；新增预约预览与选择器一致、自提备注为空、自提免运费和实付估算不含配送费四项断言；自提截图改用 `final-checkout-pickup-state.png`，旧 `final-checkout-pickup-address.png` 不再被新报告引用。
+verification-extra: `MINIAPP_REAL_API_BASE_URL=http://127.0.0.1:7001 npm run devtools:service-smoke` 再次 4/4 PASS（报告 `devtools-service-smoke-20260913-171230.json`）；未覆盖本地地址时按设计检测到生产域名证书过期并退出，不是服务未启动；`npm run check:local-miniapp-products` 仍因有赞分类映射为空导致分类检查失败（其余 5 项通过，M-20260913-115）；全页断言报告 `all-pages-devtools-audit.json` 为 15/15 页面、8/8 未登录态通过，截图仍因锁屏记为 BLOCKED。
+verification: 本地后端已在 `127.0.0.1:7001` 健康运行（PID 32728，version `0.133.0-p2trial.3`）；后端定向 `pytest` 65/65 通过；`node --check scripts/verify-devtools-checkout-delivery-states.cjs`、`npm run check:miniapp`、`npm run typecheck` 通过；DevTools 真实接口冒烟 `4/4` PASS，`devtools:same-day-scheduling` PASS；`devtools:checkout-delivery-states` 页面断言 `errors=[]`，自提态实测 `expectTime=2026-09-15 15:00`、`pickerExpectTime=2026-09-15 15:00`、`deliveryAddress=""`、`deliveryFeeText=免运费`、`estimateRemainFenText=¥198.00`；`devtools:verify-all-pages` 15/15 页与 8/8 未登录态断言 PASS。Windows 锁屏使结算 7 张截图和全页截图均 3 次重试失败，状态按环境阻塞（BLOCKED）记录，未伪报视觉 PASS。
+full_regression: 本轮只改结算 DevTools 审计夹具与治理记录，不改小程序业务代码、后端接口、金额或履约逻辑；按测试节奏约束执行后端 65 项定向回归和前端运行态定向审计，未重复跑后端全量。
+evidence: ERRORS.md M-20260914-002（guarded）；miniapp/reports/devtools/checkout-delivery-state-audit.json；miniapp/reports/devtools/same-day-scheduling-audit.json；miniapp/reports/devtools/all-pages-devtools-audit.json；miniapp/reports/button-runtime/devtools-service-smoke-20260913-170150.json；docs/harness-engineering/core/evidence-index.md E-20260914-003
+limitations: 本轮截图为 DevTools 模拟器环境阻塞，缺少解锁后的自提态与全页面视觉帧；真实微信支付/退款、真实闪送、真机与生产验收仍未执行。有赞 IP 白名单、5 款非卖品商品履约口径和闪送开放平台资料仍是外部阻塞。
+
+## [2026-09-14] - fix(order,group): 群内登记复用预约履约校验
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260914-miniapp-registration-server-schedule-r46
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 补齐群内登记的服务端履约兜底：`desiredTime` 必填，并与订单预约共用北京时间、当天 17:00 截单和营业时段校验，避免跳过或伪造页面后写入违规登记。
+implementation: `OrderScheduleService` 开放 `validate_expect_time()`，并把纯校验逻辑收敛为 `validate_expect_time_value()`；`CustomerGroupOperationsService` 构造时注入共享 service，在登记入库前校验 `desiredTime`；`OrderApplicationService` 支持可选注入且保持原默认行为；`lifespan_services.py` 提前创建 `ShopConfigurationService`/`OrderScheduleService`，向订单与客户群登记提供同一实例；`miniapp/docs/api-contract.md` 明确必填、北京时间、营业时段和 17:00 截单规则。
+verification: 后端最新代码在 `127.0.0.1:7001` 重启并以 PID 32728 运行，`/health` 返回 `status=ok`、version `0.133.0-p2trial.3`，日志保留在 `backend/reports/local-runtime/`；定向 `pytest` 65/65 通过（客户群服务/API、lifespan 服务装配、订单服务域、小程序订单 API），相关 7 个 Python 文件 `ruff check` 通过；DevTools 真实链路 `wx.login` 与订单/地址/聊天受保护接口 4/4 PASS，`devtools:same-day-scheduling` PASS；`devtools:registration-policy` 的 11 项页面断言全部通过，但 Windows 锁屏使 7 张截图连续 3 次采集失败，整轮按环境阻塞（BLOCKED）记录，未伪报 PASS。
+full_regression: 本轮改动涉及订单与客户群预约校验的共享服务装配，执行客户群、订单和 lifespan 相关定向回归；按测试节奏约束未跑后端全量。前端页面未改动，沿用同轮 DevTools 页面断言与既有视觉帧；解锁后仍需补一次 registration-policy 截图证据。
+evidence: ERRORS.md M-20260914-001（guarded，补服务端校验）；miniapp/reports/button-runtime/devtools-service-smoke-20260913-164742.json；miniapp/reports/devtools/same-day-scheduling-audit.json；miniapp/reports/devtools/registration-policy-audit.json；docs/harness-engineering/core/evidence-index.md E-20260914-002
+limitations: 本轮运行态是本地 uvicorn 与 DevTools 模拟器，不是生产验收；真实微信支付/退款、真实闪送开放平台、真机与生产环境仍未验证。有赞分类-商品关联仍受 IP 白名单外部阻塞（M-20260913-115、M-20260913-148）；5 款“非卖品仅展示/勿拍”商品仍可预订（M-20260913-137，待业务确认）。
+
+## [2026-09-14] - fix(miniapp): 群内登记时间基线按当前北京时间重建
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260914-miniapp-registration-schedule-baseline-r45
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 修复群内登记页把日期起点、可选时段与当天标记固化在模块加载时刻的问题，保证跨过 17:00 截单点或零点后重新进入页面拿到当前北京时间基线。
+implementation: `pages/group-registration/index.ts` 新增 `REGISTRATION_BUSINESS_HOURS` 与 `buildRegistrationSchedule(expectTime?, now)`，用 `resolveCheckoutSchedule()` 统一产出 `dateStartValue/dateEndValue/selectedDateValue/hourOptions/selectedHourIndex/selectedMinuteIndex/desiredTime/isSameDayRegistration`；`data` 初始化改为展开该构造结果，`onLoad` 与新增的 `onShow` 都按当前北京时间重建，过期选择会被抬到最早可预约时间。`check-miniapp.mjs` 新增 `checkRegistrationScheduleRefresh()`，并扩展 `extractPageDataKeys()` 用于解析 `...buildXxx()` 展开的字段（仍从同文件函数返回值取值，不降低 WXML 引用守卫强度）。`verify-devtools-same-day-scheduling.cjs` 新增“当天标记=所选日期是否为今天”“日期落在可选区间”“注入过期状态后 onShow 必须重建基线”三项断言。
+verification: 修复前运行态实测 `isSameDayRegistration=false`、当天提示不显示；修复后 `devtools:same-day-scheduling` PASS（`promptVisible=true`、`sameDayFlagMatchesSelection=true`、`dateWithinRange=true`、`stale-state-repair` 后 `dateStartValue=2026-09-14`、`hourOptions=09..19`）；`devtools:verify-all-pages` 15/15 页 + 8/8 未登录态 PASS，`devtools:registration-policy`、`devtools:product-search`（18 项）、`devtools:commerce-states`、`devtools:checkout-delivery-states`、`devtools:cart-long-title`、`devtools:product-purchase-path`、`scan:button-touch-targets`（46 选择器 / 13 页）、`audit:button-styles`（119 控件 / 0 失败 0 警告）PASS；`check:miniapp`、`typecheck` PASS；将 `onShow` 临时改名可复现静态守卫失败。
+full_regression: 本轮只改群内登记页时间基线、静态守卫与 DevTools 审计脚本，不改后端接口、金额或履约逻辑；按测试节奏约束执行运行态定向审计与前端静态门禁，未重复跑后端全量。
+evidence: ERRORS.md M-20260914-001（guarded）；miniapp/reports/devtools/same-day-scheduling-audit.json；miniapp/reports/devtools/all-pages-devtools-audit.json；miniapp/reports/devtools/final-group-registration.png；docs/harness-engineering/core/evidence-index.md E-20260914-001
+limitations: 结算页在“页面持续可见并跨过 17:00”这一窄窗口内不会自动重建选择器，但后端 `backend/app/service/order/schedule.py` 会以“当天订单已于 17:00 截止”拒绝超时提交，不会产生违规订单；群内登记后端 `backend/app/service/customer/group_operations.py` 目前只按字符串保存 `desiredTime`、无截单校验，已在 M-20260914-001 记录为后续服务端补强项。有赞分类-商品关联仍待应用中心配置 IP 白名单（M-20260913-115、M-20260913-148）；真机、真实支付/退款、真实闪送与生产验收仍未执行。
+update_r46: 上述群内登记后端缺截单校验的边界已由 `20260914-miniapp-registration-server-schedule-r46` 修复；群内登记现复用订单同一套 `OrderScheduleService`，缺少时间、17:00 后当天登记和营业时段外均被服务端拒绝。
+
+## [2026-09-13] - fix(youzan): 网关拒绝不再按空数据同步并保护商品目录
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260913-youzan-gateway-error-guard-r44
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 修复有赞网关 4007（调用方 IP 未加白名单）被客户端当成空数据的问题，避免异常空结果把商品目录整批下架，并给出小程序分类导航缺失的根因证据。
+implementation: `backend/app/service/youzan/client.py` 新增 `extract_gateway_error()`/`build_gateway_error_message()`/`_ensure_gateway_success()`，在在售列表、商品分组、ITEM_INFO、商品分类四个同步入口显式抛出脱敏 `APIError`（保留 `err_code`/`trace_id`，4007 追加 IP 白名单提示）；`_call()` 返回合同保持不变，已自行识别 `gw_err_resp` 的单品查询与商品事件不受影响。`backend/app/service/youzan/product_reconciler.py` 新增空在售集合保护与 `_build_empty_onsale_summary()`，命中时回报 `onsale_empty_guard` 且不改动任何商品。
+verification: 真实有赞调用实测 `gw_err_resp.err_code=4007`（源 IP 111.199.244.119 未加白名单）；后端定向 `pytest tests/service/youzan` 70/70 通过（新增 `test_client_gateway_errors.py` 7 项与空值保护用例）；`ruff check` 通过；数据库副本端到端跑 `ProductReconcileService.run()` 抛出 `APIError` 且在售商品 before=after=310；本地后端重启后 `/health` ok、`/api/v1/miniapp/products?limit=2&sort=popular` 正常返回。
+full_regression: 本轮未跑后端全量；只改有赞同步入口错误语义与对账下架保护，按测试节奏约束执行 youzan 服务域定向用例；前端代码未改动，沿用同轮 `devtools:verify-all-pages` 15/15 PASS 结论。
+evidence: ERRORS.md M-20260913-148（guarded）、M-20260913-115（补网关根因回链）；docs/harness-engineering/core/evidence-index.md E-20260913-020
+limitations: 有赞侧 IP 白名单属商家配置，未完成前分类-商品关联、商品分组名与商品刷新仍不可用，`/api/v1/miniapp/product-categories` 继续返回空数组、商品目录保持单分区；尚未取得白名单配置后的成功同步证据。本轮复跑 `npm run check:local-miniapp-products` 时“local product categories”因分类接口返回空数组判负（其余 5 项通过），属 M-20260913-115 既有失败，不是本轮回归。
+
+## [2026-09-13] - fix(miniapp): 搜索与分类切换后的滚动偏移复位
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260913-miniapp-products-scroll-reset-r43.5
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 修复商品页在搜索关键词收窄与商品分类切换后保留旧滚动偏移的问题，保证筛选后的结果从顶部开始展示。
+implementation: `pages/products/index.ts` 新增 `searchScrollAnchor`/`catalogScrollAnchor` 数据字段、`CATALOG_SCROLL_ANCHOR`/`SEARCH_SCROLL_ANCHOR` 常量与两个 reset helper；`applySearch()` 与 `applyActiveCategory()` 在数据更新后复位对应滚动位置；`index.wxml` 为搜索面板与分类内容两个 `scroll-view` 增加 `scroll-into-view`、`scroll-with-animation="{{false}}"` 和零高度顶部锚点；`index.wxss` 新增 `.products-scroll-anchor`；`check-miniapp.mjs` 新增静态守卫；`verify-devtools-product-search.cjs` 新增两项运行态断言，并把输入/点击注入失败时的回退路径与真实路径分开记录（M-20260913-147）。
+verification: 本地后端 `127.0.0.1:7001/health` ok、DevTools 9420 单实例。`devtools:product-search` PASS（18 项检查）：搜索“蛋糕”滚动到 `scrollTop=900` 后收窄为长尾关键词，`scrollTopAfter=0`、`searchScrollAnchor` 复位；分类滚动到 `scrollTop=900` 后切换分类（当前环境分类接口为空，注入同数据夹具验证），`scrollTopAfter=8`、`catalogScrollAnchor=products-catalog-top`，未保留旧偏移。`check:miniapp`、`typecheck` 通过；`devtools:verify-all-pages` 待本轮复跑结果补充。
+full_regression: 本轮只改商品页滚动复位、静态守卫与 DevTools 审计脚本，不改后端接口、金额或履约逻辑；按测试节奏约束执行运行态定向审计与前端静态门禁，未重复跑后端全量。
+evidence: ERRORS.md M-20260913-146（滚动偏移未复位）、M-20260913-147（DevTools 事件层未送达）；miniapp/reports/devtools/product-search-audit.json；docs/harness-engineering/core/evidence-index.md E-20260913-019
+limitations: 当前后端分类接口返回空数组、全部商品 categoryId 为“蛋糕”，分类切换断言使用同数据夹具；真实多分类分区下的滚动复位仍待分类数据可用后复测。截图为 DevTools 模拟器（iPhone 12/13、SDK 3.15.2、390px），未在真机与小屏复测；真实支付/退款、真实闪送与生产验收仍未执行。
+
+## [2026-09-13] - feat(miniapp): 商品目录触底加载与搜索首屏限量
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260913-miniapp-catalog-incremental-render-r43.4
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 落实 M-20260913-141 第一阶段：目录浏览从“每批 12 款手动查看更多”改为触底增量加载，搜索结果首屏限量渲染，并把命中总数与已展示数分开展示。
+implementation: `pages/products/index.ts` 新增 `SEARCH_RENDER_PAGE_SIZE=30`、`getEmptySearchState()`、`loadMoreSearchResults()`，`applySearch()` 只写入前 30 款并记录 `searchMatchCount/searchRenderedCount/searchHasMore`；`index.wxml` 给搜索面板与分类内容两个 `scroll-view` 加 `bindscrolltolower`（`loadMoreSearchResults` / `loadMoreProducts`），搜索面板新增“查看更多搜索结果”兜底与“已展示 M 款 · 按销量排序”文案；`check-miniapp.mjs` 新增 `checkCatalogIncrementalLoading()`；`verify-devtools-product-search.cjs` 新增 4 项运行态断言并输出 `final-product-search-bounded-render.png`。
+verification: 本地后端 `127.0.0.1:7001/health` ok、DevTools 9420 单实例。`devtools:product-search` PASS（16 项检查）：搜索“蛋糕”命中 310 款 → 首屏 DOM 30 张、“共找到 310 款商品 / 已展示 30 款 · 按销量排序”，连续 10 次增量后 310/310 渲染、`searchHasMore=false`、首条排序基准不变；目录触底 12→24/310。`devtools:verify-all-pages` PASS（15/15 页、8/8 未登录态、23 张截图）；`check:miniapp`、`typecheck`、`test:bakery` 8/8、`check:page-api-coverage`（15 页 / 34 API 术语 / 9 边界）、`scan:button-touch-targets`（46 选择器 / 13 页）、`audit:buttons`（119 控件）、`audit:button-styles`（0 失败 0 警告）PASS。
+full_regression: 本轮只改商品页展示、静态守卫与 DevTools 审计脚本，不改后端接口、金额或履约逻辑；按测试节奏约束执行运行态定向审计与前端静态门禁，未重复跑后端全量。
+evidence: ERRORS.md M-20260913-141（open→guarded）；miniapp/reports/devtools/product-search-audit.json；miniapp/reports/devtools/final-product-search-bounded-render.png；miniapp/reports/devtools/all-pages-devtools-audit.json；docs/harness-engineering/core/evidence-index.md E-20260913-018
+limitations: 仍是客户端全量拉取（limit=500）后本地过滤与限量渲染，首包体积与冷启动成本未优化，服务端分页/搜索待上线前另立契约；截图为 DevTools 模拟器（iPhone 12/13、SDK 3.15.2、390px），未在真机与小屏复测；真实支付/退款、真实闪送与生产验收仍未执行。
+
+## [2026-09-13] - fix(miniapp): DevTools 截图证据解锁复跑与截图重试护栏
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260913-miniapp-devtools-visual-evidence-r43.3
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 桌面恢复可截图后补齐 r43.2 的视觉证据；修正“用进程名预判锁屏”的误判，并给截图采集加重试，让环境抖动不再吞掉整轮证据。
+implementation: `verify-all-15-pages-devtools.cjs` 删除 `isDesktopLocked()` 全局预判，改为逐页真实截图，失败时只记 `screenshotSkipped`/`screenshotError`；`miniapp/scripts/lib/devtools-audit-status.cjs` 新增 `captureScreenshotWithRetry()`（默认 3 次、间隔 700ms，可用 `MINIAPP_SCREENSHOT_ATTEMPTS`、`MINIAPP_SCREENSHOT_RETRY_DELAY_MS` 覆盖）并记录 `attempts`，`verify-all-15-pages-devtools.cjs`、`verify-devtools-product-search.cjs` 改用该实现；阻塞文案从“桌面锁屏”改为“环境或自动化波动”。
+verification: 本地后端 `127.0.0.1:7001/health` = ok（PID 27516，版本 0.133.0-p2trial.3）；DevTools 单实例 9420；`devtools:verify-all-pages` PASS（15/15 页、8/8 未登录态、23 张截图齐全、`blockedReason` 为空）；`devtools:commerce-states`、`cart-long-title`（复跑 5/5）、`checkout-delivery-states`、`product-purchase-path`、`registration-policy`、`verify-commerce-flows`、`walkthrough:phase-c`（0 失败 / 0 控制台错误）、`devtools:product-search`（12/12）均 PASS；`check:miniapp`、`typecheck`、`scan:button-touch-targets`（46 选择器 / 13 页）PASS。
+full_regression: 本轮只改 DevTools 审计脚本与共享证据状态模块，不改小程序页面、后端或业务数据；按测试节奏约束执行运行态定向审计与前端静态门禁，未重复跑后端全量。
+evidence: ERRORS.md M-20260913-143、M-20260913-144、M-20260913-145；miniapp/reports/devtools/all-pages-devtools-audit.json；miniapp/reports/devtools/product-search-audit.json；miniapp/scripts/lib/devtools-audit-status.cjs；docs/harness-engineering/core/evidence-index.md E-20260913-017
+limitations: 截图为 DevTools iPhone 12/13 模拟器（SDK 3.15.2、390px）帧，未在真机与小屏机型复测；商品目录触底加载与搜索首屏限量方案（M-20260913-141）仍待方案确认后实施；真实微信支付/退款、真实闪送与生产验收仍未执行。
+
+## [2026-09-13] - fix(miniapp): DevTools 审计截图证据统一阻塞口径
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260913-miniapp-devtools-audit-status-guard-r43.2
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 锁屏环境下继续逐页 UI/UX 运行态审计；把多个脚本重复出现的“截图失败即整轮失败”统一为环境阻塞（BLOCKED），保证页面断言始终执行并写入报告。
+implementation: 新增 `miniapp/scripts/lib/devtools-audit-status.cjs`，提供截图证据捕获、状态汇总与退出码守卫；`verify-devtools-commerce-states.cjs`、`verify-devtools-cart-long-title.cjs`、`verify-devtools-checkout-delivery-states.cjs`、`verify-devtools-product-purchase-path.cjs`、`verify-devtools-registration-policy.cjs`、`verify-miniapp-commerce-flows.cjs`、`walkthrough-phase-c.mjs` 全部改为截图失败只记环境阻塞（BLOCKED），不再中断页面断言；状态统一为通过（PASS）退出 0 / 断言失败（FAIL）退出 1 / 环境阻塞（BLOCKED）退出 2。
+verification: 锁屏下串行复核：`commerce-states` 11 检查 0 错误、`cart-long-title` 5 检查、`checkout-delivery-states` 10 检查 0 错误、`product-purchase-path` 7 检查 0 错误、`registration-policy` 11 检查 0 错误、`commerce-flows` 12 检查 0 错误，均为环境阻塞（BLOCKED）退出码 2；`walkthrough:phase-c` 15/15 页导航成功、控制台 0 warning / 0 error、15 张截图阻塞、退出码 2；补充专项 `same-day-scheduling` PASS、触控扫描 46 选择器 / 13 页 PASS、按钮审计 118 控件 PASS、按钮样式 118 控件 0 失败 0 警告、页面 API 覆盖 15 页 / 34 API 术语 / 9 边界 PASS；页面断言未发现产品缺陷。
+full_regression: 本轮只改 DevTools 审计脚本与共享证据状态模块，不改小程序页面、后端或业务数据；按测试节奏约束执行运行态定向审计与前端静态门禁，未重复跑后端全量。
+evidence: ERRORS.md M-20260913-142；miniapp/reports/devtools/commerce-state-audit.json；cart-long-title-audit.json；checkout-delivery-state-audit.json；product-purchase-path-audit.json；registration-policy-audit.json；miniapp-commerce-flows.json；walkthrough-phase-c.json；docs/harness-engineering/core/evidence-index.md E-20260913-017
+limitations: 当前桌面仍锁屏，所有截图证据仍不可用；解锁后必须重跑本轮审计以补齐截图，不能把 BLOCKED 当成视觉验收完成。
+
+## [2026-09-13] - fix(miniapp): 商品搜索审计证据状态口径修正
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260913-miniapp-product-search-and-catalog-integrity-r43.1
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 复核 r43 商品搜索审计在锁屏环境下的汇总口径：页面断言通过但截图为旧帧或采集失败时，不得输出 PASS 绿灯。
+implementation: `verify-devtools-product-search.cjs` 新增 `screenshotBlocked` 与 `blockedReason`，汇总状态改为 `PASS/FAIL/BLOCKED` 三态，退出码保持与 15 页审计一致（0/1/2）；截图失败不再让整轮搜索断言判成产品缺陷，但也不再伪装成 PASS。
+verification: 当前 Windows 会话锁屏，`LockApp` 在线，DevTools 截图接口返回 `fail to capture screenshot`；重跑 `npm run devtools:product-search --prefix miniapp` 得 12 项页面断言全部通过、`status=BLOCKED`、`EXIT=2`；`node --check`、`check:miniapp`、`typecheck` 均 PASS；`devtools:verify-all-pages` 15/15 页面断言 PASS、整轮 `BLOCKED`（截图不可用）。只读运行态复测记录 M-20260913-141：目录 310 款首屏 12 款、需点“查看更多”25 次；“蛋糕”命中 310 款并一次渲染 310 张卡、内容高度 36281px。
+full_regression: 本轮仅修正 DevTools 审计脚本的证据状态口径，不改小程序或后端行为；按测试节奏约束执行前端静态门禁、类型检查与运行态定向审计，未重复跑后端全量。
+evidence: ERRORS.md M-20260913-140、M-20260913-141；miniapp/reports/devtools/product-search-audit.json；miniapp/reports/devtools/all-pages-devtools-audit.json；docs/harness-engineering/core/evidence-index.md E-20260913-016
+limitations: 桌面锁屏期间仍无法补充当前代码截图；现有 `final-product-search-results.png` 为修复前旧帧，解锁后必须重跑搜索审计与 15 页审计补齐视觉证据。
+
+## [2026-09-13] - fix(miniapp): 结算调度审计与群内登记成功态收口
+## [2026-09-13] - fix(miniapp): 商品目录搜索与长尾查找收口
+
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260913-miniapp-product-search-and-catalog-integrity-r43
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 在本地后端健康运行下复核商品目录搜索：确认搜索是否覆盖全量目录而不是只搜首屏、搜索栏输入前后是否稳定、清空/无结果空态/搜索结果快捷预订与进详情是否闭环，并同步审查锁屏环境下的截图证据分类。
+implementation: 商品页搜索栏与输入框统一为 `88rpx`，清空按钮保留 88rpx 触控盒并用 `border: 18rpx solid transparent` + `background-clip: padding-box` 把可视圆点收进 52rpx；删除残留的第二个清空按钮节点；搜索无结果空态改为“换个关键词试试，或先看看全部商品”并新增“查看全部商品”一键出口，搜索结果补充“共找到 N 款商品 / 按销量排序”计数行。新增 `miniapp/scripts/verify-devtools-product-search.cjs`（注册为 `devtools:product-search`），并用 `check-miniapp`/`typecheck` 保持静态门禁；`verify-all-15-pages-devtools.cjs` 新增锁屏探测、截图跳过与 `PASS/FAIL/BLOCKED` 三态区分。
+verification: 本地 `127.0.0.1:7001/health` 返回 `status=ok`（进程 30316）、全量商品接口返回 310 条；`devtools:product-search` PASS（页面目录=接口目录 310 款且顺序一致；“曲奇”命中 3 条、全部在首屏 12 款之外；`search-bar-idle-geometry.barSize.height=45` 与 `search-bar-typed-geometry.barSize.height=45`、`clearCount=0→1`、`clearSize=45x45`；无结果空态 `hasAction=true`；快捷预订写入 `手工黄油曲奇` 并出现预订底栏；结果进详情 `lastProductId=3727887885`）；`scan:button-touch-targets` PASS（46 选择器 / 13 页）；`devtools:verify-all-pages` 15/15 页面断言 PASS（status=BLOCKED，桌面锁屏导致截图不可用）；`check:miniapp`、`typecheck` PASS。
+full_regression: 本轮只改小程序商品目录展示层与 DevTools 审计脚本，未触发后端代码变更；按测试节奏约束执行前端静态门禁、类型检查与运行态定向审计，未重复跑后端全量。审计前置为本轮实测：本地 uvicorn 7001 健康、DevTools 单实例 9420；运行期间桌面处于锁屏，截图类证据按环境阻塞单列。
+evidence: ERRORS.md M-20260913-134～M-20260913-139；miniapp/reports/devtools/product-search-audit.json；miniapp/reports/devtools/final-product-search-results.png；miniapp/reports/devtools/all-pages-devtools-audit.json；miniapp/reports/button-visual/button-touch-targets-latest.json；docs/harness-engineering/core/evidence-index.md E-20260913-016
+limitations: 搜索仍是本地全量（`limit=500`）过滤，尚未做服务端分页搜索；运行态仍来自本地开发服务（127.0.0.1:7001）与 DevTools 模拟器（iPhone 12/13、SDK 3.15.2、390px 视口），未在小屏机型与真机复测；桌面锁屏使本轮未能生成新截图（现有 `final-product-search-results.png` 为修复前旧帧），解锁后需重跑 `devtools:product-search` 补齐；目录 5 款“非卖品仅展示/勿拍”商品仍可预订（M-20260913-137，open，待业务确认）；有赞分类-商品关联缺口 M-20260913-115 仍为 open；真实微信支付/退款、真实闪送开放平台与生产验收仍未执行。
+
+
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260913-miniapp-schedule-audit-and-registration-success-r42
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 在本地后端健康运行前提下继续 r42 逐页截图复核。结算页截图出现日期/小时控件与“期望时间”预览不一致；群内登记成功态截图同时出现上一轮错误 Toast 和“未登录”身份，且成功结果面板本身信息层级偏弱。
+implementation: `verify-miniapp-commerce-flows.cjs` 删除直接注入 `expectTime` 的旁路，统一调用页面 `syncExpectTimeSchedule()`，新增 `checkout-schedule-consistency` 同时校验提交值、日期、小时、分钟与预览；`verify-devtools-registration-policy.cjs` 在成功态截图前清除旧 Toast，分别注入完整匿名/登录 `sessionView`，并新增成功标题、说明、四行摘要、身份与按钮尺寸断言。群内登记成功面板改为确认图标、说明、四行摘要和等宽双操作按钮，保留原有业务文案与提交行为。
+verification: 本地 `127.0.0.1:7001/health` 返回 `status=ok`（进程 30316），DevTools 9420 正常；`devtools:verify-commerce-flows` PASS（`expectTime=2026-09-13 18:00`，date/hour/minute/previewText 完全一致）；`devtools:registration-policy` PASS（`successSessionText` 含“微信身份 · 已登录”、`successRowCount=4`、双按钮 45px）；`devtools:verify-all-pages` 15/15 PASS、8/8 未登录态 PASS；`check:miniapp`、`typecheck`、两个修改脚本 `node --check` 均 PASS；`commerce-flow-checkout-quoted.png`、`final-registration-success.png` 目视确认。
+full_regression: 本轮只改小程序群内登记展示层与两个 DevTools 审计脚本，未触发后端代码变更；按测试节奏约束执行前端静态门禁、类型检查与运行态定向审计，未重复跑后端全量。首次登记政策复跑出现一次 automator 响应超时，原样单实例复跑通过，未形成产品失败证据。
+evidence: ERRORS.md M-20260913-131～M-20260913-133；miniapp/reports/devtools/miniapp-commerce-flows.json；miniapp/reports/devtools/registration-policy-audit.json；miniapp/reports/devtools/all-pages-devtools-audit.json；miniapp/reports/devtools/commerce-flow-checkout-quoted.png；miniapp/reports/devtools/final-registration-success.png；docs/harness-engineering/core/evidence-index.md E-20260913-015
+limitations: 运行态仍来自本地开发服务（127.0.0.1:7001）与 DevTools 模拟器（iPhone 12/13、SDK 3.15.2、390px 视口）；真实微信登录、真实支付/退款、真实闪送开放平台报价-建单-回调与生产验收仍未执行；有赞分类-商品关联缺口 M-20260913-115 仍为 open。
+
+
+## [2026-09-13] - fix(miniapp): 购物车推荐卡口径统一、首页商品卡可读性与 DevTools 审计环境预检
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260913-miniapp-cart-recommend-parity-and-audit-preflight-r41
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 逐页复核发现购物车“推荐商品”卡与首页/商品列表动作口径分叉（裸“加入”且加购提示恒为“已加入预订单”，配件商品语义矛盾）；首页商品卡购买说明仅 19rpx，低于商品列表同口径的 22rpx/11px 基线。同轮两次 all-pages 审计出现 products/profile 页面空白与 automator 超时的假失败，根因是 DevTools 多实例/陈旧自动化端口，且本地后端一度未运行导致页面进入兜底空态。
+implementation: 购物车推荐卡改用 `getProductActionLabel()` / `getProductAddToastLabel()` / `getProductCardTip()`，视图字段 `soldText`→`hintText`、样式类 `.recommend-sold`→`.recommend-hint`（两行 clamp、最小高度、22rpx）；首页 `.product-tip` 19rpx→22rpx 并补 `max-width: 100%`/`line-height: 1.35`/`box-sizing: border-box`；`check-miniapp.mjs` 新增 `checkCartRecommendedActionCopy()`，并把 `checkProductCardHintReadability()` 扩展到首页 `.product-tip`；`verify-devtools-cart-long-title.cjs` 新增 `cart-recommend-card-copy`；`verify-all-15-pages-devtools.cjs` 新增首页商品卡购买说明量测（最小字号/溢出/行数）与连接后渲染预检（无法渲染首页即以 exit=2 结束并保留上一份报告）；详情悬浮栏断言改为轮询背景 alpha，不再只看 class（M-20260913-130）。
+verification: `npm run devtools:cart-long-title --prefix miniapp` PASS（`cart-recommend-card-copy`：4 张推荐卡 3×“预订”+1×“加入购物车”，hintFontSize=11px，价格与动作 overlapX≤-52.7px 无重叠；长名仍两行并可点击进详情）；`npm run devtools:verify-all-pages --prefix miniapp` 15/15 PASS（首页商品卡购买说明：条数=6、最小字号=11px、最大溢出=0.0px、最大行数≈1）；`npm run devtools:verify-commerce-flows --prefix miniapp` PASS（`product-detail-scroll-nav` 记录 `scrolledNavBackground=rgb(255, 255, 255)`）；`check:miniapp`、`typecheck` PASS；三项门禁均用变异测试确认会精确失败（移除 `getProductActionLabel`、首页字号改回 19rpx、强制预检失败 exit=2）；恢复环境后 `final-home.png`、`final-cart-long-title.png` 目视确认。
+full_regression: 本轮只改小程序购物车/首页展示层与 DevTools 审计脚本，未触发后端代码变更；按测试节奏约束执行前端静态门禁、单元类型检查与运行态定向审计，未重复跑后端全量。运行态前置：本地 uvicorn 7001 `/health` 200、`/api/v1/miniapp/products?featured=true&limit=6` 返回 6 条；DevTools 重启为单一实例并确认 9420 监听。
+evidence: ERRORS.md M-20260913-126～M-20260913-130；miniapp/reports/devtools/cart-long-title-audit.json；miniapp/reports/devtools/all-pages-devtools-audit.json；miniapp/reports/devtools/miniapp-commerce-flows.json；miniapp/reports/devtools/final-home.png；miniapp/reports/devtools/final-cart-long-title.png；docs/harness-engineering/core/evidence-index.md E-20260913-014
+limitations: 运行态结论仍来自本地开发服务（127.0.0.1:7001）与 DevTools 模拟器（iPhone 12/13、SDK 3.15.2、390px 视口），未在小屏机型复测；本地后端必须保持运行，否则审计会落入兜底空态；真实支付/退款、真实闪送开放平台报价-建单-回调与生产验收仍未执行；有赞分类-商品关联缺口 M-20260913-115 仍为 open；本轮启动后端时在 `D:\Temp` 留下 uvicorn 日志（服务运行中暂不清理）。
+
+
+## [2026-09-13] - fix(miniapp): 购物车状态胶囊长文案截断收口
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260913-miniapp-cart-tag-copy-r40
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 逐页目视复核购物车真实商品链路截图（`commerce-flow-cart.png`）时发现商品卡状态胶囊渲染为“自提价展示，闪…”，长运费口径在窄胶囊内被省略号截断，实际只能读到一个残句；库存充足的真实配件商品也会走同一分支。
+implementation: `getCartStockText()` 库存充足分支改为 `getProductAvailabilityLabel()`，只输出“现货/仅余 N 件”等短事实，无额外事实时返回空串；购物车 WXML 胶囊改为 `wx:if="{{item.stockText}}"` 条件渲染；长运费口径保留在底部“商品合计 · 不含闪送费”。`check-miniapp.mjs` 新增 `checkCartTagCopy()`；`verify-devtools-cart-long-title.cjs` 新增库存充足“不得出现长胶囊”与低库存“仅余 3 件且与数量控件零重叠”两项断言，并在刷新购物车后重新获取元素句柄。
+verification: `npm run devtools:cart-long-title --prefix miniapp` PASS（`cart-healthy-stock-tag` tagHidden=true；`cart-low-stock-tag` “仅余 3 件”46x16px、与步进器重叠 X=-35.9px；`cart-long-title-layout` 41 字商品名仍两行 278x39px；点击商品名进入商品详情）；`npm run devtools:verify-commerce-flows --prefix miniapp` PASS；`npm run devtools:verify-all-pages --prefix miniapp` 15/15 PASS；`npm run check:miniapp --prefix miniapp`、`npm run typecheck --prefix miniapp` PASS；`final-cart-long-title.png` 目视确认。
+full_regression: 本轮只改小程序购物车展示层与 DevTools 审计脚本，未触发后端代码变更；按测试节奏约束执行前端静态门禁与运行态定向审计，未重复跑后端全量。
+evidence: ERRORS.md M-20260913-125；miniapp/reports/devtools/cart-long-title-audit.json；miniapp/reports/devtools/miniapp-commerce-flows.json；miniapp/reports/devtools/all-pages-devtools-audit.json；miniapp/reports/devtools/final-cart-long-title.png；docs/harness-engineering/core/evidence-index.md E-20260913-013
+limitations: 运行态结论仍来自本地开发服务（127.0.0.1:7001）与 DevTools 模拟器（iPhone 12/13、SDK 3.15.2、390px 视口），未在小屏机型复测；数量控件在 qty=1 时减号变移除（二次确认）的既有设计未改；真实支付/退款、真实闪送开放平台与生产验收仍未执行。
+
+
+## [2026-09-13] - fix(miniapp): 首页服务承诺、群内登记闪送口径与商品详情滚动悬浮栏
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260913-miniapp-promise-registration-and-detail-nav-r39
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: r39 逐页目视复核发现三处展示缺陷：首页服务承诺卡说明字号只有 18rpx 且单行截断，第三项把已确认的截单规则弱化为“17:00 前咨询”；群内登记页把北京闪送写成“门店配送”且全页没有运费承担说明；商品详情滚动后正文穿透透明悬浮栏，与系统状态栏时间和返回控件直接叠字。
+implementation: 首页承诺卡第三项改为“当天订单 17:00 截单”，说明字号 18rpx→22rpx、标题 24rpx，并去掉 nowrap 改为两行截断；群内登记配送选项改为“北京闪送”，选择闪送时展示“北京同城闪送专送，运费按收货地址实测、由顾客承担，客服确认后告知”；商品详情 `scroll-view` 绑定 `bindscroll="onScroll"`，新增 `navSolid` 状态，`scrollTop > 8` 时切 `detail-nav--solid`（白底 + 细分隔线 + 轻投影），回顶恢复透明；商品卡购买说明字号 21rpx→22rpx 并允许两行。静态门禁新增 `checkHomePromiseCardReadability()`、`checkGroupRegistrationDeliveryCopy()`、`checkProductDetailScrollNav()`、`checkProductCardHintReadability()`；运行态新增 `inspectProductDetailScrollNav()`、`waitForDetailNavState()` 与 `product-detail-scroll-nav`。
+verification: `npm run devtools:verify-all-pages --prefix miniapp` 15/15 PASS（服务承诺说明为“当天制作 次日自取或配送 / 运费按地址单独计算 / 当天订单 17:00 截单”，最小字号 11px）；`npm run devtools:verify-commerce-flows --prefix miniapp` PASS，`product-detail-scroll-nav` 记录 `initialNavClass` 无 solid、`scrolledNavClass` 含 `detail-nav--solid`、`scrolledNavBackground=rgb(255, 255, 255)`、`restoredNavClass` 恢复透明；`npm run devtools:registration-policy --prefix miniapp` PASS，`registration_delivery_copy` 记录 `tabText=北京闪送` 与运费说明；`npm run check:miniapp --prefix miniapp`、`npm run typecheck --prefix miniapp` 均 PASS；`final-group-registration.png`、`commerce-flow-detail-nav-solid.png` 目视确认。
+full_regression: 本轮只改小程序展示层文案/样式/滚动状态与 DevTools 审计脚本，未触发后端代码变更；按测试节奏约束执行前端静态门禁与运行态定向审计，未重复跑后端全量。
+evidence: ERRORS.md M-20260913-121～M-20260913-124；miniapp/reports/devtools/all-pages-devtools-audit.json；miniapp/reports/devtools/miniapp-commerce-flows.json；miniapp/reports/devtools/registration-policy-audit.json；miniapp/reports/devtools/final-group-registration.png；miniapp/reports/devtools/commerce-flow-detail-nav-solid.png；docs/harness-engineering/core/evidence-index.md E-20260913-012
+limitations: 运行态结论仍来自本地开发服务（127.0.0.1:7001）与 DevTools 模拟器（iPhone 12/13、SDK 3.15.2、390px 视口），未在真机与小屏机型复测；DevTools 截图顶部边缘可见模拟器旧帧残留，页面 DOM 量测确认导航区 0~88px、内容区从 88px 起，非页面缺陷；有赞分类-商品关联缺口 M-20260913-115 仍为 open；闪送开放平台资料与测试权限、真实支付/退款与生产验收仍未解除。
+
+
+## [2026-09-13] - fix(miniapp): 商品列表缓存键补 limit、详情页底部安全区与客服文案
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260913-miniapp-product-cache-limit-and-detail-footer-r38
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+additional_fix: 客服页未登录空态将“与客服通话”改为“与客服在线沟通”，并把“与客服通话”加入 `FORBIDDEN_CUSTOMER_COPY` 禁词，避免暗示不存在的电话能力（电话入口保留在个人中心，ERRORS M-20260913-120，证据 E-20260913-011）。
+scope: 复现首页“今日推荐”货架商品数在多次 DevTools 审计间分别出现 4/5/6 条的漂移，并复核商品详情固定底部操作栏与滚动内容的安全间距。前者怀疑是缓存/数据串用，后者怀疑固定在 220rpx 的底部留白不适应安全区。
+implementation: `services/products.ts` 的 `buildProductsCacheKey()` 补上 `limit: options.limit ?? 0`：首页（featured+6）、购物车推荐（featured+4）、商品详情关联（featured+5）此前共用同一缓存条目，5 分钟 TTL 内谁先请求谁的结果被复用；修复后三个调用点各自独立缓存。商品详情 `.detail-page` 的 `padding-bottom: 220rpx` 改为 `calc(env(safe-area-inset-bottom) + 140rpx)`，与真实操作栏高度（100rpx + 安全区）同源伸缩并保留 40rpx 呼吸间距。`check-miniapp.mjs` 新增 `checkProductListCacheKeyIncludesLimit()` 与 `checkProductDetailFooterSpace()` 两个静态守卫；`verify-all-15-pages-devtools.cjs` 首页货架新增“接口条数 vs 渲染条数”交叉校验并在计数稳定前轮询；`verify-devtools-product-purchase-path.cjs` 新增 `product-detail-footer-gap`，滚到底后测量最后内容分区与操作栏的间隙（<0 遮挡或 >48px 大片空白都失败）。
+verification: 修复前 `devtools:verify-all-pages` 报“首页货架商品数与精选接口不一致：渲染=5，接口=6”；根因修复后同一审计 PASS（15/15，首页记录“商品数=6；货架条数交叉校验：接口=6，渲染=6”）；`devtools:product-purchase-path` PASS，`product-detail-footer-gap` 从修复前 gap=22.44px（操作栏高 92px）变为 gap=14.44px 且无遮挡；`npm run typecheck --prefix miniapp`、`npm run check:miniapp --prefix miniapp`（15 页/15 路由）均 PASS；两个改动脚本 `node --check` 通过；`final-home.png` 目视确认货架为完整两列网格。
+full_regression: 本轮只改小程序商品服务缓存键、商品详情样式与 DevTools 审计脚本，未触发后端代码变更；按测试节奏约束执行前端静态门禁与运行态定向审计，未重复跑后端全量。
+evidence: ERRORS.md M-20260913-118、M-20260913-119；miniapp/reports/devtools/all-pages-devtools-audit.json；miniapp/reports/devtools/product-purchase-path-audit.json；miniapp/reports/devtools/final-home.png；docs/harness-engineering/core/evidence-index.md E-20260913-010
+limitations: 运行态结论仍来自本地开发服务（127.0.0.1:7001）与 DevTools 模拟器（iPhone 12/13、SDK 3.15.2、390px 视口），无安全区机型的底部间隙只做了策略收口，未在真机复测；不代表真机微信登录、真实微信支付/退款、真实闪送报价-建单-回调或生产上线已验证；有赞分类-商品关联缺口 M-20260913-115 仍为 open。
+
+## [2026-09-13] - fix(miniapp): 购物车长名称与充值记录空态收口
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260913-miniapp-cart-long-title-and-recharge-empty-r37
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 逐页目视复核 15 页截图时发现购物车长商品名单行截断且长状态标签被数量步进器覆盖；充值记录空态仍是裸文本，与订单/优惠券/积分页的统一空态体系不一致。
+implementation: 购物车卡片重构为“勾选 + 商品图”左侧核对列与独占信息列：商品名允许两行截断，库存/购买提示标签移到价格行并加 `max-width: 180rpx`、溢出省略与收缩约束，消除与数量步进器的重叠；商品名与商品图新增 `openProduct` 导航并在方法中处理空商品 ID、编码 URL，长名称客户可点击进入完整商品详情。充值记录空态改为 `.yunxi-state yunxi-state--section`（标题“暂无充值记录”、说明“充值成功后，记录会显示在这里”），`app.wxss` 新增分区空态样式，`check-miniapp.mjs` 新增静态空态结构守卫。
+verification: `npm run typecheck --prefix miniapp`、`npm run check:miniapp --prefix miniapp`、`npm run devtools:checkout-delivery-states --prefix miniapp` 均 PASS；`npm run devtools:cart-long-title --prefix miniapp` PASS（41 字真实商品名、lineClamp=2、标题区 278x39px、标签与步进器重叠 0、点击商品名进入商品详情）；`npm run devtools:product-purchase-path --prefix miniapp` PASS（真实在售商品加入购物车后标题区 278x39px）；`devtools:verify-commerce-flows`、`devtools:commerce-states` PASS；`devtools:verify-all-pages` 15/15 PASS，充值记录空态实测 337x92px；`final-cart-long-title.png`、`final-cart-real-product.png` 目视确认。
+full_regression: 本轮只改小程序购物车/充值展示层、全局分区空态样式与 DevTools 审计脚本，未触发后端代码变更；按测试节奏约束执行前端静态门禁与运行态定向审计，未重复跑后端全量。
+evidence: ERRORS.md M-20260913-116、M-20260913-117；miniapp/reports/devtools/cart-long-title-audit.json；miniapp/reports/devtools/product-purchase-path-audit.json；miniapp/reports/devtools/all-pages-devtools-audit.json；miniapp/reports/devtools/final-cart-long-title.png；miniapp/reports/devtools/final-cart-real-product.png；docs/harness-engineering/core/evidence-index.md E-20260913-009
+limitations: 运行态结论仍来自本地开发服务与 DevTools 模拟器，不代表真机微信登录、真实微信支付/退款、真实闪送报价-建单-回调或生产上线已验证；有赞分类-商品关联缺口 M-20260913-115 仍为 open；生产域名证书过期与闪送开放平台资料/测试权限仍未解除。
+
+## [2026-09-13] - fix(miniapp): 结算时间选择器提交值回推与目录/空态收口
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260913-miniapp-schedule-wysiwyg-and-empty-states-r36
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 逐页目视复核发现结算页三个时间选择器会用默认小时重置，与下方“期望时间”提交值不一致；优惠券/积分页已登录空态仍是裸文本面板，与订单页整页空态不一致；商品目录标题右侧的静态“自提价”胶囊块长得像筛选控件但不可点，副标题为无依据形容词。
+implementation: `utils/checkout-time.ts` 新增 `parseExpectTime()` 与 `resolveCheckoutSchedule()`，由提交值反推日期/小时/分钟索引，并把已过截单日的旧时间抬到最早可预约日期；结算页新增 `syncExpectTimeSchedule()`，`loadCheckout()` 统一经它重建选择器与 `expectTime`。优惠券/积分页空结果与加载失败改用 `.yunxi-state yunxi-state--page`（失败补“重新加载”、空态补“去选购”），新增 `retryLoad()`/`goProducts()` 并把登录跳转换回 `ROUTES` 常量。商品页移除标题区静态 `products-heading__service` chip，删除“人气汇聚/匠心手作/麦香现烤/层层甜蜜/生活美学”等副标题，侧栏副标题改真实商品数“N 款”，标题副文案改“N 款 · 按销量排序”。
+verification: `npm run test:checkout-time` 5/5 PASS；`typecheck`、`check:miniapp`（15 页/15 路由）、`check:page-api-coverage`（15 页/34 术语/9 边界）、`test:bakery` 8/8、`test:member-assets` 12/12、`test:order-summary` 6/6、`audit:buttons`（115 控件）、`audit:button-styles`（115 控件 0 失败）均通过；`devtools:checkout-delivery-states` PASS（新增 `expect_time_picker_restore`：expectTime=2026-09-13 19:30 / restoredHour=19 / restoredMinute=30）；`devtools:commerce-states` PASS（新增优惠券“暂无可用优惠券/去选购”79x45px、积分“暂无积分记录/去选购”）；`devtools:verify-all-pages` 15/15 PASS；`devtools:verify-commerce-flows` PASS；触控扫描 46 选择器/13 页面 PASS；`final-products.png`、`final-coupons-empty.png`、`final-points-empty.png` 目视确认。
+full_regression: 本轮仅改小程序展示层、结算时间工具与审计脚本，按测试节奏约束跑前端静态/单测与 DevTools 定向审计，未重复跑后端全量；后端无代码变更。
+evidence: ERRORS.md M-20260913-112、M-20260913-113、M-20260913-114、M-20260913-115；miniapp/reports/devtools/checkout-delivery-state-audit.json；miniapp/reports/devtools/commerce-state-audit.json；miniapp/reports/devtools/all-pages-devtools-audit.json；miniapp/reports/devtools/miniapp-commerce-flows.json；miniapp/reports/devtools/final-coupons-empty.png；miniapp/reports/devtools/final-points-empty.png；miniapp/reports/devtools/final-products.png；docs/harness-engineering/core/evidence-index.md E-20260913-008
+limitations: 运行态结论仍来自本地开发服务与 DevTools 模拟器，不代表真机登录、真实微信支付/退款、真实闪送报价-建单-回调或生产上线已验证；有赞分类与商品标签命名空间零交集导致分类接口恒为空，目录仍为单层列表（M-20260913-115，open，需真实有赞接口权限修复）；生产域名证书过期与闪送开放平台资料/测试权限仍未解除。
+
+## [2026-09-13] - fix(miniapp): 订单履约口径分叉与商品目录层级收口
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260913-miniapp-order-fulfillment-and-catalog-hierarchy-r35
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 目视复核订单列表、订单详情、商品详情三页运行态截图，发现门店自提订单仍按北京市内闪送口径展示费用、地址与进度；商品详情首图与元信息重复渲染同一销量；已登录但无订单时只有裸空态；并同步核对底部导航文案来源一致性。
+implementation: 后端 `OrderSerializationService` 新增 `pickupAddress` 快照返回，`OrderSummary` 契约与 `miniapp/docs/api-contract.md` 同步；订单列表按履约方式改文案（“到店自提 · 联系人”/“北京闪送 · 收货人”、“预约取货”/“期望配送”）；订单详情自提单隐藏闪送费行、新增“自提门店”与快照地址、仅配送单展示“配送地址”，进度节点按履约方式区分“配送中”与“待取货”，并补齐待确认/制作/完成/取消各状态说明。商品详情移除首图 `detail-sold-flag` 重复销量角标及样式，销量仅在元信息保留一处；订单页已登录空态改为 `.yunxi-state yunxi-state--page` 整页空态并补“去选购”与带保护的路由方法；`app.json` tabBar 文案统一为“商品”“我的”，与 `constants/tab-bar.ts` 对齐。
+verification: `python -B -m pytest backend/tests/service/delivery/test_order_quote_binding.py -q --no-cov` 6/6 PASS；`python -B -m pytest backend/tests/api/test_miniapp_order_api.py -q --no-cov` 14/14 PASS；`npm run typecheck --prefix miniapp` PASS；`npm run check:miniapp --prefix miniapp` PASS（15 页 / 15 路由）；`npm run test:bakery --prefix miniapp` PASS（8/8）；`npm run devtools:verify-commerce-flows --prefix miniapp` PASS；`npm run devtools:commerce-states --prefix miniapp` PASS；`npm run devtools:verify-all-pages --prefix miniapp` PASS（15/15 页面，8/8 确定性未登录态）；触控扫描 PASS（46 选择器 / 13 页面）；5 个改动审计脚本 `node --check` 全部通过；`commerce-flow-order-detail.png`、`commerce-flow-order-detail-pickup.png`、`final-orders-readable-meta.png`、`final-orders-empty.png`、`commerce-flow-detail.png` 逐页目视确认。
+full_regression: 本轮仅修改订单序列化展示字段、小程序展示层与 DevTools 审计脚本，按测试节奏约束执行后端订单/报价定向用例与前端静态、运行态门禁，未重复跑全量。首次不带 `--no-cov` 的后端定向 pytest 退出码 1 仅为仓库级 70% 覆盖率门槛未达（10%），非用例失败；改用 `--no-cov` 后用例本身全绿。
+evidence: ERRORS.md M-20260913-108、M-20260913-109、M-20260913-110、M-20260913-111；miniapp/reports/devtools/miniapp-commerce-flows.json；miniapp/reports/devtools/commerce-state-audit.json；miniapp/reports/devtools/all-pages-devtools-audit.json；miniapp/reports/devtools/commerce-flow-order-detail.png；miniapp/reports/devtools/commerce-flow-order-detail-pickup.png；miniapp/reports/devtools/commerce-flow-detail.png；miniapp/reports/devtools/final-orders-readable-meta.png；miniapp/reports/devtools/final-orders-empty.png；docs/harness-engineering/core/evidence-index.md E-20260913-007
+limitations: 运行态结论仍来自本地开发服务（127.0.0.1:7001）与 DevTools 模拟器（iPhone 12/13、SDK 3.15.2、390px 视口），不代表真机微信登录、真实微信支付/退款、真实闪送报价-建单-回调或生产上线已验证；自提地址取订单创建时快照，存量历史订单仍为旧值；生产域名证书过期与闪送开放平台资料/测试权限仍未解除。
+
+## [2026-09-13] - fix(miniapp): 未登录引导空态与优惠券伪交互收口
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260913-miniapp-login-gate-and-coupon-affordance-r34
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 目视复核 15 页面截图发现订单、收货地址、订单详情三页未登录时只有顶部会话提示、主体整屏空白，而优惠券/积分/充值页是居中空态；结算页在无可用优惠券时仍显示下拉箭头并展开空面板。本轮统一整页登录引导空态、清理不再使用的组件注册，并把空态结构与优惠券行形态纳入 DevTools 运行态断言。
+implementation: 7 个受限页面（orders/address/order-detail/coupons/points/recharge/checkout）改用 `.yunxi-state yunxi-state--page`：图标 + 标题 + 单行说明 + “去登录”按钮，`app.wxss` 新增 `min-height: 58vh` 使空态在可视区垂直居中；订单/地址/订单详情/结算/首页 5 处 `session-notice` 注册随未使用一并清理。结算页优惠券行在零可用券时加 `benefit-row--static`、值文案改 muted “暂无可用”、隐藏 `.benefit-arrow`，`toggleCouponPanel()` 在无券时短路并回收展开态；`verify-all-15-pages-devtools.cjs` 新增 `inspectLoginGate()`（结构、CTA 文案、48x44px 触控、整页高度、说明不换行、受限内容不渲染）与结算页优惠券行断言，确定性未登录态从 7 页扩到 8 页；同时修复 inspectFormFieldLabels() 播种结算态时漏还原 isLoggedIn 导致的跨步骤状态泄漏；`scan-miniapp-button-touch-targets.mjs` 的优惠券/积分空态选择器改指 `.yunxi-state__action`。
+verification: `npm run devtools:verify-all-pages` PASS（15/15 页面；8/8 确定性未登录态），空态实测 362~366x490px、“去登录”79x45px、说明高度 20px 单行，报告记录“优惠券行：暂无可用；无下拉箭头=true；点击未展开=true”；`devtools:commerce-states`、`devtools:checkout-delivery-states`、`devtools:verify-commerce-flows` 均 PASS；`MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420 npm run scan:button-touch-targets` PASS（46 选择器/13 页面）；`check:miniapp`（15 页 15 路由）、`typecheck`、`test:bakery` 8/8、`audit:buttons`（110 控件）、`audit:button-styles`（110 控件 0 失败）均通过；`final-logged-out-orders.png`、`final-logged-out-checkout.png`、`final-logged-out-coupons.png` 等截图目视确认；终轮复跑新增的结算页未登录断言首次报出播种态泄漏，定位为审计脚手架缺陷并修复后，15/15 页面与 8/8 未登录态同时 PASS。
+full_regression: 本轮仅改小程序展示层、页面配置与 DevTools 审计脚本，未触发后端代码变更；按测试节奏约束执行前端静态门禁与运行态定向审计，未重复跑后端全量。
+evidence: ERRORS.md M-20260913-105、M-20260913-106、M-20260913-107；miniapp/reports/devtools/all-pages-devtools-audit.json；miniapp/reports/devtools/final-logged-out-orders.png；miniapp/reports/devtools/final-logged-out-checkout.png；miniapp/reports/devtools/final-logged-out-coupons.png；miniapp/reports/button-visual/button-touch-targets-latest.json；docs/harness-engineering/core/evidence-index.md E-20260913-006
+limitations: 运行态结论仍来自本地开发服务与 DevTools 模拟器，“去登录”后的真实微信授权登录链路、真实微信支付/退款、真实闪送开放平台报价-建单-回调与生产上线均未验证；生产域名证书过期与闪送开放平台资料/测试权限仍未解除。
+
+## [2026-09-13] - fix(miniapp): 充值金额输入与禁用操作可读性收口
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260913-miniapp-control-affordance-r33
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 目视复核充值页与结算页运行态截图，修复自定义金额输入控件可见性和触控高度，以及微信原生 disabled 样式覆盖导致的禁用按钮可读性问题，并把运行态计算样式纳入 DevTools 审计。
+implementation: 充值页自定义金额从单条下划线 input 改为 `.custom-input-wrap` + 88rpx input +“元”单位，使用暖灰底、可见边框和统一 placeholder 色；`.primary-button[disabled]`、充值页 `.primary-btn[disabled]` 与客服 `.send-btn[disabled]` 统一为 `--yunxi-surface-alt` 背景和 `--yunxi-text-secondary` 文字，主按钮显式使用 `!important` 覆盖微信原生禁用态。`verify-all-15-pages-devtools.cjs` 新增运行态 `interactionStates`，断言充值输入框尺寸/背景/边框/单位对齐，以及结算与客服禁用按钮实际计算对比度。
+verification: `npm run devtools:verify-all-pages` PASS（15/15）；充值输入容器/输入框均为 259x45px，充值提交、结算提交、客服发送禁用态实际对比度均为 5.48:1，结算按钮计算色值为 `rgb(102, 94, 88)`/`rgb(241, 238, 232)`；`devtools:registration-policy` PASS；`scan:button-touch-targets` PASS（46 选择器/13 页面）；`devtools:commerce-states`、`devtools:checkout-delivery-states`、`devtools:verify-commerce-flows` 均 PASS；`check:miniapp`（15 页 15 路由）、`typecheck`、`audit:buttons`（106 控件）、`audit:button-styles`（106 控件 0 失败）均通过；`final-recharge.png`、`final-checkout.png`、`final-chat.png` 目视确认。
+full_regression: 本轮仅改小程序展示层与 DevTools 验证脚本，未触发后端代码变更；按测试节奏约束执行前端与运行态定向门禁，未重复跑后端全量。
+evidence: ERRORS.md M-20260913-104；miniapp/reports/devtools/all-pages-devtools-audit.json；miniapp/reports/devtools/final-recharge.png；miniapp/reports/devtools/final-checkout.png；miniapp/reports/devtools/final-chat.png；miniapp/reports/devtools/registration-policy-audit.json；miniapp/reports/button-visual/button-touch-targets-latest.json；miniapp/reports/devtools/commerce-state-audit.json；miniapp/reports/devtools/checkout-delivery-state-audit.json；miniapp/reports/devtools/miniapp-commerce-flows.json；docs/harness-engineering/core/evidence-index.md E-20260913-005
+limitations: 运行态结论仍来自本地开发服务与 DevTools 模拟器，不代表真机微信登录、真实微信支付/退款、真实闪送开放平台报价-建单-回调或生产上线已通过；生产域名证书过期与闪送开放平台资料/测试权限仍未解除。
+
+## [2026-09-13] - fix(miniapp): 门店自提地址来源归一化与闪送报价起点收口
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260913-miniapp-pickup-address-source-r31
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 结算页截图与本地接口实测发现门店自提地址为占位文案，统一前端配置、后端默认运营配置、历史配置值与后台默认设置的地址来源，并把占位文案纳入静态和运行态门禁。
+implementation: 后端新增 `DEFAULT_PICKUP_ADDRESS` 与 `PICKUP_ADDRESS_PLACEHOLDER_MARKERS`，默认运营配置改为真实门店地址；`ShopOperationsService.get_shop_operations()`/`set_shop_operations()` 经 `resolve_pickup_address()` 把空值与含“请联系客服确认”的历史占位值归一化，避免占位文案继续流入小程序接口与闪送报价起点。小程序 `config/shop.ts` 新增 `resolvePickupAddress()`，`services/shop-settings.ts` 与结算页 `getPickupAddressForQuote()` 共用，结算页 `pickupAddress` 初值改为 `SHOP_CONFIG.pickupAddress`；管理后台默认 `pickupAddress` 与小程序 API 契约示例同步为真实地址。`check-miniapp.mjs` 增加小程序源码占位文案禁写与前后端默认地址一致性断言；`verify-devtools-checkout-delivery-states.cjs` 增加 `pickup_address_source` 运行态断言并输出 `final-checkout-pickup-address.png`。
+verification: 后端 `pytest tests/api/test_shop_operations_api.py tests/api/test_miniapp_delivery_api.py tests/service/delivery/test_order_quote_binding.py -q --no-cov` 14 passed（新增默认地址、历史占位归一化、后台保存占位回落三条用例）；本地后端重启后 `GET /api/v1/miniapp/shop-settings` 返回 `北京市东城区南竹杆胡同2号银河SOHO`；`npm run check:miniapp`（15 页 15 路由）、`npm run typecheck` 通过；`npm run devtools:checkout-delivery-states` PASS（`pickupNoticeText` 与 `dataPickupAddress` 均为真实门店地址）、`npm run devtools:commerce-states` PASS；截图目视确认结算页自提门店展示真实地址。
+full_regression: 后端只改店铺运营配置默认值与归一化，未触碰订单、支付与配送报价链路；按测试节奏约束跑定向后端用例与相关运行态审计，未重复跑后端全量。
+evidence: ERRORS.md M-20260913-102；backend/tests/api/test_shop_operations_api.py；miniapp/reports/devtools/checkout-delivery-state-audit.json；miniapp/reports/devtools/final-checkout-pickup-address.png；miniapp/reports/devtools/commerce-state-audit.json；docs/harness-engineering/core/evidence-index.md E-20260913-003
+limitations: 闪送报价起点仍由小程序传入、后端以报价哈希一致性兜底，尚未改为服务端下发；真实闪送开放平台报价-建单-回调、真实微信支付/退款与生产验收仍未执行，小程序的开发/调试/测试边界不变。
+
+## [2026-09-13] - fix(miniapp): 群内登记与政策页运行态审计，交互控件 44px 基线收口
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260913-miniapp-registration-policy-audit-r32
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 为群内登记页与政策页建立 DevTools 运行态审计（`miniapp/scripts/verify-devtools-registration-policy.cjs` 与 `npm run devtools:registration-policy`），并修复审计捕获的 44px 以下交互控件。
+implementation: 新增 `verify-devtools-registration-policy.cjs`：登记页断言活动/商品参数渲染、未登录时 `canSubmitRegistration=false` 且提交按钮禁用并给出登录引导、滚到底部后提交按钮完整落在安全区内、日期→小时→分钟选择器联动与当天登记标记、六步必填校验链、活动批次不存在时错误落页、提交成功态；政策页断言隐私/协议/售后三个变体的标题与正文和后端 `shop-settings` 逐字一致且内容互不相同、默认路由回落到隐私政策。首轮审计报出真实缺陷：履约标签与时间选择器在 390px 视口仅 43px，根因是 `min-height: 84rpx`；排查扩展到购物车与资产页后，把群内登记 `.fulfillment-tab`/`.time-picker`、购物车 `.stepper-btn` 与窄屏 `.cart-footer .primary-button`、优惠券/积分 `.primary-btn` 统一改为 `88rpx`（45px），并把 cart / coupons-login-gate / points-login-gate 三个注入态加入触控扫描（10 页 39 选择器 → 13 页 46 选择器）。校验链首轮的“点击无反馈”经诊断是自动化输入后的事件竞争，加入 260ms 事件队列等待后 6/6 首次点击即通过。
+verification: `npm run devtools:registration-policy` PASS（10 项断言全通过；pickers 333/162/162 与 tabs 162 均 45px；未登录态 disabledAttribute 为空串、ambientLoggedIn=true；提交按钮滚动后 top 661.9/bottom 706.9、安全区下界 810；三个政策变体正文长度 84/77/80 与后端一致）；`devtools:verify-all-pages` 15/15 PASS；带自动化端口 `scan:button-touch-targets` PASS（46 选择器/13 页面）；`check:miniapp` 15 页 15 路由、`typecheck`、`audit:buttons` 106 控件、`audit:button-styles` 106 控件 0 失败；`final-cart-touch-targets.png` 目视确认放大后的步进器与结算按钮未挤压购物车行。
+full_regression: 本轮仅改小程序 WXSS 与验证脚本，未触发后端代码变更；按测试节奏约束以运行态审计代替后端全量复跑。
+evidence: ERRORS.md M-20260913-103；miniapp/reports/devtools/registration-policy-audit.json；miniapp/reports/devtools/final-registration-form-top.png；miniapp/reports/devtools/final-registration-form-bottom.png；miniapp/reports/devtools/final-registration-validation.png；miniapp/reports/devtools/final-registration-success.png；miniapp/reports/devtools/final-policy-privacy.png；miniapp/reports/devtools/final-policy-agreement.png；miniapp/reports/devtools/final-policy-after-sales.png；miniapp/reports/devtools/final-cart-touch-targets.png；miniapp/reports/button-visual/button-touch-targets-latest.json；miniapp/reports/devtools/all-pages-devtools-audit.json；docs/harness-engineering/core/evidence-index.md E-20260913-004
+limitations: 未登录闸门用注入态固定（开发工具会话当前为已登录，真实微信授权登录链路未验证）；运行态结论均来自本地开发服务与 DevTools 模拟器，不代表真机微信登录、真实微信支付/退款、真实闪送开放平台报价-建单-回调或生产验收已通过；生产域名证书过期与闪送开放平台资料仍是外部阻塞。
+
+## [2026-09-13] - fix(miniapp): 结算页零资产抵扣与会话动作收敛，WXML 标签解析护栏
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260913-miniapp-checkout-affordance-and-wxml-scanner-r30
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 目视复核 r29 结算页运行态截图，收起已登录会话提示的无效“返回”主按钮，并在零积分/零余额时不渲染禁用空开关、仅保留不可用说明；修复 `check-miniapp` 标签平衡解析器在属性值内含 `>` 时的误报，并把三项结算页可见性纳入 DevTools 运行态断言。
+implementation: 结算页 WXML 的 `action-text` 在已登录时传空字符串，`handleSessionAction` 只保留未登录跳转个人中心；积分开关改为 `wx:if="{{orderLocked || pointsBalance > 0}}"`，余额开关改为 `wx:if="{{balanceFen > 0}}"`，无可抵扣资产时只保留“暂无可用积分/余额”并继续支持整行点击提示原因。`check-miniapp.mjs` 新增带引号状态的 `scanWxmlTags()`，`extractButtonTags()` 与 `checkWxmlTagBalance()` 共用，修复属性值中的 `>` 被旧正则当作标签结束的问题；`verify-devtools-commerce-states.cjs` 将零资产旧断言从“开关存在且禁用”改为 `pointsSwitchVisible`/`balanceSwitchVisible`/`sessionActionVisible` 均 false，同时要求不可用文案仍存在。
+verification: `node --check` 两个脚本、`npm run check:miniapp`（15 页 15 路由）、`npm run typecheck` 均通过；反向验证临时插入未闭合 `<view>` 后 `check:miniapp` 退出码 1 并精确报出页面与行号，移除后恢复退出码 0。`npm run devtools:commerce-states` PASS，`commerce-state-audit.json` 记录 `pointsSwitchVisible=false`、`balanceSwitchVisible=false`、`sessionActionVisible=false`，`benefitText` 仍含“暂无可用积分/余额”；`npm run devtools:checkout-delivery-states` PASS，重生成 `final-checkout-zero-assets.png` 与 `final-checkout-state-quoted.png` 目视确认返回按钮和空胶囊均消失。补充运行态复跑：带 `MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420` 的 `scan:button-touch-targets` 39 选择器/10 页面 PASS，`devtools:verify-all-pages` 15/15 PASS；同时修复触控扫描连接失败仍写失败报告并覆盖 latest 的证据完整性问题（M-20260913-100，无端口运行直接退出 2 且 latest 哈希/mtime 不变）。专项证据索引检查定位并修正 r29 条目的非法复合 `result` 值（M-20260913-101），修正后 `check_evidence_index` total=437/failed=0/malformed=0、错误账本 entries=135。r29 收口门禁同步通过：`test:bakery` 8 passed、`audit:buttons` 106 控件、`audit:button-styles` 106 控件 0 失败、中文治理 `coverage=1.0`、开发总表 38 项、`check_project.py --skip-tests` 质量门禁通过。
+full_regression: 本轮仅修改小程序展示层与验证脚本，未触发后端代码变更，按测试节奏约束未重复跑后端全量。
+evidence: ERRORS.md M-20260913-098、M-20260913-099、M-20260913-100、M-20260913-101；miniapp/reports/devtools/commerce-state-audit.json；miniapp/reports/devtools/checkout-delivery-state-audit.json；miniapp/reports/devtools/all-pages-devtools-audit.json；miniapp/reports/devtools/final-checkout-zero-assets.png；miniapp/reports/devtools/final-checkout-state-quoted.png；miniapp/reports/button-visual/button-touch-targets-latest.json；docs/harness-engineering/core/evidence-index.md E-20260913-002
+limitations: 运行态结论仍来自本地开发服务与 DevTools 模拟器，不代表真实微信认证、真实闪送开放平台报价/建单/回调、真实支付或生产上线已通过；生产域名证书过期与闪送开放平台资料/测试权限仍未解除。
+
+## [2026-09-13] - fix(miniapp): 真实链路证书预检与商品详情返回控件统一
+
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260913-miniapp-real-api-preflight-and-back-button-r29
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 推进计划书剩余可本地验证项：为访问线上 API 的真实链路 DevTools 脚本补证书/网络预检，避免退化成“automator 响应超时”的假页面失败；逐页目视复核 r28 运行态截图并统一商品详情返回控件；复跑静态门禁、运行态审计与治理检查。
+implementation: 新增 `miniapp/scripts/lib/real-api-preflight.mjs`（`resolveRealApiBaseUrl`/`probeRealApi`/`assertRealApiReachable`，地址可用 `MINIAPP_REAL_API_BASE_URL` 覆盖），`check-devtools-product-buy-now.mjs`、`check-devtools-cart-checkout-real-product.mjs`、`check-devtools-service-smoke.mjs` 改为连接开发者工具前先探测 `/health`，失败即退出码 2 并输出具体原因，在线地址作为参数传入页面内 `evaluate`。商品详情删除页内 `.detail-back*` 及其后的覆盖规则，返回控件改用全局 `<button class="page-nav-back">`；`check-miniapp.mjs` 新增非 tabBar 页面必须复用共享 `page-nav-back` 的断言；`scan-miniapp-button-touch-targets.mjs` 的 product-detail 选择器同步改为 `.page-nav-back`。
+verification: `npm run check:miniapp`（15 页 15 路由，含新增返回控件断言）、`npm run typecheck`、`npm run test:bakery`（8 passed）、`npm run audit:buttons`（106 控件）、`npm run audit:button-styles`（106 控件 0 失败）均通过；运行态复跑 `devtools:verify-all-pages` 15/15 PASS、`scan:button-touch-targets` 39 选择器/10 页面 pass；重新生成的 `final-product-detail.png` 目视确认返回控件已与其它子页一致的圆形。反向验证：临时把商品详情改回 `detail-back` 后 `check:miniapp` 退出码 1 并精确报错，恢复后退出码 0。真实链路预检三例实测 1.9–2.3s 退出码 2 且输出 `TLS 证书已过期…（CERT_HAS_EXPIRED）`，对本地后端 `http://127.0.0.1:7001/health` 返回 200 正常放行；`check:production-domain` 与 `check:production-miniapp-api` 复跑仍为 fail。
+full_regression: 本轮为前端展示层与验证脚本变更，未触发后端代码变更，按测试节奏约束未重复跑后端全量。
+evidence: ERRORS.md M-20260912-078（扩展：真实链路超时症状与预检护栏）、M-20260913-097；miniapp/reports/devtools/all-pages-devtools-audit.json；miniapp/reports/devtools/final-product-detail.png；miniapp/reports/button-visual/button-touch-targets-latest.json；miniapp/reports/production-api-check/production-miniapp-api-20260912-161448.json；miniapp/reports/domain-check/domain-check-20260912-161447.json；docs/harness-engineering/core/evidence-index.md E-20260913-001
+limitations: 生产域名 `yunxifood.cn` 证书仍需运维续期（M-20260912-078 status open），在此之前真实链路脚本保持退出码 2、生产 API 与真机线上验收不可用；真实闪送开放平台报价-建单-回调、真实微信支付/退款与生产上线仍未验证。
+
+
+## [2026-09-12] - fix(miniapp): 未登录提示宽度、DevTools 锁屏预检、播种字段与门店地址单一来源收口
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260912-miniapp-notice-width-and-devtools-lock-guard-r28
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 目视复核 r27 留下的 DevTools 截图，修复订单详情未登录会话提示被居中空态压窄导致的标题折行与副文案截断；为“锁屏时自动化全部超时”的假失败补快速失败预检并改为响应探测判定；修正触控扫描给个人中心播种的错误字段名与登录门槛页缺失的登录态播种；并收口结算页写死的错误自提地址兜底。
+implementation: 订单详情 `<session-notice>` 宿主新增 `class="empty-notice"` 并补 `.empty-notice { width: 100%; box-sizing: border-box; }`。`verify-all-15-pages-devtools.cjs` 增加三条防线：会话提示宽度低于视口 85% 判失败并记录 `sessionNoticeWidth`；连接阶段改用两段式响应探测（`automator.connect()` → `currentPage()`，各自带超时），自动化未响应时退出码 2 快速失败且不覆盖上一份报告，`LogonUI`/`LockApp` 进程数只作日志线索；个人中心订单入口少于 4 个或入口图标为空判失败并记录 `profileShortcutIcons`。`scan-miniapp-button-touch-targets.mjs` 的 profile 播种由页面不渲染的 `emoji` 改为真实渲染的 `iconText`，并为 `address-list`/`orders` 补播 `sessionView.loggedIn=true`（含 `canUseOrders`），同时让 `openPage()` 的路径比对忽略 query。结算页自提地址回退改为 `SHOP_CONFIG.pickupAddress`，WXML 兜底改为“请联系客服确认取货地址”，`check-miniapp.mjs` 新增 `checkPickupAddressSourceOfTruth()` 禁止页面写死其它北京市地址与品牌错字「云熙」。
+verification: `npm run check:miniapp`（15 页 15 路由）、`npm run typecheck`、`npm run test:bakery`（8 passed）、`npm run audit:buttons`（106 控件）、`npm run audit:button-styles`（106 控件 0 失败）均通过；运行态串行复跑 `devtools:verify-all-pages` 15/15 PASS（`sessionNoticeWidth=362/390`、`profileShortcutIcons={"order":4,"service":5}`、`loggedOutFailed=0`）、`devtools:commerce-states`、`devtools:product-purchase-path`、`devtools:verify-commerce-flows`、`devtools:checkout-delivery-states`、`devtools:same-day-scheduling` 全部 PASS；`walkthrough:phase-c` 15 页控制台 warning/error 0、页面失败 0；`scan:button-touch-targets` 修复后 39 选择器/10 页面 pass（修复前 7 项 `actualCount: 0` 失败）。`final-logged-out-order-detail.png` 目视确认卡片通栏、标题与副文案无折行截断；`final-profile.png` 目视确认订单与服务入口图标均非空。门店地址门禁反向验证——临时写回错误地址时 `check:miniapp` 退出码 1 且精确报错，恢复后退出码 0。
+full_regression: 本轮为前端展示层、验证脚本与配置口径修复，未触发后端代码变更，按测试节奏约束未重复跑后端全量。
+evidence: ERRORS.md M-20260912-090、M-20260912-091、M-20260912-092、M-20260912-093、M-20260912-094、M-20260912-095；miniapp/reports/devtools/all-pages-devtools-audit.json；miniapp/reports/devtools/commerce-state-audit.json；miniapp/reports/devtools/product-purchase-path-audit.json；miniapp/reports/devtools/miniapp-commerce-flows.json；miniapp/reports/devtools/checkout-delivery-state-audit.json；miniapp/reports/devtools/same-day-scheduling-audit.json；miniapp/reports/button-visual/button-touch-targets-latest.json；miniapp/reports/devtools/final-logged-out-order-detail.png；miniapp/reports/devtools/final-profile.png；docs/harness-engineering/core/evidence-index.md E-20260912-008
+limitations: 运行态结论仍来自本地开发服务与 DevTools 模拟器，不代表真实微信认证、真实闪送开放平台报价/建单/回调、真实支付或生产上线已通过；闪送开放平台资料与测试权限未到位，计划书 Task 1 Step 3 与 Task 3 Step 5 保持外部阻塞。
+## [2026-09-12] - fix(miniapp): 商品卡可用性口径统一与按钮可见性缺陷修复
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260912-miniapp-card-semantics-and-button-visibility-r27
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 修复顾客端真实可见的展示缺陷：优惠券/积分/订单页按钮被全局按钮重置压成白字透明底、商品卡“可预订”标签与现货履约提示互相矛盾、客服页未登录态标题误报连接断开，以及触控扫描依赖 mock 商品 ID 造成的假失败。
+implementation: 优惠券与积分页按钮规则加页面作用域（`.coupons-page button.primary-btn`、`.points-page button.primary-btn`），订单页改为 `.page button.order-action-*`，特异度提到 (0,2,1) 以压过 `app.wxss` 的 `button:not([size="mini"])` 重置；`audit-miniapp-button-styles.mjs` 新增按属性比较特异度的 `button-reset-overrides-class` 检查。`bakery.ts` 新增 `getProductAvailabilityLabel`/`getProductActionLabel`/`getProductAddToastLabel`/`getProductCardTip`，统一“现货配件=现货+加入购物车”“现做商品=不显示默认标签+预订”，商品列表与首页改为调用共享口径，图片角标只留已下架/售罄，详情页常驻“在售”标签改为仅不可售时展示。客服页未登录标题改为“登录后联系客服”，积分页补齐未登录副文案。触控扫描的商品详情态改用 `setup` 播种确定性可购买数据。
+verification: DevTools 计算样式修复前 `background rgba(0,0,0,0)/color rgb(255,255,255)/font-size 16px`，修复后 `rgb(61,51,45)/rgb(255,255,255)/13px/border-radius 4px`；`npm run audit:buttons` 106 控件、`npm run audit:button-styles` 0 失败、`npm run check:miniapp`（15 页 15 路由）、`npm run typecheck`、`npm run test:bakery`（8 passed）均通过；DevTools 串行复跑 `devtools:verify-all-pages` 15/15 PASS（含扩展后的未登录态）、`devtools:commerce-states` PASS（`productActionText=加入购物车`、`stockLabelText=现货`、`badgeTexts=[]`、销量 934→191 降序）、`devtools:product-purchase-path`、`devtools:verify-commerce-flows`、`devtools:checkout-delivery-states`、`devtools:same-day-scheduling` 全部 PASS；`scan:button-touch-targets` 39 选择器/10 页面 pass。
+full_regression: 本轮为前端展示层定向修复，未触发后端代码变更，按项目测试节奏约束未重复跑后端全量；上一轮全量剩余项（隔离 Harness 与文件体量存量红）状态不变。
+evidence: docs/harness-engineering/core/evidence-index.md E-20260912-007；miniapp/reports/devtools/all-pages-devtools-audit.json；miniapp/reports/devtools/commerce-state-audit.json；miniapp/reports/button-style-audit/latest.json；miniapp/reports/button-visual/button-touch-targets-latest.json；ERRORS.md M-20260912-086～M-20260912-089
+limitations: 仍为本地开发服务与 DevTools 模拟器验收，不代表真实微信认证、真实闪送开放平台报价/建单/回调、真实微信支付或生产上线已通过；闪送开放平台测试凭据与门店统一商品图仍待提供；`payment_runtime.py` 存量文件体量门禁与全量测试耗时优化仍开放。
+
+## [2026-09-12] - fix(miniapp): 商品目录分类命名空间、同步噪声与配件履约提示收口
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260912-miniapp-category-noise-r26
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 收口商品优先 MiniApp 的真实分类计数与命名空间、有赞同步原文清洗、配件购买提示，以及覆盖率模式下隔离整改 Harness 的临时 SQLite 清理失败。
+implementation: 仓储改为现场统计在售商品的 tag/classification 命中数，公开分类只返回有真实商品且点击后计数一致的项；序列化按真实命中优先 classification 并输出正确前缀。新增 `customer_text.py` 清洗商品名、秒级库存、h5 直购链接、UMP 与纯数字标签，公开 `description/subtitle/tags/specs` 不再泄露同步原文。前端新增共享 `getProductPurchaseHint()`，数字蜡烛/餐具改为现货或客服确认，蛋糕仍保持预订语义，并接入商品页、详情页和购物车。修复隔离整改 Harness 中 `sqlite3.connect(...)` 未关闭连接的问题，改用 `closing(...)` 后再删除临时库，消除 Windows `WinError 32`。
+verification: 商品后端定向 21 passed（catalog、item.base 分类、MiniApp 商品 API、lifespan 装配）；`npm run typecheck`、`check:miniapp`（15 页 15 路由）、`check:page-api-coverage`（15 页 34 API 术语 9 边界）、`test:bakery`（4 passed）、`test:member-assets`（12 passed）、`test:order-summary`（6 passed）、`audit:buttons`（106 控件）、`audit:button-styles`（0 失败 0 警告）通过；DevTools `devtools:verify-commerce-flows` 九节点 PASS，报告为 `miniapp/reports/devtools/miniapp-commerce-flows.json`；真实本地分类接口在无有效映射时返回 `data=[]`，销量排序为 934/542/340/319/287/270，数字蜡烛详情已无内部字段、库存明细、h5 链接和 UMP。
+full_regression: 首轮全量 738.33s，8 项失败逐项定位为分类命名空间回归、lifespan 装配测试未同步和 workspace/派生检查；收口全量复跑 745.7s，仅余 2 项隔离 Harness 失败。后者已稳定复现为仓库默认覆盖率模式下 `_wait_for_processing()` 连接未关闭导致 Windows 临时库占用，修复后覆盖插桩单文件 4 passed（使用 `--cov-fail-under=0` 排除单文件覆盖率阈值）、`test_harness_eval_regression.py + test_run_isolated_remediation_harness.py` 9 passed。按项目测试节奏约束未再启动第二次全量复跑，因此本轮只声明失败项已定向修复，不声明全量 0 失败。
+evidence: docs/harness-engineering/core/evidence-index.md E-20260912-006；miniapp/reports/devtools/miniapp-commerce-flows.json；ERRORS.md M-20260912-078～M-20260912-085；计划回填 `docs/superpowers/plans/2026-09-08-miniapp-commerce-ux-redesign.md`
+limitations: 仍为本地开发服务与 DevTools 模拟器验收，不代表真实微信认证、真实闪送开放平台报价/建单/回调、真实微信支付或生产上线已通过；生产域名证书过期未解除；`sold_num` 依赖有赞同步新鲜度；全量测试耗时优化与 `payment_runtime.py` 存量文件体量门禁仍开放。
+
 ## [2026-09-12] - fix(miniapp): 商品目录真实销量排序与伪营销徽标清理
 
 task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
@@ -2391,7 +2954,8 @@ residual_risks: A-02/A-03/A-04/A-05、S-01/S-02/S-03、S-04/S-05/S-06、O-01/O-0
 - 来源: M5 跨仓小任务收口后的生产部署；skill `yunxibakebot-production-release`
 - 变更:
   - 生产部署 v0.132.1（aab1c56）：`get_my_coupons` 输出 `thresholdFen`（`CouponTemplateRepo.list_by_ids` 批量查询避免 N+1，模板缺失 fallback 0）；`MAX_RECHARGE_FEN` 笔误修正 `5_000_00`→`50_000`（单笔充值上限 5000 元→500 元）。
-  - 部署事故：首次执行 `scripts/deploy.sh` 在服务器端 `deploy_server.sh` 第 2 行失败（`set: pipefail: invalid option name`）。根因：Windows `core.autocrlf=true` 使本地 checkout 的 `.sh` 脚本为 CRLF，scp 上传后 Linux bash 把 `` 并入选项名。修复：`deploy.sh`/`deploy_server.sh`/`pull_prod_snapshot.sh`/`setup_wecom.sh` 4 个文件转 LF（内容零变化），新增 `.gitattributes`（`*.sh text eol=lf`）防重犯。
+  - 部署事故：首次执行 `scripts/deploy.sh` 在服务器端 `deploy_server.sh` 第 2 行失败（`set: pipefail: invalid option name`）。根因：Windows `core.autocrlf=true` 使本地 checkout 的 `.sh` 脚本为 CRLF，scp 上传后 Linux bash 把 `
+` 并入选项名。修复：`deploy.sh`/`deploy_server.sh`/`pull_prod_snapshot.sh`/`setup_wecom.sh` 4 个文件转 LF（内容零变化），新增 `.gitattributes`（`*.sh text eol=lf`）防重犯。
 - 验证:
   - `systemctl is-active yunxibakebot` → active；生产 worktree `aab1c56154`、VERSION `0.132.1`。
   - `https://yunxifood.cn/health` → `{"status":"ok","version":"0.132.1"}`；`/ready` → ready 且 `database_schema_ready=true`、`youzan_production_mode_ready=true`、`youzan_mock_mode=false`。

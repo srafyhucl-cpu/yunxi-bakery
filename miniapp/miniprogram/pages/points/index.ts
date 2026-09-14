@@ -1,4 +1,5 @@
 import { getPoints } from "../../services/points";
+import { ROUTES } from "../../constants/routes";
 import { mapPointsSourceLabel, type PointsLedgerItem } from "../../utils/member-assets";
 import { getErrorMessage } from "../../services/http";
 import { getMiniappLayoutMetrics } from "../../utils/layout";
@@ -61,7 +62,13 @@ Page({
     }
   },
   goLogin() {
-    wx.switchTab({ url: "/pages/profile/index" });
+    wx.switchTab({ url: ROUTES.profile });
+  },
+  retryLoad() {
+    void this.loadPoints();
+  },
+  goProducts() {
+    wx.switchTab({ url: ROUTES.products });
   },
   goBack() {
     goBackOrHome();

@@ -167,6 +167,14 @@ def test_register_routes_starts_workers_and_includes_all_routers(
     )
     _install_module(
         monkeypatch,
+        "app.api.channels.storefront.delivery",
+        create_storefront_delivery_router=lambda service: (
+            "miniapp-delivery",
+            service,
+        ),
+    )
+    _install_module(
+        monkeypatch,
         "app.api.channels.storefront.chat",
         create_storefront_chat_router=lambda service: ("miniapp-chat", service),
     )
@@ -283,6 +291,7 @@ def test_register_routes_starts_workers_and_includes_all_routers(
         "storefront_auth_service": "storefront-auth-service",
         "customer_address_service": "customer-address-service",
         "catalog_service": "catalog-service",
+        "delivery_service": "delivery-service",
         "order_service": "order-service",
         "stored_value_service": "stored-value-service",
         "points_service": "points-service",
@@ -302,7 +311,8 @@ def test_register_routes_starts_workers_and_includes_all_routers(
 
     assert wecom_queue.started_with == ["chat"]
     assert kf_queue.started_with == ["chat"]
-    assert len(app.included_routers) == 29
+    assert len(app.included_routers) == 30
+    assert ("miniapp-delivery", "delivery-service") in app.included_routers
     assert app.included_routers[0] == ("webhook", "chat")
     wecom_router = app.included_routers[-2]
     assert wecom_router[0] == "wecom-intelligent-bot-router"
@@ -384,8 +394,13 @@ def test_init_services_wires_core_services(monkeypatch) -> None:
             created["customer_address_service"] = kwargs
 
     class FakeCustomerGroupOperationsService:
-        def __init__(self, repo: Any) -> None:
+        def __init__(
+            self,
+            repo: Any,
+            schedule_service: Any,
+        ) -> None:
             created["customer_group_service"] = repo
+            created["customer_group_schedule_service"] = schedule_service
 
     class FakeCatalogApplicationService:
         def __init__(self, **kwargs: Any) -> None:
@@ -546,6 +561,7 @@ def test_init_services_wires_core_services(monkeypatch) -> None:
         "analytics_repo": "analytics-repo",
         "customer_profile_repo": "customer-profile-repo",
         "conversation_summary_repo": "conversation-summary-repo",
+        "delivery_quote_repo": "delivery-quote-repo",
     }
 
     services = lifespan_services.init_services(repos, vs="vector", bm25="bm25")
@@ -564,6 +580,7 @@ def test_init_services_wires_core_services(monkeypatch) -> None:
         "customer_consent_service",
         "privacy_lifecycle_service",
         "catalog_service",
+        "delivery_service",
         "order_service",
         "stored_value_service",
         "points_service",

@@ -6,6 +6,11 @@ const miniappRoot = path.join(root, "miniprogram");
 const buttonAuditLatestPath = path.join(root, "reports", "button-audit", "latest.json");
 const reportsRoot = path.join(root, "reports", "button-style-audit");
 
+// app.wxss 中用于抹平微信原生按钮样式的重置规则，页面里的 class 规则必须压过它。
+const BUTTON_RESET_SELECTOR = 'button:not([size="mini"])';
+// 只盯“背景被重置成透明”这一类实际会导致控件不可见的属性，避免把尺寸微调误报成缺陷。
+const BUTTON_BACKGROUND_PROPERTIES = ["background", "background-color"];
+
 function readText(filePath) {
   return fs.readFileSync(filePath, "utf8");
 }
@@ -42,6 +47,58 @@ function getCssForControl(control) {
 
 function selectorMentionsToken(selector, token) {
   return new RegExp(`\\.${token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\w-])`).test(selector);
+}
+
+function selectorSpecificity(selector) {
+  // :not() 自身不计权重，括号内的选择器计入，因此先把参数展开再统计。
+  const normalized = selector.replace(/:not\(([^)]*)\)/g, " $1");
+  const ids = (normalized.match(/#[\w-]+/g) || []).length;
+  const classes =
+    (normalized.match(/\.[\w-]+/g) || []).length +
+    (normalized.match(/\[[^\]]*\]/g) || []).length +
+    (normalized.match(/:(?!:)[\w-]+/g) || []).length;
+  const elements =
+    (normalized.match(/(?:^|[\s>+~])([a-zA-Z][\w-]*)/g) || []).length +
+    (normalized.match(/::[\w-]+/g) || []).length;
+  return ids * 10000 + classes * 100 + elements;
+}
+
+function getRuleDeclarations(body) {
+  const properties = new Set();
+  for (const declaration of body.split(";")) {
+    const separator = declaration.indexOf(":");
+    if (separator > 0) {
+      properties.add(declaration.slice(0, separator).trim().toLowerCase());
+    }
+  }
+  return properties;
+}
+
+function getResetOverriddenProperties(cssSource, classTokens) {
+  const winner = {};
+  for (const match of cssSource.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const properties = getRuleDeclarations(match[2]);
+    for (const rawSelector of match[1].split(",")) {
+      const selector = rawSelector.trim();
+      if (!selector || !classTokens.some((token) => selectorMentionsToken(selector, token))) {
+        continue;
+      }
+      const specificity = selectorSpecificity(selector);
+      for (const property of BUTTON_BACKGROUND_PROPERTIES) {
+        if (!properties.has(property)) {
+          continue;
+        }
+        const current = winner[property];
+        if (!current || specificity > current.specificity) {
+          winner[property] = { selector, specificity };
+        }
+      }
+    }
+  }
+  const resetSpecificity = selectorSpecificity(BUTTON_RESET_SELECTOR);
+  return Object.entries(winner)
+    .filter(([, entry]) => entry.specificity < resetSpecificity)
+    .map(([property]) => property);
 }
 
 function getDeclarationsForToken(cssSource, token) {
@@ -100,6 +157,11 @@ function inspectControl(control) {
     control.tag === "button" ||
     classTokens.some((token) => hasSelector(cssSource, token, /:active|\.is-active|\[data-active=/));
 
+  // 微信原生按钮重置的权重高于裸 class，权重不足时背景会被重置为透明，白字按钮会整块消失。
+  const resetOverriddenProperties =
+    control.tag === "button" ? getResetOverriddenProperties(cssSource, classTokens) : [];
+  const resetOverrideOk = resetOverriddenProperties.length === 0;
+
   const failures = [];
   const warnings = [];
   if (!hasClassRule) {
@@ -110,6 +172,9 @@ function inspectControl(control) {
   }
   if (!disabledStyleOk) {
     failures.push("missing-disabled-style");
+  }
+  if (!resetOverrideOk) {
+    failures.push("button-reset-overrides-class");
   }
   if (!textProtectionOk) {
     warnings.push("text-overflow-protection-not-obvious");
@@ -127,12 +192,14 @@ function inspectControl(control) {
     label: control.label,
     handler: control.handler,
     classTokens,
+    resetOverriddenProperties,
     checks: {
       hasClassRule,
       touchStyleOk,
       textProtectionOk,
       disabledStyleOk,
       pressFeedbackOk,
+      resetOverrideOk,
     },
     failures,
     warnings,

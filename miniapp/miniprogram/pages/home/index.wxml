@@ -48,7 +48,7 @@
             data-link-target="{{link.linkTarget}}"
             bindtap="handleBlockAction"
           >
-            <view class="quick-link-card__icon bakery-action-icon">{{link.iconText}}</view>
+            <view class="quick-link-card__icon bakery-action-icon quick-link-card__icon--{{link.iconKey}}" aria-hidden="true"></view>
             <view class="quick-link-card__copy">
               <text class="quick-link-card__title">{{link.title}}</text>
               <text class="quick-link-card__subtitle">{{link.subtitle}}</text>
@@ -109,7 +109,7 @@
               bindtap="openProduct"
               >
                 <view class="product-image bakery-photo {{product.imageClass}}">
-                  <view class="product-badge">{{product.badgeText}}</view>
+                  <view wx:if="{{product.badgeText}}" class="product-badge">{{product.badgeText}}</view>
                   <image wx:if="{{product.imageUrl && !product.imageFailed}}" class="product-cover" src="{{product.imageUrl}}" mode="aspectFill" lazy-load="{{true}}" data-id="{{product.id}}" binderror="onHomeProductImageError" />
                   <view wx:else class="yunxi-image-fallback">
                     <text class="yunxi-image-fallback__mark">芸</text>
@@ -119,9 +119,10 @@
                 <text class="product-title">{{product.title}}</text>
                 <text wx:if="{{product.deliveryTip}}" class="product-tip">{{product.deliveryTip}}</text>
                 <view class="product-bottom-row">
-                  <text class="product-price">{{product.priceText}}</text>
+                  <text class="product-price{{product.isDisplayOnly ? ' is-display-only' : ''}}">{{product.priceText}}</text>
                 </view>
                 <view
+                  wx:if="{{!product.isDisplayOnly}}"
                   class="product-action {{product.isUnavailable ? 'is-muted' : ''}}"
                   data-id="{{product.id}}"
                   catchtap="quickAddHomeProduct"
@@ -136,7 +137,7 @@
 
       <view class="shop-promise-card glass-panel fade-in">
         <view class="shop-promise-item">
-          <text class="shop-promise-icon">预</text>
+          <view class="shop-promise-icon shop-promise-icon--booking" aria-hidden="true"></view>
           <view class="shop-promise-text">
             <text class="shop-promise-title">提前1天预订</text>
             <text class="shop-promise-desc">当天制作 次日自取或配送</text>
@@ -144,7 +145,7 @@
         </view>
         <view class="shop-promise-divider"></view>
         <view class="shop-promise-item">
-          <text class="shop-promise-icon">送</text>
+          <view class="shop-promise-icon shop-promise-icon--delivery" aria-hidden="true"></view>
           <view class="shop-promise-text">
             <text class="shop-promise-title">北京闪送</text>
             <text class="shop-promise-desc">运费按地址单独计算</text>
@@ -152,10 +153,10 @@
         </view>
         <view class="shop-promise-divider"></view>
         <view class="shop-promise-item">
-          <text class="shop-promise-icon">时</text>
+          <view class="shop-promise-icon shop-promise-icon--hours" aria-hidden="true"></view>
           <view class="shop-promise-text">
             <text class="shop-promise-title">09:00-19:30</text>
-            <text class="shop-promise-desc">当天订单 17:00 前咨询</text>
+            <text class="shop-promise-desc">当天订单 17:00 截单</text>
           </view>
         </view>
       </view>

@@ -41,14 +41,18 @@
   justify-content: center;
   width: 140rpx;
   height: 140rpx;
-  color: var(--yunxi-brand);
-  font-size: 28rpx;
-  font-weight: 800;
-  background: #FFFFFF;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 64rpx 64rpx;
+  background-color: #FFFFFF;
   border-radius: var(--yunxi-radius-lg);
   box-shadow: var(--yunxi-card-shadow);
   border: 1rpx solid var(--yunxi-border);
   margin-bottom: 20rpx;
+}
+
+.empty-login__icon--support {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233D332D' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'/%3E%3C/svg%3E");
 }
 
 .empty-login__title {
@@ -258,10 +262,10 @@
   min-height: 88rpx !important;
   padding: 0 !important;
   box-sizing: border-box !important;
-  color: #FFFFFF;
   font-size: 26rpx;
   font-weight: 700;
-  background: #B4BEB7;
+  background: var(--yunxi-surface-alt);
+  color: var(--yunxi-text-secondary);
   border-radius: var(--yunxi-radius-full);
   transition: all 0.25s cubic-bezier(0.25, 1, 0.5, 1);
   margin: 0;
@@ -269,8 +273,9 @@
 }
 
 .send-btn[disabled] {
-  background: #B4BEB7 !important;
-  color: rgba(255, 255, 255, 0.8) !important;
+  background: var(--yunxi-surface-alt) !important;
+  color: var(--yunxi-text-secondary) !important;
+  border: 1rpx solid var(--yunxi-border-medium);
 }
 
 .send-btn.is-active {

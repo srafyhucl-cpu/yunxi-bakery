@@ -7,6 +7,7 @@ import type { CatalogProduct } from "../types/catalog";
 interface WrappedApiResponse<TData> {
   code: number;
   data: TData;
+  meta?: ProductPageMeta;
 }
 
 interface ListProductsOptions {
@@ -15,6 +16,8 @@ interface ListProductsOptions {
   featured?: boolean;
   sort?: "popular";
   limit?: number;
+  offset?: number;
+  keyword?: string;
 }
 
 export interface ProductCategory {
@@ -22,6 +25,18 @@ export interface ProductCategory {
   title: string;
   sort: number;
   productCount: number;
+}
+
+export interface ProductPageMeta {
+  total: number;
+  limit: number;
+  offset: number;
+  hasMore: boolean;
+}
+
+export interface ProductPage {
+  items: CatalogProduct[];
+  meta: ProductPageMeta;
 }
 
 const PRODUCT_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -57,6 +72,12 @@ function buildProductsPath(options: ListProductsOptions): string {
   }
   if (options.limit) {
     params.push(`limit=${encodeURIComponent(String(options.limit))}`);
+  }
+  if (options.offset !== undefined) {
+    params.push(`offset=${encodeURIComponent(String(options.offset))}`);
+  }
+  if (options.keyword) {
+    params.push(`keyword=${encodeURIComponent(options.keyword)}`);
   }
   return `/api/v1/miniapp/products${params.length ? `?${params.join("&")}` : ""}`;
 }
@@ -109,7 +130,29 @@ function buildProductsCacheKey(options: ListProductsOptions = {}): string {
     categoryId: options.categoryId ?? "",
     featured: Boolean(options.featured),
     sort: options.sort ?? "",
+    // limit 参与缓存键：首页货架(6)/购物车推荐(4)/详情关联(5) 共用 featured 时不得互相复用缓存
+    limit: options.limit ?? 0,
+    offset: options.offset ?? 0,
+    keyword: options.keyword ?? ""
   });
+}
+
+function normalizeProductPageMeta(
+  meta: ProductPageMeta | undefined,
+  options: ListProductsOptions,
+  itemCount: number
+): ProductPageMeta {
+  const fallbackOffset = Math.max(0, options.offset ?? 0);
+  const fallbackLimit = Math.max(1, options.limit ?? (itemCount || 1));
+  const total = Math.max(0, Number(meta?.total ?? fallbackOffset + itemCount));
+  const limit = Math.max(1, Number(meta?.limit ?? fallbackLimit));
+  const offset = Math.max(0, Number(meta?.offset ?? fallbackOffset));
+  return {
+    total,
+    limit,
+    offset,
+    hasMore: typeof meta?.hasMore === "boolean" ? meta.hasMore : offset + itemCount < total
+  };
 }
 
 async function fetchProducts(options: ListProductsOptions = {}): Promise<CatalogProduct[]> {
@@ -142,6 +185,20 @@ export async function listProducts(
     ttlMs: PRODUCT_CACHE_TTL_MS,
     ...cacheOptions
   });
+}
+
+export async function fetchProductListing(options: ListProductsOptions = {}): Promise<ProductPage> {
+  const response = await request<WrappedApiResponse<CatalogProduct[]>>({
+    path: buildProductsPath(options)
+  });
+  if (isWrappedCatalogProducts(response)) {
+    const items = normalizeRemoteProducts(response.data);
+    return {
+      items,
+      meta: normalizeProductPageMeta(response.meta, options, items.length)
+    };
+  }
+  throw new Error("商品分页接口响应格式异常");
 }
 
 async function fetchProductDetail(productId: string): Promise<CatalogProduct | null> {

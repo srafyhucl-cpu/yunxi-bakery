@@ -503,3 +503,24 @@ async def test_product_reconcile_does_not_overwrite_stale_completion() -> None:
     assert summary["claimed"] == 1
     assert summary["succeeded"] == 0
     assert summary["skipped_stale"] == 1
+
+
+async def test_product_reconcile_skips_deactivation_on_empty_onsale_result() -> None:
+    # 上游返回空在售集合时本地商品可能只是接口异常，不得整批下架
+    product_repo = FakeProductRepo(active_ids=[101, 102], all_ids=[101, 102])
+    history_repo = FakeHistoryRepo()
+    service = ProductReconcileService(
+        youzan_client=FakeYouzanClient(set()),  # type: ignore[arg-type]
+        product_repo=product_repo,  # type: ignore[arg-type]
+        history_repo=history_repo,  # type: ignore[arg-type]
+    )
+
+    summary = await service.run()
+
+    assert summary["checked"] == 2
+    assert summary["onsale_from_youzan"] == 0
+    assert summary["deactivated"] == 0
+    assert summary["deactivated_ids"] == []
+    assert summary["errors"] == ["onsale_empty_guard"]
+    assert product_repo.deleted == []
+    assert history_repo.records == []

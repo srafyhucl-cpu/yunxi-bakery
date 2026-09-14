@@ -1,4 +1,5 @@
 import { ROUTES } from "../../constants/routes";
+import { SHOP_CONFIG, resolvePickupAddress } from "../../config/shop";
 import { getMiniappLayoutMetrics } from "../../utils/layout";
 import { getErrorMessage } from "../../services/http";
 import {
@@ -27,10 +28,11 @@ import {
   getCheckoutDateEnd,
   getCheckoutDateStart,
   isCheckoutDateToday,
+  resolveCheckoutSchedule,
 } from "../../utils/checkout-time";
-import { formatFen } from "../../utils/money";
+import { formatDeductionFen, formatFen } from "../../utils/money";
 import { goBackOrHome } from "../../utils/navigation";
-import { buildMiniappSessionView, isMiniappLoggedIn } from "../../utils/session";
+import { isMiniappLoggedIn } from "../../utils/session";
 import { getBalance } from "../../services/balance";
 import { applyCoupon, getMyCoupons } from "../../services/coupons";
 import { applyPoints, getPoints } from "../../services/points";
@@ -68,7 +70,8 @@ function getCartItemLabel(item: CartItem): string {
 }
 
 function getPickupAddressForQuote(pickupAddress: string): string {
-  return pickupAddress || "北京市朝阳区云熙烘焙工坊";
+  // 自提地址唯一来源是 config/shop.ts；后台占位文案也回落到真实门店，避免错误报价起点。
+  return resolvePickupAddress(pickupAddress);
 }
 
 function getDeliveryGuidance(status: string, calculating: boolean): {
@@ -129,7 +132,7 @@ Page({
     remark: "",
     pickupNotice: "",
     deliveryNotice: "",
-    pickupAddress: "",
+    pickupAddress: SHOP_CONFIG.pickupAddress as string,
     selectedAddressId: "",
     selectedAddressText: "",
     dateStartValue: getCheckoutDateStart(),
@@ -145,9 +148,7 @@ Page({
     errorMessage: "",
     submitting: false,
     agreementAccepted: false,
-    sessionView: buildMiniappSessionView(getMiniappSession()),
     isLoggedIn: isMiniappLoggedIn(getMiniappSession()),
-    loginStateText: "登录后即可结算",
     layoutStyle: getMiniappLayoutMetrics().pageShellStyle,
     availableCoupons: [] as Array<MemberCoupon & { disabled: boolean }>,
     selectedCouponId: "",
@@ -159,9 +160,10 @@ Page({
     estimateCouponFen: 0,
     estimateRemainFen: 0,
     goodsFenText: "¥0.00",
-    estimateCouponFenText: "-¥0.00",
+    estimateCouponFenText: "-",
     estimateRemainFenText: "¥0.00",
-    balanceDeductText: "-¥0.00",
+    balanceDeductText: "-",
+    footerAmountNote: "自提价 · 免运费",
     checkoutItems: [] as CartItem[],
     pendingOrderId: "",
     pendingBarVisible: false,
@@ -189,10 +191,7 @@ Page({
     goBackOrHome();
   },
   handleSessionAction() {
-    if (this.data.isLoggedIn) {
-      this.goBack();
-      return;
-    }
+    // 会话提示仅在未登录时提供动作，已登录身份说明不再展示返回按钮。
     wx.switchTab({ url: ROUTES.profile });
   },
   async loadCheckout() {
@@ -200,15 +199,11 @@ Page({
     if (!isMiniappLoggedIn(session)) {
       this.setData({
         errorMessage: "请先登录后再结算",
-        sessionView: buildMiniappSessionView(session),
-        loginStateText: "请先登录后再结算",
         isLoggedIn: false
       });
       return;
     }
     this.setData({
-      sessionView: buildMiniappSessionView(session),
-      loginStateText: "订单将关联到当前微信身份",
       isLoggedIn: true
     });
     const totalFen = getCartItems().reduce((sum, item) => sum + item.priceFen * item.quantity, 0);
@@ -217,9 +212,6 @@ Page({
     await syncAddressBookFromBackend();
     const selectedAddress = getSelectedAddress();
     const defaultExpectTime = buildDefaultExpectTime(shopSettings.businessHours);
-    const selectedDateValue = (this.data.expectTime || defaultExpectTime).slice(0, 10);
-    const hourOptions = buildCheckoutHourOptions(shopSettings.businessHours, selectedDateValue);
-    const defaultHourIndex = getDefaultCheckoutHourIndex(hourOptions);
     const shouldApplySelectedAddress =
       Boolean(selectedAddress) &&
       (this.data.selectedAddressId !== selectedAddress?.id ||
@@ -248,12 +240,12 @@ Page({
       dateStartValue: getCheckoutDateStart(),
       dateEndValue: getCheckoutDateEnd(),
       businessHours: shopSettings.businessHours,
-      hourOptions,
-      selectedHourIndex: defaultHourIndex,
-      expectTime: this.data.expectTime || defaultExpectTime,
-      selectedDateValue,
-      isSameDayOrder: isCheckoutDateToday(selectedDateValue)
     });
+    // 选择器显示值由提交值反推：重新进入结算页时不会出现控件与实际下单时间不一致。
+    this.syncExpectTimeSchedule(
+      this.data.expectTime || defaultExpectTime,
+      shopSettings.businessHours
+    );
     // 资产区数据（余额/积分/可用券）用于展示与抵扣估算
     const [balance, points, couponsData] = await Promise.all([
       getBalance().catch(() => null),
@@ -329,6 +321,27 @@ Page({
         this.invalidateDeliveryQuote("quoting", "确认运费中...");
       }
       void this.fetchDeliveryQuote();
+    });
+  },
+  // 重新进入结算页或恢复待支付订单时，选择器必须按当前提交值重建。
+  syncExpectTimeSchedule(
+    expectTime?: string,
+    businessHours?: string
+  ) {
+    const resolvedExpectTime = expectTime || this.data.expectTime;
+    const resolvedBusinessHours = businessHours || this.data.businessHours;
+    const schedule = resolveCheckoutSchedule(
+      resolvedBusinessHours,
+      resolvedExpectTime,
+      this.data.minuteOptions
+    );
+    this.setData({
+      hourOptions: schedule.hourOptions,
+      selectedDateValue: schedule.dateValue,
+      selectedHourIndex: schedule.hourIndex,
+      selectedMinuteIndex: schedule.minuteIndex,
+      expectTime: schedule.expectTime,
+      isSameDayOrder: isCheckoutDateToday(schedule.dateValue)
     });
   },
   selectExpectDate(event: WechatMiniprogram.PickerChange) {
@@ -603,12 +616,33 @@ Page({
       estimateCouponFen: couponFen,
       estimateRemainFen: remainFen,
       goodsFenText: formatFen(goodsFen),
-      estimateCouponFenText: `-${formatFen(couponFen)}`,
+      estimateCouponFenText: formatDeductionFen(couponFen),
       estimateRemainFenText: formatFen(remainFen),
-      balanceDeductText: `-${formatFen(Math.min(balanceFen, Math.max(0, totalWithDelivery - couponFen)))}`
+      balanceDeductText: formatDeductionFen(Math.min(balanceFen, Math.max(0, totalWithDelivery - couponFen))),
+      footerAmountNote: this.buildFooterAmountNote()
     });
   },
+  buildFooterAmountNote(): string {
+    // 固定栏只放与当前估算金额直接相关的事实，避免顾客只看到总额却不知道运费口径。
+    if (this.data.deliveryType !== "delivery") {
+      return "自提价 · 免运费";
+    }
+    if (this.data.deliveryQuoteStatus === "quoted") {
+      return `已含闪送费 ${formatFen(this.data.deliveryFeeFen)}`;
+    }
+    if (this.data.deliveryCalculating || this.data.deliveryQuoteStatus === "quoting") {
+      return "闪送费确认中，暂未计入";
+    }
+    return "闪送费未计入，提交前确认";
+  },
   toggleCouponPanel() {
+    // 无可用券时不再提供展开动作，避免出现可点但无内容的伪交互。
+    if (this.data.availableCoupons.length === 0) {
+      if (this.data.showCouponPanel) {
+        this.setData({ showCouponPanel: false });
+      }
+      return;
+    }
     this.setData({ showCouponPanel: !this.data.showCouponPanel });
   },
   selectCoupon(event: WechatMiniprogram.TouchEvent) {

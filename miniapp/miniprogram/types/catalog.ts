@@ -15,6 +15,7 @@ export interface CatalogProduct {
   categoryName?: string;
   stock: number;
   isActive: boolean;
+  isPurchasable?: boolean;
   tags: string[];
   description: string;
   specs: string[];

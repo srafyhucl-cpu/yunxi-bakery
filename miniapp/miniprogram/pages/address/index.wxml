@@ -13,15 +13,12 @@
   <view class="page-pinned page-pinned--empty"></view>
   <scroll-view class="page-scroll" scroll-y enhanced show-scrollbar="{{false}}">
     <view class="page address-page">
-      <session-notice
-        wx:if="{{!sessionView.loggedIn}}"
-        status-text="{{sessionView.statusText}}"
-        badge-text="{{sessionView.badgeText}}"
-        description="{{loginStateText}}"
-        action-text="去登录"
-        icon-text="址"
-        bind:action="goProfile"
-      ></session-notice>
+      <view wx:if="{{!sessionView.loggedIn}}" class="yunxi-state yunxi-state--page">
+        <view class="yunxi-state__icon yunxi-state__icon--map-pin" aria-hidden="true"></view>
+        <text class="yunxi-state__title">登录后管理收货地址</text>
+        <text class="yunxi-state__hint">{{loginStateText}}</text>
+        <button class="primary-button yunxi-state__action" bindtap="goProfile">去登录</button>
+      </view>
       <view wx:if="{{sessionView.loggedIn}}" class="address-header">
         <view class="address-header__info">
           <text class="address-subtitle">{{mode === 'select' ? '选择后将自动回填结算信息' : '管理常用联系人和配送地址'}}</text>
@@ -73,6 +70,7 @@
               <text wx:if="{{item.isDefault}}" class="address-badge">默认</text>
             </view>
             <text class="address-card-detail">{{item.address}}</text>
+            <text wx:if="{{item.needsDetailHint}}" class="address-card-warning">地址信息不完整，请编辑补充小区、楼栋或门牌号</text>
           </view>
           <view class="address-card-actions">
             <button

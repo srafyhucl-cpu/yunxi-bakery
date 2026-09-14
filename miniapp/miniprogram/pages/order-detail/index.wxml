@@ -13,15 +13,11 @@
   <view class="page-pinned page-pinned--empty"></view>
   <scroll-view class="page-scroll" scroll-y enhanced show-scrollbar="{{false}}">
     <view class="page order-detail-page">
-      <view wx:if="{{!canLoadOrder}}" class="empty">
-        <session-notice
-          status-text="{{sessionView.statusText}}"
-          badge-text="{{sessionView.badgeText}}"
-          description="{{loginStateText}}"
-          action-text="去登录"
-          icon-text="详"
-          bind:action="goProfile"
-        ></session-notice>
+      <view wx:if="{{!canLoadOrder}}" class="yunxi-state yunxi-state--page">
+        <view class="yunxi-state__icon yunxi-state__icon--receipt" aria-hidden="true"></view>
+        <text class="yunxi-state__title">登录后查看订单详情</text>
+        <text class="yunxi-state__hint">{{loginStateText}}</text>
+        <button class="primary-button yunxi-state__action" bindtap="goProfile">去登录</button>
       </view>
       <view wx:elif="{{loading && !order}}" class="empty">订单加载中...</view>
 
@@ -96,11 +92,12 @@
             </view>
             <text class="product-subtotal">{{item.subtotalText}}</text>
           </view>
+          <text class="section-title">金额明细</text>
           <view class="order-total-row">
             <text>商品金额</text>
             <text>{{order.goodsTotalText}}</text>
           </view>
-          <view class="order-total-row">
+          <view wx:if="{{order.hasDeliveryFee}}" class="order-total-row order-total-row--delivery">
             <text>闪送费</text>
             <text>{{order.deliveryFeeText}}</text>
           </view>
@@ -117,16 +114,20 @@
             <text>{{order.deliveryTypeText}}</text>
           </view>
           <view class="order-row">
-            <text class="order-label">联系人</text>
+            <text class="order-label">{{order.receiverLabel}}</text>
             <text>{{order.receiverName || '未填写'}} {{order.receiverPhone || ''}}</text>
           </view>
           <view class="order-row">
-            <text class="order-label">期望时间</text>
+            <text class="order-label">{{order.expectTimeLabel}}</text>
             <text>{{order.expectTime || '时间待确认'}}</text>
           </view>
-          <view wx:if="{{order.deliveryAddress}}" class="order-row">
-            <text class="order-label">地址/备注</text>
+          <view wx:if="{{order.hasDeliveryFee && order.deliveryAddress}}" class="order-row order-row--delivery-address">
+            <text class="order-label">配送地址</text>
             <text>{{order.deliveryAddress}}</text>
+          </view>
+          <view wx:elif="{{!order.hasDeliveryFee}}" class="order-row order-row--pickup-address">
+            <text class="order-label">自提门店</text>
+            <text>{{order.pickupAddress || '请联系客服确认取货地址'}}</text>
           </view>
           <view wx:if="{{order.remark}}" class="order-row">
             <text class="order-label">订单备注</text>
@@ -154,9 +155,11 @@
         </view>
       </block>
 
-      <view wx:else class="empty">
-        <text>未找到订单</text>
-        <button class="ghost-button" bindtap="goOrders">返回订单列表</button>
+      <view wx:else class="yunxi-state yunxi-state--page">
+        <view class="yunxi-state__icon yunxi-state__icon--file-question" aria-hidden="true"></view>
+        <text class="yunxi-state__title">未找到订单</text>
+        <text class="yunxi-state__hint">订单号缺失或暂时无法加载，请返回订单列表重新进入</text>
+        <button class="ghost-button yunxi-state__action" bindtap="goOrders">返回订单列表</button>
       </view>
     </view>
   </scroll-view>

@@ -1,4 +1,5 @@
 import { getMyCoupons } from "../../services/coupons";
+import { ROUTES } from "../../constants/routes";
 import {
   classifyCouponStatus,
   type CouponTab,
@@ -91,7 +92,13 @@ Page({
     }
   },
   goLogin() {
-    wx.switchTab({ url: "/pages/profile/index" });
+    wx.switchTab({ url: ROUTES.profile });
+  },
+  retryLoad() {
+    void this.loadCoupons();
+  },
+  goProducts() {
+    wx.switchTab({ url: ROUTES.products });
   },
   goBack() {
     goBackOrHome();

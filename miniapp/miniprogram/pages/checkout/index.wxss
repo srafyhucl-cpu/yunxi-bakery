@@ -103,6 +103,11 @@ button.delivery-tab:active,
   background: var(--yunxi-surface-alt);
 }
 
+/* 无可用券的优惠券行只作信息展示，不提供按下反馈。 */
+.benefit-row--static:active {
+  background: transparent;
+}
+
 .address-picker-label {
   display: block;
   margin-bottom: 8rpx;
@@ -146,10 +151,12 @@ button.delivery-tab:active,
   flex: 1 0 100%;
 }
 
-.time-picker,
-.time-preview {
+/* 可点击的时间选择器：保留输入框外观并给出下拉指示，避免被当成静态文字 */
+.time-picker {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 8rpx;
   min-height: 88rpx;
   padding: 0 24rpx;
   background: var(--yunxi-surface-alt);
@@ -159,12 +166,30 @@ button.delivery-tab:active,
   color: var(--yunxi-text-primary);
 }
 
+.time-picker__value {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.time-picker__chevron {
+  flex-shrink: 0;
+  width: 12rpx;
+  height: 12rpx;
+  border: solid var(--yunxi-text-muted);
+  border-width: 0 3rpx 3rpx 0;
+  transform: rotate(45deg);
+}
+
+/* 只读的期望时间预览：去掉边框与底色，避免被误认为可点击控件 */
 .time-preview {
   color: var(--yunxi-text-secondary);
   font-size: 24rpx;
   min-height: auto;
-  padding-top: 16rpx;
-  padding-bottom: 16rpx;
+  padding: 16rpx 4rpx 0;
+  line-height: 1.5;
 }
 
 input,
@@ -279,6 +304,16 @@ textarea {
   font-weight: 900;
   white-space: nowrap;
   letter-spacing: 0;
+}
+
+/* 底部金额来源说明：让顾客在固定栏就能看到闪送费是否已计入 */
+.checkout-footer__note {
+  color: var(--yunxi-text-muted);
+  font-size: 22rpx;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .checkout-footer__submit {

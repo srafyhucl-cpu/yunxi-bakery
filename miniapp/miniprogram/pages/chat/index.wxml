@@ -9,9 +9,9 @@
       <view wx:if="{{errorMessage}}" class="error-text">{{errorMessage}}</view>
 
       <view wx:if="{{!canUseChat}}" class="empty-login">
-        <view class="empty-login__icon">客服</view>
-        <text class="empty-login__title">客服连接已断开</text>
-        <text class="muted">请在个人中心登录后与客服通话</text>
+        <view class="empty-login__icon empty-login__icon--support" aria-hidden="true"></view>
+        <text class="empty-login__title">登录后联系客服</text>
+        <text class="muted">请在个人中心登录后与客服在线沟通</text>
         <button class="primary-button empty-login__action" bindtap="goProfile">去登录</button>
       </view>
 

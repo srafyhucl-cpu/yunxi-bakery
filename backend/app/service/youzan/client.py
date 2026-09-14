@@ -54,6 +54,42 @@ def build_api_url(api_name: str, version: str, token: str) -> str:
     return f"{settings.YOUZAN_API_BASE}/{api_name}/{version}?access_token={token}"
 
 
+GATEWAY_ERROR_KEY = "gw_err_resp"
+GATEWAY_IP_WHITELIST_ERR_CODE = 4007
+GATEWAY_IP_WHITELIST_HINT = (
+    "源 IP 未加入有赞应用白名单：请在应用中心控制台配置 IP 白名单后重试"
+)
+
+
+def extract_gateway_error(payload: object) -> dict | None:
+    """提取有赞网关级错误。
+
+    网关拒绝调用时响应体没有业务 `data`，只有 `gw_err_resp`/`error_response`；
+    下游若按空列表处理，会把鉴权或 IP 白名单失败误判成“店铺没有数据”。
+    """
+    if not isinstance(payload, dict):
+        return None
+    error = payload.get(GATEWAY_ERROR_KEY) or payload.get("error_response")
+    if isinstance(error, dict) and error:
+        return error
+    return None
+
+
+def build_gateway_error_message(api_name: str, error: dict) -> str:
+    """构造脱敏后的网关错误文案，保留错误码与 trace id 便于定位。"""
+    err_code = error.get("err_code") or error.get("code") or ""
+    err_msg = error.get("err_msg") or error.get("msg") or ""
+    trace_id = error.get("trace_id") or ""
+    parts = [f"有赞网关调用失败 [{api_name}]", f"err_code={err_code}"]
+    if err_msg:
+        parts.append(f"err_msg={err_msg}")
+    if trace_id:
+        parts.append(f"trace_id={trace_id}")
+    if str(err_code) == str(GATEWAY_IP_WHITELIST_ERR_CODE):
+        parts.append(GATEWAY_IP_WHITELIST_HINT)
+    return sanitize_credential_text("；".join(parts))
+
+
 class YouzanClient:
     """有赞云 API 客户端（单例，管理 access_token 缓存并支持并发刷新锁与仓储持久化）。"""
 
@@ -195,6 +231,15 @@ class YouzanClient:
             raise APIError(f"有赞 API 响应异常 [{api_name}]: {result}")
         return result
 
+    def _ensure_gateway_success(self, api_name: str, payload: object) -> None:
+        """网关级错误必须抛出：静默空结果会污染商品同步与目录数据。"""
+        error = extract_gateway_error(payload)
+        if error is None:
+            return
+        message = build_gateway_error_message(api_name, error)
+        logger.error("%s", message)
+        raise APIError(message)
+
     async def call_api(self, api_name: str, version: str, params: dict) -> dict:
         """公开的有赞 OpenAPI 调用入口，供领域子客户端复用鉴权逻辑。"""
         return await self._call(api_name, version, params)
@@ -293,6 +338,7 @@ class YouzanClient:
                     "page_size": page_size,
                 },
             )
+            self._ensure_gateway_success("youzan.items.onsale.get", result)
             response = result.get("data") or result.get("response") or {}
             items: list[dict] = response.get("items") or []
             all_items.extend(items)
@@ -316,6 +362,7 @@ class YouzanClient:
             "3.0.0",
             {"kdt_id": settings.YOUZAN_KDT_ID},
         )
+        self._ensure_gateway_success("youzan.itemcategories.tags.get", result)
         response = result.get("data") or result.get("response") or {}
         tags: list[dict] = response.get("tags") or []
         logger.info("有赞商品分组拉取完成，共 %d 个", len(tags))
@@ -349,6 +396,7 @@ class YouzanClient:
                 "item_ids": item_ids[:20],
             },
         )
+        self._ensure_gateway_success("youzan.item.base.search", result)
         response = result.get("data") or result.get("response") or {}
         items = (
             response.get("items")
@@ -381,6 +429,7 @@ class YouzanClient:
                     },
                 },
             )
+            self._ensure_gateway_success("youzan.item.classification.search", result)
             response = result.get("data") or result.get("response") or {}
             items = response.get("items") or []
             if not isinstance(items, list):

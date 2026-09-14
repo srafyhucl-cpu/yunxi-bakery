@@ -4,7 +4,8 @@
 
 .detail-page {
   padding-top: 0;
-  padding-bottom: 220rpx;
+  /* 底部操作栏=100rpx 内容高 + 安全区，额外保留 40rpx 呼吸间距；不写死可避免全面屏机型留下大片空白 */
+  padding-bottom: calc(env(safe-area-inset-bottom) + 140rpx);
 }
 
 .detail-empty-state {
@@ -26,50 +27,17 @@
   z-index: 100;
   box-shadow: none;
   background: transparent;
+  /* 背景色必须立即切换：过渡中间值会让 DevTools 与低端机都读到半透明错误态。 */
+  transition: box-shadow 0.18s ease;
   border-bottom: 0;
 }
 
-.detail-back {
-  position: absolute;
-  left: var(--yunxi-page-gutter);
-  bottom: 12rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 76rpx;
-  min-width: 76rpx;
-  height: 76rpx;
-  min-height: 76rpx;
-  padding: 0;
-  box-sizing: border-box;
-  color: var(--yunxi-text-primary);
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: none;
-  border: 1rpx solid rgba(61, 51, 45, 0.1);
-  border-radius: 50%;
-  box-shadow: 0 6rpx 20rpx rgba(35, 50, 42, 0.08);
-}
 
-.detail-back--active {
-  transform: scale(0.92);
-  opacity: 0.85;
-}
-
-.detail-back:active {
-  transform: scale(0.92);
-  opacity: 0.85;
-}
-
-.detail-back__icon {
-  display: block;
-  flex-shrink: 0;
-  width: 22rpx;
-  height: 22rpx;
-  border: solid currentColor;
-  border-width: 0 5rpx 5rpx 0;
-  border-radius: 3rpx;
-  transform: rotate(135deg);
+/* 首屏压在商品大图上时保持透明；滚动后必须实底，避免正文与状态栏、返回控件重叠 */
+.detail-nav.detail-nav--solid {
+  background: #FFFFFF;
+  border-bottom: 1rpx solid var(--yunxi-border);
+  box-shadow: 0 8rpx 20rpx rgba(61, 51, 45, 0.05);
 }
 
 /* 沉浸式大图展示 */
@@ -90,19 +58,6 @@
   overflow: hidden;
 }
 
-.detail-sold-flag {
-  position: absolute;
-  left: 32rpx;
-  bottom: 32rpx;
-  z-index: 2;
-  padding: 8rpx 20rpx;
-  color: #FFFFFF;
-  background: rgba(28, 32, 29, 0.65);
-  backdrop-filter: none;
-  border-radius: var(--yunxi-radius-full);
-  font-size: 22rpx;
-  font-weight: 700;
-}
 
 .detail-cover {
   display: block;
@@ -397,8 +352,19 @@
 }
 
 .detail-service__icon {
-  font-size: 38rpx;
-  line-height: 1;
+  width: 38rpx;
+  height: 38rpx;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+}
+
+.detail-service__icon--chat {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233D332D' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'/%3E%3C/svg%3E");
+}
+
+.detail-service__icon--cart {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233D332D' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='8' cy='21' r='1' fill='%233D332D'/%3E%3Ccircle cx='19' cy='21' r='1' fill='%233D332D'/%3E%3Cpath d='M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12'/%3E%3C/svg%3E");
 }
 
 .detail-service__label {
@@ -421,16 +387,6 @@
   gap: 12rpx;
 }
 
-.detail-back {
-  width: 88rpx;
-  min-width: 88rpx;
-  height: 88rpx;
-  min-height: 88rpx;
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: none;
-  border-radius: 6rpx;
-  box-shadow: none;
-}
 
 .detail-main,
 .detail-section {
@@ -458,6 +414,23 @@
   padding-bottom: 8rpx;
 }
 
+.detail-display-only-card {
+  gap: 8rpx;
+  background: var(--yunxi-surface-alt);
+}
+
+.detail-display-only-card__title {
+  color: var(--yunxi-text-primary);
+  font-size: 30rpx;
+  font-weight: 800;
+}
+
+.detail-display-only-card__desc {
+  color: var(--yunxi-text-secondary);
+  font-size: 24rpx;
+  line-height: 1.6;
+}
+
 .fulfillment-row {
   padding: 14rpx 0;
   border-bottom: 1rpx solid var(--yunxi-border);
@@ -475,16 +448,16 @@
 }
 
 .detail-service {
-  width: 64rpx;
-  min-height: 72rpx;
+  width: 88rpx;
+  min-height: 88rpx;
 }
 
-.detail-service__icon {
-  font-size: 28rpx;
+.detail-service__label {
+  font-size: 24rpx;
 }
 
 .detail-actions button {
-  height: 76rpx;
-  line-height: 76rpx;
+  height: 88rpx;
+  line-height: 88rpx;
   border-radius: 6rpx;
 }

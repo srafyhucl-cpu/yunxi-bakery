@@ -1,12 +1,12 @@
 <view class="page-shell" style="{{layoutStyle}}">
-  <view class="page-fixed-safe has-custom-title detail-nav glass-panel">
-    <view class="detail-back" bindtap="goBack" hover-class="detail-back--active" aria-label="返回">
-      <text class="detail-back__icon"></text>
-    </view>
+  <view class="page-fixed-safe has-custom-title detail-nav glass-panel{{navSolid ? ' detail-nav--solid' : ''}}">
+    <button class="page-nav-back" bindtap="goBack" aria-label="返回">
+      <text class="page-nav-back__icon"></text>
+    </button>
     <view class="page-fixed-safe__title">商品详情</view>
   </view>
   <view class="page-pinned page-pinned--empty"></view>
-  <scroll-view class="page-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+  <scroll-view class="page-scroll" scroll-y enhanced show-scrollbar="{{false}}" bindscroll="onScroll">
     <view class="page detail-page">
       <view wx:if="{{product}}" class="detail-content fade-in">
         <view class="detail-hero">
@@ -16,7 +16,6 @@
               <text class="yunxi-image-fallback__mark">芸</text>
             </view>
           </view>
-          <text wx:if="{{product.soldText}}" class="detail-sold-flag">{{product.soldText}}</text>
         </view>
 
         <view class="detail-main detail-section">
@@ -25,10 +24,11 @@
           </view>
           <view class="detail-title-row">
             <text class="detail-title">{{product.title}}</text>
-            <text class="detail-status">{{product.isActive ? "在售" : "暂不可售"}}</text>
+            <text wx:if="{{!canPurchase}}" class="detail-status">{{unavailableText}}</text>
           </view>
           <text wx:if="{{product.displaySubtitle}}" class="detail-subtitle">{{product.displaySubtitle}}</text>
-          <view class="detail-meta">
+          <!-- 非卖品没有真实售价：不展示同步占位价与库存文案 -->
+          <view wx:if="{{!isDisplayOnly}}" class="detail-meta">
             <view class="detail-price-wrap">
               <text class="detail-price-label">门店自提价</text>
               <text class="detail-price">{{product.priceText}}</text>
@@ -49,14 +49,14 @@
         </view>
 
         <!-- 履约与预订服务卡 -->
-        <view class="detail-section detail-fulfillment-card">
+        <view wx:if="{{canPurchase}}" class="detail-section detail-fulfillment-card">
           <view class="fulfillment-row">
             <text class="fulfillment-tag">履约方式</text>
             <text class="fulfillment-val">支持 门店自提 · 北京闪送</text>
           </view>
           <view class="fulfillment-row">
-            <text class="fulfillment-tag">预订周期</text>
-            <text class="fulfillment-val">手作鲜制，建议提前1天预订；当天订单请先咨询客服</text>
+            <text class="fulfillment-tag">下单说明</text>
+            <text class="fulfillment-val">{{product.displayFulfillment}}</text>
           </view>
           <view class="fulfillment-row">
             <text class="fulfillment-tag">配送时段</text>
@@ -66,6 +66,11 @@
             <text class="fulfillment-tag">运费说明</text>
             <text class="fulfillment-val">闪送费按实际收货距离下单前确认，并与商品金额一并支付</text>
           </view>
+        </view>
+
+        <view wx:elif="{{isDisplayOnly}}" class="detail-section detail-display-only-card">
+          <text class="detail-display-only-card__title">仅供展示</text>
+          <text class="detail-display-only-card__desc">此商品用于说明门店使用的原料或展示产品，不提供直接购买。</text>
         </view>
 
         <view class="detail-section">
@@ -109,7 +114,7 @@
         </view>
       </view>
       <view wx:else class="yunxi-state detail-empty-state">
-        <view class="yunxi-state__icon">芸</view>
+        <view class="yunxi-state__icon yunxi-state__icon--cake" aria-hidden="true"></view>
         <text class="yunxi-state__title">{{unavailableText}}</text>
         <text wx:if="{{loadFailed}}" class="yunxi-state__hint">网络开小差了，重试一下吧</text>
         <text wx:elif="{{!lastProductId}}" class="yunxi-state__hint">从商品列表进入，或返回首页继续选购</text>
@@ -120,13 +125,14 @@
     </view>
   </scroll-view>
 
-  <view wx:if="{{product && canPurchase}}" class="detail-actions">
-    <view class="detail-service" bindtap="goChat">
-      <text class="detail-service__icon">询</text>
+  <view wx:if="{{product}}" class="detail-actions">
+    <block wx:if="{{canPurchase}}">
+    <view class="detail-service" bindtap="goChat" aria-label="联系客服">
+      <view class="detail-service__icon detail-service__icon--chat" aria-hidden="true"></view>
       <text class="detail-service__label">客服</text>
     </view>
-    <view class="detail-service" bindtap="goCart">
-      <text class="detail-service__icon">购</text>
+    <view class="detail-service" bindtap="goCart" aria-label="查看购物车">
+      <view class="detail-service__icon detail-service__icon--cart" aria-hidden="true"></view>
       <text class="detail-service__label">购物车</text>
     </view>
     <button
@@ -145,5 +151,10 @@
     >
       {{canPurchase ? '立即购买' : unavailableText}}
     </button>
+    </block>
+    <block wx:else>
+      <button class="ghost-button" bindtap="goBack">返回选购</button>
+      <button class="primary-button hover-scale" bindtap="goChat">咨询客服</button>
+    </block>
   </view>
 </view>

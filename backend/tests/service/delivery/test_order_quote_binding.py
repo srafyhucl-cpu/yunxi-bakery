@@ -81,7 +81,7 @@ def build_delivery_payload(quote_id: str = "") -> dict:
         "receiverPhone": "18800000001",
         "deliveryType": "delivery",
         "fulfillmentMethod": "beijing_delivery",
-        "pickupAddress": "北京市朝阳区云熙烘焙工坊",
+        "pickupAddress": "北京市东城区南竹杆胡同2号银河SOHO",
         "deliveryAddress": "北京市朝阳区测试路 1 号",
         "expectTime": "2026-09-10 15:00",
         "deliveryQuoteId": quote_id,
@@ -143,6 +143,28 @@ async def test_pickup_order_ignores_client_delivery_fee(
     assert created["totalFen"] == 19800
 
 
+async def test_pickup_order_returns_pickup_address_snapshot(
+    order_service: OrderApplicationService,
+) -> None:
+    pickup_address = "北京市东城区南竹杆胡同2号银河SOHO"
+    payload = {
+        "items": [{"productId": "p_pickup_address", "quantity": 1, "priceFen": 19800}],
+        "expectTime": "2026-09-10 15:00",
+        "deliveryType": "pickup",
+        "fulfillmentMethod": "pickup",
+        "pickupAddress": pickup_address,
+    }
+
+    created = await order_service.create_order(payload, user_id="pickup-address-user")
+    detail = await order_service.get_user_order(
+        created["orderId"], user_id="pickup-address-user"
+    )
+
+    assert detail["fulfillmentMethod"] == "pickup"
+    assert detail["deliveryFeeFen"] == 0
+    assert detail["pickupAddress"] == pickup_address
+
+
 async def test_delivery_order_requires_quote_before_inventory_reservation(
     db: aiosqlite.Connection,
     order_service: OrderApplicationService,
@@ -183,6 +205,7 @@ async def test_delivery_order_uses_quote_fee_and_binds_normalized_items(
     assert detail["deliveryFeeFen"] == 2600
     assert detail["payableFen"] == 22400
     assert detail["deliveryQuoteId"] == quote.quote_id
+    assert detail["pickupAddress"] == "北京市东城区南竹杆胡同2号银河SOHO"
 
 
 async def test_delivery_order_rejects_quote_for_other_user(

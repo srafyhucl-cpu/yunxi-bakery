@@ -1,5 +1,5 @@
 import { request } from "./http";
-import { SHOP_CONFIG } from "../config/shop";
+import { SHOP_CONFIG, resolvePickupAddress } from "../config/shop";
 import { createCachedLoader, type CachedLoaderOptions } from "../utils/cache";
 
 export interface ShopSettings {
@@ -44,7 +44,7 @@ function normalizeSettings(value: Partial<ShopSettings> | null | undefined): Sho
     customerWechat: value?.customerWechat?.trim() || SHOP_CONFIG.customerWechat,
     customerPhone: value?.customerPhone?.trim() || SHOP_CONFIG.customerPhone,
     businessHours: value?.businessHours?.trim() || SHOP_CONFIG.businessHours,
-    pickupAddress: value?.pickupAddress?.trim() || SHOP_CONFIG.pickupAddress,
+    pickupAddress: resolvePickupAddress(value?.pickupAddress),
     deliveryNotice:
       value?.deliveryNotice?.trim() || "门店配送需提前预约，配送范围和费用以客服确认为准",
     pickupNotice:

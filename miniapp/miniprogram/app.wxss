@@ -15,7 +15,7 @@ page {
   --yunxi-surface: #FFFFFF;
   --yunxi-surface-alt: #F1EEE8;
 
-  /* 品牌色系统 (森林墨绿系) */
+  /* 品牌色系统 (暖调可可中性色系) */
   --yunxi-brand: #3D332D;
   --yunxi-brand-light: #625248;
   --yunxi-brand-soft: rgba(61, 51, 45, 0.08);
@@ -324,8 +324,11 @@ button.primary-button,
 }
 
 .primary-button[disabled] {
-  color: rgba(255, 255, 255, 0.8);
-  background: #A3B5AC;
+  /* 微信原生 disabled 样式带 !important，必须显式提升优先级。 */
+  color: var(--yunxi-text-secondary) !important;
+  background: var(--yunxi-surface-alt) !important;
+  border: 1rpx solid var(--yunxi-border-medium) !important;
+  opacity: 1 !important;
   box-shadow: none;
 }
 
@@ -484,7 +487,8 @@ button.ghost-button,
 }
 
 .yunxi-badge.is-sold-out,
-.yunxi-badge.is-inactive {
+.yunxi-badge.is-inactive,
+.yunxi-badge.is-display-only {
   color: var(--yunxi-text-secondary);
   background: var(--yunxi-surface-alt);
   border: 1rpx solid var(--yunxi-border);
@@ -558,18 +562,70 @@ button.ghost-button,
   text-align: center;
 }
 
+/* 空态图标统一用标准线性图标，禁止用单汉字或标点充当占位图标。 */
 .yunxi-state__icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   width: 140rpx;
   height: 140rpx;
   margin-bottom: 16rpx;
-  background: #ffffff;
+  background-color: #ffffff;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 64rpx 64rpx;
   border: 1rpx solid var(--yunxi-border);
   border-radius: 40rpx;
   box-shadow: var(--yunxi-card-shadow);
-  font-size: 64rpx;
+}
+
+.yunxi-state__icon--map-pin {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233D332D' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z'/%3E%3Ccircle cx='12' cy='10' r='3'/%3E%3C/svg%3E")
+}
+
+.yunxi-state__icon--shopping-cart {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233D332D' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='8' cy='21' r='1'/%3E%3Ccircle cx='19' cy='21' r='1'/%3E%3Cpath d='M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12'/%3E%3C/svg%3E")
+}
+
+.yunxi-state__icon--shopping-bag {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233D332D' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z'/%3E%3Cpath d='M3 6h18'/%3E%3Cpath d='M16 10a4 4 0 0 1-8 0'/%3E%3C/svg%3E")
+}
+
+.yunxi-state__icon--clipboard-check {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233D332D' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='8' y='2' width='8' height='4' rx='1'/%3E%3Cpath d='M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2'/%3E%3Cpath d='m9 14 2 2 4-4'/%3E%3C/svg%3E")
+}
+
+.yunxi-state__icon--ticket {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233D332D' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2z'/%3E%3Cpath d='M13 5v14'/%3E%3C/svg%3E")
+}
+
+.yunxi-state__icon--receipt {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233D332D' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='5' y='3' width='14' height='18' rx='2'/%3E%3Cpath d='M9 8h6'/%3E%3Cpath d='M9 12h6'/%3E%3Cpath d='M9 16h3'/%3E%3C/svg%3E")
+}
+
+.yunxi-state__icon--file-question {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233D332D' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z'/%3E%3Cpath d='M14 2v5h5'/%3E%3Cpath d='M10.5 12.5a1.8 1.8 0 1 1 2.5 1.7c-.5.2-.5.6-.5.9'/%3E%3Cpath d='M12.5 18h.01'/%3E%3C/svg%3E")
+}
+
+.yunxi-state__icon--package {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233D332D' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z'/%3E%3Cpath d='M3.3 7 12 12l8.7-5'/%3E%3Cpath d='M12 22V12'/%3E%3C/svg%3E")
+}
+
+.yunxi-state__icon--loader {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233D332D' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 12a9 9 0 1 1-6.2-8.56'/%3E%3C/svg%3E")
+}
+
+.yunxi-state__icon--wifi-off {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233D332D' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 20h.01'/%3E%3Cpath d='M8.5 16.4a5 5 0 0 1 7 0'/%3E%3Cpath d='M5 12.9a10 10 0 0 1 3.5-2.2'/%3E%3Cpath d='M15.5 10.7A10 10 0 0 1 19 12.9'/%3E%3Cpath d='M2 8.8a15 15 0 0 1 4.2-2.5'/%3E%3Cpath d='M17.8 6.3A15 15 0 0 1 22 8.8'/%3E%3Cpath d='m2 2 20 20'/%3E%3C/svg%3E")
+}
+
+.yunxi-state__icon--star {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233D332D' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.9L12 18l-6.2 3.1 1.2-6.9-5-4.9 6.9-1z'/%3E%3C/svg%3E")
+}
+
+.yunxi-state__icon--cake {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233D332D' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 21v-7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v7'/%3E%3Cpath d='M2 21h20'/%3E%3Cpath d='M8 12V8'/%3E%3Cpath d='M12 12V7'/%3E%3Cpath d='M16 12V8'/%3E%3C/svg%3E")
+}
+
+.yunxi-state__icon--wallet {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233D332D' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1'/%3E%3Cpath d='M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4'/%3E%3C/svg%3E")
 }
 
 .yunxi-state__title {
@@ -588,6 +644,19 @@ button.ghost-button,
 .yunxi-state__action {
   min-width: 240rpx;
   margin-top: 24rpx;
+}
+
+/* 分区空态：嵌入卡片内部时收缩留白，避免在小卡片里出现整页级空白。 */
+.yunxi-state--section {
+  gap: 8rpx;
+  padding: 48rpx 24rpx;
+  min-height: 0;
+}
+
+/* 整页登录引导：在可视区域内垂直居中，避免顶部内容配大片无意义留白。 */
+.yunxi-state--page {
+  min-height: 58vh;
+  box-sizing: border-box;
 }
 
 /* 表单字段：常驻标签 + 控件，避免用户输入后失去字段含义 */

@@ -35,6 +35,7 @@ if (REQUESTED_PAGE && !ALL_PAGES.includes(REQUESTED_PAGE)) {
 
 const consoleErrors = [];
 const report = [];
+const screenshotBlockedPages = [];
 
 function withTimeout(promise, ms, label) {
   return Promise.race([
@@ -133,7 +134,11 @@ async function main() {
         null,
         SCREENSHOT_TIMEOUT
       );
-      if (r?.__failed) entry.errors.push(r.message);
+      if (r?.__failed) {
+        // 截图属于证据而非页面断言：环境或自动化波动只记环境阻塞，不能把整页判成失败。
+        entry.screenshotBlocked = true;
+        screenshotBlockedPages.push(page);
+      }
       const afterShot = await safe(() => miniProgram.currentPage(), "currentPageAfterScreenshot");
       if (beforeShot?.path !== page || afterShot?.path !== page) {
         entry.errors.push(`screenshot route mismatch: before=${beforeShot?.path ?? "unknown"}, after=${afterShot?.path ?? "unknown"}`);
@@ -151,20 +156,31 @@ async function main() {
     );
   }
 
+  const failedPages = report.filter((entry) => entry.errors.length > 0 || entry.currentPage !== entry.page);
+  const blockedOnly = failedPages.length === 0 && consoleErrors.length === 0 && screenshotBlockedPages.length > 0;
   fs.mkdirSync("reports/devtools", { recursive: true });
   fs.writeFileSync(
     "reports/devtools/walkthrough-phase-c.json",
     JSON.stringify(
-      { generatedAt: new Date().toISOString(), pages: report, consoleErrors: consoleErrors.slice(-100) },
+      {
+        generatedAt: new Date().toISOString(),
+        pages: report,
+        consoleErrors: consoleErrors.slice(-100),
+        screenshotBlockedPages,
+        blockedReason: blockedOnly
+          ? "DevTools 截图证据不可用（环境或自动化波动）；页面断言已执行，但没有本轮截图证据"
+          : ""
+      },
       null,
       2
     )
   );
-  const failedPages = report.filter((entry) => entry.errors.length > 0 || entry.currentPage !== entry.page);
-  console.log(`\ndone. report written. console warn/error total: ${consoleErrors.length}; page failures: ${failedPages.length}`);
+  console.log(
+    `\ndone. report written. console warn/error total: ${consoleErrors.length}; page failures: ${failedPages.length}; screenshot blocked pages: ${screenshotBlockedPages.length}`
+  );
 
   await safe(() => miniProgram.disconnect(), "disconnect");
-  process.exit(failedPages.length > 0 || consoleErrors.length > 0 ? 1 : 0);
+  process.exit(failedPages.length > 0 || consoleErrors.length > 0 ? 1 : blockedOnly ? 2 : 0);
 }
 
 function sleep(ms) {

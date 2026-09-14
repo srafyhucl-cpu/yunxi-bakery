@@ -1,6 +1,7 @@
 """客户地址领域辅助函数。"""
 
 import json
+import re
 from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
@@ -8,6 +9,13 @@ from uuid import uuid4
 from app.models.customer_address import CustomerAddress, CustomerAddressAuditEntry
 
 MAINLAND_PHONE_PATTERN_PREFIXES = tuple(str(prefix) for prefix in range(13, 20))
+BEIJING_ADDRESS_PREFIX_PATTERN = re.compile(
+    r"^(?:北京市?)?(?:"
+    r"东城区|西城区|朝阳区|丰台区|石景山区|海淀区|门头沟区|房山区|通州区|"
+    r"顺义区|昌平区|大兴区|怀柔区|平谷区|密云区|延庆区"
+    r")?"
+)
+ADDRESS_SEPARATOR_PATTERN = re.compile(r"[\s,，、;；-]+")
 
 
 def build_address(
@@ -47,6 +55,15 @@ def validate_address(receiver_name: str, receiver_phone: str, address: str) -> N
         raise ValueError("请填写正确的 11 位手机号")
     if not address:
         raise ValueError("请填写收货地址")
+    if not is_address_detailed_enough(address):
+        raise ValueError("请补充小区、楼栋或门牌号")
+
+
+def is_address_detailed_enough(address: str) -> bool:
+    """判断地址是否包含行政区之外的可用履约细节。"""
+    normalized = ADDRESS_SEPARATOR_PATTERN.sub("", address.strip())
+    detail = BEIJING_ADDRESS_PREFIX_PATTERN.sub("", normalized, count=1)
+    return len(detail) >= 4
 
 
 def serialize_address(

@@ -1,6 +1,3 @@
 {
-  "navigationBarTitleText": "芸熙烘焙",
-  "usingComponents": {
-    "session-notice": "/components/session-notice/index"
-  }
+  "navigationBarTitleText": "芸熙烘焙"
 }

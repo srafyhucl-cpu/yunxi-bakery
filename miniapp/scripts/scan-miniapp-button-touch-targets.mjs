@@ -150,7 +150,8 @@ async function openPage(miniProgram, url, previousUrl, previousPage) {
     for (let check = 0; check < 5; check += 1) {
       await sleep(400);
       const page = await miniProgram.currentPage();
-      if (page.path === url.slice(1)) {
+      // 带 query 的页面 path 不含问号，直接比对完整 url 会白等满五轮。
+      if (page.path === url.slice(1).split("?")[0]) {
         return page;
       }
     }
@@ -240,11 +241,11 @@ const states = [
         loading: false,
         searchText: "蛋糕",
         globalSearchResults: products,
-        allProducts: products,
+        searchMatchCount: 2,
+        searchRenderedCount: 2,
+        searchHasMore: false,
         activeCategoryTitle: "搜索结果",
-        activeCategorySubtitle: "按钮验收",
         activeProducts: products,
-        visibleProductCount: 2,
         hasMoreProducts: false,
       });
     },
@@ -263,23 +264,22 @@ const states = [
         title: "全部商品",
         subtitle: "按钮验收",
         countLabel: "2",
-        products,
+        loaded: true,
+        hasMatches: true,
       };
       return page.setData({
         loaded: true,
         loading: false,
         searchText: "",
         globalSearchResults: [],
-        allProducts: products,
         categorySections: [section, { ...section, id: "dessert", title: "甜品台" }],
         isSingleCategoryLayout: false,
         activeCategoryId: "all",
         activeCategoryTitle: "全部商品",
-        activeCategorySubtitle: "按钮验收",
         activeCategoryCountLabel: "2",
-        activeSectionProducts: products,
         activeProducts: products,
-        visibleProductCount: 2,
+        catalogTotal: 2,
+        catalogOffset: 2,
         hasMoreProducts: false,
       });
     },
@@ -291,7 +291,30 @@ const states = [
   {
     name: "product-detail",
     url: "/pages/product-detail/index?id=p_001",
-    selectors: [[".detail-back", 1, { allowEmptyText: true }], [".ghost-button", 1], [".primary-button", 1]],
+    // 真实有赞商品 ID 与本地 mock id 不一致，这里写入确定性商品数据，校验可购买态的完整操作栏。
+    setup: (page) =>
+      page.setData({
+        loading: false,
+        loadFailed: false,
+        canPurchase: true,
+        unavailableText: "",
+        purchaseQty: 1,
+        product: {
+          id: "p_001",
+          title: "父亲节健康蛋糕",
+          imageUrl: "",
+          imageFailed: false,
+          priceFen: 23800,
+          priceText: "¥238.00",
+          soldText: "已售 12",
+          displaySubtitle: "",
+          displayFulfillment: "建议提前1天预订",
+          specChips: [],
+          tagChips: [],
+          descriptionBlocks: []
+        }
+      }),
+    selectors: [[".page-nav-back", 1, { allowEmptyText: true }], [".detail-service", 2], [".ghost-button", 1], [".primary-button", 1]],
   },
   {
     name: "checkout",
@@ -325,6 +348,8 @@ const states = [
       page.setData({
         mode: "select",
         editing: false,
+        sessionView: { loggedIn: true, statusText: "已登录", name: "测试用户", actionText: "刷新" },
+        loginStateText: "地址已关联当前微信身份",
         addresses: [
           { id: "addr_001", receiverName: "张三", receiverPhone: "18800000000", address: "北京市东城区", isDefault: true },
           { id: "addr_002", receiverName: "李四", receiverPhone: "19900000000", address: "北京市朝阳区", isDefault: false },
@@ -339,6 +364,9 @@ const states = [
       page.setData({
         allOrders: [orderFixture],
         filteredOrders: [orderFixture],
+        sessionView: { loggedIn: true, statusText: "已登录", name: "测试用户", actionText: "刷新" },
+        loginStateText: "订单已关联当前微信身份",
+        canUseOrders: true,
         filterTabs: [
           { key: "all", label: "全部", count: 1, selected: true },
           { key: "unpaid", label: "待支付", count: 1, selected: false },
@@ -389,15 +417,15 @@ const states = [
         memberProps: { points: 12, coupons: 2, benefitCardCount: 1, levelText: "黄金会员", cardSubtitle: "单笔充值 1000 元升级", cardValidity: "永久有效", balanceFen: 10000 },
         balanceText: "¥100.00",
         orderEntries: [
-          { id: "all", title: "全部", emoji: "📦", linkType: "orders", linkTarget: "" },
-          { id: "unpaid", title: "待付款", emoji: "💰", linkType: "orders", linkTarget: "unpaid" },
-          { id: "processing", title: "进行中", emoji: "🍰", linkType: "orders", linkTarget: "processing" },
-          { id: "done", title: "已完成", emoji: "✅", linkType: "orders", linkTarget: "done" },
+          { id: "to-pay", title: "待付款", iconKey: "wallet", linkType: "page", linkTarget: "orders" },
+          { id: "making", title: "制作中", iconKey: "clock", linkType: "page", linkTarget: "orders" },
+          { id: "delivery", title: "待配送", iconKey: "truck", linkType: "page", linkTarget: "orders" },
+          { id: "refund", title: "退款/售后", iconKey: "rotate-ccw", linkType: "policy", linkTarget: "afterSales" },
         ],
         serviceItems: [
-          { id: "shop-phone", title: "客服电话", emoji: "📞", linkType: "phone", linkTarget: "" },
-          { id: "shop-wechat", title: "客服微信", emoji: "💬", linkType: "wechat", linkTarget: "" },
-          { id: "shop-after-sales", title: "售后政策", emoji: "🛡️", linkType: "policy", linkTarget: "afterSales" },
+          { id: "shop-phone", title: "客服电话", iconKey: "phone", linkType: "phone", linkTarget: "" },
+          { id: "shop-wechat", title: "客服微信", iconKey: "message-circle", linkType: "wechat", linkTarget: "" },
+          { id: "shop-after-sales", title: "售后政策", iconKey: "shield-check", linkType: "policy", linkTarget: "afterSales" },
         ],
       }),
     selectors: [
@@ -405,6 +433,47 @@ const states = [
       [".card-action-btn", 1],
       [".service-cell", 3],
     ],
+  },
+  {
+    name: "cart",
+    url: "/pages/cart/index",
+    // 购物车行与步进器只在有商品时渲染，这里注入确定性条目检查触控目标。
+    setup: (page) =>
+      page.setData({
+        hasItems: true,
+        totalText: "¥238.00",
+        items: [
+          {
+            productId: "p_001",
+            title: "父亲节健康蛋糕",
+            imageUrl: "",
+            priceFen: 23800,
+            quantity: 1,
+            stock: 9,
+            priceText: "¥238.00",
+            imageClass: "",
+            imageFailed: false,
+            stockText: "现货充足",
+          },
+        ],
+      }),
+    selectors: [
+      [".stepper-btn--minus", 1],
+      [".stepper-btn--plus", 1],
+      [".cart-footer .primary-button", 1],
+    ],
+  },
+  {
+    name: "coupons-login-gate",
+    url: "/pages/coupons/index",
+    setup: (page) => page.setData({ loggedIn: false, loading: false }),
+    selectors: [[".page-nav-back", 1, { allowEmptyText: true }], [".yunxi-state__action", 1]],
+  },
+  {
+    name: "points-login-gate",
+    url: "/pages/points/index",
+    setup: (page) => page.setData({ loggedIn: false, loading: false }),
+    selectors: [[".page-nav-back", 1, { allowEmptyText: true }], [".yunxi-state__action", 1]],
   },
 ];
 
@@ -537,6 +606,12 @@ async function main() {
   }
   const allFailures = report.summary.failures || failures;
   report.status = allFailures.length ? "fail" : "pass";
+
+  if (report.error) {
+    console.error(`Miniapp button touch target scan aborted without writing a report: ${report.error}`);
+    console.error("请先开启微信开发者工具自动化端口，或设置 MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420。");
+    process.exit(2);
+  }
 
   const payload = `${JSON.stringify(report, null, 2)}\n`;
   const reportPath = path.join(reportsRoot, `button-touch-targets-${nowStamp()}.json`);

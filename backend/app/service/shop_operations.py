@@ -2,7 +2,12 @@
 
 import json
 
-from app.models.config import DEFAULT_SHOP_OPERATIONS, SHOP_OPERATIONS_KEY
+from app.models.config import (
+    DEFAULT_PICKUP_ADDRESS,
+    DEFAULT_SHOP_OPERATIONS,
+    PICKUP_ADDRESS_PLACEHOLDER_MARKERS,
+    SHOP_OPERATIONS_KEY,
+)
 from app.repository.config_repo import ConfigRepo
 from app.service.business_hours import parse_business_hours
 
@@ -26,7 +31,9 @@ class ShopOperationsService:
             return dict(DEFAULT_SHOP_OPERATIONS)
         if not isinstance(saved, dict):
             return dict(DEFAULT_SHOP_OPERATIONS)
-        return {**DEFAULT_SHOP_OPERATIONS, **saved}
+        merged = {**DEFAULT_SHOP_OPERATIONS, **saved}
+        merged["pickupAddress"] = resolve_pickup_address(merged.get("pickupAddress"))
+        return merged
 
     async def set_shop_operations(self, payload: dict) -> dict:
         """保存店铺公开运营配置。"""
@@ -45,8 +52,8 @@ class ShopOperationsService:
             ),
             "businessHours": business_hours
             or _merge_text(current.get("businessHours"), ""),
-            "pickupAddress": _merge_text(
-                current.get("pickupAddress"), payload.get("pickupAddress")
+            "pickupAddress": resolve_pickup_address(
+                _merge_text(current.get("pickupAddress"), payload.get("pickupAddress"))
             ),
             "deliveryNotice": _merge_text(
                 current.get("deliveryNotice"), payload.get("deliveryNotice")
@@ -87,6 +94,16 @@ class ShopOperationsService:
             json.dumps(next_config, ensure_ascii=False),
         )
         return next_config
+
+
+def resolve_pickup_address(value: object) -> str:
+    """归一化门店自提地址，空值和占位文案一律回落到真实门店地址。"""
+    cleaned = _clean_text(value)
+    if not cleaned:
+        return DEFAULT_PICKUP_ADDRESS
+    if any(marker in cleaned for marker in PICKUP_ADDRESS_PLACEHOLDER_MARKERS):
+        return DEFAULT_PICKUP_ADDRESS
+    return cleaned
 
 
 def _clean_text(value: object) -> str:

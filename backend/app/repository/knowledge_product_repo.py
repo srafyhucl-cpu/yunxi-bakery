@@ -24,14 +24,23 @@ class KnowledgeProductRepo(BaseRepository):
         youzan_item_id_filter: str,
         keyword_filter: str,
         item_no_filter: str = "",
+        category_search: str = "",
     ) -> tuple[list[str], list] | None:
         """构建商品筛选 WHERE 子句与参数列表；每个字段显式加上 kb. 前缀防止联合查询中字段歧义。"""
-        keyword = f"%{search}%"
-        clauses: list[str] = [
-            "kb.category = 'product'",
-            "(kb.title LIKE ? OR kb.content LIKE ? OR kb.keywords LIKE ?)",
-        ]
-        params: list = [keyword, keyword, keyword]
+        clauses: list[str] = ["kb.category = 'product'"]
+        params: list = []
+        if search:
+            keyword = f"%{search}%"
+            clauses.append(
+                "(kb.title LIKE ? OR kb.content LIKE ? OR kb.keywords LIKE ?)"
+            )
+            params.extend([keyword, keyword, keyword])
+        if category_search:
+            category_like = f"%{category_search}%"
+            clauses.append(
+                "(kb.title LIKE ? OR kb.content LIKE ? OR kb.keywords LIKE ?)"
+            )
+            params.extend([category_like, category_like, category_like])
         if is_active is not None:
             clauses.append("kb.is_active = ?")
             params.append(is_active)
@@ -121,6 +130,7 @@ class KnowledgeProductRepo(BaseRepository):
         youzan_item_id_filter: str = "",
         keyword_filter: str = "",
         item_no_filter: str = "",
+        category_search: str = "",
         sort_by: str = "",
         sort_order: str = "desc",
     ) -> list:
@@ -136,6 +146,7 @@ class KnowledgeProductRepo(BaseRepository):
             youzan_item_id_filter,
             keyword_filter,
             item_no_filter,
+            category_search,
         )
         if result is None:
             return []
@@ -177,6 +188,7 @@ class KnowledgeProductRepo(BaseRepository):
         youzan_item_id_filter: str = "",
         keyword_filter: str = "",
         item_no_filter: str = "",
+        category_search: str = "",
     ) -> int:
         """返回商品类知识条目总数，显式加上 kb 前缀支持联合过滤。"""
         result = self._build_product_where(
@@ -188,6 +200,7 @@ class KnowledgeProductRepo(BaseRepository):
             youzan_item_id_filter,
             keyword_filter,
             item_no_filter,
+            category_search,
         )
         if result is None:
             return 0

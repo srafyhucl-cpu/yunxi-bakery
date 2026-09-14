@@ -33,6 +33,11 @@ function pad(value) {
   return String(value).padStart(2, "0");
 }
 
+function beijingDateValue(now = new Date()) {
+  const current = getBeijingParts(now);
+  return `${current.year}-${pad(current.month)}-${pad(current.day)}`;
+}
+
 function expectedStartDate(now = new Date()) {
   const current = getBeijingParts(now);
   const date = new Date(Date.UTC(current.year, current.month - 1, current.day + (current.hour < CUTOFF_HOUR ? 0 : 1)));
@@ -55,11 +60,15 @@ async function main() {
   const now = new Date();
   const beijing = getBeijingParts(now);
   const beforeCutoff = beijing.hour < CUTOFF_HOUR;
+  const todayValue = beijingDateValue(now);
+  const expectedDate = expectedStartDate(now);
+  const expectedSameDay = beforeCutoff;
   const report = {
     generatedAt: now.toISOString(),
     businessTimeZone: TIME_ZONE,
     cutoff: "17:00",
     beijingHour: beijing.hour,
+    beijingDate: todayValue,
     status: "FAIL",
     checks: [],
     errors: []
@@ -78,9 +87,11 @@ async function main() {
     for (const preview of timePreviews) {
       previewTexts.push((await preview.text()).trim());
     }
-    const expectedDate = expectedStartDate(now);
     const dateStartMatchesRule = data.dateStartValue === expectedDate;
-    const sameDayMatchesRule = data.isSameDayRegistration === beforeCutoff;
+    const sameDayMatchesRule = data.isSameDayRegistration === expectedSameDay;
+    const sameDayFlagMatchesSelection = data.isSameDayRegistration === (data.selectedDateValue === todayValue);
+    const dateWithinRange =
+      data.dateStartValue <= data.selectedDateValue && data.selectedDateValue <= data.dateEndValue;
     const promptVisible = previewTexts.some((text) => text.includes("当天登记由门店客服确认制作与履约安排"));
 
     report.checks.push({
@@ -88,9 +99,12 @@ async function main() {
       state: beforeCutoff ? "before-cutoff" : "after-cutoff",
       dateStartValue: data.dateStartValue,
       selectedDateValue: data.selectedDateValue,
+      dateEndValue: data.dateEndValue,
       expectedDate,
       isSameDayRegistration: data.isSameDayRegistration,
-      expectedSameDayRegistration: beforeCutoff,
+      expectedSameDayRegistration: expectedSameDay,
+      sameDayFlagMatchesSelection,
+      dateWithinRange,
       timePreviewTexts: previewTexts,
       promptVisible
     });
@@ -99,13 +113,57 @@ async function main() {
       report.errors.push(`日期起点不符合北京时间 17:00 截止规则：实际 ${data.dateStartValue}，预期 ${expectedDate}`);
     }
     if (!sameDayMatchesRule) {
-      report.errors.push(`当天登记状态不符合当前北京时间：实际 ${data.isSameDayRegistration}，预期 ${beforeCutoff}`);
+      report.errors.push(`当天登记状态不符合当前北京时间：实际 ${data.isSameDayRegistration}，预期 ${expectedSameDay}`);
+    }
+    if (!sameDayFlagMatchesSelection) {
+      report.errors.push(
+        `当天登记标记与所选日期不一致：所选 ${data.selectedDateValue}、北京时间今天 ${todayValue}、标记 ${data.isSameDayRegistration}`
+      );
+    }
+    if (!dateWithinRange) {
+      report.errors.push(
+        `可选日期越界：起点 ${data.dateStartValue}、已选 ${data.selectedDateValue}、终点 ${data.dateEndValue}`
+      );
     }
     if (beforeCutoff && !promptVisible) {
       report.errors.push("17:00 前当天登记没有展示客服确认提示");
     }
     if (!beforeCutoff && promptVisible) {
       report.errors.push("17:00 后仍展示当天登记提示，日期边界未收敛");
+    }
+
+    // 模块级 data 只在进程启动时求值一次：进程跨过零点或 17:00 截单点后打开页面会沿用旧快照。
+    // 注入过期状态后调用 onShow，要求页面按当前北京时间重建日期起点、当天标记与可选时段。
+    await page.setData({
+      dateStartValue: "2000-01-01",
+      isSameDayRegistration: !expectedSameDay,
+      hourOptions: []
+    });
+    await page.callMethod("onShow");
+    await sleep(400);
+    const repaired = await page.data();
+    report.checks.push({
+      page: page.path,
+      state: "stale-state-repair",
+      dateStartValue: repaired.dateStartValue,
+      selectedDateValue: repaired.selectedDateValue,
+      dateEndValue: repaired.dateEndValue,
+      desiredTime: repaired.desiredTime,
+      isSameDayRegistration: repaired.isSameDayRegistration,
+      hourOptions: repaired.hourOptions
+    });
+    if (repaired.dateStartValue !== expectedDate) {
+      report.errors.push(
+        `重进登记页未按当前北京时间重建日期起点：实际 ${repaired.dateStartValue}，预期 ${expectedDate}`
+      );
+    }
+    if (repaired.isSameDayRegistration !== expectedSameDay) {
+      report.errors.push(
+        `重进登记页未按当前北京时间重建当天登记标记：实际 ${repaired.isSameDayRegistration}，预期 ${expectedSameDay}`
+      );
+    }
+    if (!Array.isArray(repaired.hourOptions) || repaired.hourOptions.length === 0) {
+      report.errors.push("重进登记页未重建可选小时时段");
     }
     report.status = report.errors.length === 0 ? "PASS" : "FAIL";
   } catch (error) {

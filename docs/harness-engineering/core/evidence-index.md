@@ -7550,3 +7550,794 @@ backend/docs/harness-engineering/core/evidence-index.md 仅作为历史镜像。
 - failure_class: none_after_recovery
 - replayable: yes
 - residual_risks: `sold_num` 依赖有赞同步与对账任务持续回写，长期不同步会再次偏离真实人气；有赞侧分类命名（如“原材料展示区域”）仍需门店后台维护；仍未完成真实微信认证、真实闪送开放平台报价/建单/回调、真实微信支付或生产上线验收。
+
+## E-20260912-006：MiniApp 商品目录分类、同步噪声、配件提示与隔离 Harness 收口
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260912-miniapp-category-noise-r26
+- generated_at: 2026-09-12
+- evidence_type: verification/miniapp-catalog-cleanup-and-isolated-harness-cleanup
+- file: local:backend/app/repository/youzan_repo.py; local:backend/app/service/catalog/serialization.py; local:backend/app/service/catalog/customer_text.py; local:backend/tests/service/test_catalog.py; local:backend/tests/service/test_catalog_item_base_category.py; local:backend/tests/api/test_miniapp_catalog_api.py; local:backend/tests/test_lifespan_routes_services.py; local:backend/scripts/run_isolated_remediation_harness.py; local:backend/tests/scripts/test_run_isolated_remediation_harness.py; local:backend/tests/scripts/test_harness_eval_regression.py; local:miniapp/miniprogram/utils/bakery.ts; local:miniapp/miniprogram/pages/products/index.ts; local:miniapp/miniprogram/pages/product-detail/index.ts; local:miniapp/miniprogram/pages/product-detail/index.wxml; local:miniapp/miniprogram/pages/cart/index.ts; local:miniapp/tests/utils/bakery.test.ts; local:miniapp/scripts/verify-miniapp-commerce-flows.cjs; local:miniapp/reports/devtools/miniapp-commerce-flows.json; local:miniapp/docs/api-contract.md; local:docs/superpowers/plans/2026-09-08-miniapp-commerce-ux-redesign.md; local:ERRORS.md; local:LOGBOOK.md; local:PROJECT-STATE.md
+- commit_sha: (待提交后回写)
+- command: `python -B -m pytest backend/tests/service/test_catalog.py backend/tests/service/test_catalog_item_base_category.py backend/tests/api/test_miniapp_catalog_api.py backend/tests/test_lifespan_routes_services.py -q --no-cov`; backend local uvicorn on 127.0.0.1:7001; `GET /api/v1/miniapp/product-categories`; `GET /api/v1/miniapp/products?sort=popular&limit=6`; `GET /api/v1/miniapp/products/3610295088`; `cd miniapp && npm run typecheck`; `npm run check:miniapp`; `npm run check:page-api-coverage`; `npm run test:bakery`; `npm run test:member-assets`; `npm run test:order-summary`; `npm run audit:buttons`; `npm run audit:button-styles`; `npm run devtools:verify-commerce-flows`; `python -m pytest tests/scripts/test_run_isolated_remediation_harness.py -q --tb=short`（修复前覆盖模式复现失败）; `python -m pytest tests/scripts/test_run_isolated_remediation_harness.py -q --tb=short --cov-fail-under=0`（修复后覆盖插桩 4 passed）; `python -m pytest tests/scripts/test_harness_eval_regression.py tests/scripts/test_run_isolated_remediation_harness.py -q --no-cov`（9 passed）
+- result: partial
+- related_logbook: 2026-09-12 - fix(miniapp): 商品目录分类命名空间、同步噪声与配件履约提示收口
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地商品目录、DevTools 模拟器、目标测试与错误修复证据；不含真实客户、地址、登录凭证、闪送凭证、支付数据或生产写入。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 分类列表改为现场统计真实在售商品命中，保留 `youzan-tag-` / `youzan-classification-` 命名空间并只公开计数大于 0 的分类；首轮全量捕获的 `item.base` 命名空间回归已修复。公开商品字段清洗同步原文噪声，数字蜡烛/餐具改为现货或客服确认。首轮全量 738.33s/8 failed，收口全量 745.7s/2 failed；2 项定位为隔离 Harness 在覆盖率模式下未关闭 SQLite 查询连接，改用 `closing(...)` 后覆盖插桩单文件和组合测试通过。
+- failure_class: test_isolation_fixed_pending_final_full_suite_rerun
+- replayable: yes
+- residual_risks: 按项目测试节奏约束未再执行第二次全量复跑，故不声明全量 0 失败；生产域名证书已于 2026-09-03 过期；真实微信认证支付/退款、真实闪送开放平台报价-建单-回调、生产验收仍未执行；`sold_num` 新鲜度与 `payment_runtime.py` 存量文件体量门禁仍需后续治理。
+
+## E-20260912-007：MiniApp 商品卡可用性口径统一与按钮可见性修复验证
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260912-miniapp-card-semantics-and-button-visibility-r27
+- generated_at: 2026-09-12
+- evidence_type: verification/miniapp-card-semantics-and-button-visibility
+- file: local:miniapp/miniprogram/utils/bakery.ts; local:miniapp/miniprogram/pages/products/index.ts; local:miniapp/miniprogram/pages/products/index.wxml; local:miniapp/miniprogram/pages/home/index.ts; local:miniapp/miniprogram/pages/home/index.wxml; local:miniapp/miniprogram/pages/product-detail/index.wxml; local:miniapp/miniprogram/pages/coupons/index.wxss; local:miniapp/miniprogram/pages/points/index.wxss; local:miniapp/miniprogram/pages/points/index.wxml; local:miniapp/miniprogram/pages/orders/index.wxss; local:miniapp/miniprogram/pages/chat/index.wxml; local:miniapp/scripts/audit-miniapp-button-styles.mjs; local:miniapp/scripts/verify-devtools-commerce-states.cjs; local:miniapp/scripts/verify-all-15-pages-devtools.cjs; local:miniapp/scripts/scan-miniapp-button-touch-targets.mjs; local:miniapp/tests/utils/bakery.test.ts; local:miniapp/reports/devtools/all-pages-devtools-audit.json; local:miniapp/reports/devtools/commerce-state-audit.json; local:miniapp/reports/devtools/final-products.png; local:miniapp/reports/devtools/final-logged-out-coupons.png; local:miniapp/reports/devtools/final-logged-out-points.png; local:miniapp/reports/devtools/final-logged-out-chat.png; local:miniapp/reports/button-style-audit/latest.json; local:miniapp/reports/button-visual/button-touch-targets-latest.json; local:ERRORS.md; local:LOGBOOK.md; local:PROJECT-STATE.md
+- commit_sha: (待提交后回写)
+- command: backend local uvicorn on 127.0.0.1:7001; `cd miniapp && npm run typecheck`; `npm run check:miniapp`; `npm run test:bakery`; `npm run audit:buttons`; `npm run audit:button-styles`; `MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420 npm run scan:button-touch-targets`; `npm run devtools:verify-all-pages`; `npm run devtools:commerce-states`; `npm run devtools:product-purchase-path`; `npm run devtools:verify-commerce-flows`; `npm run devtools:checkout-delivery-states`; `npm run devtools:same-day-scheduling`; `python -B backend/scripts/check_chinese_governance.py --summary`; `python -B backend/scripts/check_project_development_register.py`
+- result: pass
+- related_logbook: 2026-09-12 - fix(miniapp): 商品卡可用性口径统一与按钮可见性缺陷修复
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地 DevTools 模拟器计算样式、确定性页面状态、静态门禁与截图；不含真实客户、地址、登录凭证、闪送凭证、支付数据或生产写入。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 修复 `button:not([size="mini"])` 全局重置压过页面裸 class 规则导致的主按钮不可见（优惠券/积分页 `background rgba(0,0,0,0)` + `color rgb(255,255,255)`，修复后 `rgb(61,51,45)`/`13px`/`border-radius 4px`）；`bakery.ts` 新增四个共享口径函数，统一“现货配件=现货+加入购物车”“现做商品=无默认标签+预订”，商品列表/首页图片角标只保留已下架与暂时售罄；客服页未登录标题改为“登录后联系客服”；触控扫描商品详情态改为播种确定性数据。`test:bakery` 8 passed、`check:miniapp` 15 页 15 路由、`audit:buttons` 106 控件、`audit:button-styles` 0 失败、`scan:button-touch-targets` 39 选择器/10 页面 pass；DevTools 串行复跑 15/15 全页 PASS，commerce-states 记录 `productActionText=加入购物车`、`stockLabelText=现货`、`badgeTexts=[]`，购买路径、商品流、结算配送与当天预约边界均 PASS。
+- failure_class: none_after_recovery
+- replayable: yes
+- residual_risks: 仍未完成真实微信认证支付/退款、真实闪送开放平台报价-建单-回调与生产上线验收；闪送开放平台测试凭据与门店统一商品图仍待提供；全量后端测试耗时优化与 `payment_runtime.py` 存量文件体量门禁保持开放，本轮未做后端代码变更因此未重复跑全量。
+
+## E-20260912-008：MiniApp 未登录提示宽度、DevTools 锁屏预检与门店地址单一来源
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260912-miniapp-notice-width-and-devtools-lock-guard-r28
+- generated_at: 2026-09-12
+- evidence_type: verification/miniapp-session-notice-width-and-devtools-lock-guard
+- file: local:miniapp/miniprogram/pages/order-detail/index.wxml; local:miniapp/miniprogram/pages/order-detail/index.wxss; local:miniapp/scripts/verify-all-15-pages-devtools.cjs; local:miniapp/scripts/scan-miniapp-button-touch-targets.mjs; local:miniapp/reports/devtools/final-logged-out-order-detail.png; local:miniapp/reports/devtools/final-profile.png; local:miniapp/reports/devtools/all-pages-devtools-audit.json; local:miniapp/reports/devtools/walkthrough-phase-c.json; local:ERRORS.md; local:LOGBOOK.md; local:PROJECT-STATE.md
+- commit_sha: (待提交后回写)
+- command: `npm run check:miniapp`; `npm run typecheck`; `npm run test:bakery`; `npm run audit:buttons`; `npm run audit:button-styles`; `node --check miniapp/scripts/verify-all-15-pages-devtools.cjs`; `npm run devtools:verify-all-pages`; `npm run devtools:commerce-states`; `npm run devtools:product-purchase-path`; `npm run devtools:verify-commerce-flows`; `npm run devtools:checkout-delivery-states`; `npm run devtools:same-day-scheduling`; `npm run walkthrough:phase-c`; `npm run scan:button-touch-targets`
+- result: pass
+- follow_up_guardrail: 触控扫描 profile 播种改用页面真实渲染的 iconText，15 页审计新增个人中心入口图标非空断言（ERRORS: M-20260912-092）；结算页自提地址回退统一到 SHOP_CONFIG.pickupAddress，check-miniapp.mjs 新增门店地址单一来源与品牌错字门禁（ERRORS: M-20260912-093）；锁屏预检由 LogonUI 进程名判断改为两段式响应探测（ERRORS: M-20260912-094）；触控扫描为 address-list/orders 补播 sessionView 登录态并忽略 query 比对（ERRORS: M-20260912-095）。
+- related_logbook: 2026-09-12 - fix(miniapp): 未登录提示宽度、DevTools 锁屏预检、播种字段与门店地址单一来源收口
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地页面样式、静态门禁、锁屏预检与截图证据；不含真实客户、地址、登录凭证、闪送凭证、支付数据或生产写入。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 目视复核 r27 截图发现订单详情未登录卡片被 `.empty` 的 `align-items: center` 压成内容宽度（标题折行、副文案贴边截断），修复为组件宿主 `class="empty-notice"` 加 `width: 100%`；新增会话提示宽度断言，低于视口 85% 判失败并记录 `sessionNoticeWidth`；DevTools 连接改为两段式响应探测（`automator.connect()` → `currentPage()`），未响应时退出码 2 快速失败且不覆盖上一份报告，`LogonUI`/`LockApp` 进程数只作日志线索。`check:miniapp` 15 页 15 路由、`typecheck`、`test:bakery` 8 passed、`audit:buttons` 106 控件、`audit:button-styles` 0 失败全部通过；运行态串行复跑 15/15 PASS（`sessionNoticeWidth=362/390`、`profileShortcutIcons={"order":4,"service":5}`、`loggedOutFailed=0`），commerce-states、product-purchase-path、verify-commerce-flows、checkout-delivery-states、same-day-scheduling 全部 PASS，walkthrough-phase-c 15 页控制台 warning/error 0 与页面失败 0，触控扫描修复登录态播种后 39 选择器/10 页面 pass；`final-logged-out-order-detail.png` 与 `final-profile.png` 目视确认修复生效。
+- follow_up_guardrail_note: 另修正触控扫描 profile 播种字段（emoji→iconText）并新增个人中心入口图标非空断言；触控扫描 address-list/orders 补播 sessionView 登录态，修复登出状态下 7 项 actualCount: 0 假失败；结算页自提地址兜底统一到 SHOP_CONFIG.pickupAddress，check-miniapp.mjs 新增门店地址单一来源与品牌错字门禁。
+- failure_class: none_after_probe_and_seeding_fix
+- replayable: yes
+- residual_risks: 运行态证据仍来自本地开发服务与 DevTools 模拟器，不代表真实微信认证、真实闪送开放平台报价/建单/回调、真实支付与生产上线已通过；闪送开放平台资料与测试权限未到位，计划书 Task 1 Step 3 与 Task 3 Step 5 保持外部阻塞。
+
+## E-20260913-001：真实链路证书预检与商品详情返回控件统一
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260913-miniapp-real-api-preflight-and-back-button-r29
+- generated_at: 2026-09-13
+- evidence_type: verification/miniapp-real-api-preflight-and-shared-back-control
+- file: local:miniapp/scripts/lib/real-api-preflight.mjs; local:miniapp/scripts/check-devtools-product-buy-now.mjs; local:miniapp/scripts/check-devtools-cart-checkout-real-product.mjs; local:miniapp/scripts/check-devtools-service-smoke.mjs; local:miniapp/miniprogram/pages/product-detail/index.wxml; local:miniapp/miniprogram/pages/product-detail/index.wxss; local:miniapp/scripts/check-miniapp.mjs; local:miniapp/scripts/scan-miniapp-button-touch-targets.mjs; local:miniapp/reports/devtools/all-pages-devtools-audit.json; local:miniapp/reports/devtools/final-product-detail.png; local:miniapp/reports/production-api-check/production-miniapp-api-20260912-161448.json; local:ERRORS.md; local:LOGBOOK.md; local:PROJECT-STATE.md
+- commit_sha: (待提交后回写)
+- command: `npm run check:miniapp`; `npm run typecheck`; `npm run test:bakery`; `npm run audit:buttons`; `npm run audit:button-styles`; `npm run devtools:verify-all-pages`; `npm run scan:button-touch-targets`; `npm run devtools:product-buy-now`; `npm run devtools:cart-checkout-real-product`; `npm run devtools:service-smoke`; `npm run check:production-domain`; `npm run check:production-miniapp-api`
+- result: partial
+- follow_up_guardrail: 真实链路脚本统一接入 `real-api-preflight.mjs`，线上 API 证书/域名/网络异常时 2 秒内退出码 2 并输出具体原因，不写成页面失败也不覆盖上一份报告（ERRORS: M-20260912-078 扩展）；`check:miniapp` 新增非 tabBar 页面必须复用共享 `page-nav-back` 的断言（ERRORS: M-20260913-097）。
+- related_logbook: 2026-09-13 - fix(miniapp): 真实链路证书预检与商品详情返回控件统一
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地脚本、页面样式、运行态审计与证书元数据；报告内保留演示账号字段，不含真实客户隐私、登录凭证或支付数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 逐页目视复核 r28 运行态截图时发现商品详情返回控件是 88rpx 圆角方块（页内 `.detail-back` 覆盖了前一处 `border-radius: 50%`），而其它 10 个子页均用全局圆形的 `.page-nav-back`；已删除页内两段 `.detail-back` 并改回共享控件，`check:miniapp` 新增断言并做反向验证（临时改回后退出码 1）。同时定位到 `devtools:product-buy-now` 等真实链路脚本在生产域名证书过期时退化为 `timeout waiting for automator response`，已新增 `scripts/lib/real-api-preflight.mjs` 预检（实测 1.9–2.3s 退出码 2，本地 `127.0.0.1:7001/health` 200 正常放行）。复跑 `devtools:verify-all-pages` 15/15 PASS与 `scan:button-touch-targets` 39/39 pass，重生成的 `final-product-detail.png` 目视确认圆形返回控件生效。
+- failure_class: none_after_preflight_and_nav_unification
+- replayable: yes
+- residual_risks: 生产域名 `yunxifood.cn` 证书仍未续期（M-20260912-078 status open），真实链路脚本在修复前保持退出码 2；真实闪送开放平台报价/建单/回调、真实微信支付/退款与生产上线仍未验证。
+
+## E-20260913-002：结算页零资产控件与会话动作收敛，WXML 标签解析护栏
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260913-miniapp-checkout-affordance-and-wxml-scanner-r30
+- generated_at: 2026-09-13
+- evidence_type: verification/miniapp-checkout-affordance-and-wxml-tag-scanner
+- file: local:miniapp/miniprogram/pages/checkout/index.wxml; local:miniapp/miniprogram/pages/checkout/index.ts; local:miniapp/scripts/check-miniapp.mjs; local:miniapp/scripts/verify-devtools-commerce-states.cjs; local:miniapp/scripts/scan-miniapp-button-touch-targets.mjs; local:miniapp/reports/devtools/commerce-state-audit.json; local:miniapp/reports/devtools/checkout-delivery-state-audit.json; local:miniapp/reports/devtools/all-pages-devtools-audit.json; local:miniapp/reports/devtools/final-checkout-zero-assets.png; local:miniapp/reports/devtools/final-checkout-state-quoted.png; local:miniapp/reports/button-visual/button-touch-targets-latest.json; local:ERRORS.md; local:LOGBOOK.md; local:PROJECT-STATE.md
+- commit_sha: (待提交后回写)
+- command: `node --check miniapp/scripts/check-miniapp.mjs`; `node --check miniapp/scripts/verify-devtools-commerce-states.cjs`; `npm run check:miniapp`; `npm run typecheck`; `npm run devtools:commerce-states`; `npm run devtools:checkout-delivery-states`; `MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420 npm run scan:button-touch-targets`; `MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420 npm run devtools:verify-all-pages`; `npm run test:bakery`; `npm run audit:buttons`; `npm run audit:button-styles`; `python -B backend/scripts/check_chinese_governance.py --summary`; `python -B backend/scripts/check_project_development_register.py`; `python -B backend/scripts/check_project.py --skip-tests`
+- result: pass
+- follow_up_guardrail: `verify-devtools-commerce-states.cjs` 的零资产结算态新增 `pointsSwitchVisible`/`balanceSwitchVisible`/`sessionActionVisible` 三项为 false 的断言，并保留“暂无可用积分/余额”文案要求；`check-miniapp.mjs` 改用带引号状态的 `scanWxmlTags()` 解析标签，属性和文本中的 `>` 不再截断标签，真正未闭合标签仍会报错（ERRORS: M-20260913-098、M-20260913-099）；`scan-miniapp-button-touch-targets.mjs` 在自动化连接失败时不写报告、不覆盖 latest，退出码 2（ERRORS: M-20260913-100）；证据索引 `result` 字段改用允许的 `partial` 并表示剩余外部阻塞（ERRORS: M-20260913-101）。
+- related_logbook: 2026-09-13 - fix(miniapp): 结算页零资产抵扣与会话动作收敛，WXML 标签解析护栏
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地 DevTools 模拟器页面状态、截图、静态门禁与治理检查；不含真实客户、地址、登录凭证、闪送凭证、支付数据或生产写入。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 目视复核 r29 结算页截图发现两处无效交互：已登录会话提示仍展示深色“返回”按钮，零积分/零余额时仍渲染浅色禁用开关；已分别改为已登录不展示动作、零资产不渲染 switch 并保留文字不可用说明。`devtools:commerce-states` 运行态记录 `pointsSwitchVisible=false`、`balanceSwitchVisible=false`、`sessionActionVisible=false`，`benefitText` 保留两条说明；`devtools:checkout-delivery-states` PASS，重生成截图目视确认；补充运行态复跑 `scan:button-touch-targets` 39 选择器/10 页面 PASS、`devtools:verify-all-pages` 15/15 PASS。另修复 `check-miniapp` 的标签平衡误报：旧正则会在属性值 `{{pointsBalance > 0}}` 的 `>` 处截断，新增 `scanWxmlTags()` 逐字符识别引号外 `>`；反向插入未闭合 `<view>` 时检查器仍退出码 1。触控扫描连接失败时改为退出码 2 且不覆盖上一份有效报告，反向验证 latest 哈希/mtime 不变（M-20260913-100）。专项证据索引检查修正 r29 条目非法复合 `result`，修正后 total=437、failed=0、malformed=0，最终错误账本 entries=135（M-20260913-101）。r29 收口门禁同步通过：`test:bakery` 8 passed、`audit:buttons` 106 控件、`audit:button-styles` 106 控件 0 失败、中文治理 coverage=1.0、开发总表 38 项、`check_project.py --skip-tests` 质量门禁通过。
+- failure_class: none_after_affordance_and_parser_fix
+- replayable: yes
+- residual_risks: 运行态证据仍来自本地开发服务与 DevTools 模拟器，不代表真实微信认证、真实闪送开放平台报价/建单/回调、真实支付与生产上线已通过；生产域名 `yunxifood.cn` 证书过期与闪送开放平台资料仍未解除。
+
+## E-20260913-003：门店自提地址来源归一化与结算页闪送起点收口
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260913-miniapp-pickup-address-source-r31
+- generated_at: 2026-09-13
+- evidence_type: verification/miniapp-pickup-address-source
+- file: local:backend/app/models/config.py; local:backend/app/service/shop_operations.py; local:backend/tests/api/test_shop_operations_api.py; local:backend/tests/api/test_miniapp_delivery_api.py; local:backend/tests/service/delivery/test_order_quote_binding.py; local:miniapp/miniprogram/config/shop.ts; local:miniapp/miniprogram/services/shop-settings.ts; local:miniapp/miniprogram/pages/checkout/index.ts; local:backend/web/admin/src/services/shopSettings.ts; local:miniapp/docs/api-contract.md; local:miniapp/scripts/check-miniapp.mjs; local:miniapp/scripts/verify-devtools-checkout-delivery-states.cjs; local:miniapp/reports/devtools/checkout-delivery-state-audit.json; local:miniapp/reports/devtools/final-checkout-pickup-address.png; local:miniapp/reports/devtools/commerce-state-audit.json; local:ERRORS.md; local:LOGBOOK.md; local:PROJECT-STATE.md
+- commit_sha: (待提交后回写)
+- command: `python -m pytest tests/api/test_shop_operations_api.py tests/api/test_miniapp_delivery_api.py tests/service/delivery/test_order_quote_binding.py -q --no-cov`; `GET http://127.0.0.1:7001/api/v1/miniapp/shop-settings`; `npm run check:miniapp`; `npm run typecheck`; `npm run devtools:checkout-delivery-states`; `npm run devtools:commerce-states`
+- result: pass
+- follow_up_guardrail: `check-miniapp.mjs` 的 `checkPickupAddressSourceOfTruth()` 现在校验小程序源码不含占位地址文案“具体地址请联系客服确认”，并校验 `backend/app/models/config.py` 的 `DEFAULT_PICKUP_ADDRESS` 与 `backend/web/admin/src/services/shopSettings.ts` 的默认 `pickupAddress` 与 `config/shop.ts` 完全一致（ERRORS: M-20260913-102）；`verify-devtools-checkout-delivery-states.cjs` 新增 `pickup_address_source` 运行态断言，要求结算页文案与页面数据都等于真实门店地址。
+- related_logbook: 2026-09-13 - fix(miniapp): 门店自提地址来源归一化与闪送报价起点收口
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地开发服务接口、门店公开自提地址、静态门禁与 DevTools 模拟器截图；不含真实客户、收货地址、登录凭证、闪送凭证或支付数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 本地接口实测发现 `GET /api/v1/miniapp/shop-settings` 返回占位文案“门店自提，具体地址请联系客服确认”，结算页“自提门店”直接展示该文案，闪送报价与订单快照也把它当作取货起点；本机 `shop_config` 未保存 `shop_operations`，确认来自后端默认值。已把后端默认运营配置改为真实门店地址，并在 `ShopOperationsService` 读取/保存时把空值与含“请联系客服确认”的历史占位值归一化；小程序 `resolvePickupAddress()` 由配置、服务与结算页共用，结算页自提地址初值改为真实门店地址；管理后台默认设置与小程序 API 契约示例同步修正。后端新增三条定向用例后共 14 项通过；重启本地后端后接口返回真实地址；`check:miniapp`、`typecheck`、`devtools:checkout-delivery-states`、`devtools:commerce-states` 均 PASS，`pickup_address_source` 记录 `pickupNoticeText` 与 `dataPickupAddress` 均为北京市东城区南竹杆胡同2号银河SOHO。
+- failure_class: none_after_pickup_address_source_fix
+- replayable: yes
+- residual_risks: 闪送报价起点仍由小程序传入、后端以报价哈希一致性校验兜底，尚未改为服务端下发；真实闪送开放平台报价/建单/回调、真实微信支付/退款与生产上线仍未验证；生产域名 `yunxifood.cn` 证书过期仍是真实链路阻塞。
+
+## E-20260913-004：群内登记与政策页运行态审计，交互控件 44px 基线收口
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260913-miniapp-registration-policy-audit-r32
+- generated_at: 2026-09-13
+- evidence_type: verification/miniapp-registration-policy-and-touch-targets
+- file: local:miniapp/scripts/verify-devtools-registration-policy.cjs; local:miniapp/scripts/scan-miniapp-button-touch-targets.mjs; local:miniapp/miniprogram/pages/group-registration/index.wxss; local:miniapp/miniprogram/pages/cart/index.wxss; local:miniapp/miniprogram/pages/coupons/index.wxss; local:miniapp/miniprogram/pages/points/index.wxss; local:miniapp/reports/devtools/registration-policy-audit.json; local:miniapp/reports/devtools/final-cart-touch-targets.png; local:miniapp/reports/button-visual/button-touch-targets-latest.json; local:miniapp/reports/devtools/all-pages-devtools-audit.json; local:ERRORS.md; local:LOGBOOK.md; local:PROJECT-STATE.md
+- commit_sha: (待提交后回写)
+- command: `npm run devtools:registration-policy`; `MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420 npm run scan:button-touch-targets`; `npm run devtools:verify-all-pages`; `npm run check:miniapp`; `npm run typecheck`; `npm run audit:buttons`; `npm run audit:button-styles`
+- result: pass
+- follow_up_guardrail: 新增 `miniapp/scripts/verify-devtools-registration-policy.cjs`（10 项断言：结构、未登录闸门、CTA 可达性、触控目标、时间选择器联动、必填校验链、后端错误落页、提交成功态、三个政策变体、默认政策回落）并注册 `npm run devtools:registration-policy`；触控扫描扩到 13 页 46 选择器，新增 cart / coupons-login-gate / points-login-gate 注入态，交互控件低于 44px 直接失败（ERRORS: M-20260913-103）。
+- related_logbook: 2026-09-13 - fix(miniapp): 群内登记与政策页运行态审计，交互控件 44px 基线收口
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地后端接口、门店公开地址、运行态尺寸与 DevTools 模拟器截图；测试用联系人与手机号为审计占位值（18800000001 等），不含真实客户、收货地址、登录凭证、闪送凭证或支付数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 新增群内登记页与政策页 DevTools 运行态审计，10 项断言全部 PASS：登记结构按链接参数渲染、未登录态提交按钮禁用且给出登录引导、滚到底部后提交按钮落在安全区内（top 661.9/bottom 706.9，安全区下界 810）、时间选择器的日期→小时→分钟联动与当天登记标记正确、六步必填校验链（空联系人/非法手机号/10 位手机号/空商品/数量 0/闪送缺地址）逐项落页提示、活动批次不存在时后端错误落到页面内提示、提交成功态两个动作均 45px、隐私/协议/售后三个政策变体的标题与正文与后端运营配置逐字一致且内容互不相同、默认政策路由回落到隐私政策。首轮发现的真实缺陷是触控目标：履约标签与时间选择器在 390px 视口仅 43px（根因 `min-height: 84rpx`），排查时又发现购物车步进器 24x24、窄屏“去结算”39px、优惠券/积分“去登录”43px，统一收到 88rpx 后全部达 45px；校验链首轮出现的“点击无反馈”经 260ms 事件队列稳定等待后 6/6 首次点击即通过，确认为自动化输入后的时序竞争而非页面缺陷。
+- failure_class: touch_target_below_44px_fixed
+- replayable: yes
+- residual_risks: 运行态证据均来自本地开发服务与 DevTools 模拟器（iPhone 12/13、SDK 3.15.2、390px 视口），不代表真机微信登录、真实微信支付/退款或真实闪送报价-建单-回调已验证；未登录闸门使用注入态固定，不替代真实微信授权登录链路；生产域名 `yunxifood.cn` 证书过期与闪送开放平台资料仍未解除。
+
+## E-20260913-005：充值自定义金额控件与禁用操作按钮可读性收口
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260913-miniapp-control-affordance-r33
+- generated_at: 2026-09-13
+- evidence_type: verification/miniapp-control-affordance-and-disabled-contrast
+- file: local:miniapp/miniprogram/app.wxss; local:miniapp/miniprogram/pages/recharge/index.wxml; local:miniapp/miniprogram/pages/recharge/index.wxss; local:miniapp/miniprogram/pages/chat/index.wxss; local:miniapp/scripts/verify-all-15-pages-devtools.cjs; local:miniapp/reports/devtools/all-pages-devtools-audit.json; local:miniapp/reports/devtools/final-recharge.png; local:miniapp/reports/devtools/final-checkout.png; local:miniapp/reports/devtools/final-chat.png; local:ERRORS.md; local:LOGBOOK.md; local:PROJECT-STATE.md
+- commit_sha: (待提交后回写)
+- command: `npm run devtools:verify-all-pages`; `npm run devtools:registration-policy`; `MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420 npm run scan:button-touch-targets`; `npm run devtools:commerce-states`; `npm run devtools:checkout-delivery-states`; `npm run devtools:verify-commerce-flows`; `npm run check:miniapp`; `npm run typecheck`; `npm run audit:buttons`; `npm run audit:button-styles`
+- result: pass
+- follow_up_guardrail: DevTools 15 页审计新增 `interactionStates`：充值自定义金额容器/输入框高度不得低于 44px，必须存在可见背景、细边框且单位不越界或重叠；结算主按钮与客服发送按钮读取实际计算颜色并要求禁用态对比度不低于 4.5:1（ERRORS: M-20260913-104）。
+- related_logbook: 2026-09-13 - fix(miniapp): 充值金额输入与禁用操作可读性收口
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地 DevTools 模拟器截图、控件尺寸/颜色计算值与静态门禁结果；不含真实客户、地址、登录凭证、闪送凭证或支付数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 目视复核 r32 后截图发现充值页自定义金额仅有浅色下划线且有效高度约 22px，结算页禁用提交按钮仍呈现微信原生 `rgba(0, 0, 0, 0.18)`/`rgb(250, 250, 250)`，原自定义禁用态未覆盖原生 `!important`。已把充值输入改为 88rpx、暖灰底、可见边框和对齐单位，主按钮与客服发送禁用态统一为深灰字/暖灰底；新增 DevTools 运行态断言后确认充值容器和输入框均为 259x45px，三个禁用按钮对比度均为 5.48:1，`final-recharge.png`、`final-checkout.png`、`final-chat.png` 目视通过。
+- failure_class: disabled_style_override_and_input_affordance_fixed
+- replayable: yes
+- residual_risks: 运行态证据仍来自本地开发服务与 DevTools 模拟器（iPhone 12/13、SDK 3.15.2、390px 视口），不代表真机微信登录、真实微信支付/退款、真实闪送报价-建单-回调或生产上线已验证；生产域名 `yunxifood.cn` 证书过期与闪送开放平台资料/测试权限仍未解除。
+
+## E-20260913-006：未登录整页引导空态与优惠券伪交互收口
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260913-miniapp-login-gate-and-coupon-affordance-r34
+- generated_at: 2026-09-13
+- evidence_type: verification/miniapp-auth-gate-and-coupon-affordance
+- file: local:miniapp/miniprogram/app.wxss; local:miniapp/miniprogram/pages/orders/index.wxml; local:miniapp/miniprogram/pages/address/index.wxml; local:miniapp/miniprogram/pages/order-detail/index.wxml; local:miniapp/miniprogram/pages/coupons/index.wxml; local:miniapp/miniprogram/pages/points/index.wxml; local:miniapp/miniprogram/pages/recharge/index.wxml; local:miniapp/miniprogram/pages/checkout/index.wxml; local:miniapp/miniprogram/pages/checkout/index.ts; local:miniapp/miniprogram/pages/checkout/index.wxss; local:miniapp/scripts/verify-all-15-pages-devtools.cjs; local:miniapp/scripts/scan-miniapp-button-touch-targets.mjs; local:miniapp/reports/devtools/all-pages-devtools-audit.json; local:miniapp/reports/devtools/final-logged-out-orders.png; local:miniapp/reports/devtools/final-logged-out-checkout.png; local:miniapp/reports/devtools/final-logged-out-coupons.png; local:ERRORS.md; local:LOGBOOK.md; local:PROJECT-STATE.md
+- commit_sha: (待提交后回写)
+- command: `npm run devtools:verify-all-pages`; `npm run devtools:commerce-states`; `npm run devtools:checkout-delivery-states`; `npm run devtools:verify-commerce-flows`; `MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420 npm run scan:button-touch-targets`; `npm run check:miniapp`; `npm run typecheck`; `npm run test:bakery`; `npm run audit:buttons`; `npm run audit:button-styles`
+- result: pass
+- follow_up_guardrail: `verify-all-15-pages-devtools.cjs` 新增 `inspectLoginGate()`（结构/CTA/44px/整页高度/文案换行/受限内容不渲染）与结算页优惠券行断言，确定性未登录态覆盖扩到 8 页（ERRORS: M-20260913-105、M-20260913-106、M-20260913-107）；`scan-miniapp-button-touch-targets.mjs` 的优惠券/积分登录闸门选择器改指 `.yunxi-state__action`；审计脚本播种页面状态必须还原全部被改字段。
+- related_logbook: 2026-09-13 - fix(miniapp): 未登录引导空态与优惠券伪交互收口
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地 DevTools 模拟器截图、空态几何尺寸与静态门禁结果；不含真实客户、地址、登录凭证、闪送凭证或支付数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 目视复核发现订单、收货地址、订单详情三页在未登录时只有一条顶部会话提示，下方整屏空白，而优惠券/积分/充值页是居中空态，同一类场景出现两套表达。7 个受限页面已统一为 `.yunxi-state yunxi-state--page` 整页空态（图标 + 标题 + 单行说明 + 去登录），实测 362~366x490px、“去登录”按钮 79x45px、说明高度 20px（单行），并清理 5 个页面不再使用的 `session-notice` 注册。结算页在无可用券时不再显示下拉箭头、不再展开空面板，报告记录“优惠券行：暂无可用；无下拉箭头=true；点击未展开=true”。新增结算页未登录断言时暴露审计脚手架漏还原播种登录标志，已修入并复跑；全页面审计 15/15 PASS，确定性未登录态 8/8 PASS。
+- failure_class: auth_gate_inconsistency_and_false_affordance_fixed
+- replayable: yes
+- residual_risks: 运行态证据仍来自本地开发服务与 DevTools 模拟器（iPhone 12/13、SDK 3.15.2、390px 视口），不代表真机微信授权登录、真实微信支付/退款、真实闪送报价-建单-回调或生产上线已验证；“去登录”后的真实微信授权链路仍未在本轮验证；生产域名 `yunxifood.cn` 证书过期与闪送开放平台资料/测试权限仍未解除。
+
+## E-20260913-007：订单履约口径分叉与商品目录层级收口
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260913-miniapp-order-fulfillment-and-catalog-hierarchy-r35
+- generated_at: 2026-09-13
+- evidence_type: verification/miniapp-order-fulfillment-and-catalog-hierarchy
+- file: local:backend/app/service/order/serialization.py; local:backend/tests/service/delivery/test_order_quote_binding.py; local:backend/tests/api/test_miniapp_order_api.py; local:miniapp/miniprogram/services/orders.ts; local:miniapp/miniprogram/pages/orders/index.ts; local:miniapp/miniprogram/pages/orders/index.wxml; local:miniapp/miniprogram/pages/orders/index.wxss; local:miniapp/miniprogram/pages/order-detail/index.ts; local:miniapp/miniprogram/pages/order-detail/index.wxml; local:miniapp/miniprogram/pages/product-detail/index.wxml; local:miniapp/miniprogram/pages/product-detail/index.wxss; local:miniapp/miniprogram/app.json; local:miniapp/docs/api-contract.md; local:miniapp/scripts/check-miniapp.mjs; local:miniapp/scripts/verify-miniapp-commerce-flows.cjs; local:miniapp/scripts/verify-devtools-commerce-states.cjs; local:miniapp/reports/devtools/miniapp-commerce-flows.json; local:miniapp/reports/devtools/commerce-flow-order-detail.png; local:miniapp/reports/devtools/commerce-flow-order-detail-pickup.png; local:miniapp/reports/devtools/commerce-flow-detail.png; local:miniapp/reports/devtools/final-orders-readable-meta.png; local:miniapp/reports/devtools/final-orders-empty.png; local:miniapp/reports/devtools/commerce-state-audit.json; local:miniapp/reports/devtools/all-pages-devtools-audit.json; local:ERRORS.md; local:LOGBOOK.md; local:PROJECT-STATE.md
+- commit_sha: (待提交后回写)
+- command: `python -B -m pytest backend/tests/service/delivery/test_order_quote_binding.py -q --no-cov`; `python -B -m pytest backend/tests/api/test_miniapp_order_api.py -q --no-cov`; `npm run typecheck --prefix miniapp`; `npm run check:miniapp --prefix miniapp`; `npm run test:bakery --prefix miniapp`; `npm run devtools:verify-commerce-flows --prefix miniapp`; `npm run devtools:commerce-states --prefix miniapp`; `npm run devtools:verify-all-pages --prefix miniapp`; `MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420 npm run scan:button-touch-targets --prefix miniapp`; `node --check miniapp/scripts/verify-miniapp-commerce-flows.cjs`
+- result: pass
+- follow_up_guardrail: `check-miniapp.mjs` 新增 `checkOrderFulfillmentPresentation()`（自提单禁渲染闪送费与配送地址）与 `checkTabBarLabels()`（app.json 与自定义 tabBar 文案逐项比对）；`verify-miniapp-commerce-flows.cjs` 覆盖配送/自提两种订单详情语义；`verify-devtools-commerce-states.cjs` 覆盖履约信息可读性与已登录空订单引导（ERRORS: M-20260913-108～M-20260913-111）。
+- related_logbook: 2026-09-13 - fix(miniapp): 订单履约口径分叉与商品目录层级收口
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地定向测试结果、DevTools 模拟器截图与页面结构断言；不含真实客户、地址、登录凭证、闪送凭证或支付数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 目视复核发现门店自提订单沿用配送口径：列表与详情仍显示闪送费、只给配送地址且进度统一写“配送中”。后端 `OrderSerializationService` 已补 `pickupAddress` 快照并同步 `OrderSummary` 契约与 API 文档；自提单隐藏闪送费行、展示自提门店与快照地址，配送单保留配送地址，进度文案按履约方式区分“待取货/配送中”并补齐各状态说明。同时移除商品详情首图重复销量角标，为已登录空订单补整页空态与“去选购”，对齐 `app.json` 与自定义 tabBar 的“商品/我的”文案。后端定向用例 6/6 与 14/14 PASS，`typecheck`、`check:miniapp`（15 页 15 路由）、`test:bakery` 8/8、`devtools:verify-commerce-flows`、`devtools:commerce-states`、`devtools:verify-all-pages`（15/15 页）与触控扫描（46 选择器/13 页面）均 PASS。
+- failure_class: fulfillment_channel_presentation_leak_fixed
+- replayable: yes
+- residual_risks: 运行态证据仍来自本地开发服务与 DevTools 模拟器（iPhone 12/13、SDK 3.15.2、390px 视口），不代表真机微信登录、真实微信支付/退款、真实闪送报价-建单-回调或生产上线已验证；自提地址依赖订单创建时的快照，历史存量订单仍为旧值；生产域名 `yunxifood.cn` 证书过期与闪送开放平台资料/测试权限仍未解除。
+
+## E-20260913-008：结算时间选择器提交值回推与目录/空态收口
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260913-miniapp-schedule-wysiwyg-and-empty-states-r36
+- generated_at: 2026-09-13
+- evidence_type: verification/miniapp-checkout-schedule-and-empty-states
+- file: local:miniapp/miniprogram/utils/checkout-time.ts; local:miniapp/miniprogram/pages/checkout/index.ts; local:miniapp/miniprogram/pages/coupons/index.wxml; local:miniapp/miniprogram/pages/coupons/index.ts; local:miniapp/miniprogram/pages/points/index.wxml; local:miniapp/miniprogram/pages/points/index.ts; local:miniapp/miniprogram/pages/products/index.wxml; local:miniapp/miniprogram/pages/products/index.ts; local:miniapp/miniprogram/pages/products/index.wxss; local:miniapp/tests/utils/checkout-time.test.ts; local:miniapp/scripts/check-miniapp.mjs; local:miniapp/scripts/verify-devtools-checkout-delivery-states.cjs; local:miniapp/scripts/verify-devtools-commerce-states.cjs; local:miniapp/reports/devtools/checkout-delivery-state-audit.json; local:miniapp/reports/devtools/commerce-state-audit.json; local:miniapp/reports/devtools/all-pages-devtools-audit.json; local:miniapp/reports/devtools/miniapp-commerce-flows.json; local:miniapp/reports/devtools/final-coupons-empty.png; local:miniapp/reports/devtools/final-points-empty.png; local:miniapp/reports/devtools/final-products.png; local:ERRORS.md; local:LOGBOOK.md; local:PROJECT-STATE.md
+- commit_sha: (待提交后回写)
+- command: `npm run test:checkout-time --prefix miniapp`; `npm run typecheck --prefix miniapp`; `npm run check:miniapp --prefix miniapp`; `npm run check:page-api-coverage --prefix miniapp`; `npm run test:bakery --prefix miniapp`; `npm run test:member-assets --prefix miniapp`; `npm run test:order-summary --prefix miniapp`; `npm run devtools:checkout-delivery-states --prefix miniapp`; `npm run devtools:commerce-states --prefix miniapp`; `npm run devtools:verify-all-pages --prefix miniapp`; `npm run devtools:verify-commerce-flows --prefix miniapp`; `MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420 npm run scan:button-touch-targets --prefix miniapp`; `npm run audit:buttons --prefix miniapp`; `npm run audit:button-styles --prefix miniapp`
+- result: pass
+- follow_up_guardrail: `check-miniapp.mjs` 新增 `checkCatalogHeadlineAndScheduleConsistency()`（结算页必须由 `syncExpectTimeSchedule` 重建选择器；商品页禁静态价格 chip 与无依据副标题）；`verify-devtools-checkout-delivery-states.cjs` 新增 `expect_time_picker_restore`；`verify-devtools-commerce-states.cjs` 新增优惠券/积分已登录空态断言；新增 `test:checkout-time` 单测脚本。
+- related_logbook: 2026-09-13 - fix(miniapp): 结算时间选择器提交值回推与目录/空态收口
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地单测、本地接口/DB 只读查询、DevTools 模拟器截图与结构断言；不含真实客户、地址、登录凭证、闪送凭证或支付数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 目视复核发现结算页重新进入时三个时间选择器会用默认小时重置，与保留的 `expectTime` 提交值不一致（客户离开选地址再回来即出现显示 18:00 实际下单 19:30）。新增 `resolveCheckoutSchedule()` 纯函数由提交值反推日期/小时/分钟并抬升过截单日的旧时间，结算页 `loadCheckout()` 统一经 `syncExpectTimeSchedule()` 重建，新增 5 项单测与运行态断言（报告记录 restoredHour=19/restoredMinute=30）。同时统一优惠券/积分已登录空态为整页 `.yunxi-state` + “去选购”/“重新加载”，移除商品目录标题的静态“自提价”伪控件与“人气汇聚/匠心手作”等无依据副标题，改为“N 款 · 按销量排序”。另证据化记录有赞分类与商品标签命名空间零交集、分类接口恒空的数据链路缺口（ERRORS M-20260913-115，待真实接口权限修复）。
+- failure_class: checkout_schedule_wysiwyg_and_empty_state_consistency_fixed
+- replayable: yes
+- residual_risks: 运行态证据仍来自本地开发服务与 DevTools 模拟器，不代表真机微信登录、真实微信支付/退款、真实闪送报价-建单-回调或生产上线已验证；分类导航因有赞分类-商品关联缺失仍为单层列表（M-20260913-115，open），需取得真实有赞接口权限后修复；生产域名 `yunxifood.cn` 证书过期与闪送开放平台资料/测试权限仍未解除。
+
+## E-20260913-009：购物车长名称信息层级与充值记录空态收口
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260913-miniapp-cart-long-title-and-recharge-empty-r37
+- generated_at: 2026-09-13
+- evidence_type: verification/miniapp-cart-long-title-and-empty-state
+- file: local:miniapp/miniprogram/pages/cart/index.wxml; local:miniapp/miniprogram/pages/cart/index.wxss; local:miniapp/miniprogram/pages/cart/index.ts; local:miniapp/miniprogram/pages/recharge/index.wxml; local:miniapp/miniprogram/pages/recharge/index.wxss; local:miniapp/miniprogram/app.wxss; local:miniapp/scripts/verify-devtools-cart-long-title.cjs; local:miniapp/scripts/verify-devtools-product-purchase-path.cjs; local:miniapp/scripts/verify-all-15-pages-devtools.cjs; local:miniapp/scripts/check-miniapp.mjs; local:miniapp/package.json; local:miniapp/reports/devtools/cart-long-title-audit.json; local:miniapp/reports/devtools/product-purchase-path-audit.json; local:miniapp/reports/devtools/all-pages-devtools-audit.json; local:miniapp/reports/devtools/final-cart-long-title.png; local:miniapp/reports/devtools/final-cart-real-product.png; local:ERRORS.md; local:LOGBOOK.md; local:PROJECT-STATE.md
+- commit_sha: (待提交后回写)
+- command: `npm run typecheck --prefix miniapp`; `npm run check:miniapp --prefix miniapp`; `npm run devtools:cart-long-title --prefix miniapp`; `npm run devtools:product-purchase-path --prefix miniapp`; `npm run devtools:verify-commerce-flows --prefix miniapp`; `npm run devtools:commerce-states --prefix miniapp`; `npm run devtools:verify-all-pages --prefix miniapp`; `npm run devtools:checkout-delivery-states --prefix miniapp`
+- result: pass
+- follow_up_guardrail: 新增 `devtools:cart-long-title`，用 41 字真实商品名播种购物车，断言两行 clamp、标题区宽高、状态标签与数量步进器零重叠、点击商品名进入详情；`verify-devtools-product-purchase-path.cjs` 增加真实商品购物车两行断言与 `final-cart-real-product.png`；`verify-all-15-pages-devtools.cjs` 增加充值记录空态结构/尺寸断言；`check-miniapp.mjs` 增加 `checkRechargeRecordsEmptyState()`。
+- related_logbook: 2026-09-13 - fix(miniapp): 购物车长名称与充值记录空态收口
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地 DevTools 模拟器结构断言、尺寸测量与截图；不含真实客户、地址、登录凭证、闪送凭证或支付数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 目视复核 15 页截图时发现购物车商品名单行截断（41 字最长真实名称只剩一个残句），且长状态标签会被右侧数量步进器覆盖。购物车卡片改为勾选/商品图左侧核对列 + 商品名独占信息列并允许两行，库存标签移到价格行并加最大宽度与省略；商品名和商品图接回商品详情，长名称客户可查看完整信息。同时把充值记录空态从裸文本改为 `.yunxi-state yunxi-state--section` 并补“充值成功后，记录会显示在这里”。新增 41 字真实商品名专项，报告记录 lineClamp=2、标题区 278x39px、标签/步进器重叠 0；`typecheck`、`check:miniapp`、`devtools:product-purchase-path`、`devtools:verify-commerce-flows`、`devtools:commerce-states`、`devtools:verify-all-pages` 15/15 均通过。
+- failure_class: cart_long_title_layout_and_in_section_empty_state_fixed
+- replayable: yes
+- residual_risks: 运行态证据仍来自本地后端与 DevTools 模拟器（iPhone 12/13、SDK 3.15.2、390px 视口），不代表真机微信登录、真实微信支付/退款、真实闪送报价-建单-回调或生产上线已验证；分类导航仍受 M-20260913-115 阻塞；生产域名证书、闪送开放平台资料/测试权限与有赞分类接口权限仍未解除。
+
+## E-20260913-010：首页货架条数漂移根因修复与商品详情底部安全区收口
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260913-miniapp-product-cache-limit-and-detail-footer-r38
+- generated_at: 2026-09-13
+- evidence_type: verification/miniapp-product-cache-key-and-footer-space
+- file: local:miniapp/miniprogram/services/products.ts; local:miniapp/miniprogram/pages/product-detail/index.wxss; local:miniapp/scripts/check-miniapp.mjs; local:miniapp/scripts/verify-all-15-pages-devtools.cjs; local:miniapp/scripts/verify-devtools-product-purchase-path.cjs; local:miniapp/reports/devtools/all-pages-devtools-audit.json; local:miniapp/reports/devtools/product-purchase-path-audit.json; local:miniapp/reports/devtools/final-home.png; local:miniapp/reports/devtools/final-product-detail-footer.png; local:ERRORS.md; local:LOGBOOK.md; local:PROJECT-STATE.md
+- commit_sha: (待提交后回写)
+- command: `npm run typecheck --prefix miniapp`; `npm run check:miniapp --prefix miniapp`; `npm run devtools:product-purchase-path --prefix miniapp`; `npm run devtools:verify-all-pages --prefix miniapp`
+- result: pass
+- follow_up_guardrail: `check-miniapp.mjs` 新增 `checkProductListCacheKeyIncludesLimit()` 与 `checkProductDetailFooterSpace()`；`verify-all-15-pages-devtools.cjs` 首页货架增加“接口条数 vs 渲染条数”交叉校验并轮询至计数稳定；`verify-devtools-product-purchase-path.cjs` 新增 `product-detail-footer-gap`，滚到底后测量最后内容分区与固定操作栏的间隙。
+- related_logbook: 2026-09-13 - fix(miniapp): 商品列表缓存键补 limit 与详情页底部安全区
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地接口只读查询、DevTools 模拟器结构断言与尺寸测量；不含真实客户、地址、登录凭证、闪送凭证或支付数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 首页“今日推荐”货架多次审计出现 4/5/6 条漂移，定位为 `buildProductsCacheKey()` 未包含 `limit`，导致首页（featured+6）、购物车推荐（featured+4）、详情关联（featured+5）共用同一 5 分钟缓存条目。缓存键补上 `limit` 后，DevTools 运行态从“渲染=5，接口=6”恢复为“商品数=6；接口=6，渲染=6”，首页货架网格不再出现单张末行；首页截图 `final-home.png` 目视复核。同时把商品详情内容区底部写死的 `padding-bottom: 220rpx` 改为 `calc(env(safe-area-inset-bottom) + 140rpx)`，与固定操作栏同源伸缩；专项审计记录修改前 gap=22.44px（操作栏高 92px），修改后 gap=14.44px 且无遮挡。
+- failure_class: product_list_cache_key_missing_limit_and_fixed_footer_space_fixed
+- replayable: yes
+- residual_risks: 运行态证据仍来自本地后端与 DevTools 模拟器（iPhone 12/13、SDK 3.15.2、390px 视口），无安全区机型的底部间隙只做了策略收口，未在真机复测；不代表真机微信登录、真实微信支付/退款、真实闪送报价-建单-回调或生产上线已验证；分类导航仍受 M-20260913-115 阻塞。
+
+## E-20260913-011：客服页登录态文案与真实沟通能力对齐
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260913-miniapp-chat-login-copy-r38
+- generated_at: 2026-09-13
+- evidence_type: verification/miniapp-chat-empty-state-copy
+- file: local:miniapp/miniprogram/pages/chat/index.wxml; local:miniapp/scripts/check-miniapp.mjs; local:miniapp/reports/devtools/all-pages-devtools-audit.json; local:miniapp/reports/devtools/final-chat.png; local:ERRORS.md; local:LOGBOOK.md; local:PROJECT-STATE.md
+- commit_sha: (待提交后回写)
+- command: `npm run check:miniapp --prefix miniapp`; `npm run devtools:verify-all-pages --prefix miniapp`
+- result: pass
+- follow_up_guardrail: `check-miniapp.mjs` 的 `FORBIDDEN_CUSTOMER_COPY` 新增“与客服通话”，客服页不得再暗示电话能力；电话入口保留在个人中心“客服电话”。
+- related_logbook: 2026-09-13 - fix(miniapp): 商品列表缓存键补 limit 与详情页底部安全区
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录小程序文案与 DevTools 未登录态截图，不含真实客户、地址、登录凭证或支付数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 客服页是文字会话页，但未登录空态提示“请在个人中心登录后与客服通话”，会给客户造成可在线通话的错误预期。文案改为“请在个人中心登录后与客服在线沟通”，并在静态门禁中加入“与客服通话”禁词；`check:miniapp`（15 页/15 路由）与 `devtools:verify-all-pages` 15/15 PASS，`final-chat.png` 目视确认。
+- failure_class: chat_empty_state_copy_mismatched_capability_fixed
+- replayable: yes
+- residual_risks: 未登录态文案已在 DevTools 模拟器复核；已登录的 AI 会话路由与人工转接真实链路未在本轮重新验收，不代表生产上线已验证。
+
+## E-20260913-012：MiniApp r39 首页服务承诺、群内登记闪送口径与商品详情滚动悬浮栏收口
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260913-miniapp-promise-registration-and-detail-nav-r39
+- generated_at: 2026-09-13
+- evidence_type: verification/miniapp-promise-copy-registration-delivery-and-detail-scroll-nav
+- file: local:miniapp/miniprogram/pages/home/index.wxml; local:miniapp/miniprogram/pages/home/index.wxss; local:miniapp/miniprogram/pages/group-registration/index.wxml; local:miniapp/miniprogram/pages/group-registration/index.wxss; local:miniapp/miniprogram/pages/product-detail/index.wxml; local:miniapp/miniprogram/pages/product-detail/index.wxss; local:miniapp/miniprogram/pages/product-detail/index.ts; local:miniapp/miniprogram/pages/products/index.wxss; local:miniapp/scripts/check-miniapp.mjs; local:miniapp/scripts/verify-all-15-pages-devtools.cjs; local:miniapp/scripts/verify-miniapp-commerce-flows.cjs; local:miniapp/reports/devtools/all-pages-devtools-audit.json; local:miniapp/reports/devtools/miniapp-commerce-flows.json; local:miniapp/reports/devtools/registration-policy-audit.json; local:miniapp/reports/devtools/final-group-registration.png; local:miniapp/reports/devtools/commerce-flow-detail-nav-solid.png; local:ERRORS.md; local:LOGBOOK.md; local:PROJECT-STATE.md
+- commit_sha: (待提交后回写)
+- command: `npm run check:miniapp --prefix miniapp`; `npm run typecheck --prefix miniapp`; `npm run devtools:verify-all-pages --prefix miniapp`; `npm run devtools:verify-commerce-flows --prefix miniapp`; `npm run devtools:registration-policy --prefix miniapp`
+- result: pass
+- follow_up_guardrail: `check-miniapp.mjs` 新增 `checkHomePromiseCardReadability()`、`checkGroupRegistrationDeliveryCopy()`、`checkProductDetailScrollNav()`、`checkProductCardHintReadability()`；`verify-all-15-pages-devtools.cjs` 新增 `inspectProductDetailScrollNav()` 与 `waitForDetailNavState()`；`verify-miniapp-commerce-flows.cjs` 新增 `product-detail-scroll-nav`。
+- related_logbook: 2026-09-13 - fix(miniapp): 首页服务承诺、群内登记闪送口径与商品详情滚动悬浮栏
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅保留本地后端、DevTools 模拟器页面结构断言与截图；不含真实客户、地址、登录凭证、闪送凭证或支付数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 本轮逐页目视复核发现并修复三处展示缺陷：首页服务承诺卡说明仅 18rpx 且单行截断、并把截单规则写成“17:00 前咨询”，现为“当天制作 次日自取或配送 / 运费按地址单独计算 / 当天订单 17:00 截单”，字号 22rpx 且允许两行；群内登记页配送选项由“门店配送”改为“北京闪送”，并补充“运费按收货地址实测、由顾客承担”说明；商品详情滚动后正文穿透透明悬浮栏与状态栏文字重叠，改为首屏透明、`scrollTop > 8` 切 `detail-nav--solid` 实底、回顶复透明。运行态证据：15 页审计 15/15 PASS、真实商品商务流程 PASS（`scrolledNavBackground=rgb(255, 255, 255)`）、群内登记政策审计 PASS（`tabText=北京闪送`）；商品卡说明字号同步提升至 22rpx 并允许两行。
+- failure_class: miniapp_promise_copy_registration_delivery_and_detail_nav_overlap_fixed
+- replayable: yes
+- residual_risks: 运行态仍来自本地后端与 DevTools 模拟器（iPhone 12/13、SDK 3.15.2、390px 视口），未在真机与小屏机型复测；DevTools 截图顶部边缘存在模拟器自身的旧帧残留（页面 DOM 量测确认内容区从 88px 起，非页面缺陷）；真实闪送开放平台、真实支付/退款与生产验收仍为外部阻塞，项目保持 No-Go。
+
+## E-20260913-013：购物车状态胶囊长文案截断收口
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260913-miniapp-cart-tag-copy-r40
+- generated_at: 2026-09-13
+- evidence_type: verification/miniapp-cart-status-chip-copy
+- file: local:miniapp/miniprogram/pages/cart/index.ts; local:miniapp/miniprogram/pages/cart/index.wxml; local:miniapp/scripts/check-miniapp.mjs; local:miniapp/scripts/verify-devtools-cart-long-title.cjs; local:miniapp/reports/devtools/cart-long-title-audit.json; local:miniapp/reports/devtools/miniapp-commerce-flows.json; local:miniapp/reports/devtools/final-cart-long-title.png; local:ERRORS.md; local:LOGBOOK.md; local:PROJECT-STATE.md
+- commit_sha: (待提交后回写)
+- command: `npm run check:miniapp --prefix miniapp`; `npm run typecheck --prefix miniapp`; `npm run devtools:cart-long-title --prefix miniapp`; `npm run devtools:verify-commerce-flows --prefix miniapp`
+- result: pass
+- follow_up_guardrail: `check-miniapp.mjs` 的 `checkCartTagCopy()`；`verify-devtools-cart-long-title.cjs` 的 `cart-healthy-stock-tag` 与 `cart-low-stock-tag`。
+- related_logbook: 2026-09-13 - fix(miniapp): 购物车状态胶囊长文案截断收口
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地 DevTools 模拟器结构断言与截图，不含真实客户、地址、登录凭证或支付数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 逐页目视复核购物车真实链路截图时发现状态胶囊渲染为“自提价展示，闪…”，长运费口径在窄胶囊内被省略号截断。根因是 `getCartStockText()` 库存充足分支复用了商品列表用的长购买提示。修复后库存充足且无额外事实时不渲染胶囊，低库存等场景只输出“仅余 N 件/暂时售罄/已达库存上限”等短事实，长运费口径保留在底部“商品合计 · 不含闪送费”。运行态证据：`devtools:cart-long-title` PASS（healthy tagHidden=true、low stock “仅余 3 件”且与数量控件零重叠、41 字商品名仍两行并可点击进入商品详情），`devtools:verify-commerce-flows` PASS。
+- failure_class: miniapp_cart_status_chip_long_copy_truncated_fixed
+- replayable: yes
+- residual_risks: 运行态仍来自本地后端与 DevTools 模拟器（iPhone 12/13、SDK 3.15.2、390px 视口），未在小屏机型复测；真实闪送开放平台、真实支付/退款与生产验收仍为外部阻塞。
+
+## E-20260913-014：MiniApp r41 购物车推荐卡口径统一、首页商品卡可读性与审计环境预检收口
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260913-miniapp-cart-recommend-parity-and-audit-preflight-r41
+- generated_at: 2026-09-13
+- evidence_type: verification/miniapp-card-copy-consistency-and-devtools-preflight
+- file: local:miniapp/miniprogram/pages/cart/index.ts; local:miniapp/miniprogram/pages/cart/index.wxml; local:miniapp/miniprogram/pages/cart/index.wxss; local:miniapp/miniprogram/pages/home/index.wxss; local:miniapp/scripts/check-miniapp.mjs; local:miniapp/scripts/verify-devtools-cart-long-title.cjs; local:miniapp/scripts/verify-all-15-pages-devtools.cjs; local:miniapp/scripts/verify-miniapp-commerce-flows.cjs; local:miniapp/reports/devtools/cart-long-title-audit.json; local:miniapp/reports/devtools/all-pages-devtools-audit.json; local:miniapp/reports/devtools/miniapp-commerce-flows.json; local:miniapp/reports/devtools/final-home.png; local:miniapp/reports/devtools/final-cart-long-title.png; local:ERRORS.md; local:LOGBOOK.md; local:PROJECT-STATE.md
+- commit_sha: (待提交后回写)
+- command: `npm run check:miniapp --prefix miniapp`; `npm run typecheck --prefix miniapp`; `npm run devtools:cart-long-title --prefix miniapp`; `npm run devtools:verify-commerce-flows --prefix miniapp`; `npm run devtools:verify-all-pages --prefix miniapp`; `python -B backend/scripts/check_mistake_ledger.py`
+- result: pass
+- follow_up_guardrail: `check-miniapp.mjs` 的 `checkCartRecommendedActionCopy()` 与扩展后的 `checkProductCardHintReadability()`（覆盖首页 `.product-tip`）；`verify-devtools-cart-long-title.cjs` 的 `cart-recommend-card-copy`；`verify-all-15-pages-devtools.cjs` 的首页商品卡购买说明量测与连接后渲染预检（无法渲染首页时 exit=2 且不覆盖上一份报告）。
+- related_logbook: 2026-09-13 - fix(miniapp): 购物车推荐卡口径统一、首页商品卡可读性与 DevTools 审计环境预检
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地 DevTools 模拟器结构断言与截图，不含真实客户、地址、登录凭证或支付数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 逐页复核中确认购物车“推荐商品”卡与首页/商品列表动作口径不一致（裸“加入”且提示恒为“已加入预订单”），并把首页商品卡购买说明 19rpx 提升到与商品列表一致的 22rpx（11px）。购物车推荐卡改用 `getProductActionLabel()` / `getProductAddToastLabel()` / `getProductCardTip()` 三个统一 helper，视图字段 `soldText`→`hintText`、样式类 `.recommend-sold`→`.recommend-hint`（两行 clamp + 22rpx）。运行态证据：`devtools:cart-long-title` PASS（4 张推荐卡 3×“预订”+1×“加入购物车”，hintFontSize=11px，价格与动作零重叠，长名仍两行并可点击进详情）；`devtools:verify-all-pages` 15/15 PASS（首页商品卡购买说明 6 条、最小字号 11px、最大溢出 0.0px）；`devtools:verify-commerce-flows` PASS；两项静态守卫均用变异测试确认会精确失败。同轮还固化了审计环境前置：本地后端 `127.0.0.1:7001` 未运行时结果只能当兜底空态，多实例 DevTools 会在渲染预检处以 exit=2 拦下；同轮还把商品详情悬浮栏断言从“只看 class”改为轮询背景 alpha（M-20260913-130），修复后记录 `scrolledNavBackground=rgb(255, 255, 255)`。
+- failure_class: miniapp_card_action_copy_inconsistency_and_devtools_audit_environment_preflight
+- replayable: yes
+- residual_risks: 运行态仍来自本地后端（127.0.0.1:7001）与 DevTools 模拟器（iPhone 12/13、SDK 3.15.2、390px），未在小屏机型复测；本地后端需保持运行，否则审计会进入兜底空态；真实闪送开放平台、真实支付/退款与生产验收仍为外部阻塞。
+
+## E-20260913-015：MiniApp r42 结算调度审计与群内登记成功态收口
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260913-miniapp-schedule-audit-and-registration-success-r42
+- generated_at: 2026-09-13
+- evidence_type: verification/miniapp-schedule-audit-and-registration-success-state
+- file: local:miniapp/miniprogram/pages/group-registration/index.wxml; local:miniapp/miniprogram/pages/group-registration/index.wxss; local:miniapp/scripts/verify-miniapp-commerce-flows.cjs; local:miniapp/scripts/verify-devtools-registration-policy.cjs; local:miniapp/reports/devtools/miniapp-commerce-flows.json; local:miniapp/reports/devtools/registration-policy-audit.json; local:miniapp/reports/devtools/commerce-flow-checkout-quoted.png; local:miniapp/reports/devtools/final-registration-success.png; local:miniapp/reports/devtools/all-pages-devtools-audit.json; local:ERRORS.md; local:LOGBOOK.md; local:PROJECT-STATE.md
+- commit_sha: (待提交后回写)
+- command: `npm run check:miniapp --prefix miniapp`; `npm run typecheck --prefix miniapp`; `npm run devtools:verify-commerce-flows --prefix miniapp`; `npm run devtools:registration-policy --prefix miniapp`; `npm run devtools:verify-all-pages --prefix miniapp`; `python -B backend/scripts/check_project.py --skip-tests`
+- result: pass
+- follow_up_guardrail: `verify-miniapp-commerce-flows.cjs` 的 `checkout-schedule-consistency` 同时校验 `expectTime`、日期、小时、分钟与期望时间预览；`verify-devtools-registration-policy.cjs` 在成功态截图前清理旧 Toast、完整注入匿名/登录 `sessionView`，并断言成功标题、说明、四行摘要、登录身份和双按钮尺寸。
+- related_logbook: 2026-09-13 - fix(miniapp): 结算调度审计与群内登记成功态收口
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地后端健康检查、DevTools 模拟器结构断言与截图；不含真实客户、地址、登录凭证、闪送凭证或支付数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 在本地 uvicorn `127.0.0.1:7001` 健康运行前提下完成 r42 逐页运行态复核。结算审计原先只注入 `expectTime`，绕过页面 `syncExpectTimeSchedule()`，截图出现 `2026-09-13 18:00` 与 `2026-09-15 15:00` 两个提交时间；修复后统一走真实同步方法并新增 `checkout-schedule-consistency`，报告记录 `expectTime=2026-09-13 18:00`、`previewText=期望时间：2026-09-13 18:00`、date/hour/minute 均为 18:00。群内登记成功态原先残留上一轮错误 Toast，且只注入 `canSubmitRegistration` 未同步 `sessionView`，截图同时出现“已提交/活动批次不存在”“已提交/未登录”；修复后成功截图前清除 Toast、同时注入完整登录身份，并重排成功面板为“确认图标 + 已提交说明 + 四行摘要 + 等宽双操作按钮”，运行态记录 `successSessionText=微信身份 · 已登录`、`successRowCount=4`、两个 45px 操作按钮。最终 `devtools:verify-commerce-flows` PASS、`devtools:registration-policy` PASS、`devtools:verify-all-pages` 15/15 PASS、8/8 未登录态 PASS。
+- failure_class: miniapp_schedule_state_injection_and_registration_success_feedback_fixed
+- replayable: yes
+- residual_risks: 运行态仍来自本地后端（127.0.0.1:7001）与 DevTools 模拟器（iPhone 12/13、SDK 3.15.2、390px 视口）；首次登记政策复跑曾出现一次 automator 响应超时，按同一单实例环境复跑后通过，未形成产品失败证据；真机微信登录、真实微信支付/退款、真实闪送开放平台报价-建单-回调与生产验收仍未执行。
+
+## E-20260913-016：MiniApp r43 商品目录搜索、长尾查找与目录完整性收口
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260913-miniapp-product-search-and-catalog-integrity-r43
+- generated_at: 2026-09-13
+- evidence_type: verification/miniapp-catalog-search-long-tail-and-devtools-lock-state
+- file: local:miniapp/miniprogram/pages/products/index.wxml; local:miniapp/miniprogram/pages/products/index.wxss; local:miniapp/scripts/verify-devtools-product-search.cjs; local:miniapp/scripts/verify-all-15-pages-devtools.cjs; local:miniapp/package.json; local:miniapp/reports/devtools/product-search-audit.json; local:miniapp/reports/devtools/final-product-search-results.png; local:miniapp/reports/devtools/all-pages-devtools-audit.json; local:miniapp/reports/button-visual/button-touch-targets-latest.json; local:ERRORS.md; local:LOGBOOK.md; local:PROJECT-STATE.md
+- commit_sha: (待提交后回写)
+- command: `npm run devtools:product-search --prefix miniapp`; `npm run scan:button-touch-targets --prefix miniapp`（MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420）; `npm run devtools:verify-all-pages --prefix miniapp`; `npm run check:miniapp --prefix miniapp`; `npm run typecheck --prefix miniapp`; `python -B backend/scripts/check_project.py --skip-tests`
+- result: partial-pass
+- follow_up_guardrail: 新增 `miniapp/scripts/verify-devtools-product-search.cjs`（catalog-completeness、search-sample、search-long-tail-coverage、search-bar-idle/typed-geometry、search-panel-layout、search-clear-restore、search-empty-state(-recovery)、search-result-quick-add、search-result-open-detail）；`verify-all-15-pages-devtools.cjs` 与 `verify-devtools-product-search.cjs` 统一使用 `status=BLOCKED` 区分“页面断言通过但截图证据不可用”，退出码 `PASS=0 / FAIL=1 / BLOCKED=2`，截图失败不再阻断页面断言，也不再汇总为 PASS。
+- related_logbook: 2026-09-13 - fix(miniapp): 商品目录搜索与长尾查找收口; 2026-09-13 - fix(miniapp): 商品搜索审计证据状态口径修正
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地后端目录数量与 DevTools 模拟器结构/几何断言；不含真实客户、地址、登录凭证或支付数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 在本地后端 `127.0.0.1:7001` 健康运行下审计商品目录搜索。页面目录与全量接口一致（310 款、顺序一致），搜索“曲奇”命中 3 条且全部在首屏 12 款之外，证明长尾商品可搜；搜索栏输入前后外框高度均为 45px（修复前 33→45px 跳高），清空按钮唯一且触达 45×45px；无结果空态提供“查看全部商品”一键出口；搜索结果可直接预订（写入 `手工黄油曲奇` 1 件并出现预订底栏）并进入对应商品详情。过程中修复搜索栏跳高、重复清空按钮、无结果无出口与内部术语文案，共记录 M-20260913-134～M-20260913-141；其中 M-20260913-137 为待业务确认项：目录含 5 款“非卖品仅展示/勿拍”商品仍可预订，未做猜测性过滤；M-20260913-140 为审计证据状态口径缺陷：截图失败曾在本轮被汇总为 PASS，现与 15 页审计统一为截图证据 `BLOCKED`。只读复测另确认目录首屏 12/310 款、需点击“查看更多”25 次；搜索“蛋糕”命中 310 款并一次渲染 310 张卡、内容高度 36281px；接口复测 `limit=30` 为 30 条 / 22274 字节 / 暖态中位 81ms，`limit=500` 为 310 条 / 302510 字节 / 暖态中位 228ms（M-20260913-141，open，待方案确认；第二阶段拟在上线前另立服务端分页与搜索契约）。r43.1 锁屏期间截图证据缺失（`BLOCKED / EXIT=2`）；r43.3 解锁复跑后 `devtools:product-search` 12/12 与 `devtools:verify-all-pages`（15/15 页、8/8 未登录态、23 张截图）均 PASS。
+- failure_class: miniapp_catalog_search_layout_duplicate_control_and_audit_environment_classification_and_evidence_status_fixed
+- replayable: yes
+- residual_risks: 搜索仍为本地全量（limit=500）过滤，服务端分页/搜索尚未实现，目录超过安全上限后需替换；运行态仍来自本地后端与 DevTools 模拟器（iPhone 12/13、SDK 3.15.2、390px），未在小屏与真机复测；截图证据已在 r43.3 复跑补齐（`final-product-search-results.png` 为当前代码帧，页面目录与接口同为 310 款）；有赞分类-商品关联缺口 M-20260913-115 与目录非卖品口径 M-20260913-137 仍为 open；真实闪送开放平台、真实支付/退款与生产验收仍未执行。
+
+## E-20260913-017：DevTools 审计截图证据统一阻塞口径、截图重试护栏与逐页视觉证据收口
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260913-miniapp-devtools-audit-status-guard-r43.2
+- generated_at: 2026-09-13
+- evidence_type: verification/miniapp-devtools-screenshot-evidence-status-guard-and-page-audit-battery
+- file: local:miniapp/scripts/lib/devtools-audit-status.cjs; local:miniapp/scripts/verify-devtools-commerce-states.cjs; local:miniapp/scripts/verify-devtools-cart-long-title.cjs; local:miniapp/scripts/verify-devtools-checkout-delivery-states.cjs; local:miniapp/scripts/verify-devtools-product-purchase-path.cjs; local:miniapp/scripts/verify-devtools-registration-policy.cjs; local:miniapp/scripts/verify-miniapp-commerce-flows.cjs; local:miniapp/scripts/walkthrough-phase-c.mjs; local:miniapp/reports/devtools/commerce-state-audit.json; local:miniapp/reports/devtools/cart-long-title-audit.json; local:miniapp/reports/devtools/checkout-delivery-state-audit.json; local:miniapp/reports/devtools/product-purchase-path-audit.json; local:miniapp/reports/devtools/registration-policy-audit.json; local:miniapp/reports/devtools/miniapp-commerce-flows.json; local:miniapp/reports/devtools/walkthrough-phase-c.json; local:miniapp/reports/devtools/same-day-scheduling-audit.json; local:miniapp/reports/button-visual/button-touch-targets-20260913-085102.json; local:miniapp/reports/button-audit/miniapp-buttons-20260913-084858.json; local:miniapp/reports/button-style-audit/button-style-audit-20260913-084858.json; local:ERRORS.md; local:LOGBOOK.md; local:PROJECT-STATE.md
+- commit_sha: (待提交后回写)
+- command: `npm run devtools:commerce-states --prefix miniapp`; `npm run devtools:cart-long-title --prefix miniapp`; `npm run devtools:checkout-delivery-states --prefix miniapp`; `npm run devtools:product-purchase-path --prefix miniapp`; `npm run devtools:registration-policy --prefix miniapp`; `npm run devtools:verify-commerce-flows --prefix miniapp`; `npm run walkthrough:phase-c --prefix miniapp`; `npm run devtools:same-day-scheduling --prefix miniapp`; `MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420 npm run scan:button-touch-targets --prefix miniapp`; `npm run audit:buttons --prefix miniapp`; `npm run audit:button-styles --prefix miniapp`; `npm run check:page-api-coverage --prefix miniapp`; `npm run devtools:verify-all-pages --prefix miniapp`; `npm run devtools:product-search --prefix miniapp`
+- result: pass
+- follow_up_guardrail: 新增共享模块 `miniapp/scripts/lib/devtools-audit-status.cjs`（`captureEvidenceScreenshot()`、`finalizeAuditStatus()`、`exitForAuditStatus()`）；后续 DevTools 审计必须复用该模块，截图失败只能记为环境阻塞（BLOCKED），状态统一为通过（PASS）退出 0 / 断言失败（FAIL）退出 1 / 环境阻塞（BLOCKED）退出 2；截图采集必须走 `captureScreenshotWithRetry()`（默认 3 次、间隔 700ms，并记录 attempts），不得再裸调截图。
+- related_logbook: 2026-09-13 - fix(miniapp): DevTools 审计截图证据统一阻塞口径；2026-09-13 - fix(miniapp): DevTools 截图证据解锁复跑与截图重试护栏
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地 DevTools 模拟器页面结构、控件几何、控制台状态与截图阻塞分类；不含真实客户、地址、登录凭证或支付数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 锁屏环境下逐页运行态审计时，`devtools:commerce-states` 首次暴露为 `fail to capture screenshot` 直接整轮失败；盘点发现 7 个脚本存在同类裸截图调用，属于 M-20260913-138 同类问题第二次出现。新增共享状态模块后，7 个脚本全部改为“页面断言继续执行、截图失败只记环境阻塞”。串行复核结果：`commerce-states` 11 检查 0 错误、`cart-long-title` 5 检查、`checkout-delivery-states` 10 检查 0 错误、`product-purchase-path` 7 检查 0 错误、`registration-policy` 11 检查 0 错误、`commerce-flows` 12 检查 0 错误，均为 BLOCKED / 退出码 2；`walkthrough:phase-c` 15/15 页导航成功、控制台 0 warning / 0 error、15 页截图阻塞、退出码 2。补充专项：`same-day-scheduling` PASS；触控扫描 46 选择器 / 13 页 PASS；按钮审计 118 控件 PASS；按钮样式 118 控件 0 失败 0 警告；页面 API 覆盖 15 页、34 API 术语、9 边界 PASS。页面断言未发现产品缺陷；r43.3 解锁复跑后截图证据已补齐，并新增截图重试护栏（ERRORS M-20260913-143～M-20260913-145）。
+- failure_class: miniapp_devtools_screenshot_evidence_status_guard_unified
+- replayable: yes
+- residual_risks: 截图证据已于 r43.3 解锁后复跑补齐（15/15 页、8/8 未登录态、23 张截图齐全，`status=PASS`）并完成关键帧目视复核；截图采集新增重试（默认 3 次、间隔 700ms）避免自动化抖动丢证据；运行态仍来自本地后端与 DevTools 模拟器（iPhone 12/13、SDK 3.15.2、390px）；真机、小屏、真实支付/退款、真实闪送与生产验收仍未执行。
+
+## E-20260913-018：商品目录触底增量加载与搜索首屏限量渲染收口
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260913-miniapp-catalog-incremental-render-r43.4
+- generated_at: 2026-09-13
+- evidence_type: verification/miniapp-catalog-incremental-render-and-bounded-search
+- file: local:miniapp/miniprogram/pages/products/index.ts; local:miniapp/miniprogram/pages/products/index.wxml; local:miniapp/scripts/check-miniapp.mjs; local:miniapp/scripts/verify-devtools-product-search.cjs; local:miniapp/reports/devtools/product-search-audit.json; local:miniapp/reports/devtools/final-product-search-bounded-render.png; local:miniapp/reports/devtools/all-pages-devtools-audit.json; local:miniapp/reports/button-visual/button-touch-targets-20260913-142606.json; local:ERRORS.md; local:LOGBOOK.md; local:PROJECT-STATE.md
+- commit_sha: (待提交后回写)
+- command: `npm run check:miniapp --prefix miniapp`; `npm run typecheck --prefix miniapp`; `npm run test:bakery --prefix miniapp`; `npm run check:page-api-coverage --prefix miniapp`; `npm run audit:buttons --prefix miniapp`; `npm run audit:button-styles --prefix miniapp`; `MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420 npm run scan:button-touch-targets --prefix miniapp`; `npm run devtools:product-search --prefix miniapp`; `npm run devtools:verify-all-pages --prefix miniapp`
+- result: pass
+- follow_up_guardrail: `check-miniapp.mjs` 的 `checkCatalogIncrementalLoading()` 静态守住两个 `bindscrolltolower` 绑定、`SEARCH_RENDER_PAGE_SIZE = 30`、命中数/已展示数双计数与 `slice(0, renderedCount)` 渲染窗口；`verify-devtools-product-search.cjs` 的 `search-render-bound`、`search-load-more-tail`、`catalog-scroll-load-more` 运行态断言任一失败即整轮 FAIL。第二阶段服务端分页/关键词搜索须另立 API 契约后再改。
+- related_logbook: 2026-09-13 - feat(miniapp): 商品目录触底加载与搜索首屏限量
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地 DevTools 模拟器的搜索结果计数、DOM 卡数、目录可见条数与页面状态，不含真实客户、地址、凭证或支付数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 落实 M-20260913-141 第一阶段。目录由“每批 12 款手动查看更多”改为 `scroll-view bindscrolltolower` 触底加载并保留按钮兜底；搜索首屏只渲染 30 款并显示“共找到 N 款商品 / 已展示 M 款 · 按销量排序”，触底或“查看更多搜索结果”按同序递增到尾部。运行态实测：搜索“蛋糕”命中 310 款时首屏 DOM 30 张、`searchHasMore=true`，连续 10 次增量加载后 310/310 渲染、`searchHasMore=false`、首条排序基准不变；目录触底可见数 12→24/310。`devtools:product-search` 16 项检查 PASS，`devtools:verify-all-pages` 15/15 页 + 8/8 未登录态、23 张截图 PASS，静态与专项门禁全部 PASS。
+- failure_class: miniapp_catalog_unbounded_render_migrated_to_incremental_loading
+- replayable: yes
+- residual_risks: 仍是客户端全量拉取（limit=500）后本地过滤与限量渲染，首包体积与冷启动成本未优化，服务端分页/关键词搜索仍待上线前另立契约；截图为 DevTools 模拟器（iPhone 12/13、SDK 3.15.2、390px），未在真机与小屏机型复测；真实微信支付/退款、真实闪送与生产验收仍未执行。
+
+## E-20260913-019：商品搜索与分类切换后的滚动偏移复位收口
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260913-miniapp-products-scroll-reset-r43.5
+- generated_at: 2026-09-13
+- evidence_type: verification/miniapp-products-scroll-reset
+- file: local:miniapp/miniprogram/pages/products/index.ts; local:miniapp/miniprogram/pages/products/index.wxml; local:miniapp/miniprogram/pages/products/index.wxss; local:miniapp/scripts/check-miniapp.mjs; local:miniapp/scripts/verify-devtools-product-search.cjs; local:miniapp/reports/devtools/product-search-audit.json; local:ERRORS.md; local:LOGBOOK.md
+- commit_sha: (待提交后回写)
+- command: `npm run check:miniapp --prefix miniapp`; `npm run typecheck --prefix miniapp`; `MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420 npm run devtools:product-search --prefix miniapp`; `MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420 npm run devtools:verify-all-pages --prefix miniapp`
+- result: pass
+- follow_up_guardrail: `check-miniapp.mjs` 静态守住两个 `scroll-into-view`、两个顶部锚点 id 与两个 reset helper；`verify-devtools-product-search.cjs` 的 `search-scroll-reset-on-keyword-change`、`catalog-scroll-reset-on-category-switch` 运行态断言任一失败即整轮 FAIL；DevTools 真实输入/点击优先，事件未送达时回退到页面方法并写回路径字段（M-20260913-147）。
+- related_logbook: 2026-09-13 - fix(miniapp): 搜索与分类切换后的滚动偏移复位
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地 DevTools 模拟器页面状态、滚动偏移与搜索计数，不含真实客户、地址、凭证或支付数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 商品页两个 `scroll-view` 增加顶部锚点与 `scroll-into-view`，搜索关键词变化与分类切换后重置滚动位置。运行态实测：搜索结果滚动到 `scrollTop=900` 后收窄关键词回到 `scrollTop=0`；分类列表滚动到 `scrollTop=900` 后切换分类回到 `scrollTop=8`（首屏内布局残余）且 `catalogScrollAnchor=products-catalog-top`。`devtools:product-search` 18 项检查 PASS。
+- failure_class: miniapp_products_scroll_offset_not_reset_on_context_change
+- replayable: yes
+- residual_risks: 当前后端分类接口返回空数组且全部商品同一 categoryId，分类切换断言使用同数据夹具；真实多分类分区下待复测。截图为 DevTools 模拟器（iPhone 12/13、SDK 3.15.2、390px），未在真机与小屏机型复测；真实微信支付/退款、真实闪送与生产验收仍未执行。
+
+## E-20260913-020：有赞网关错误显式化与商品目录下架保护收口
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260913-youzan-gateway-error-guard-r44
+- generated_at: 2026-09-13
+- evidence_type: verification/youzan-gateway-error-guard
+- file: local:backend/app/service/youzan/client.py; local:backend/app/service/youzan/product_reconciler.py; local:backend/tests/service/youzan/test_client_gateway_errors.py; local:backend/tests/service/youzan/test_product_reconciler.py; local:ERRORS.md; local:LOGBOOK.md
+- commit_sha: (待提交后回写)
+- command: `python -m pytest tests/service/youzan -o addopts="" -q`; `python -m ruff check backend/app/service/youzan/client.py backend/app/service/youzan/product_reconciler.py`; `python -B backend/scripts/check_file_sizes.py`
+- result: pass
+- follow_up_guardrail: 有赞同步入口（在售列表/商品分组/ITEM_INFO/商品分类）遇到 `gw_err_resp` 必须抛 `APIError` 并保留 `err_code`、`trace_id`；商品对账在“上游空集合 + 本地有在售商品”时必须返回 `onsale_empty_guard` 且不下架任何商品。
+- related_logbook: 2026-09-13 - fix(youzan): 网关拒绝不再按空数据同步并保护商品目录
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录网关错误码、trace id、本地在售商品数量与测试结果，不含 access_token、客户、地址或支付数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 真实调用实测 `gw_err_resp.err_code=4007`（源 IP 未加有赞白名单），此前被四个同步接口当成空数据；现改为显式 `APIError`（含 IP 白名单提示），并为商品对账新增空集合下架保护。定向 `pytest tests/service/youzan` 70/70 通过；数据库副本端到端跑对账抛 `APIError` 且在售商品 before=after=310；`ruff` 与文件体量门禁无新增阻断项（`payment_runtime.py` 为存量遗留）。
+- failure_class: youzan_gateway_error_treated_as_empty_catalog
+- replayable: yes
+- residual_risks: 有赞侧 IP 白名单未配置前，分类-商品关联与商品刷新仍不可用，小程序分类接口继续返回空数组；本轮未取得白名单配置后的真实同步证据，也未跑后端全量测试。
+
+## E-20260914-001：群内登记页时间基线重建与跨日回归门禁收口
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260914-miniapp-registration-schedule-baseline-r45
+- generated_at: 2026-09-14
+- evidence_type: verification/miniapp-registration-schedule-baseline
+- file: local:miniapp/miniprogram/pages/group-registration/index.ts; local:miniapp/scripts/check-miniapp.mjs; local:miniapp/scripts/verify-devtools-same-day-scheduling.cjs; local:miniapp/reports/devtools/same-day-scheduling-audit.json; local:miniapp/reports/devtools/all-pages-devtools-audit.json; local:miniapp/reports/devtools/final-group-registration.png; local:ERRORS.md; local:LOGBOOK.md
+- commit_sha: (待提交后回写)
+- command: `npm run check:miniapp --prefix miniapp`; `npm run typecheck --prefix miniapp`; `MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420 npm run devtools:same-day-scheduling --prefix miniapp`; `MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420 npm run devtools:registration-policy --prefix miniapp`; `MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420 npm run devtools:verify-all-pages --prefix miniapp`
+- result: pass
+- follow_up_guardrail: 登记页必须用 `resolveCheckoutSchedule()` 在 `onLoad`/`onShow` 按当前北京时间重建日期起点、可选时段与当天标记，营业时段来自单一常量；`verify-devtools-same-day-scheduling.cjs` 新增“当天标记=所选日期是否为今天”“日期落在可选区间”“注入过期状态后 onShow 必须重建”三项运行态断言，任一失败即整轮 FAIL。
+- related_logbook: 2026-09-14 - fix(miniapp): 群内登记时间基线按当前北京时间重建
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地 DevTools 模拟器页面状态、日期/时段基线与审计计数，不含真实客户、地址、凭证或支付数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 北京时间 00:01 复跑同天登记审计时发现页面日期已是 `2026-09-14`、当天标记仍为 `false` 且客服确认提示缺失：登记页的 `data` 默认值在模块求值时算一次，`onLoad` 只重算了两项。现改为 `buildRegistrationSchedule()` 单一构造 + `onLoad`/`onShow` 重建，修复后 `promptVisible=true`、`sameDayFlagMatchesSelection=true`、`dateWithinRange=true`，注入过期状态后 `onShow` 把 `dateStartValue` 重建为 `2026-09-14`、`hourOptions=09..19`；`devtools:verify-all-pages` 15/15 页 + 8/8 未登录态 PASS，`devtools:registration-policy` 与 `devtools:product-search`（18 项）PASS。
+- failure_class: miniapp_registration_schedule_snapshot_stale_across_cutoff
+- replayable: yes
+- residual_risks: 群内登记后端只保存 `desiredTime` 字符串、无截单校验，修复只覆盖本地时间基线，服务端兜底待补（M-20260914-001）；结算页在持续可见并跨过 17:00 的窄窗口不重建选择器，但会被后端“当天订单已于 17:00 截止”拒绝；截图为 DevTools 模拟器（iPhone 12/13、SDK 3.15.2、390px），未在真机、小屏机型、真实支付/退款、真实闪送与生产环境验证。
+- update_20260914: 群内登记后端缺截单校验已由 E-20260914-002 修复；该风险字段保留为 r45 时点快照。
+
+## E-20260914-002：群内登记服务端复用订单预约校验
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260914-miniapp-registration-server-schedule-r46
+- generated_at: 2026-09-14
+- evidence_type: verification/miniapp-group-registration-server-schedule
+- file: repo:backend/app/service/order/schedule.py; repo:backend/app/service/customer/group_operations.py; repo:backend/app/service/order/application.py; repo:backend/app/lifespan_services.py; repo:backend/tests/service/test_customer_group_operations.py; repo:backend/tests/api/test_customer_group_api.py; repo:backend/tests/test_lifespan_routes_services.py; repo:miniapp/docs/api-contract.md; local:miniapp/reports/button-runtime/devtools-service-smoke-20260913-164742.json; local:miniapp/reports/devtools/same-day-scheduling-audit.json; local:miniapp/reports/devtools/registration-policy-audit.json; repo:ERRORS.md; repo:LOGBOOK.md
+- commit_sha: (待提交后回写)
+- command: `python -B -m pytest backend/tests/service/test_customer_group_operations.py backend/tests/api/test_customer_group_api.py backend/tests/test_lifespan_routes_services.py backend/tests/service/order backend/tests/api/test_miniapp_order_api.py -q --no-cov`; `python -B -m ruff check backend/app/service/order/schedule.py backend/app/service/order/application.py backend/app/service/customer/group_operations.py backend/app/lifespan_services.py backend/tests/service/test_customer_group_operations.py backend/tests/api/test_customer_group_api.py backend/tests/test_lifespan_routes_services.py`; `Invoke-RestMethod http://127.0.0.1:7001/health`; `MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420 MINIAPP_REAL_API_BASE_URL=http://127.0.0.1:7001 npm run devtools:service-smoke --prefix miniapp`; `MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420 npm run devtools:same-day-scheduling --prefix miniapp`; `MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420 npm run devtools:registration-policy --prefix miniapp`
+- result: partial
+- follow_up_guardrail: 群内登记必须复用 `OrderScheduleService` 校验 `desiredTime`，服务端至少覆盖缺少时间、当天 17:00 后提交、营业时段外三类拒绝；页面时间选择器不能替代服务端校验。
+- related_logbook: 2026-09-14 - fix(order,group): 群内登记复用预约履约校验
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地后端健康、测试计数、DevTools 页面状态与环境阻塞信息，不含客户、地址、聊天内容、支付数据或凭证。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 群内登记服务端现与订单预约共用 `OrderScheduleService`：`desiredTime` 必填，缺失、当天 17:00 后提交和营业时段外均被拒绝；`lifespan_services.py` 向订单与客户群登记注入同一实例。后端定向 65/65、`ruff`、本地 `/health`、DevTools 真实 wx.login/订单/地址/聊天 4/4 与 same-day scheduling 均通过；registration-policy 的 11 项页面断言通过，但 Windows 锁屏导致 7 张截图 3 次重试均失败，整轮按环境阻塞（BLOCKED）保留，未作为 PASS。
+- failure_class: none
+- replayable: yes
+- residual_risks: registration-policy 本轮缺少锁屏后的新截图，解锁后需补一次视觉证据；运行态仍为本地 uvicorn 与 DevTools 模拟器，真实微信支付/退款、真实闪送、真机及生产验收未执行。
+
+## E-20260914-003：结算自提态审计夹具修正与本地运行态复测
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260914-miniapp-checkout-pickup-audit-r47
+- generated_at: 2026-09-14
+- evidence_type: verification/miniapp-checkout-pickup-audit-fixture
+- file: local:miniapp/scripts/verify-devtools-checkout-delivery-states.cjs; local:miniapp/reports/devtools/checkout-delivery-state-audit.json; local:miniapp/reports/devtools/same-day-scheduling-audit.json; local:miniapp/reports/devtools/all-pages-devtools-audit.json; local:miniapp/reports/button-runtime/devtools-service-smoke-20260913-171230.json; local:miniapp/reports/local-miniapp-products/local-miniapp-products-20260913-171238.json; repo:ERRORS.md; repo:LOGBOOK.md
+- commit_sha: (待提交后回写)
+- command: `Invoke-RestMethod http://127.0.0.1:7001/health`; `python -B -m pytest backend/tests/service/test_customer_group_operations.py backend/tests/api/test_customer_group_api.py backend/tests/test_lifespan_routes_services.py backend/tests/service/order backend/tests/api/test_miniapp_order_api.py -q --no-cov`; `node --check scripts/verify-devtools-checkout-delivery-states.cjs`; `npm run check:miniapp`; `npm run typecheck`; `MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420 MINIAPP_REAL_API_BASE_URL=http://127.0.0.1:7001 npm run devtools:service-smoke`; `MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420 npm run devtools:same-day-scheduling`; `MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420 npm run devtools:checkout-delivery-states`; `MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420 npm run devtools:verify-all-pages`
+- result: partial
+- follow_up_guardrail: 结算审计状态注入后必须统一重算预约选择器、金额估算和提交态；自提与配送必须分别注入地址、运费状态和金额，禁止复用另一履约方式的夹具数据；自提态需断言预览时间一致、备注为空、免运费和实付估算不含配送费。
+- related_logbook: 2026-09-14 - test(miniapp): 结算自提态审计夹具与本地运行态复测
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地后端健康、DevTools 模拟器页面状态、审计计数和环境阻塞信息，不含客户、地址、凭证或支付数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 修正结算审计自提态夹具后，本地后端 65 项定向测试通过，DevTools 真实接口冒烟 4/4、当天预约、结算页面断言和 15/15 页面结构断言均通过；自提态运行值为 `2026-09-15 15:00`、空备注、`免运费`、`¥198.00`。Windows 锁屏使截图证据为环境阻塞（BLOCKED），未作为视觉通过。
+- summary_extra: 本地后端复测补充：`127.0.0.1:7001` 健康且真实接口冒烟再次 4/4 PASS；未指定本地 API 时预检正确识别生产域名 `yunxifood.cn` 证书过期，不误判为服务未启动；商品契约检查 6 项中 5 项通过，分类项仍因有赞映射为空失败（M-20260913-115）；全页审计再次完成 15/15 页面与 8/8 未登录态断言，截图因锁屏保持 BLOCKED。
+- failure_class: miniapp_checkout_audit_fixture_cross_state_contamination
+- replayable: yes
+- residual_risks: 需要解锁后补采 `final-checkout-pickup-state.png` 和全页截图；运行态仍为本地 uvicorn 与 DevTools 模拟器，真实微信支付/退款、真实闪送、真机及生产验收未执行。
+
+## E-20260914-004：商品目录服务端分页与搜索收口
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260914-miniapp-products-server-pagination-r48
+- generated_at: 2026-09-14
+- evidence_type: verification/miniapp-products-server-pagination
+- file: `repo:miniapp/miniprogram/pages/products/index.ts`; `repo:miniapp/miniprogram/pages/products/index.wxml`; `repo:miniapp/miniprogram/pages/products/index.wxss`; `repo:miniapp/miniprogram/services/products.ts`; `repo:miniapp/scripts/check-miniapp.mjs`; `repo:miniapp/scripts/verify-devtools-product-search.cjs`; `repo:miniapp/scripts/verify-miniapp-commerce-flows.cjs`; `repo:miniapp/scripts/verify-devtools-product-purchase-path.cjs`; `repo:miniapp/scripts/scan-miniapp-button-touch-targets.mjs`; `repo:miniapp/docs/api-contract.md`; `local:miniapp/reports/devtools/product-search-audit.json`; `local:miniapp/reports/devtools/miniapp-commerce-flows.json`; `local:miniapp/reports/devtools/product-purchase-path-audit.json`; `local:miniapp/reports/devtools/all-pages-devtools-audit.json`; `repo:ERRORS.md`; `repo:LOGBOOK.md`
+- commit_sha: (待提交后回写)
+- command: `npm run typecheck`; `npm run check:miniapp`; `npm run check:page-api-coverage`; `Invoke-RestMethod http://127.0.0.1:7001/health`; `MINIAPP_REAL_API_BASE_URL=http://127.0.0.1:7001 npm run devtools:service-smoke`; `MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420 npm run devtools:product-search`; `MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420 npm run devtools:verify-commerce-flows`; `MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420 npm run devtools:product-purchase-path`; `MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420 npm run devtools:verify-all-pages`; `MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420 npm run scan:button-touch-targets`
+- result: pass
+- sha256: miniapp/miniprogram/pages/products/index.wxml=49a02e4343f49538fea0e744bb277dca7a746178f888619af7f006e7e7295c90；miniapp/miniprogram/services/products.ts=74b92dee11590647baf60695c30548d5d1887264c672e8cd7b5af7ba9575cfaa；miniapp/scripts/check-miniapp.mjs=06401c52a218da15a351dc4c0e690ece75b681d2aead72c6c7d6d97cf76178b3；miniapp/scripts/verify-devtools-product-search.cjs=57095842ca85ec6c808d3d5d1ac13897be2df9d65e0f967569d393f6a0aa9206；miniapp/scripts/verify-miniapp-commerce-flows.cjs=1fcb4946d2708f404876942e6d0d4b517846434ae100a11028e9ef1e71fd450e；miniapp/scripts/scan-miniapp-button-touch-targets.mjs=a36b175df44877324d21e97918d3e8926d130147730aa9798477a1036d48b8c0
+- update_20260914: r50 在 `check-miniapp.mjs` 增加展示型商品静态守卫、在 `scan-miniapp-button-touch-targets.mjs` 增加商品详情客服/购物车触控选择器，故刷新这两个文件哈希；其余记录不变。
+- follow_up_guardrail: 商品目录不得回退为进页拉全量；搜索、分类与触底加载必须走服务端 `keyword/categoryId/limit/offset`，页码推进取 `meta.offset + meta.limit`，页面不得用本地数组长度推断总数或偏移。
+- related_logbook: 2026-09-14 - refactor(miniapp): 商品目录改为服务端分页搜索
+- update_20260914_r54: 会员中心入口图标守卫与支付方式顾客文案守卫落地后，`check-miniapp.mjs`、`verify-miniapp-commerce-flows.cjs`、`scan-miniapp-button-touch-targets.mjs` 内容再次变化，按仓库惯例刷新三个文件哈希；结论与范围不变。
+- update_20260914_r56: r55/r56 新增空态图标、图标表面与 WXSS data URI 三类静态守卫，并把首页快捷入口 `iconKey` 收紧为 points/recharge/link 白名单（未知 key 回退 link）后，`check-miniapp.mjs` 内容两次变化，按同一惯例刷新该文件哈希；条目结论与验证范围不变。
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录接口计数、页面状态、审计结论与执行命令，不含客户、地址、支付或凭证数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 商品页首屏改为服务端 12 条分页（接口总 310 款），搜索按关键词每页 30 条并由服务端返回命中总数，触底加载与分类切换均以 `meta` 推进偏移；`devtools:product-search` 19 项 PASS（含首屏一致性、分页到尾部、关键词/分类滚动复位、夹具清理复原）、`devtools:verify-all-pages` 15/15 页与 8/8 未登录态、购买路径、电商流程与触控扫描（13 页 46 选择器）均 PASS。
+- failure_class: none
+- replayable: yes
+- residual_risks: 有赞分类接口因 IP 白名单返回空数组，分类导航当前降级为单一“全部商品”分区（M-20260913-115）；验证为 DevTools 模拟器加本地后端，真机、真实支付/退款、真实闪送与生产验收未执行。
+
+## E-20260914-005：购物车减号语义、结算底栏金额来源与全页视觉取证收口
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260914-miniapp-visual-evidence-and-cart-stepper-r49
+- generated_at: 2026-09-14
+- evidence_type: verification/miniapp-visual-evidence-and-footer-amount-source
+- file: `repo:miniapp/miniprogram/pages/cart/index.wxml`; `repo:miniapp/miniprogram/pages/checkout/index.wxml`; `repo:miniapp/miniprogram/pages/checkout/index.wxss`; `repo:miniapp/miniprogram/pages/checkout/index.ts`; `repo:miniapp/scripts/check-miniapp.mjs`; `repo:miniapp/scripts/verify-all-15-pages-devtools.cjs`; `repo:miniapp/scripts/verify-devtools-product-purchase-path.cjs`; `repo:miniapp/scripts/verify-devtools-checkout-delivery-states.cjs`; `local:miniapp/reports/devtools/all-pages-devtools-audit.json`; `local:miniapp/reports/devtools/product-purchase-path-audit.json`; `local:miniapp/reports/devtools/checkout-delivery-state-audit.json`; `local:miniapp/reports/devtools/miniapp-commerce-flows.json`; `local:miniapp/reports/button-visual/button-touch-targets-20260914-021520.json`; `repo:ERRORS.md`; `repo:LOGBOOK.md`
+- commit_sha: (待提交后回写)
+- command: `npm run typecheck`; `npm run check:miniapp`; `Invoke-RestMethod http://127.0.0.1:7001/health`; `MINIAPP_API_BASE=http://127.0.0.1:7001 npm run devtools:verify-all-pages`; `MINIAPP_API_BASE=http://127.0.0.1:7001 npm run devtools:product-purchase-path`; `MINIAPP_API_BASE=http://127.0.0.1:7001 npm run devtools:checkout-delivery-states`; `MINIAPP_API_BASE=http://127.0.0.1:7001 npm run devtools:verify-commerce-flows`; `MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420 npm run scan:button-touch-targets`; `MINIAPP_API_BASE=http://127.0.0.1:7999 node miniapp/scripts/verify-all-15-pages-devtools.cjs`（前置门禁反向验证）
+- result: pass
+- sha256: miniapp/miniprogram/pages/cart/index.wxml=3fcddbab4728718a6a1ae1aae1a7b25528d3ab50e8ee75e9069230d11f52b542；miniapp/miniprogram/pages/checkout/index.wxml=fc93e334e15ac71c44914c4e4b265fef1362a41e968b195d94d08994ecd00ea0；miniapp/miniprogram/pages/checkout/index.ts=fb32df6d459278e8522ab00afbe40d66b3cc74a86838d7c2425061dcd2f9ec14；miniapp/miniprogram/pages/checkout/index.wxss=54717a632d7d761606b7eb9f08471d0d1832d363ea60ae0922d3ae97a8996c52；miniapp/scripts/check-miniapp.mjs=a82d68f88774b521a14cf9cc7fd5a228bd6caf13e1d399a6b707309b126d5d6e；miniapp/scripts/verify-all-15-pages-devtools.cjs=b85f51288d51192171668a8808391a975ad3e3057aa1b3a15fcd65eb88d102fb；miniapp/scripts/verify-devtools-product-purchase-path.cjs=317d88f0fdfc10d9d2d6ce84594a43f8ace6de86f651cc5757bbf39ca201fc41；miniapp/scripts/verify-devtools-checkout-delivery-states.cjs=92da77ec2aca9fb98240812fb7704559cb3a5c035e079087d2a93cfa6ca45602
+- follow_up_guardrail: 视觉类证据必须声明并断言取证状态（tabBar 页面先复位搜索/分类/滚动，详情页必须用真实实体 ID）；带 CSS 过渡的样式断言必须轮询到稳定值；运行 DevTools 审计前先校验本地后端 `/health` 与自动化端口，环境不可用时只记阻塞并保留上一份报告。
+- related_logbook: 2026-09-14 - fix(miniapp): 购物车减号语义、结算底栏金额来源与全页视觉取证收口
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录页面状态、金额来源文案、审计结论与执行命令，不含客户、地址、支付或凭证数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 购物车数量为 1 时减号固定为 `-`（删除语义仍走确认弹窗）、结算底栏新增“已含闪送费 / 自提价 · 免运费 / 闪送费确认中 / 闪送费未计入”金额来源说明；全页审计改为默认态与真实商品取证：商品页 `searchText=""`、`productCount=12`、`catalogTotal=310`，商品详情页 `productId=3610295088`、`canPurchase=true`，悬浮栏滚动实底 `rgba(255,255,255,0.984)` 且回顶恢复透明；`devtools:verify-all-pages` 15/15 页 + 8/8 未登录态 PASS，购买路径（`cart-stepper-minus-at-one`：`-`、45×45px）、结算配送状态、电商流程与触控扫描（13 页 46 选择器）均 PASS；后端健康前置门禁反向验证 `EXIT=2` 且保留上一份 PASS 报告。
+- failure_class: none
+- replayable: yes
+- residual_risks: 验证环境为 DevTools 模拟器加本地后端，真机、真实微信支付/退款、真实闪送与生产验收未执行；有赞分类接口因 IP 白名单返回空数组，分类导航仍降级为单一“全部商品”分区（M-20260913-115）；详情页取证样本按销量取第一个在售商品，后续可固定蛋糕类样本便于跨轮对比。
+
+## E-20260914-006：展示型商品只读收敛与下单拦截收口
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260914-miniapp-display-only-purchase-guard-r50
+- generated_at: 2026-09-14
+- evidence_type: verification/miniapp-display-only-product-guard
+- file: `repo:backend/app/service/catalog/purchasability.py`; `repo:backend/app/service/catalog/serialization.py`; `repo:backend/app/repository/youzan_repo.py`; `repo:backend/app/service/order/inventory.py`; `repo:backend/tests/service/test_catalog.py`; `repo:backend/tests/service/test_order.py`; `repo:miniapp/miniprogram/types/catalog.ts`; `repo:miniapp/miniprogram/utils/bakery.ts`; `repo:miniapp/miniprogram/pages/product-detail/index.ts`; `repo:miniapp/miniprogram/pages/product-detail/index.wxml`; `repo:miniapp/scripts/check-miniapp.mjs`; `repo:miniapp/scripts/verify-devtools-display-only-products.cjs`; `repo:miniapp/package.json`; `local:miniapp/reports/devtools/display-only-products-audit.json`; `local:miniapp/reports/devtools/display-only-product-detail.png`; `local:miniapp/reports/devtools/all-pages-devtools-audit.json`; `local:miniapp/reports/devtools/product-search-audit.json`; `local:miniapp/reports/devtools/product-purchase-path-audit.json`; `local:miniapp/reports/devtools/checkout-delivery-state-audit.json`; `local:miniapp/reports/button-visual/button-touch-targets-20260914-033503.json`; `repo:ERRORS.md`; `repo:LOGBOOK.md`
+- commit_sha: (待提交后回写)
+- command: `python -B -m pytest -q -o addopts="" tests/service/test_catalog.py tests/service/test_order.py`; `npm run typecheck`; `npm run test:bakery`; `npm run check:miniapp`; `Invoke-RestMethod http://127.0.0.1:7001/health`; `Invoke-RestMethod http://127.0.0.1:7001/api/v1/miniapp/products?limit=100&offset=0..300`; `POST http://127.0.0.1:7001/api/v1/miniapp/orders`（服务端签发会话直连 5 款展示型商品）；`npm run devtools:display-only-products`; `npm run devtools:verify-all-pages`; `npm run devtools:product-purchase-path`; `npm run devtools:product-search`; `npm run devtools:verify-commerce-flows`; `npm run devtools:checkout-delivery-states`; `MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420 npm run scan:button-touch-targets`
+- result: pass
+- sha256: backend/app/service/catalog/purchasability.py=f3956da7f934507c261b9483acf547e308d704eb30dc2eeb5d436dddb6261cae；backend/app/service/catalog/serialization.py=0897d86fe1d3087092683976469c68416e00bf990a91843ddd390ffa77ecf861；backend/app/repository/youzan_repo.py=a844ae916c4a8c8dcb83e6a9cbb8fc7a773bb0c3321c254a5c5eb2317f5e01e2；backend/app/service/order/inventory.py=b40f155a20de2927a450dcc11786f3fb53abb85ceeab519a20f985a2260a53ff；backend/tests/service/test_catalog.py=ae7fb8127cedc730b33e19f0d0f5588ce7c89bd57b5e4387df2e8c6f9e9b58e8；backend/tests/service/test_order.py=4aa399600a20c2793f25c583a031395490cbe6568945b546363fb09aef325417；miniapp/miniprogram/types/catalog.ts=4986fb4b83b67b0e1ccc604996645a49b2b2b364d0cbe3e7a5b8832dd4b413d0；miniapp/miniprogram/utils/bakery.ts=b7cac8eaccc8f1369713b77d573e1155c53ce5f248be5cf7ed47a56e98eccac6；miniapp/miniprogram/pages/product-detail/index.ts=83078bbad1dc28a14d4b440e74b5791b5dbcdf0c4848c22f4ed97dfa8922b37a；miniapp/miniprogram/pages/product-detail/index.wxml=f08ea8baa9ce72e6634cb999b7f036eb5df047b6a0dcfc4b67dc1ad2c3686d17；miniapp/scripts/check-miniapp.mjs=06401c52a218da15a351dc4c0e690ece75b681d2aead72c6c7d6d97cf76178b3；miniapp/scripts/verify-devtools-display-only-products.cjs=1fdb10d59cd953f552cc38f21d8309b1347924beb78abd183cffb913bc208676；miniapp/package.json=8de75e5cf1b4938e076af54961c246b17681ef6a04bb0fa20459cde11e465262
+- update_20260914_r58: pre-commit 的 `ruff format` 统一后端 Python 格式后，本条目涉及的后端源码/测试内容变化，按同一惯例刷新对应哈希；条目结论与验证范围不变。
+- update_20260914_r56: r55/r56 扩充图标类静态守卫后 `miniapp/scripts/check-miniapp.mjs` 内容变化，按同一惯例刷新该条目中的脚本哈希；原条目结论与验证范围不变。
+- follow_up_guardrail: 展示型商品必须同时具备读模型标记、页面动作收敛与下单链路拦截三层防线；前端只隐藏按钮不算修复；判定来源变更（如改为有赞分组）时三层断言必须一起复跑。
+- related_logbook: 2026-09-14 - fix(miniapp): 展示型商品只读收敛与运行态回归收口
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录商品 ID、标题、接口状态码与审计结论，不含客户、地址、支付或凭证数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 5 款展示型商品（4487996522、4589335101、5552189607、4589414115、5552190749）由“可预订”收敛为只读：重启后的 7001 翻页拉全 310 款后恰好这 5 款 `isPurchasable=false`、其余 305 款 `true`；前台会话直连下单接口 5/5 返回 `400 商品仅供展示，不可下单`；`devtools:display-only-products` PASS（目录卡 `查看` + `仅供展示`、详情页无数量/履约卡/购买按钮、强制调用下单方法后购物车为空、截图已采集）；后端定向 48/48、前端 `test:bakery` 9/9、15/15 页 + 8/8 未登录态、购买路径、搜索 19 项、电商流程、结算配送状态与触控扫描（13 页 47 选择器）均 PASS。
+- failure_class: none
+- replayable: yes
+- residual_risks: 展示型判定当前来自标题关键词（非卖品/勿拍/虚拟价格/仅供展示），属业务确认前的保守口径，不等于有赞侧正式分组；待客服/店主确认后需改为分组或标签来源并复跑同一套断言。验证环境仍为 DevTools 模拟器加本地后端，真机、真实支付/退款、真实闪送与生产验收未执行。
+
+## E-20260914-007：非卖品占位价与库存不再当作真实售价展示
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260914-miniapp-display-only-price-truthfulness-r51
+- generated_at: 2026-09-14
+- evidence_type: verification/miniapp-display-only-price-truthfulness
+- file: `repo:miniapp/miniprogram/utils/bakery.ts`; `repo:miniapp/miniprogram/pages/home/index.ts`; `repo:miniapp/miniprogram/pages/home/index.wxml`; `repo:miniapp/miniprogram/pages/home/index.wxss`; `repo:miniapp/miniprogram/pages/products/index.ts`; `repo:miniapp/miniprogram/pages/products/index.wxml`; `repo:miniapp/miniprogram/pages/products/index.wxss`; `repo:miniapp/miniprogram/pages/cart/index.ts`; `repo:miniapp/miniprogram/pages/cart/index.wxml`; `repo:miniapp/miniprogram/pages/cart/index.wxss`; `repo:miniapp/miniprogram/pages/product-detail/index.ts`; `repo:miniapp/miniprogram/pages/product-detail/index.wxml`; `repo:miniapp/tests/utils/bakery.test.ts`; `repo:miniapp/scripts/check-miniapp.mjs`; `repo:miniapp/scripts/verify-devtools-display-only-products.cjs`; `repo:miniapp/scripts/verify-devtools-product-search.cjs`; `repo:backend/scripts/append_logbook.py`; `repo:ERRORS.md`; `repo:LOGBOOK.md`; `repo:PROJECT-STATE.md`; `local:miniapp/reports/devtools/display-only-products-audit.json`; `local:miniapp/reports/devtools/evidence-display-only-list-after.png`; `local:miniapp/reports/devtools/display-only-product-detail.png`; `local:miniapp/reports/devtools/product-search-audit.json`; `local:miniapp/reports/devtools/all-pages-devtools-audit.json`; `local:miniapp/reports/devtools/product-purchase-path-audit.json`; `local:miniapp/reports/devtools/miniapp-commerce-flows.json`; `local:miniapp/reports/devtools/checkout-delivery-state-audit.json`; `local:miniapp/reports/devtools/commerce-state-audit.json`; `local:miniapp/reports/button-visual/button-touch-targets-20260914-043537.json
+- commit_sha: (待提交后回写)
+- command: `Invoke-RestMethod http://127.0.0.1:7001/health`; `GET http://127.0.0.1:7001/api/v1/miniapp/products?featured=true&limit=12`; `GET http://127.0.0.1:7001/api/v1/miniapp/products/{4487996522,4589335101,5552189607,4589414115,5552190749}`; `npm run typecheck`; `npm run test:bakery`; `npm run check:miniapp`; `npm run devtools:display-only-products`; `npm run devtools:verify-all-pages`; `npm run devtools:product-search`; `npm run devtools:product-purchase-path`; `npm run devtools:verify-commerce-flows`; `npm run devtools:checkout-delivery-states`; `npm run devtools:commerce-states`; `MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420 npm run scan:button-touch-targets`
+- result: pass
+- sha256: miniapp/miniprogram/utils/bakery.ts=b7cac8eaccc8f1369713b77d573e1155c53ce5f248be5cf7ed47a56e98eccac6；miniapp/miniprogram/pages/home/index.ts=a15ead284a8dbbe42a5eefad8207ce2a3ebc6c12fb069f5c84066ef06196a9df；miniapp/miniprogram/pages/home/index.wxml=6747319d52efafa80990cf4817f366e7c8b5f42b456d026f69a0e81f4889948d；miniapp/miniprogram/pages/home/index.wxss=5ac950dad813c623da4dd2c90e4817d6fd9d15ae5f293c0d2730b6086f9849a5；miniapp/miniprogram/pages/products/index.ts=a77d8d88339ef86463adf9ac76bdded49622fab10b4e23b232b7762cd4b35d4b；miniapp/miniprogram/pages/products/index.wxml=49a02e4343f49538fea0e744bb277dca7a746178f888619af7f006e7e7295c90；miniapp/miniprogram/pages/products/index.wxss=dc9461dbc34c337b52f6b3fc6394b9a6cafe533c76223ce602f3a9d0732b59d9；miniapp/miniprogram/pages/cart/index.ts=46d108dc4ac9f37d5094aa7e6e30eecde392cb45c13920af9fe7912d54af2202；miniapp/miniprogram/pages/cart/index.wxml=3fcddbab4728718a6a1ae1aae1a7b25528d3ab50e8ee75e9069230d11f52b542；miniapp/miniprogram/pages/cart/index.wxss=76ec38a0c21cb7497c05e3454d8efc3e95d0112de75c9d839f4c58399d409c2c；miniapp/miniprogram/pages/product-detail/index.ts=83078bbad1dc28a14d4b440e74b5791b5dbcdf0c4848c22f4ed97dfa8922b37a；miniapp/miniprogram/pages/product-detail/index.wxml=3bf8fc88c5aaf98f998c030774e776de71259afd7c810c34ac7ea6002d12b789；miniapp/tests/utils/bakery.test.ts=de135004c970c078af4d96ffccbbd4e73b3929655bdc98e278a98acba89257ef；miniapp/scripts/check-miniapp.mjs=06401c52a218da15a351dc4c0e690ece75b681d2aead72c6c7d6d97cf76178b3；miniapp/scripts/verify-devtools-display-only-products.cjs=1fdb10d59cd953f552cc38f21d8309b1347924beb78abd183cffb913bc208676；miniapp/scripts/verify-devtools-product-search.cjs=57095842ca85ec6c808d3d5d1ac13897be2df9d65e0f967569d393f6a0aa9206；backend/scripts/append_logbook.py=ff79ee90e49efb7853f2fa93ec3770f34e69f76509f641d296586442723c6636
+- update_20260914_r58: pre-commit 的 `ruff format` 统一后端 Python 格式后，本条目涉及的后端源码/测试内容变化，按同一惯例刷新对应哈希；条目结论与验证范围不变。
+- follow_up_guardrail: 非卖品价格必须走统一 `getProductPriceText` 口径；推荐位（购物车推荐、详情搭配推荐）只承载可下单商品；新增或调整商品展示字段时，必须同步扩展 `check-miniapp.mjs` 静态守卫与 `devtools:display-only-products` 运行态断言。
+- related_logbook: 2026-09-14 - fix(miniapp): 非卖品占位价与库存口径修复
+- update_20260914_r56: r56 首页履约说明与快捷入口图标去掉单字占位、且快捷入口 `iconKey` 收紧为 points/recharge/link 白名单后，`pages/home/index.ts`、`pages/home/index.wxss` 与 `check-miniapp.mjs` 内容变化，按同一惯例刷新该条目对应哈希；价格口径结论与验证范围不变。
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录商品 ID、价格字段、接口状态码与审计结论，不含客户、地址、支付或凭证数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 有赞同步的 5 款展示型商品带占位价（`priceFen=9999900/160000/114000`）与 `stock=99999`、`soldText=库存充足`，r50 只拦住了下单动作，r51 收敛展示口径：`getProductPriceText()` 统一输出“非卖品”，目录卡隐藏库存胶囊，详情页隐藏自提价与库存元信息，购物车与详情推荐位只保留可下单商品；`devtools:display-only-products` PASS（4 张搜索结果卡 `priceText=非卖品`、`renderedWithFakePrice=[]`、`hasDetailMeta=false`、搭配推荐无“非卖品/¥99999”），截图 `evidence-display-only-list-after.png` 与 `display-only-product-detail.png` 目视确认无占位价与“库存充足”；`typecheck`、`test:bakery` 9/9、`check:miniapp`（15 页/15 路由）、15/15 页 + 8/8 未登录态、搜索 19 项、购买路径、电商流程、结算配送状态、电商状态与触控扫描（13 页 47 选择器）均 PASS。
+- failure_class: none
+- replayable: yes
+- residual_risks: 非卖品判定仍是标题关键词保守口径（M-20260913-137），有赞正式“仅展示”分组待客服/店主确认；占位价格字段仍保留在同步数据里，仅前端不展示；展示型商品是否应进入推荐位、是否需要在读模型层把占位价归零，需与业务确认后再改；验证环境仍为 DevTools 模拟器加本地后端，真机、真实支付/退款、真实闪送与生产验收未执行。
+
+## E-20260914-008：商品详情服务入口图标与收货地址可履约性收口
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260914-miniapp-service-entry-and-address-guard-r52
+- generated_at: 2026-09-14
+- evidence_type: verification/miniapp-service-entry-and-address-guard
+- file: `repo:miniapp/miniprogram/pages/product-detail/index.wxml`; `repo:miniapp/miniprogram/pages/product-detail/index.wxss`; `repo:miniapp/miniprogram/pages/address/index.ts`; `repo:miniapp/miniprogram/pages/address/index.wxml`; `repo:miniapp/miniprogram/pages/address/index.wxss`; `repo:miniapp/miniprogram/utils/address.ts`; `repo:miniapp/miniprogram/utils/address-book.ts`; `repo:miniapp/tests/utils/address.test.ts`; `repo:miniapp/scripts/check-miniapp.mjs`; `repo:miniapp/scripts/verify-devtools-product-purchase-path.cjs`; `repo:miniapp/package.json`; `repo:backend/app/service/customer/address_support.py`; `repo:backend/tests/service/test_customer_address.py`; `repo:ERRORS.md`; `repo:LOGBOOK.md`; `repo:PROJECT-STATE.md`; `local:miniapp/reports/devtools/final-product-detail-footer.png`; `local:miniapp/reports/devtools/final-product-detail.png`; `local:miniapp/reports/devtools/evidence-address-completeness.png`; `local:miniapp/reports/devtools/product-purchase-path-audit.json`; `local:miniapp/reports/devtools/all-pages-devtools-audit.json`; `local:miniapp/reports/devtools/commerce-state-audit.json`; `local:miniapp/reports/button-visual/button-touch-targets-20260914-052019.json`
+- commit_sha: (待提交后回写)
+- command: `Stop-Process 21892` + `Start-Process python -m uvicorn --app-dir backend app.main:app --host 127.0.0.1 --port 7001`; `POST http://127.0.0.1:7001/api/v1/miniapp/addresses`（`北京市东城区` / 完整地址 / DELETE 清理）; `npm run typecheck`; `npm run check:miniapp`; `npm run test:bakery`; `npm run test:address`; `python -B -m pytest -q -o addopts="" tests/service/test_customer_address.py tests/api/test_miniapp_address_api.py tests/api/test_admin_address_api.py`; `npm run devtools:product-purchase-path`; `npm run devtools:verify-all-pages`; `npm run devtools:commerce-states`; `MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420 npm run scan:button-touch-targets`
+- result: pass
+- sha256: miniapp/miniprogram/pages/product-detail/index.wxml=3bf8fc88c5aaf98f998c030774e776de71259afd7c810c34ac7ea6002d12b789；miniapp/miniprogram/pages/product-detail/index.wxss=8982c1d60e7b865cf3dd031a899b0173814acc65cb192b32157c908ae81261a6；miniapp/miniprogram/pages/address/index.ts=e67a5ce26d966cb5afcf3ee2f0a93664c68ffbdc3c621cb9935321006fcac775；miniapp/miniprogram/pages/address/index.wxml=1dc79c12a2bdc0a0b2f3b840e01ad7fda704c429fd195e7bd5a1d2bc70ed18b1；miniapp/miniprogram/pages/address/index.wxss=a86eab926f88a991d5297ede11a33c1596023765141281e8b35070b55b69fec1；miniapp/miniprogram/utils/address.ts=d838cc11479feb70c68c5320f11b3c55a6ae8e2537cd09c715a80dddd69f63d4；miniapp/miniprogram/utils/address-book.ts=04f8d67dafb1847863376984933644df0199e05e6622f10f8912811666f18a94；miniapp/tests/utils/address.test.ts=c017f6f6a9ed055bdbc9adbc5fe4212c040cac301e16707b64710410dba9d34b；miniapp/scripts/check-miniapp.mjs=a82d68f88774b521a14cf9cc7fd5a228bd6caf13e1d399a6b707309b126d5d6e；miniapp/scripts/verify-devtools-product-purchase-path.cjs=9d1919dde7f82d1f22a288565f722defba9ec824517985444fe7662b4ef00138；miniapp/package.json=1b73db112f109ce74f648042a3ed8c660bf3fca39341c1bd487bb8bf007944f5；backend/app/service/customer/address_support.py=426437dce1357b552395e40c3ec6b3ab23441c762b920a8b07a3399c845e206c；backend/tests/service/test_customer_address.py=f5845dff534d6a349c52e2f89e0fc97d70c44c4356c59b8984f5025df38d65b5
+- update_20260914_r58: pre-commit 的 `ruff format` 统一后端 Python 格式后，本条目涉及的后端源码/测试内容变化，按同一惯例刷新对应哈希；条目结论与验证范围不变。
+- follow_up_guardrail: 底部服务入口必须用标准图标加可读标签，禁止单汉字缩写充当图标；行政区-only 地址不得保存或进入结账与履约链路，历史不完整地址以可见提示暴露而不静默改写；悬浮导航背景色不得参与 transition。
+- related_logbook: 2026-09-14 - fix(miniapp): 商品详情服务入口图标与收货地址可履约性收口
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录页面/接口标识、状态码与审计结论；运行态实调使用专用测试用户与构造地址，验证后已删除记录与临时 token，不含真实客户地址、手机号、支付或凭证数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 商品详情底部“询 / 购”单汉字入口改为标准线性图标 + “客服 / 购物车”标签 + `aria-label`，运行态实测 2 个无文字图标、19×19px、底栏间距 14.44px；地址侧新增最小可履约粒度口径（`utils/address.ts`、`address-book.ts`、`pages/address` 提示与保存拦截），后端 `service/customer/address_support.py` 同步拒绝行政区-only 地址，历史不完整地址只提示不删除不篡改；商品详情悬浮导航背景色移出 transition。重启本地后端（PID 8948，`0.133.0-p2trial.3`）后实调 `POST /api/v1/miniapp/addresses`：`北京市东城区` 返回 `400 请补充小区、楼栋或门牌号`，完整地址返回 `200`，测试数据已清理；`typecheck`、`check:miniapp`（15 页/15 路由）、`test:bakery` 9/9、`test:address` 2/2、地址定向 pytest 17/17、`devtools:product-purchase-path`、`devtools:verify-all-pages`（15/15 页 + 8/8 未登录态）、`devtools:commerce-states`、触控扫描（13 页 47 选择器）均 PASS。
+- failure_class: none
+- replayable: yes
+- residual_risks: 历史行政区-only 地址保留原记录仅作提示，需顾客或客服主动补全；地址最小粒度判断为启发式口径（长度与行政区后缀），未接入微信地址解析或地图校验；验证环境仍为 DevTools 模拟器加本地后端，真机、真实微信支付/退款、真实闪送与生产验收未执行；闪送开放平台资料与测试权限、有赞分类-商品接口 IP 白名单仍为外部阻塞。
+
+## E-20260914-009：预约时间控件可识别性与登录引导文案收口
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260914-miniapp-time-picker-affordance-and-login-copy-r53
+- generated_at: 2026-09-14
+- evidence_type: verification/miniapp-time-picker-affordance-and-login-copy
+- file: `repo:miniapp/miniprogram/pages/checkout/index.wxml`; `repo:miniapp/miniprogram/pages/checkout/index.wxss`; `repo:miniapp/miniprogram/pages/checkout/index.ts`; `repo:miniapp/miniprogram/pages/group-registration/index.wxml`; `repo:miniapp/miniprogram/pages/group-registration/index.wxss`; `repo:miniapp/miniprogram/pages/orders/index.ts`; `repo:miniapp/miniprogram/pages/order-detail/index.ts`; `repo:miniapp/miniprogram/pages/address/index.ts`; `repo:miniapp/miniprogram/pages/coupons/index.wxml`; `repo:miniapp/miniprogram/pages/points/index.wxml`; `repo:miniapp/miniprogram/utils/money.ts`; `repo:miniapp/tests/utils/money.test.ts`; `repo:miniapp/package.json`; `repo:miniapp/scripts/check-miniapp.mjs`; `repo:miniapp/scripts/verify-devtools-checkout-delivery-states.cjs`; `repo:miniapp/scripts/verify-devtools-registration-policy.cjs`; `repo:miniapp/scripts/verify-all-15-pages-devtools.cjs`; `repo:ERRORS.md`; `repo:LOGBOOK.md`; `repo:PROJECT-STATE.md`; `local:miniapp/reports/devtools/all-pages-devtools-audit.json`; `local:miniapp/reports/devtools/checkout-delivery-state-audit.json`; `local:miniapp/reports/devtools/registration-policy-audit.json`; `local:miniapp/reports/devtools/miniapp-commerce-flows.json`; `local:miniapp/reports/devtools/commerce-state-audit.json`; `local:miniapp/reports/devtools/product-purchase-path-audit.json`; `local:miniapp/reports/devtools/final-registration-form-top.png`; `local:miniapp/reports/devtools/final-checkout-pickup-state.png`; `local:miniapp/reports/button-visual/button-touch-targets-20260914-062039.json`
+- commit_sha: (待提交后回写)
+- command: `npm run typecheck`; `npm run check:miniapp`; `npm run test:money`; `npm run test:address`; `npm run test:bakery`; `npm run test:checkout-time`; `npm run test:order-summary`; `npm run devtools:checkout-delivery-states`; `npm run devtools:registration-policy`; `npm run devtools:verify-all-pages`; `npm run devtools:verify-commerce-flows`; `npm run devtools:commerce-states`; `npm run devtools:product-purchase-path`; `MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420 npm run scan:button-touch-targets`（后端 `127.0.0.1:7001` 健康）
+- result: pass
+- sha256: miniapp/miniprogram/pages/checkout/index.wxml=890ac0e4e29ee70e6aeee2c5402b4d2c61add77a74cc90b0d99a4f72ca491d3d；miniapp/miniprogram/pages/checkout/index.wxss=31a8a9bebe1d91518ff3c928c3f79b546809146f8dff24e92194c7d1c1283c00；miniapp/miniprogram/pages/checkout/index.ts=f4c11b1b6f1e3be26994dc95a4f473208abe0d826f23b21af920de797d775070；miniapp/miniprogram/pages/group-registration/index.wxml=63af6916738809963dabaa0b33f76ce0c0f8732b19bbfbd6902ecf35234a6c7f；miniapp/miniprogram/pages/group-registration/index.wxss=dbc5a39e0a9144f2627640baa744dc23ecca810a252d917849a2484facb8ef0c；miniapp/miniprogram/pages/orders/index.ts=7db07a4de84699a8074fdcf6eb08134c4af3ba18b9ff205e0bcf97e54d3478f3；miniapp/miniprogram/pages/order-detail/index.ts=01a6451a8b55f52ead95da681855a66796a83749932c4c52c2c765016f21375a；miniapp/miniprogram/pages/address/index.ts=e67a5ce26d966cb5afcf3ee2f0a93664c68ffbdc3c621cb9935321006fcac775；miniapp/miniprogram/pages/coupons/index.wxml=d3f12983489262605e99a3cc1b06cf1a4e400582a67f2916fa3ddbec53f992c0；miniapp/miniprogram/pages/points/index.wxml=646cb661f9e009ba097cf213f9efb0c22e52babf1ef366b5390b6617f3196986；miniapp/miniprogram/utils/money.ts=4235ed3c40090aa45db0e8519f6992fb6407c7b9567b66bd41447eba137c2b27；miniapp/tests/utils/money.test.ts=3e9b8ef3f80d546aa7e276337bb943cd5f67c64e1cc44d6c62d55dc6ac20d5b5；miniapp/package.json=48c9d5d4f1e213701e1c34c62cc781e6b7683c2171dd05abe7b11c575bde1665；miniapp/scripts/check-miniapp.mjs=a82d68f88774b521a14cf9cc7fd5a228bd6caf13e1d399a6b707309b126d5d6e；miniapp/scripts/verify-devtools-checkout-delivery-states.cjs=92da77ec2aca9fb98240812fb7704559cb3a5c035e079087d2a93cfa6ca45602；miniapp/scripts/verify-devtools-registration-policy.cjs=49004d0bea206d31c16c38b854b37db0c82f5cc1c5ae896f8df8a93d34d4d9f9；miniapp/scripts/verify-all-15-pages-devtools.cjs=d0578f1fd551af46b35a8cd1775b0883979e38122ea7012cc1ad783fc92b7b52
+- follow_up_guardrail: 可点击 picker 必须带可见下拉指示且不得与只读预览同构；登录空态副文案必须补充信息并满足单行宽度；抵扣金额必须走 formatDeductionFen，零抵扣统一显示“-”。
+- related_logbook: 2026-09-14 - fix(miniapp): 预约时间控件可识别性与登录引导文案收口
+- update_20260914_r54: 订单详情支付方式改为 `formatPaymentMethodText()` 后 `order-detail/index.ts` 内容变化，刷新该文件哈希；其余记录不变。
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录页面控件尺寸、背景色、金额占位符与审计结论；截图与报告中包含本地审计构造的商品名与收货人样例（“闪送状态审计样本”“配送审计”），不含真实客户信息、支付或凭证数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 逐页目视评审 15 页与 8 个未登录态截图后发现并修复三处 UI/UX 缺陷：（1）结算页与群内登记页的日期/小时/分钟 picker 与只读“期望时间”预览完全同构，现加 `time-picker__chevron` 下拉指示与 `time-picker__value` 省略，预览改为无底色次要文字（运行态实测 3 个指示各 6×6px、预览背景 `rgba(0, 0, 0, 0)`）；（2）订单/订单详情/地址/优惠券/积分登录空态副文案只是重复标题，现改为说明登录后可获得的信息；（3）结算金额面板零抵扣显示“-¥0.00”，现新增 `formatDeductionFen()` 统一输出“-”。`check:miniapp` 新增三组静态守卫，两个 DevTools 脚本新增运行态断言；`devtools:verify-all-pages` 15/15 页 + 8/8 未登录态 PASS（中间版本曾因地址副文案 23 字换行报 FAIL，压缩到 17 字后复跑通过），`devtools:checkout-delivery-states`、`devtools:registration-policy`、`devtools:verify-commerce-flows`、`devtools:commerce-states`、`devtools:product-purchase-path`、`test:money` 3/3 与触控扫描（13 页 47 选择器）均 PASS。
+- failure_class: none
+- replayable: yes
+- residual_risks: 登录引导副文案受空态单行宽度约束，后续加长会被全页审计拦下；历史行政区-only 地址仍只提示不自动改写；验证环境仍为 DevTools 模拟器加本地后端，真机、真实微信支付/退款、真实闪送与生产验收未执行；闪送开放平台资料与测试权限、有赞分类-商品接口 IP 白名单仍为外部阻塞。
+
+## E-20260914-010：会员中心入口图标线性化与支付方式顾客口径收口
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260914-miniapp-profile-icons-and-payment-copy-r54
+- generated_at: 2026-09-14
+- evidence_type: verification/miniapp-profile-icons-and-payment-copy
+- file: `repo:miniapp/miniprogram/pages/profile/index.ts`; `repo:miniapp/miniprogram/pages/profile/index.wxml`; `repo:miniapp/miniprogram/pages/profile/index.wxss`; `repo:miniapp/miniprogram/utils/order-summary.ts`; `repo:miniapp/tests/utils/order-summary.test.ts`; `repo:miniapp/miniprogram/pages/order-detail/index.ts`; `repo:miniapp/scripts/check-miniapp.mjs`; `repo:miniapp/scripts/verify-miniapp-commerce-flows.cjs`; `repo:miniapp/scripts/verify-all-15-pages-devtools.cjs`; `repo:miniapp/scripts/scan-miniapp-button-touch-targets.mjs`; `repo:ERRORS.md`; `repo:LOGBOOK.md`; `repo:PROJECT-STATE.md`; `local:miniapp/reports/devtools/all-pages-devtools-audit.json`; `local:miniapp/reports/devtools/final-profile.png`; `local:miniapp/reports/devtools/miniapp-commerce-flows.json`; `local:miniapp/reports/devtools/product-purchase-path-audit.json`; `local:miniapp/reports/devtools/commerce-state-audit.json`; `local:miniapp/reports/devtools/checkout-delivery-state-audit.json`; `local:miniapp/reports/devtools/registration-policy-audit.json`; `local:miniapp/reports/button-visual/button-touch-targets-20260914-073503.json`
+- commit_sha: (待提交后回写)
+- command: `Invoke-WebRequest http://127.0.0.1:7001/health`（已运行，0.133.0-p2trial.3）；`npm run typecheck`; `npm run check:miniapp`; `npm run test:order-summary`; `MINIAPP_API_BASE=http://127.0.0.1:7001 MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420 npm run devtools:verify-all-pages`; `... npm run devtools:verify-commerce-flows`; `... npm run devtools:product-purchase-path`; `... npm run devtools:checkout-delivery-states`; `... npm run devtools:registration-policy`; `... npm run devtools:commerce-states`; `... npm run scan:button-touch-targets`
+- result: pass
+- sha256: miniapp/miniprogram/pages/profile/index.ts=d23424a1e811cafc7de13703f8a706a85ec7b641dd7be46ee04a688fc49ec27b；miniapp/miniprogram/pages/profile/index.wxml=0b50b23d86c5ce95b37eb0074b8907b4fe14b04932734981dbf7e06fe3e2d2f3；miniapp/miniprogram/pages/profile/index.wxss=b449f8f2c7cf44d44e478cc7a113c66c2b00da9c284caeb73a8e6fd1a5e98814；miniapp/miniprogram/utils/order-summary.ts=cb9319d89add5a41db0d85829d4db109a2d0db7bf6773691e60a4af128d11663；miniapp/tests/utils/order-summary.test.ts=c5ef4488f4fe2787f4360064ddb1a8dbbd273e5f8fc008a7913afd907a0a22ae；miniapp/miniprogram/pages/order-detail/index.ts=01a6451a8b55f52ead95da681855a66796a83749932c4c52c2c765016f21375a；miniapp/scripts/check-miniapp.mjs=a82d68f88774b521a14cf9cc7fd5a228bd6caf13e1d399a6b707309b126d5d6e；miniapp/scripts/verify-miniapp-commerce-flows.cjs=1fcb4946d2708f404876942e6d0d4b517846434ae100a11028e9ef1e71fd450e；miniapp/scripts/verify-all-15-pages-devtools.cjs=fade78762ab41459a51de2c62bc3fd96085683337088641ca06a3e05c730fc2a；miniapp/scripts/scan-miniapp-button-touch-targets.mjs=a36b175df44877324d21e97918d3e8926d130147730aa9798477a1036d48b8c0；ERRORS.md=a8db26ba020b1d8794fb4b78f8e5b963979fed3a474ae0736e89818eb8f0a203
+- follow_up_guardrail: 入口图标必须有可渲染图形资源，禁止单汉字占位；图标审计必须断言背景图与渲染尺寸而不只数元素；支付方式必须走 `formatPaymentMethodText()`，顾客界面禁止出现 `mock`、`MVP`、`模拟支付`。
+- related_logbook: 2026-09-14 - fix(miniapp): 会员中心入口图标线性化与支付方式顾客口径收口
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地模拟器截图、图标背景渲染结果、触控尺寸与会话审计结论；不含真实客户、地址、凭证、支付或闪送数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 会员中心订单入口（待付款/制作中/待配送/退款售后）与特色服务列表的 9 个单汉字占位图标改为 `iconKey` 驱动的内联线性图标并补 `aria-hidden`；订单详情把开发口径“MVP 模拟支付”改为 `formatPaymentMethodText()` 统一映射（微信支付/余额支付/组合支付/门店确认/待确认）。`devtools:verify-all-pages` 15/15 页与 8/8 未登录态 PASS（会员中心订单图标 4 个、服务图标 5 个均 20×20 或 24×24px 且有背景图、无文字占位），`devtools:verify-commerce-flows`、`devtools:product-purchase-path`、`devtools:checkout-delivery-states`、`devtools:registration-policy`、`devtools:commerce-states`、`test:order-summary` 7/7 与触控扫描（13 页 47 选择器）均 PASS。中间版本因把工具输出里的脱敏占位符写进 WXSS 导致图标背景解析失败，已修正并补运行态断言。
+- failure_class: none_after_recovery
+- replayable: yes
+- residual_risks: 图标仍为内联 data URI，改色或改形需同时改 WXML 的 `iconKey` 与 WXSS 修饰类；验证环境为 DevTools 模拟器加本地后端，真机、真实微信支付/退款、真实闪送与生产验收未执行；闪送开放平台资料与测试权限、有赞分类-商品接口 IP 白名单仍为外部阻塞。
+
+## E-20260914-011：空态与身份徽标图标线性化
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260914-miniapp-empty-state-icons-r55
+- generated_at: 2026-09-14
+- evidence_type: verification/miniapp-empty-state-and-identity-icons
+- file: `repo:miniapp/miniprogram/app.wxss`; `repo:miniapp/miniprogram/components/session-notice/index.ts`; `repo:miniapp/miniprogram/components/session-notice/index.wxml`; `repo:miniapp/miniprogram/components/session-notice/index.wxss`; `repo:miniapp/miniprogram/pages/address/index.wxml`; `repo:miniapp/miniprogram/pages/cart/index.wxml`; `repo:miniapp/miniprogram/pages/checkout/index.wxml`; `repo:miniapp/miniprogram/pages/coupons/index.wxml`; `repo:miniapp/miniprogram/pages/group-registration/index.wxml`; `repo:miniapp/miniprogram/pages/order-detail/index.wxml`; `repo:miniapp/miniprogram/pages/orders/index.wxml`; `repo:miniapp/miniprogram/pages/points/index.wxml`; `repo:miniapp/miniprogram/pages/product-detail/index.wxml`; `repo:miniapp/miniprogram/pages/products/index.wxml`; `repo:miniapp/miniprogram/pages/profile/index.wxml`; `repo:miniapp/miniprogram/pages/recharge/index.wxml`; `repo:miniapp/scripts/check-miniapp.mjs`; `repo:miniapp/scripts/verify-all-15-pages-devtools.cjs`; `repo:ERRORS.md`; `repo:LOGBOOK.md`; `repo:PROJECT-STATE.md`; `local:miniapp/reports/devtools/all-pages-devtools-audit.json`; `local:miniapp/reports/devtools/final-group-registration.png`; `local:miniapp/reports/devtools/final-logged-out-orders.png`; `local:miniapp/reports/devtools/commerce-state-audit.json`; `local:miniapp/reports/devtools/checkout-delivery-state-audit.json`; `local:miniapp/reports/devtools/registration-policy-audit.json`; `local:miniapp/reports/devtools/miniapp-commerce-flows.json`; `local:miniapp/reports/devtools/product-purchase-path-audit.json`; `local:miniapp/reports/button-visual/button-touch-targets-20260914-081148.json`
+- commit_sha: (待提交后回写)
+- command: `npm run typecheck`; `npm run check:miniapp`; `node --check scripts/verify-all-15-pages-devtools.cjs`; `MINIAPP_API_BASE=http://127.0.0.1:7001 MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420 npm run devtools:verify-all-pages`; `... npm run devtools:commerce-states`; `... npm run devtools:checkout-delivery-states`; `... npm run devtools:registration-policy`; `... npm run devtools:verify-commerce-flows`; `... npm run devtools:product-purchase-path`; `... npm run scan:button-touch-targets`
+- result: pass
+- sha256: miniapp/miniprogram/app.wxss=ebbfcc809da3c767e87ad08e78d6b064342c623ea05949d5cbfb04b9a7a18a79；miniapp/miniprogram/components/session-notice/index.ts=ad05a364246901958d50c1a02abeb59de9c1726efb713502f09438ff076e8474；miniapp/miniprogram/components/session-notice/index.wxml=052e9e6e969ee3cb189c1ca77969ddce3ade89d6bc30bbcbde47d2ad96f96afe；miniapp/miniprogram/components/session-notice/index.wxss=304b4843d6e46ba276e4d78acc205a276ae1d13a8f16ef9033b2ee869f1d84f6；miniapp/miniprogram/pages/address/index.wxml=1dc79c12a2bdc0a0b2f3b840e01ad7fda704c429fd195e7bd5a1d2bc70ed18b1；miniapp/miniprogram/pages/cart/index.wxml=3fcddbab4728718a6a1ae1aae1a7b25528d3ab50e8ee75e9069230d11f52b542；miniapp/miniprogram/pages/checkout/index.wxml=a04fb025e75c86bb1244f5160d092672273eb1b390303b700073379b6fdc8bd2；miniapp/miniprogram/pages/coupons/index.wxml=d3f12983489262605e99a3cc1b06cf1a4e400582a67f2916fa3ddbec53f992c0；miniapp/miniprogram/pages/group-registration/index.wxml=63af6916738809963dabaa0b33f76ce0c0f8732b19bbfbd6902ecf35234a6c7f；miniapp/miniprogram/pages/order-detail/index.wxml=07286728d5a8300b7cb43d23ce82d837a46397e922d3af96d1711618c268983a；miniapp/miniprogram/pages/orders/index.wxml=94384bbdfdee06fb1f07ad9fce58f6b270a5f800f70016bc03a33c66902353ce；miniapp/miniprogram/pages/points/index.wxml=646cb661f9e009ba097cf213f9efb0c22e52babf1ef366b5390b6617f3196986；miniapp/miniprogram/pages/product-detail/index.wxml=4a8a97759e205c55177b39be74dda42dea3cb0ea313a1d61a4b135c192f24da5；miniapp/miniprogram/pages/products/index.wxml=49a02e4343f49538fea0e744bb277dca7a746178f888619af7f006e7e7295c90；miniapp/miniprogram/pages/profile/index.wxml=0b50b23d86c5ce95b37eb0074b8907b4fe14b04932734981dbf7e06fe3e2d2f3；miniapp/miniprogram/pages/recharge/index.wxml=5adf19a0f27cce139c3b71ecfe90482d6d0e0258f418e9debf785656ddfcf27e；miniapp/scripts/check-miniapp.mjs=06401c52a218da15a351dc4c0e690ece75b681d2aead72c6c7d6d97cf76178b3；miniapp/scripts/verify-all-15-pages-devtools.cjs=2d11d9a724e7dccb6d176b4b30ace0aeabd9a5d8375c71259a4ee58f840c1e1b；ERRORS.md=a8db26ba020b1d8794fb4b78f8e5b963979fed3a474ae0736e89818eb8f0a203
+- update_20260914_r56: r55/r56 扩充图标类静态守卫后 `miniapp/scripts/check-miniapp.mjs` 内容变化，按同一惯例刷新该条目中的脚本哈希；原条目结论与验证范围不变。
+- follow_up_guardrail: 空态与身份徽标禁止用文字充当图标；icon key 必须同时在 app.wxss 定义背景图规则；审计必须断言背景图非空与渲染尺寸，而不是只断言图标元素存在或文字非空。
+- related_logbook: 2026-09-14 - fix(miniapp): 空态与身份徽标图标线性化
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地模拟器截图、图标渲染尺寸与审计结论；不含真实客户、地址、凭证、支付或闪送数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 15 个页面的空态/登录引导原本在 140rpx 白底方块里渲染单个汉字或标点（址/购/结/券/详/单/订/分/充/芸/!），群内登记与个人中心的身份徽标渲染“登/我”。本轮把空态图标改为 app.wxss 里 13 个 key 驱动的内联线性图标（map-pin/shopping-cart/shopping-bag/clipboard-check/ticket/receipt/file-question/package/loader/wifi-off/star/cake/wallet）并补 `aria-hidden`；`session-notice` 组件由 `iconText` 改为 `iconKey`（log-in/user-check），两个调用方同步。审计侧新增 `checkEmptyStateIcons()` 静态守卫，并把全页审计的登录引导断言从“图标文字非空”改为“背景图非空 + 渲染尺寸 ≥32px + 无文字”，同时新增身份徽标断言。运行态：`devtools:verify-all-pages` 15/15 页 + 8/8 未登录态 PASS（登录引导图标 72×72px、`iconBackground=set`、`iconText` 为空；群内登记徽标 31×31px、无文字），其余 DevTools 套件与触控扫描全部 PASS。
+- failure_class: none
+- replayable: yes
+- residual_risks: 图标为内联 data URI，新增 icon key 必须同时补 app.wxss 规则，否则被静态守卫与全页审计拦下；本轮首次触控扫描因 automator 超时中止，重试后 PASS（未写入报告，已按环境阻塞口径处理）；真机、真实微信支付/退款、真实闪送与生产验收仍未执行；闪送开放平台资料与测试权限、有赞分类-商品接口 IP 白名单仍为外部阻塞。
+
+## E-20260914-012：首页履约、快捷入口与客服空态图标收口
+
+- trace_id: 20260908-miniapp-commerce-ux-redesign
+- run_id: 20260914-miniapp-content-icons-r56
+- generated_at: 2026-09-14
+- evidence_type: verification/miniapp-content-icon-surfaces
+- file: `repo:miniapp/miniprogram/types/page-config.ts`; `repo:miniapp/miniprogram/config/mock-pages.ts`; `repo:miniapp/miniprogram/pages/home/index.ts`; `repo:miniapp/miniprogram/pages/home/index.wxml`; `repo:miniapp/miniprogram/pages/home/index.wxss`; `repo:miniapp/miniprogram/pages/chat/index.wxml`; `repo:miniapp/miniprogram/pages/chat/index.wxss`; `repo:miniapp/scripts/check-miniapp.mjs`; `repo:miniapp/scripts/verify-all-15-pages-devtools.cjs`; `repo:miniapp/docs/api-contract.md`; `repo:ERRORS.md`; `repo:LOGBOOK.md`; `repo:PROJECT-STATE.md`; `repo:docs/superpowers/plans/2026-09-08-miniapp-commerce-ux-redesign.md`; `local:miniapp/reports/devtools/all-pages-devtools-audit.json`; `local:miniapp/reports/devtools/final-home-promise-icons.png`; `local:miniapp/reports/devtools/final-home-quick-links-icons.png`; `local:miniapp/reports/devtools/final-logged-out-chat.png`; `local:miniapp/reports/devtools/miniapp-commerce-flows.json`; `local:miniapp/reports/devtools/product-purchase-path-audit.json`; `local:miniapp/reports/devtools/commerce-state-audit.json`; `local:miniapp/reports/button-visual/button-touch-targets-20260914-090718.json`
+- commit_sha: (待提交后回写)
+- command: `npm run typecheck`; `npm run check:miniapp`; `MINIAPP_API_BASE=http://127.0.0.1:7001 MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420 npm run devtools:verify-all-pages`; `... npm run devtools:verify-commerce-flows`; `... npm run devtools:product-purchase-path`; `... npm run devtools:commerce-states`; `... npm run scan:button-touch-targets`; DevTools 注入验证快捷入口回退态（2 个图标）
+- result: pass
+- sha256: miniapp/miniprogram/types/page-config.ts=41215446053242ce3cf68d03caa8724f879bcfcfcc785570b992ca7e6ab17ea9；miniapp/miniprogram/config/mock-pages.ts=4d487f49e9a9bb4a2c3afeb8949a3aced4b2d6862c6c895cd160b54852a33b10；miniapp/miniprogram/pages/home/index.ts=a15ead284a8dbbe42a5eefad8207ce2a3ebc6c12fb069f5c84066ef06196a9df；miniapp/miniprogram/pages/home/index.wxml=7afc041e31daff0d45e2fad406dd3f71acaf4a10d831ad0fb84930344c40781f；miniapp/miniprogram/pages/home/index.wxss=5ac950dad813c623da4dd2c90e4817d6fd9d15ae5f293c0d2730b6086f9849a5；miniapp/miniprogram/pages/chat/index.wxml=600917ed97ce15c672f508c0fa20f6d90266a410b93d1f3d3fc550df17e3df20；miniapp/miniprogram/pages/chat/index.wxss=bc220f7c8314bf0cb3f19a1aa290c596d197993dbfa3bf9b37cb5773b157ad4d；miniapp/scripts/check-miniapp.mjs=06401c52a218da15a351dc4c0e690ece75b681d2aead72c6c7d6d97cf76178b3；miniapp/scripts/verify-all-15-pages-devtools.cjs=24797a7f82f2870f799fbdad0e5a5a83b735d4fd78100234008d7045685db992；miniapp/docs/api-contract.md=23f21070c5831c73256425baf67435775e27b285208f7bab6da6ac86c105a25c；ERRORS.md=42b58137f2c1efbbf84c6035183ccb002dd7702703834a92e72f9218cc407bf4；LOGBOOK.md=ca7f739e033c22fad76145da139a757c5752947345e265db32858948dec43643；PROJECT-STATE.md=aae04165df9561716b46d3e6cfcbcd5b42859e7a2d91bbc643e820fa747d6a2f；docs/superpowers/plans/2026-09-08-miniapp-commerce-ux-redesign.md=da88e51ad865cdd3a50d634929877adf8d76bf9d36aa13d348ad8707ae01f307
+- update_20260914_r56b: r56 收尾把首页快捷入口 `iconKey` 收紧为 points/recharge/link 白名单（未知 key 回退 link），`pages/home/index.ts` 与 `check-miniapp.mjs` 再次变化并刷新本条目哈希；随后在真实后端（`127.0.0.1:7001`）复跑 `devtools:service-smoke` 4/4、15/15 页 + 8/8 未登录态、电商流程与购买路径均 PASS；当前线上装修配置未下发 `quickLinks` 块，白名单运行态证据仍以本条目 r56 的 DevTools 注入验证为准。结论与验证范围不变。
+- follow_up_guardrail: 首页快捷入口不得渲染 iconText；履约与客服空态图标必须无文字、有背景图、有 aria-hidden；所有 WXSS 禁止出现工具输出的脱敏占位符字面量。
+- related_logbook: 2026-09-14 - fix(miniapp): 首页履约、快捷入口与客服空态图标收口
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地模拟器图标渲染尺寸、背景图状态、页面截图与审计结论；不含真实客户、地址、凭证、支付或闪送数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 逐页目视评审发现并修复三类同源缺陷：首页履约说明的“预/送/时”单字、快捷入口 mock 回退的“积分/充值”文字、客服未登录空态的“客服”二字。快捷入口契约新增 `iconKey` 并兼容旧 `iconText`，首页按语义键渲染 points/recharge/link 图标，履约卡渲染 booking/delivery/hours 图标，客服空态渲染 support 图标；装饰节点均有 `aria-hidden`。首轮运行态审计拦下 3 个因 `[image omitted]` 脱敏占位符写回 WXSS 而缺失的背景图（M-20260914-025），修正后复跑 `devtools:verify-all-pages` 15/15 页 + 8/8 未登录态 PASS（服务承诺图标 16×16px，客服空态图标 72×72px），快捷入口回退态 2 个图标 24×24px；核心成交、购买路径、电商状态与触控扫描均 PASS。
+- failure_class: none_after_recovery
+- replayable: yes
+- residual_risks: 新增 data URI 必须先走 WXSS 字面量守卫；本轮未改订单、支付、退款和配送后端；真机、真实微信支付/退款、真实闪送与生产验收仍未执行；闪送开放平台资料与测试权限、有赞分类-商品接口 IP 白名单仍为外部阻塞。

@@ -60,6 +60,21 @@ export function maskReceiverPhone(phone?: string): string {
   return `${normalized.slice(0, 3)}****${normalized.slice(-4)}`;
 }
 
+export function formatPaymentMethodText(paymentMethod?: string): string {
+  switch ((paymentMethod || "").trim()) {
+    case "wechat":
+      return "微信支付";
+    case "balance":
+      return "余额支付";
+    case "combined":
+      return "组合支付";
+    case "mock":
+      return "门店确认";
+    default:
+      return "待确认";
+  }
+}
+
 export function formatOrderDisplayId(orderId: string): string {
   const normalized = orderId.trim();
   if (!normalized) {

@@ -41,6 +41,7 @@ class OrderSerializationService:
             "deliveryType": str(delivery.get("deliveryType", "")),
             "fulfillmentMethod": str(delivery.get("fulfillmentMethod", "pickup")),
             "deliveryQuoteId": str(delivery.get("deliveryQuoteId", "")),
+            "pickupAddress": str(delivery.get("pickupAddress", "")),
             "deliveryAddress": str(delivery.get("deliveryAddress", "")),
             "expectTime": str(delivery.get("expectTime", "")),
             "remark": order.remark,

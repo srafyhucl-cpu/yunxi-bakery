@@ -11,12 +11,15 @@ SHOP_OPERATIONS_KEY = "shop_operations"
 SHOP_PAGE_DRAFT_PREFIX = "shop_page_draft:"
 SHOP_PAGE_PUBLISHED_PREFIX = "shop_page_published:"
 
+DEFAULT_PICKUP_ADDRESS = "北京市东城区南竹杆胡同2号银河SOHO"
+PICKUP_ADDRESS_PLACEHOLDER_MARKERS = ("请联系客服确认",)
+
 DEFAULT_SHOP_OPERATIONS = {
     "shopName": "芸熙烘焙",
     "customerWechat": "13240240418",
     "customerPhone": "13240240418",
     "businessHours": "09:00-19:30",
-    "pickupAddress": "门店自提，具体地址请联系客服确认",
+    "pickupAddress": DEFAULT_PICKUP_ADDRESS,
     "deliveryNotice": "门店配送需提前预约，配送范围和费用以客服确认为准",
     "pickupNotice": "蛋糕建议提前 24 小时预订，到店自提前请确认取货时间",
     "paymentMode": "mock",

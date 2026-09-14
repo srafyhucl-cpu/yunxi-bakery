@@ -8,10 +8,11 @@
   <view class="page-pinned page-pinned--empty"></view>
   <scroll-view class="page-scroll" scroll-y enhanced show-scrollbar="{{false}}">
     <view class="page recharge-page">
-      <view wx:if="{{!loggedIn}}" class="empty-panel glass-panel">
-        <text class="empty-title">请先登录</text>
-        <text class="empty-subtitle">登录后使用余额充值</text>
-        <button class="primary-btn" bindtap="goLogin">去登录</button>
+      <view wx:if="{{!loggedIn}}" class="yunxi-state yunxi-state--page">
+        <view class="yunxi-state__icon yunxi-state__icon--wallet" aria-hidden="true"></view>
+        <text class="yunxi-state__title">登录后使用余额充值</text>
+        <text class="yunxi-state__hint">登录后查看余额并完成充值</text>
+        <button class="primary-button yunxi-state__action" bindtap="goLogin">去登录</button>
       </view>
       <block wx:elif="{{!ready}}">
         <view class="empty-panel glass-panel">
@@ -40,14 +41,17 @@
           </view>
           <view class="custom-row">
             <text class="custom-label">自定义金额</text>
-            <input
-              class="custom-input"
-              type="digit"
-              placeholder="1~500"
-              value="{{customFen}}"
-              bindinput="onCustomInput"
-            />
-            <text class="custom-unit">元</text>
+            <view class="custom-input-wrap">
+              <input
+                class="custom-input"
+                type="digit"
+                placeholder="1~500"
+                placeholder-class="custom-input-placeholder"
+                value="{{customFen}}"
+                bindinput="onCustomInput"
+              />
+              <text class="custom-unit">元</text>
+            </view>
           </view>
           <button class="primary-btn" loading="{{submitting}}" disabled="{{submitting}}" bindtap="submitRecharge">
             确认充值
@@ -56,7 +60,10 @@
         </view>
         <view class="records-panel glass-panel">
           <view class="section-title">充值记录</view>
-          <view wx:if="{{records.length === 0}}" class="records-empty">暂无充值记录</view>
+          <view wx:if="{{records.length === 0}}" class="yunxi-state yunxi-state--section records-empty">
+            <text class="yunxi-state__title">暂无充值记录</text>
+            <text class="yunxi-state__hint">充值成功后，记录会显示在这里</text>
+          </view>
           <view wx:for="{{records}}" wx:key="rechargeId" class="record-row">
             <view class="record-main">
               <text class="record-amount">{{item.amountFen / 100}}元</text>

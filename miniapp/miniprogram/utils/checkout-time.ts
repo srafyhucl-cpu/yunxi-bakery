@@ -94,6 +94,37 @@ export function getDefaultCheckoutHourIndex(hourOptions: string[]): number {
   return index >= 0 ? index : Math.max(hourOptions.length - 1, 0);
 }
 
+export interface CheckoutExpectTimeParts {
+  dateValue: string;
+  hourValue: string;
+  minuteValue: string;
+}
+
+export function parseExpectTime(expectTime: string): CheckoutExpectTimeParts | null {
+  const match = (expectTime || "").trim().match(/^(\d{4}-\d{2}-\d{2})\s+(\d{1,2}):(\d{2})$/);
+  if (!match) {
+    return null;
+  }
+  return {
+    dateValue: match[1],
+    hourValue: padDateNumber(Number(match[2])),
+    minuteValue: match[3]
+  };
+}
+
+// 选择器显示值必须由提交值反推，否则重新进入结算页时控件与实际下单时间会不一致。
+export function resolveCheckoutHourIndex(hourOptions: string[], expectTime: string): number {
+  const parsed = parseExpectTime(expectTime);
+  const index = parsed ? hourOptions.indexOf(parsed.hourValue) : -1;
+  return index >= 0 ? index : getDefaultCheckoutHourIndex(hourOptions);
+}
+
+export function resolveCheckoutMinuteIndex(minuteOptions: string[], expectTime: string): number {
+  const parsed = parseExpectTime(expectTime);
+  const index = parsed ? minuteOptions.indexOf(parsed.minuteValue) : -1;
+  return index >= 0 ? index : 0;
+}
+
 export function formatCheckoutDate(date: Date): string {
   return formatBeijingDateWithOffset(date, 0);
 }
@@ -123,4 +154,43 @@ export function buildDefaultExpectTime(
 
 export function buildExpectTime(dateValue: string, hourValue: string, minuteValue: string): string {
   return `${dateValue} ${hourValue}:${minuteValue}`;
+}
+
+export interface CheckoutScheduleState {
+  expectTime: string;
+  dateValue: string;
+  hourOptions: string[];
+  hourIndex: number;
+  minuteIndex: number;
+}
+
+export function resolveCheckoutSchedule(
+  businessHours: string,
+  expectTime: string,
+  minuteOptions: string[] = CHECKOUT_MINUTE_OPTIONS,
+  now = new Date()
+): CheckoutScheduleState {
+  const fallbackExpectTime = buildDefaultExpectTime(businessHours, now);
+  const normalizedExpectTime = (expectTime || "").trim() || fallbackExpectTime;
+  // 已过当天截单时间时，历史选择值必须抬到最早可预约日期，不能把过期时间原样带进下单。
+  const requestedDateValue = parseExpectTime(normalizedExpectTime)?.dateValue || "";
+  const earliestDateValue = getCheckoutDateStart(now);
+  const dateValue =
+    requestedDateValue && requestedDateValue >= earliestDateValue
+      ? requestedDateValue
+      : earliestDateValue;
+  const hourOptions = buildCheckoutHourOptions(businessHours, dateValue, now);
+  const hourIndex = resolveCheckoutHourIndex(hourOptions, normalizedExpectTime);
+  const minuteIndex = resolveCheckoutMinuteIndex(minuteOptions, normalizedExpectTime);
+  return {
+    expectTime: buildExpectTime(
+      dateValue,
+      hourOptions[hourIndex] || hourOptions[0] || padDateNumber(DEFAULT_PICKUP_HOUR),
+      minuteOptions[minuteIndex] || DEFAULT_PICKUP_MINUTE
+    ),
+    dateValue,
+    hourOptions,
+    hourIndex,
+    minuteIndex
+  };
 }

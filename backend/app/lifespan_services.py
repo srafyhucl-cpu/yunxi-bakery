@@ -65,6 +65,7 @@ def init_services(repos: dict[str, Any], vs: Any, bm25: Any = None) -> dict[str,
         ShopPageConfigurationService,
     )
     from app.service.order import OrderApplicationService
+    from app.service.order.schedule import OrderScheduleService
     from app.service.transfer_manager import TransferManager
     from app.service.wecom.employee_agent_service import EmployeeAgentService
     from app.service.wecom.intelligent_bot_ops_tools import WeComBotOpsToolService
@@ -109,6 +110,8 @@ def init_services(repos: dict[str, Any], vs: Any, bm25: Any = None) -> dict[str,
         provider=ShansongProvider(),
         quote_repo=repos["delivery_quote_repo"],
     )
+    shop_configuration_service = ShopConfigurationService(repos["config_repo"])
+    order_schedule_service = OrderScheduleService(shop_configuration_service)
     order_service = OrderApplicationService(
         order_repo=repos["order_repo"],
         event_repo=repos["order_event_repo"],
@@ -116,6 +119,7 @@ def init_services(repos: dict[str, Any], vs: Any, bm25: Any = None) -> dict[str,
         product_repo=repos["youzan_product_repo"],
         inventory_repo=repos["youzan_inventory_repo"],
         config_repo=repos["config_repo"],
+        schedule_service=order_schedule_service,
         stored_value_service=stored_value_service,
         delivery_service=delivery_service,
     )
@@ -124,7 +128,8 @@ def init_services(repos: dict[str, Any], vs: Any, bm25: Any = None) -> dict[str,
         audit_repo=repos["customer_address_audit_repo"],
     )
     customer_group_service = CustomerGroupOperationsService(
-        repos["customer_group_repo"]
+        repo=repos["customer_group_repo"],
+        schedule_service=order_schedule_service,
     )
     storefront_auth_service = StorefrontAuthService()
     customer_consent_service = CustomerConsentService(repos["customer_profile_repo"])
@@ -133,7 +138,6 @@ def init_services(repos: dict[str, Any], vs: Any, bm25: Any = None) -> dict[str,
     )
     transfer_mgr = TransferManager(repos["transfer_repo"])
     shop_page_configuration_service = ShopPageConfigurationService(repos["config_repo"])
-    shop_configuration_service = ShopConfigurationService(repos["config_repo"])
 
     youzan_client = YouzanClient(config_repo=repos["config_repo"])
     youzan_event_handler = YouzanEventHandler(

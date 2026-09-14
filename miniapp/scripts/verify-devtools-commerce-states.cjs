@@ -1,5 +1,10 @@
 const automator = require("miniprogram-automator");
 const fs = require("node:fs");
+const {
+  captureEvidenceScreenshot,
+  finalizeAuditStatus,
+  exitForAuditStatus
+} = require("./lib/devtools-audit-status.cjs");
 
 const WS_ENDPOINT = process.env.MINIAPP_AUTOMATOR_WS || "ws://127.0.0.1:9420";
 const REPORT_PATH = "reports/devtools/commerce-state-audit.json";
@@ -98,7 +103,8 @@ async function main() {
     const catalogHint = await catalog.$(".product-hint");
     const catalogHeading = await catalog.$(".products-heading");
     const catalogData = await catalog.data();
-    if (catalogAction && catalogActionText === "预订") {
+    const catalogStockText = catalogStock ? (await catalogStock.text()).trim() : "";
+    if (catalogAction && ["预订", "加入购物车"].includes(catalogActionText)) {
       await catalogAction.tap();
       await sleep(500);
     }
@@ -114,22 +120,27 @@ async function main() {
       cartBarVisibleAfterQuickAdd: Boolean(catalogCartBarAfter),
       quickAddCartCount: Array.isArray(catalogCartStorage) ? catalogCartStorage.length : 0,
       hasStockLabel: Boolean(catalogStock),
+      stockLabelText: catalogStockText,
       hasPurchaseHint: Boolean(catalogHint),
       hasActiveHeading: Boolean(catalogHeading),
       activeProductsCount: Array.isArray(catalogData.activeProducts) ? catalogData.activeProducts.length : 0
     });
 
-    if (!catalogAction || !["预订", "查看"].includes(catalogActionText)) {
-      report.errors.push("商品卡动作未表达预订或查看详情");
+    if (!catalogAction || !["预订", "加入购物车", "查看"].includes(catalogActionText)) {
+      report.errors.push("商品卡动作未表达预订、加购或查看详情");
     }
     if (catalogActionSize && (catalogActionSize.width < 44 || catalogActionSize.height < 44)) {
       report.errors.push(`商品卡动作触控区域过小：${catalogActionSize.width}x${catalogActionSize.height}px，最小目标为44x44px`);
     }
-    if (catalogActionText === "预订" && (!Array.isArray(catalogCartStorage) || catalogCartStorage.length === 0 || !catalogCartBarAfter)) {
-      report.errors.push("商品目录预订动作未写入购物车或未展示预订单底栏");
+    if (catalogActionText !== "查看" && (!Array.isArray(catalogCartStorage) || catalogCartStorage.length === 0 || !catalogCartBarAfter)) {
+      report.errors.push("商品目录快捷动作未写入购物车或未展示预订单底栏");
     }
-    if (!catalogStock || !catalogHint || !catalogHeading) {
-      report.errors.push("商品目录缺少库存、预订提示或当前分类标题");
+    if (!catalogHint || !catalogHeading) {
+      report.errors.push("商品目录缺少履约提示或当前分类标题");
+    }
+    // 可用性标签只能是可核对事实；默认能力“可预订”不得回潮。
+    if (catalogStockText && !/^(现货|暂时售罄|已下架|仅余 \d+ 件)$/.test(catalogStockText)) {
+      report.errors.push(`商品卡可用性标签表达不可核对信息：${catalogStockText}`);
     }
     if (!Array.isArray(catalogData.activeProducts) || catalogData.activeProducts.length === 0) {
       report.errors.push("商品目录未渲染活动分类商品清单");
@@ -187,7 +198,7 @@ async function main() {
     const homeActionText = (await homeAction.text()).trim();
     const homeActionSize = await homeAction.size();
     const homeCartBarBefore = await home.$(".home-cart-bar");
-    if (homeActionText === "预订") {
+    if (["预订", "加入购物车"].includes(homeActionText)) {
       await homeAction.tap();
       await sleep(500);
     }
@@ -204,14 +215,14 @@ async function main() {
       quickAddCartCount: Array.isArray(homeCartStorage) ? homeCartStorage.length : 0
     });
 
-    if (!["预订", "查看"].includes(homeActionText)) {
-      report.errors.push("首页商品动作未表达预订或查看详情");
+    if (!["预订", "加入购物车", "查看"].includes(homeActionText)) {
+      report.errors.push("首页商品动作未表达预订、加购或查看详情");
     }
     if (homeActionSize && (homeActionSize.width < 44 || homeActionSize.height < 44)) {
       report.errors.push(`首页商品动作触控区域过小：${homeActionSize.width}x${homeActionSize.height}px，最小目标为44x44px`);
     }
-    if (homeActionText === "预订" && (!Array.isArray(homeCartStorage) || homeCartStorage.length === 0 || !homeCartBarAfter)) {
-      report.errors.push("首页商品预订动作未写入购物车或未展示预订单底栏");
+    if (homeActionText !== "查看" && (!Array.isArray(homeCartStorage) || homeCartStorage.length === 0 || !homeCartBarAfter)) {
+      report.errors.push("首页商品快捷动作未写入购物车或未展示预订单底栏");
     }
 
     const unavailableDetail = await navigateAndWait(miniProgram, "pages/product-detail/index");
@@ -273,10 +284,9 @@ async function main() {
     const checkoutAssetData = await checkout.data();
     const pointsSwitch = await checkout.$(".asset-switch--points");
     const balanceSwitch = await checkout.$(".asset-switch--balance");
+    const sessionAction = await checkout.$(".session-notice__button");
     const benefitPanel = await checkout.$(".benefit-panel");
     const checkoutText = benefitPanel ? await benefitPanel.text() : "";
-    const pointsDisabled = pointsSwitch ? (await pointsSwitch.attribute("disabled")) : null;
-    const balanceDisabled = balanceSwitch ? (await balanceSwitch.attribute("disabled")) : null;
     report.checks.push({
       page: checkout.path,
       state: "zero-member-assets",
@@ -284,25 +294,24 @@ async function main() {
       balanceEnabled: checkoutAssetData.balanceEnabled,
       pointsBalance: checkoutAssetData.pointsBalance,
       balanceFen: checkoutAssetData.balanceFen,
-      pointsDisabled,
-      balanceDisabled,
+      pointsSwitchVisible: Boolean(pointsSwitch),
+      balanceSwitchVisible: Boolean(balanceSwitch),
+      sessionActionVisible: Boolean(sessionAction),
       benefitText: checkoutText.trim()
     });
     if (checkoutAssetData.pointsEnabled !== false || checkoutAssetData.balanceEnabled !== false) {
       report.errors.push("零积分或零余额时抵扣开关仍保持开启");
     }
-    if (!pointsSwitch || !balanceSwitch) {
-      report.errors.push("结算页缺少积分或余额抵扣开关");
-    } else if (pointsDisabled === null) {
-      report.errors.push("零积分时积分抵扣开关未禁用");
+    if (pointsSwitch || balanceSwitch) {
+      report.errors.push("零资产时仍渲染不可用的抵扣开关");
     }
-    if (balanceSwitch && balanceDisabled === null) {
-      report.errors.push("零余额时余额抵扣开关未禁用");
+    if (sessionAction) {
+      report.errors.push("已登录结算页会话提示仍展示返回按钮");
     }
     if (!checkoutText.includes("暂无可用积分") || !checkoutText.includes("暂无可用余额")) {
       report.errors.push("零资产抵扣项缺少明确的不可用说明");
     }
-    await miniProgram.screenshot({ path: "reports/devtools/final-checkout-zero-assets.png" });
+    await captureEvidenceScreenshot(miniProgram, report, "reports/devtools/final-checkout-zero-assets.png");
 
     const orders = await navigateAndWait(miniProgram, "pages/orders/index");
     const ordersData = await orders.data();
@@ -317,7 +326,10 @@ async function main() {
           itemTitle: "草莓奶油蛋糕",
           itemCount: 1,
           orderNoText: "2026-09-12 · 30FC29B0",
+          fulfillmentTypeText: "到店自提",
+          receiverLabel: "联系人",
           receiverContactText: "张三 · 188****0000",
+          expectTimeLabel: "预约取货",
           expectTimeText: "2026-09-13 15:00",
           createdAt: "2026-09-12 10:30",
           totalText: "¥198.00",
@@ -343,13 +355,94 @@ async function main() {
     if (!orderNoText.includes("2026-09-12 · 30FC29B0") || orderNoText.includes("mp_2026")) {
       report.errors.push("订单列表仍展示原始长工程订单号或缺少可读短号");
     }
-    if (!orderMetaText.includes("收货人：张三 · 188****0000") || orderMetaText.includes("18800000000")) {
-      report.errors.push("订单列表联系信息缺少字段标签、手机号未脱敏或仍拼接成不可读字符串");
+    if (!orderMetaText.includes("到店自提 · 联系人：张三 · 188****0000") || orderMetaText.includes("18800000000")) {
+      report.errors.push("订单列表缺少履约方式、自提联系人标签或手机号未脱敏");
     }
-    if (!orderMetaText.includes("期望时间：2026-09-13 15:00")) {
-      report.errors.push("订单列表期望时间缺少字段标签或格式不完整");
+    if (!orderMetaText.includes("预约取货：2026-09-13 15:00")) {
+      report.errors.push("订单列表预约取货时间缺少履约语义或格式不完整");
     }
-    await miniProgram.screenshot({ path: "reports/devtools/final-orders-readable-meta.png" });
+    await captureEvidenceScreenshot(miniProgram, report, "reports/devtools/final-orders-readable-meta.png");
+
+    await orders.setData({ filteredOrders: [], loading: false, emptyText: "暂无订单" });
+    await sleep(180);
+    const orderEmptyState = await orders.$(".yunxi-state");
+    const orderEmptyTitle = orderEmptyState ? await orderEmptyState.$(".yunxi-state__title") : null;
+    const orderEmptyAction = orderEmptyState ? await orderEmptyState.$(".yunxi-state__action") : null;
+    const orderEmptyTitleText = orderEmptyTitle ? (await orderEmptyTitle.text()).trim() : "";
+    const orderEmptyActionText = orderEmptyAction ? (await orderEmptyAction.text()).trim() : "";
+    report.checks.push({
+      page: orders.path,
+      state: "logged-in-empty-orders",
+      orderEmptyTitleText,
+      orderEmptyActionText,
+      hasEmptyState: Boolean(orderEmptyState),
+      hasEmptyAction: Boolean(orderEmptyAction)
+    });
+    if (
+      !orderEmptyState ||
+      orderEmptyTitleText !== "暂无订单" ||
+      orderEmptyActionText !== "去选购"
+    ) {
+      report.errors.push("登录后空订单页缺少完整空态或去选购入口");
+    }
+    await captureEvidenceScreenshot(miniProgram, report, "reports/devtools/final-orders-empty.png");
+
+    const coupons = await navigateAndWait(miniProgram, "pages/coupons/index");
+    await sleep(400);
+    await coupons.setData({
+      loggedIn: true,
+      loading: false,
+      loadFailed: false,
+      activeTab: "available",
+      groups: { available: [], used: [], refunded: [], expired: [] }
+    });
+    await sleep(220);
+    const couponState = await coupons.$(".yunxi-state");
+    const couponTitle = couponState ? await couponState.$(".yunxi-state__title") : null;
+    const couponAction = couponState ? await couponState.$(".yunxi-state__action") : null;
+    const couponTitleText = couponTitle ? (await couponTitle.text()).trim() : "";
+    const couponActionText = couponAction ? (await couponAction.text()).trim() : "";
+    const couponActionSize = couponAction ? await couponAction.size() : null;
+    report.checks.push({
+      page: coupons.path,
+      state: "logged-in-empty-coupons",
+      couponTitleText,
+      couponActionText,
+      couponActionSize
+    });
+    if (!couponState || couponTitleText !== "暂无可用优惠券" || couponActionText !== "去选购") {
+      report.errors.push("登录后空优惠券页缺少完整空态或去选购入口");
+    }
+    if (couponActionSize && (couponActionSize.width < 44 || couponActionSize.height < 44)) {
+      report.errors.push("优惠券空态动作触控区域小于 44px");
+    }
+    await captureEvidenceScreenshot(miniProgram, report, "reports/devtools/final-coupons-empty.png");
+
+    const points = await navigateAndWait(miniProgram, "pages/points/index");
+    await sleep(400);
+    await points.setData({
+      loggedIn: true,
+      loading: false,
+      loadFailed: false,
+      pointsBalance: 0,
+      rows: []
+    });
+    await sleep(220);
+    const pointsState = await points.$(".yunxi-state");
+    const pointsTitle = pointsState ? await pointsState.$(".yunxi-state__title") : null;
+    const pointsAction = pointsState ? await pointsState.$(".yunxi-state__action") : null;
+    const pointsTitleText = pointsTitle ? (await pointsTitle.text()).trim() : "";
+    const pointsActionText = pointsAction ? (await pointsAction.text()).trim() : "";
+    report.checks.push({
+      page: points.path,
+      state: "logged-in-empty-points",
+      pointsTitleText,
+      pointsActionText
+    });
+    if (!pointsState || pointsTitleText !== "暂无积分记录" || pointsActionText !== "去选购") {
+      report.errors.push("登录后空积分页缺少完整空态或去选购入口");
+    }
+    await captureEvidenceScreenshot(miniProgram, report, "reports/devtools/final-points-empty.png");
 
     const profile = await navigateAndWait(miniProgram, "pages/profile/index", true);
     const profileData = await profile.data();
@@ -398,26 +491,25 @@ async function main() {
     if (profileText.includes("VIP 会员") || profileText.includes("8888 6666") || profileText.includes("👤")) {
       report.errors.push("个人中心仍存在矛盾会员等级、虚假会员编号或占位头像");
     }
-    await miniProgram.screenshot({ path: "reports/devtools/final-profile-member-summary.png" });
+    await captureEvidenceScreenshot(miniProgram, report, "reports/devtools/final-profile-member-summary.png");
   } finally {
     await miniProgram.callWxMethod("removeStorageSync", CART_STORAGE_KEY);
     await miniProgram.disconnect();
   }
 
-  if (report.errors.length > 0) {
-    report.status = "FAIL";
-  }
+  report.status = finalizeAuditStatus(report);
   fs.mkdirSync("reports/devtools", { recursive: true });
   fs.writeFileSync(REPORT_PATH, JSON.stringify(report, null, 2), "utf8");
   console.log(`Commerce state audit: ${report.status}`);
   console.log(`Report written to: ${REPORT_PATH}`);
 
-  if (report.errors.length > 0) {
-    for (const error of report.errors) {
-      console.error(`  x ${error}`);
-    }
-    process.exit(1);
+  for (const error of report.errors) {
+    console.error(`  x ${error}`);
   }
+  if (report.blockedReason) {
+    console.log(`  ! ${report.blockedReason}`);
+  }
+  exitForAuditStatus(report.status);
 }
 
 main().catch((error) => {

@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Response
+from fastapi import APIRouter, HTTPException, Query, Response
 
 from app.service.catalog import CatalogApplicationService
 
@@ -18,17 +18,19 @@ def create_storefront_catalog_router(service: CatalogApplicationService) -> APIR
         featured: bool = False,
         sort: str = "",
         limit: int = 50,
+        offset: int = Query(default=0, ge=0),
+        keyword: str = Query(default="", max_length=50),
     ) -> dict[str, Any]:
-        return {
-            "code": 0,
-            "data": await service.list_products(
-                ids=ids,
-                category_id=categoryId,
-                featured=featured,
-                sort=sort,
-                limit=limit,
-            ),
-        }
+        page = await service.list_products_page(
+            ids=ids,
+            category_id=categoryId,
+            featured=featured,
+            sort=sort,
+            limit=limit,
+            offset=offset,
+            keyword=keyword,
+        )
+        return {"code": 0, "data": page.items, "meta": page.meta()}
 
     @router.get("/product-categories")
     async def list_product_categories() -> dict[str, Any]:

@@ -2,20 +2,32 @@ import { ROUTES } from "../../constants/routes";
 import { SHOP_CONFIG } from "../../config/shop";
 import { getMiniappLayoutMetrics } from "../../utils/layout";
 import { addCartItem, getCartItems } from "../../utils/cart";
-import { getCategoryById } from "../../utils/catalog";
 import { formatFen } from "../../utils/money";
 import { syncCustomTabBar } from "../../utils/tab-bar";
-import { listProductCategories, listProducts } from "../../services/products";
-import { getProductImageClass } from "../../utils/bakery";
+import {
+  listProductCategories,
+  fetchProductListing,
+  type ProductCategory
+} from "../../services/products";
+import {
+  getProductActionLabel,
+  getProductAddToastLabel,
+  getProductAvailabilityLabel,
+  getProductImageClass,
+  getProductPriceText,
+  getProductPurchaseHint,
+  isProductPurchasable
+} from "../../utils/bakery";
 import type { CatalogProduct } from "../../types/catalog";
 
-interface CategorySection {
+interface CategorySectionView {
   id: string;
   title: string;
   subtitle: string;
-  products: CatalogProduct[];
+  countLabel: string;
+  loaded: boolean;
+  hasMatches: boolean;
 }
-
 
 interface ProductView extends CatalogProduct {
   priceText: string;
@@ -24,248 +36,209 @@ interface ProductView extends CatalogProduct {
   badgeClass: string;
   imageFailed: boolean;
   isUnavailable: boolean;
+  isDisplayOnly: boolean;
   stockText: string;
   purchaseHint: string;
   actionText: string;
-  isSearchResult?: boolean;
-}
-
-interface CategorySectionView extends CategorySection {
-  countLabel: string;
-  products: ProductView[];
-  hasMatches?: boolean;
-  loaded: boolean;
 }
 
 interface ProductsPageData {
   layoutStyle: string;
   searchText: string;
   storeName: string;
+  branchName: string;
+  businessHours: string;
   loaded: boolean;
   loading: boolean;
   loadFailed: boolean;
   categoriesDegraded: boolean;
-  allProducts: CatalogProduct[];
   categorySections: CategorySectionView[];
   isSingleCategoryLayout: boolean;
-  branchName: string;
-  businessHours: string;
   globalSearchResults: ProductView[];
+  searchMatchCount: number;
+  searchRenderedCount: number;
+  searchHasMore: boolean;
+  searchOffset: number;
+  searchLoading: boolean;
+  searchLoadingMore: boolean;
+  searchFailed: boolean;
+  searchScrollAnchor: string;
+  catalogScrollAnchor: string;
   activeCategoryId: string;
   activeCategoryTitle: string;
-  activeCategorySubtitle: string;
   activeCategoryCountLabel: string;
-  activeSectionProducts: ProductView[];
   activeProducts: ProductView[];
-  visibleProductCount: number;
+  catalogTotal: number;
+  catalogOffset: number;
   hasMoreProducts: boolean;
   loadingMore: boolean;
+  catalogLoading: boolean;
+  // 仅用于请求竞态判定，不参与渲染；直接写 data 避免无谓的 setData 重排。
+  searchDebounceTimer: number;
+  searchRequestId: number;
+  catalogRequestId: number;
   cartItemCount: number;
   cartTotalText: string;
   cartSummaryText: string;
   cartBarVisible: boolean;
 }
 
-const INITIAL_PRODUCTS_PER_SECTION = 12;
-const PRODUCTS_PAGE_SIZE = 12;
-const ALL_PRODUCTS_CATEGORY_ID = "all";
-// 全量目录安全上限：后端默认 50 未覆盖全量，取 500（≥ 当前全量并与默认分页档位拉开量级）；
-// 后续产品决策引入服务端分页后由 total/分页逻辑替换（API 现为纯数组无 total 字段）
-const FULL_CATALOG_LIMIT = 500;
-const FALLBACK_CATEGORY_TITLE = "特色推荐";
-const RAW_CATEGORY_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)+$/i;
-const GENERIC_CATEGORY_TOKENS = new Set([
-  "",
-  "商品",
-  "价格",
-  "推荐",
-  "蛋糕",
-  "在售",
-  "现做",
-  "4寸",
-  "6寸",
-  "8寸",
-  "10寸",
-  "12寸",
-  "14寸",
-  "16寸"
-]);
-
-function getSearchText(product: CatalogProduct): string {
-  return [
-    product.title,
-    product.subtitle,
-    product.categoryId,
-    product.description,
-    ...product.tags,
-    ...product.specs
-  ].join(" ");
-}
-
-function normalizeCategoryId(title: string): string {
-  return title
-    .trim()
-    .toLocaleLowerCase()
-    .replace(/[^\w\u4e00-\u9fa5]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
-function isUsefulCategoryToken(value: string): boolean {
-  const token = value.trim();
-  if (!token || GENERIC_CATEGORY_TOKENS.has(token)) {
-    return false;
-  }
-  if (RAW_CATEGORY_ID_PATTERN.test(token)) {
-    return false;
-  }
-  return !/^\d+\s*寸$/.test(token);
-}
-
-function normalizeCategoryToken(value: string): string {
-  return value.trim().replace(/\s+/g, "").toLocaleLowerCase();
-}
-
-function isProductTitleToken(value: string, product: CatalogProduct): boolean {
-  const token = normalizeCategoryToken(value);
-  return token === normalizeCategoryToken(product.title) || token === normalizeCategoryToken(product.subtitle);
-}
-
-function isUsefulProductCategoryToken(value: string, product: CatalogProduct): boolean {
-  return isUsefulCategoryToken(value) && !isProductTitleToken(value, product);
-}
-
-function getProductCategoryTitle(product: CatalogProduct): string {
-  if (product.categoryName && isUsefulProductCategoryToken(product.categoryName, product)) {
-    return product.categoryName;
-  }
-  const localCategory = getCategoryById(product.categoryId);
-  if (localCategory?.title && isUsefulProductCategoryToken(localCategory.title, product)) {
-    return localCategory.title;
-  }
-  if (isUsefulProductCategoryToken(product.categoryId, product)) {
-    return product.categoryId;
-  }
-  return FALLBACK_CATEGORY_TITLE;
-}
-
-function buildSectionsFromProducts(products: CatalogProduct[]): CategorySectionView[] {
-  const buckets = new Map<string, CategorySection>();
-  const allProductsSection: CategorySection = {
-    id: ALL_PRODUCTS_CATEGORY_ID,
-    title: "全部商品",
-    subtitle: "门店在售商品",
-    products
-  };
-
-  products.forEach((product) => {
-    const title = getProductCategoryTitle(product);
-    const id = normalizeCategoryId(title) || "youzan-synced";
-    const existing = buckets.get(id);
-    if (existing) {
-      existing.products.push(product);
-      return;
-    }
-    let subtitle = "匠心手作";
-    if (title.includes("蛋糕")) {
-      subtitle = "建议提前预订";
-    } else if (title.includes("面包") || title.includes("甜品")) {
-      subtitle = "麦香现烤";
-    } else if (title.includes("礼盒") || title.includes("糕点")) {
-      subtitle = "手作茶点";
-    }
-    buckets.set(id, {
-      id,
-      title,
-      subtitle,
-      products: [product]
-    });
-  });
-
-  return [allProductsSection, ...Array.from(buckets.values())]
-    .filter((section) => section.products.length)
-    .map(buildSectionView);
-}
-
-
-
 interface ProductBadge {
   text: string;
   className: string;
 }
 
+const CATALOG_PAGE_SIZE = 12;
+const SEARCH_PAGE_SIZE = 30;
+const SEARCH_DEBOUNCE_MS = 300;
+const ALL_PRODUCTS_CATEGORY_ID = "all";
+const FALLBACK_CATEGORY_TITLE = "其他商品";
+// 滚动锚点：新关键词或新分类后回到列表顶部，避免缩窄结果后停在旧偏移。
+const CATALOG_SCROLL_ANCHOR = "products-catalog-top";
+const SEARCH_SCROLL_ANCHOR = "products-search-top";
+
+function getCategoryDisplayTitle(title: string): string {
+  if (title === "芸熙周边惊喜连连") return "品牌周边";
+  if (title === "招牌千层蛋糕") return "招牌千层";
+  if (title === "甜品台茶歇") return "手作茶歇";
+  if (title === "春节茶礼盒") return "新春礼盒";
+  if (title === "糕点&礼盒") return "伴手礼盒";
+  return title || FALLBACK_CATEGORY_TITLE;
+}
+
+function getCategoryWeight(title: string): number {
+  if (title === "全部商品") return 100;
+  if (title === "生日蛋糕") return 95;
+  if (title === "招牌千层") return 90;
+  if (title === "甜品和面包") return 85;
+  if (title === "伴手礼盒") return 80;
+  if (title === "手作茶歇") return 75;
+  if (title.includes("礼盒")) return 70;
+  if (title === "品牌周边") return 20;
+  if (title === FALLBACK_CATEGORY_TITLE) return 10;
+  return 50;
+}
+
+function refineCategorySections(sections: CategorySectionView[]): CategorySectionView[] {
+  return sections
+    .map((section) => ({
+      ...section,
+      title: getCategoryDisplayTitle(section.title)
+    }))
+    .sort((left, right) => getCategoryWeight(right.title) - getCategoryWeight(left.title));
+}
+
+function buildCategorySections(
+  categories: ProductCategory[],
+  totalProducts: number
+): CategorySectionView[] {
+  const allSection: CategorySectionView = {
+    id: ALL_PRODUCTS_CATEGORY_ID,
+    title: "全部商品",
+    subtitle: `${totalProducts} 款`,
+    countLabel: String(totalProducts),
+    loaded: true,
+    hasMatches: totalProducts > 0
+  };
+  const remoteSections = categories.map((category) => ({
+    id: category.id,
+    title: category.title,
+    subtitle: `${category.productCount || 0} 款`,
+    countLabel: String(category.productCount || 0),
+    loaded: false,
+    hasMatches: category.productCount > 0
+  }));
+  return refineCategorySections([allSection, ...remoteSections]);
+}
+
+function withCategoryTotal(
+  sections: CategorySectionView[],
+  categoryId: string,
+  totalProducts: number
+): CategorySectionView[] {
+  return sections.map((section) =>
+    section.id === categoryId
+      ? {
+          ...section,
+          subtitle: `${totalProducts} 款`,
+          countLabel: String(totalProducts),
+          loaded: true,
+          hasMatches: totalProducts > 0
+        }
+      : section
+  );
+}
+
 function getTruthfulBadge(product: CatalogProduct): ProductBadge {
-  // 徽标只表达可核对的事实：下架状态、真实库存，以及商品标签中的现货标记。
-  // 招牌/热卖/新品/限量没有数据来源，不再本地推断展示。
+  // 图片角标只承担异常状态，库存/现货事实交给卡片内的可用性标签，避免同一事实重复展示。
+  // 招牌/热卖/新品/限量没有数据来源，不在本地推断展示。
+  if (product.isPurchasable === false) {
+    return { text: "仅供展示", className: "is-display-only" };
+  }
   if (!product.isActive) {
     return { text: "已下架", className: "is-inactive" };
   }
   if (product.stock <= 0) {
     return { text: "暂时售罄", className: "is-sold-out" };
   }
-  if (product.tags.some((tag) => tag.trim() === "现货")) {
-    return { text: "现货", className: "is-in-stock" };
-  }
   return { text: "", className: "" };
 }
 
-function getStockText(product: CatalogProduct): string {
-  if (!product.isActive) {
-    return "已下架";
-  }
-  if (product.stock <= 0) {
-    return "暂时售罄";
-  }
-  if (product.stock <= 5) {
-    return "仅余 " + product.stock + " 件";
-  }
-  return "可预订";
-}
-
 function getPurchaseHint(product: CatalogProduct): string {
+  if (product.isPurchasable === false) {
+    return getProductPurchaseHint(product);
+  }
   if (!product.isActive || product.stock <= 0) {
     return "可咨询客服或先看其他商品";
   }
-  if (product.tags.some((tag) => tag.includes("现货") || tag.includes("当日"))) {
-    return "有现货时可当天取，建议先确认";
-  }
-  if (product.categoryName?.includes("蛋糕") || product.categoryId.includes("cake")) {
-    return "建议提前1天预订";
-  }
-  return "自提价展示，闪送费下单前确认";
+  return getProductPurchaseHint(product);
 }
 
 function toProductView(product: CatalogProduct): ProductView {
   const badge = getTruthfulBadge(product);
-  const isUnavailable = !product.isActive || product.stock <= 0;
+  const isUnavailable = product.isPurchasable === false || !product.isActive || product.stock <= 0;
   return {
     ...product,
-    priceText: formatFen(product.priceFen),
+    priceText: getProductPriceText(product, formatFen(product.priceFen)),
     imageClass: getProductImageClass(product),
     badgeText: badge.text,
     badgeClass: badge.className,
     imageFailed: false,
     isUnavailable,
-    stockText: getStockText(product),
+    isDisplayOnly: !isProductPurchasable(product),
+    stockText: getProductAvailabilityLabel(product),
     purchaseHint: getPurchaseHint(product),
-    actionText: isUnavailable ? "查看" : "预订"
+    actionText: getProductActionLabel(product)
   };
 }
 
-function buildSectionView(section: CategorySection): CategorySectionView {
+function mergeProductViews(existing: ProductView[], incoming: ProductView[]): ProductView[] {
+  const seen = new Set(existing.map((product) => product.id));
+  return [
+    ...existing,
+    ...incoming.filter((product) => {
+      if (seen.has(product.id)) {
+        return false;
+      }
+      seen.add(product.id);
+      return true;
+    })
+  ];
+}
+
+// 搜索态统一复位入口：清空关键词、切分类和重试时不能只清列表而漏掉计数。
+function getEmptySearchState() {
   return {
-    ...section,
-    countLabel: String(section.products.length),
-    products: section.products.map((product) => toProductView(product)),
-    loaded: true
+    globalSearchResults: [] as ProductView[],
+    searchMatchCount: 0,
+    searchRenderedCount: 0,
+    searchHasMore: false,
+    searchOffset: 0,
+    searchLoading: false,
+    searchLoadingMore: false,
+    searchFailed: false,
+    searchScrollAnchor: ""
   };
-}
-
-function getVisibleProducts(products: ProductView[], visibleProductCount: number): ProductView[] {
-  return products.slice(0, visibleProductCount);
-}
-
-function getInitialVisibleCount(products: ProductView[]): number {
-  return Math.min(INITIAL_PRODUCTS_PER_SECTION, products.length);
 }
 
 function prefetchProductImages(products: ProductView[]): void {
@@ -288,52 +261,8 @@ function getCartQuantity(productId: string): number {
     .reduce((sum, item) => sum + item.quantity, 0);
 }
 
-function getProductFromViews(products: ProductView[], productId: string): CatalogProduct | undefined {
+function getProductFromViews(products: ProductView[], productId: string): ProductView | undefined {
   return products.find((product) => product.id === productId);
-}
-
-function refineCategorySections(sections: CategorySectionView[]): CategorySectionView[] {
-  // 1. 精简分类标题，保持界面文案统一
-  const renamed = sections.map((section) => {
-    let title = section.title;
-    if (title === "芸熙周边惊喜连连") title = "品牌周边";
-    else if (title === "招牌千层蛋糕") title = "招牌千层";
-    else if (title === "甜品台茶歇") title = "手作茶歇";
-    else if (title === "春节茶礼盒") title = "新春礼盒";
-    else if (title === "糕点&礼盒") title = "伴手礼盒";
-    
-    let subtitle = section.subtitle;
-    if (title === "品牌周边") subtitle = "生活美学";
-    else if (title === "新春礼盒") subtitle = "礼送心意";
-    else if (title === "伴手礼盒") subtitle = "手作温情";
-    else if (title === "手作茶歇") subtitle = "专享定制";
-    else if (title === "招牌千层") subtitle = "层层甜蜜";
-    else if (title === "全部商品") subtitle = "人气汇聚";
-    else if (title === "生日蛋糕") subtitle = "建议提前预订";
-    else if (title === "甜品和面包") subtitle = "麦香现烤";
-
-    return {
-      ...section,
-      title,
-      subtitle
-    };
-  });
-
-  // 2. 按分类优先级权重排序
-  const getWeight = (title: string): number => {
-    if (title === "全部商品") return 100;
-    if (title === "生日蛋糕") return 95;
-    if (title === "招牌千层") return 90;
-    if (title === "甜品和面包") return 85;
-    if (title === "伴手礼盒") return 80;
-    if (title === "手作茶歇") return 75;
-    if (title.includes("礼盒")) return 70;
-    if (title === "品牌周边") return 20;
-    if (title === "其他") return 10;
-    return 50; // 默认权重
-  };
-
-  return renamed.sort((a, b) => getWeight(b.title) - getWeight(a.title));
 }
 
 Page<ProductsPageData, WechatMiniprogram.IAnyObject>({
@@ -347,19 +276,30 @@ Page<ProductsPageData, WechatMiniprogram.IAnyObject>({
     loading: false,
     loadFailed: false,
     categoriesDegraded: false,
-    allProducts: [] as CatalogProduct[],
     categorySections: [] as CategorySectionView[],
     isSingleCategoryLayout: false,
     globalSearchResults: [] as ProductView[],
+    searchMatchCount: 0,
+    searchRenderedCount: 0,
+    searchHasMore: false,
+    searchOffset: 0,
+    searchLoading: false,
+    searchLoadingMore: false,
+    searchFailed: false,
+    searchScrollAnchor: "",
+    catalogScrollAnchor: "",
     activeCategoryId: ALL_PRODUCTS_CATEGORY_ID,
     activeCategoryTitle: "全部商品",
-    activeCategorySubtitle: "门店在售商品",
     activeCategoryCountLabel: "0",
-    activeSectionProducts: [] as ProductView[],
     activeProducts: [] as ProductView[],
-    visibleProductCount: 0,
+    catalogTotal: 0,
+    catalogOffset: 0,
     hasMoreProducts: false,
     loadingMore: false,
+    catalogLoading: false,
+    searchDebounceTimer: 0,
+    searchRequestId: 0,
+    catalogRequestId: 0,
     cartItemCount: 0,
     cartTotalText: "¥0.00",
     cartSummaryText: "还没有选择商品",
@@ -372,93 +312,69 @@ Page<ProductsPageData, WechatMiniprogram.IAnyObject>({
     syncCustomTabBar(ROUTES.products);
     this.refreshCartSummary();
   },
+  onUnload() {
+    this.clearSearchDebounce();
+  },
   goHome() {
     wx.switchTab({ url: ROUTES.home });
+  },
+  clearSearchDebounce() {
+    if (this.data.searchDebounceTimer) {
+      clearTimeout(this.data.searchDebounceTimer);
+      this.data.searchDebounceTimer = 0;
+    }
+  },
+  resetSearchState() {
+    // 复位必须同时作废在途请求，否则旧关键词响应会覆盖清空后的状态。
+    this.clearSearchDebounce();
+    this.data.searchRequestId += 1;
+    this.setData(getEmptySearchState());
   },
   async loadProducts() {
     if (this.data.loaded || this.data.loading) {
       return;
     }
+    const requestId = this.data.catalogRequestId + 1;
+    this.data.catalogRequestId = requestId;
     this.setData({ loading: true, loadFailed: false });
     try {
-      // 商品与分类独立结算：主列表失败整页可重试，分类失败降级为本地分区分组
+      // 商品与分类独立结算：主列表失败整页可重试，分类失败降级为单分类浏览。
       const [productsResult, categoriesResult] = await Promise.allSettled([
-        listProducts({ limit: FULL_CATALOG_LIMIT, sort: "popular" }),
+        fetchProductListing({ limit: CATALOG_PAGE_SIZE, offset: 0, sort: "popular" }),
         listProductCategories()
       ]);
+      if (requestId !== this.data.catalogRequestId) {
+        return;
+      }
       if (productsResult.status === "rejected") {
         this.setData({ loadFailed: true });
         return;
       }
-      const products = productsResult.value;
-      if (categoriesResult.status === "rejected") {
-        const fallbackSections = refineCategorySections(buildSectionsFromProducts(products));
-        this.setData({
-          allProducts: products,
-          categorySections: fallbackSections,
-          isSingleCategoryLayout: fallbackSections.length <= 1,
-          categoriesDegraded: true,
-          loaded: true
-        });
-        if (fallbackSections.length) {
-          this.applyActiveCategory(fallbackSections[0]);
-        }
-        return;
-      }
-      const categories = categoriesResult.value;
-      
-      const remoteSections = categories.map((category) => {
-        let subtitle = "匠心推荐";
-        const title = category.title;
-        if (title.includes("蛋糕")) {
-          subtitle = "建议提前预订";
-        } else if (title.includes("面包") || title.includes("烘焙") || title.includes("甜品")) {
-          subtitle = "麦香现烤";
-        } else if (title.includes("礼盒") || title.includes("手作") || title.includes("糕点")) {
-          subtitle = "手工茶点";
-        } else if (title.includes("茶") || title.includes("饮")) {
-          subtitle = "清爽特调";
-        } else if (title.includes("周边")) {
-          subtitle = "芸熙好物";
-        } else if (title.includes("千层")) {
-          subtitle = "层层甜蜜";
-        }
-        return {
-          id: category.id,
-          title: category.title,
-          subtitle,
-          products: [] as ProductView[],
-          loaded: false,
-          countLabel: String(category.productCount || 0),
-          hasMatches: true
-        };
-      });
-
-      const categorySections = [
-        {
-          id: ALL_PRODUCTS_CATEGORY_ID,
-          title: "全部商品",
-          subtitle: "人气汇聚",
-          products: products.map((product) => toProductView(product)),
-          loaded: true,
-          countLabel: String(products.length),
-          hasMatches: products.length > 0
-        },
-        ...remoteSections
-      ];
-      
-      const sortedSections = refineCategorySections(categorySections);
+      const page = productsResult.value;
+      const categories = categoriesResult.status === "fulfilled" ? categoriesResult.value : [];
+      const categorySections = buildCategorySections(categories, page.meta.total);
+      const activeProducts = page.items.map((product) => toProductView(product));
       this.setData({
-        allProducts: products,
-        categorySections: sortedSections,
-        isSingleCategoryLayout: sortedSections.length <= 1,
-        loaded: true
+        categorySections,
+        isSingleCategoryLayout: categorySections.length <= 1,
+        categoriesDegraded: categoriesResult.status === "rejected",
+        loaded: true,
+        loadFailed: false,
+        activeCategoryId: ALL_PRODUCTS_CATEGORY_ID,
+        activeCategoryTitle: "全部商品",
+        activeCategoryCountLabel: String(page.meta.total),
+        activeProducts,
+        catalogTotal: page.meta.total,
+        catalogOffset: page.meta.offset + page.meta.limit,
+        hasMoreProducts: page.meta.hasMore,
+        loadingMore: false,
+        catalogLoading: false
       });
-      if (sortedSections.length) {
-        this.applyActiveCategory(sortedSections[0]);
-      }
+      prefetchProductImages(activeProducts);
     } finally {
-      this.setData({ loading: false });
+      if (requestId === this.data.catalogRequestId) {
+        this.setData({ loading: false });
+      }
     }
   },
   retryLoad() {
@@ -470,146 +386,266 @@ Page<ProductsPageData, WechatMiniprogram.IAnyObject>({
       loaded: false,
       loadFailed: false,
       categoriesDegraded: false,
-      categorySections: [],
-      globalSearchResults: []
+      categorySections: []
     });
+    this.resetSearchState();
     void this.loadProducts();
   },
-  applyActiveCategory(section: CategorySectionView) {
-    const visibleProductCount = getInitialVisibleCount(section.products);
-    const activeProducts = getVisibleProducts(section.products, visibleProductCount);
+  async selectCategory(section: CategorySectionView) {
+    // 失败时要能回到切换前的真实列表，不能让用户看到空目录。
+    const previousCatalog = {
+      activeCategoryId: this.data.activeCategoryId,
+      activeCategoryTitle: this.data.activeCategoryTitle,
+      activeCategoryCountLabel: this.data.activeCategoryCountLabel,
+      activeProducts: this.data.activeProducts,
+      catalogTotal: this.data.catalogTotal,
+      catalogOffset: this.data.catalogOffset,
+      hasMoreProducts: this.data.hasMoreProducts
+    };
+    const requestId = this.data.catalogRequestId + 1;
+    this.data.catalogRequestId = requestId;
     this.setData({
       activeCategoryId: section.id,
       activeCategoryTitle: section.title,
-      activeCategorySubtitle: section.subtitle,
       activeCategoryCountLabel: section.countLabel,
-      activeSectionProducts: section.products,
-      visibleProductCount,
-      activeProducts,
-      hasMoreProducts: visibleProductCount < section.products.length,
-      loadingMore: false
+      catalogLoading: true,
+      loadingMore: false,
+      catalogOffset: 0,
+      hasMoreProducts: false
     });
-    prefetchProductImages(activeProducts);
+    try {
+      const page = await fetchProductListing({
+        categoryId: section.id === ALL_PRODUCTS_CATEGORY_ID ? undefined : section.id,
+        limit: CATALOG_PAGE_SIZE,
+        offset: 0,
+        sort: "popular"
+      });
+      if (requestId !== this.data.catalogRequestId) {
+        return;
+      }
+      const activeProducts = page.items.map((product) => toProductView(product));
+      this.setData({
+        activeProducts,
+        catalogTotal: page.meta.total,
+        catalogOffset: page.meta.offset + page.meta.limit,
+        hasMoreProducts: page.meta.hasMore,
+        activeCategoryCountLabel: String(page.meta.total),
+        catalogLoading: false,
+        categorySections: withCategoryTotal(
+          this.data.categorySections,
+          section.id,
+          page.meta.total
+        )
+      });
+      prefetchProductImages(activeProducts);
+      this.resetCatalogScrollPosition();
+    } catch {
+      if (requestId !== this.data.catalogRequestId) {
+        return;
+      }
+      // 分类加载失败：回滚到切换前分类，既不展示别的分类商品，也不把列表清空。
+      this.setData({
+        ...previousCatalog,
+        catalogLoading: false
+      });
+      wx.showToast({ title: "分类加载失败，请稍后重试", icon: "none" });
+    }
   },
-  applySearch(keyword: string) {
-    const searchText = keyword.trim().toLocaleLowerCase();
-    if (!searchText) {
-      this.setData({ globalSearchResults: [] });
+  async switchCategory(event: WechatMiniprogram.TouchEvent) {
+    const categoryId = String(event.currentTarget.dataset.categoryId || "");
+    if (!categoryId || categoryId === this.data.activeCategoryId) {
       return;
     }
-
-    const matchedProducts = this.data.allProducts.filter((product) =>
-      getSearchText(product).toLocaleLowerCase().includes(searchText)
+    const section = this.data.categorySections.find((item) => item.id === categoryId);
+    if (!section) {
+      return;
+    }
+    this.setData({ searchText: "" });
+    this.resetSearchState();
+    await this.selectCategory(section);
+  },
+  switchToAll() {
+    // 分类空态兜底：一键切回全部商品
+    this.setData({ searchText: "" });
+    this.resetSearchState();
+    const allSection = this.data.categorySections.find(
+      (section) => section.id === ALL_PRODUCTS_CATEGORY_ID
     );
-
+    if (allSection && allSection.id !== this.data.activeCategoryId) {
+      void this.selectCategory(allSection);
+    }
+  },
+  async loadMoreProducts() {
+    if (this.data.loadingMore || this.data.catalogLoading || !this.data.hasMoreProducts) {
+      return;
+    }
+    const requestId = this.data.catalogRequestId;
+    const categoryId =
+      this.data.activeCategoryId === ALL_PRODUCTS_CATEGORY_ID
+        ? undefined
+        : this.data.activeCategoryId;
+    this.setData({ loadingMore: true });
+    try {
+      const page = await fetchProductListing({
+        categoryId,
+        limit: CATALOG_PAGE_SIZE,
+        offset: this.data.catalogOffset,
+        sort: "popular"
+      });
+      if (requestId !== this.data.catalogRequestId) {
+        return;
+      }
+      const incoming = page.items.map((product) => toProductView(product));
+      const activeProducts = mergeProductViews(this.data.activeProducts, incoming);
+      this.setData({
+        activeProducts,
+        catalogTotal: page.meta.total,
+        catalogOffset: page.meta.offset + page.meta.limit,
+        hasMoreProducts: page.meta.hasMore,
+        categorySections: withCategoryTotal(
+          this.data.categorySections,
+          this.data.activeCategoryId,
+          page.meta.total
+        )
+      });
+      prefetchProductImages(incoming);
+    } catch {
+      if (requestId === this.data.catalogRequestId) {
+        wx.showToast({ title: "加载更多失败，请重试", icon: "none" });
+      }
+    } finally {
+      if (requestId === this.data.catalogRequestId) {
+        this.setData({ loadingMore: false });
+      }
+    }
+  },
+  isCurrentSearch(requestId: number, keyword: string): boolean {
+    return requestId === this.data.searchRequestId && this.data.searchText.trim() === keyword;
+  },
+  scheduleSearch(keyword: string) {
+    this.clearSearchDebounce();
+    const nextKeyword = keyword.trim();
+    if (!nextKeyword) {
+      this.resetSearchState();
+      return;
+    }
+    this.data.searchDebounceTimer = setTimeout(() => {
+      this.data.searchDebounceTimer = 0;
+      void this.runSearch(nextKeyword);
+    }, SEARCH_DEBOUNCE_MS);
+  },
+  async runSearch(keyword: string) {
+    const activeKeyword = keyword.trim();
+    if (!activeKeyword) {
+      return;
+    }
+    const requestId = this.data.searchRequestId + 1;
+    this.data.searchRequestId = requestId;
     this.setData({
-      globalSearchResults: matchedProducts.map((product) => toProductView(product))
+      searchLoading: true,
+      searchLoadingMore: false,
+      searchFailed: false
+    });
+    try {
+      const page = await fetchProductListing({
+        keyword: activeKeyword,
+        limit: SEARCH_PAGE_SIZE,
+        offset: 0,
+        sort: "popular"
+      });
+      if (!this.isCurrentSearch(requestId, activeKeyword)) {
+        return;
+      }
+      const globalSearchResults = page.items.map((product) => toProductView(product));
+      this.setData({
+        globalSearchResults,
+        searchMatchCount: page.meta.total,
+        searchRenderedCount: globalSearchResults.length,
+        searchHasMore: page.meta.hasMore,
+        searchOffset: page.meta.offset + page.meta.limit,
+        searchLoading: false,
+        searchFailed: false
+      });
+      prefetchProductImages(globalSearchResults);
+      this.resetSearchScrollPosition();
+    } catch {
+      if (!this.isCurrentSearch(requestId, activeKeyword)) {
+        return;
+      }
+      this.setData({
+        ...getEmptySearchState(),
+        searchFailed: true
+      });
+    }
+  },
+  retrySearch() {
+    const keyword = this.data.searchText.trim();
+    if (!keyword) {
+      return;
+    }
+    void this.runSearch(keyword);
+  },
+  async loadMoreSearchResults() {
+    const keyword = this.data.searchText.trim();
+    if (
+      !keyword ||
+      this.data.searchLoading ||
+      this.data.searchLoadingMore ||
+      !this.data.searchHasMore
+    ) {
+      return;
+    }
+    const requestId = this.data.searchRequestId;
+    this.setData({ searchLoadingMore: true });
+    try {
+      const page = await fetchProductListing({
+        keyword,
+        limit: SEARCH_PAGE_SIZE,
+        offset: this.data.searchOffset,
+        sort: "popular"
+      });
+      if (!this.isCurrentSearch(requestId, keyword)) {
+        return;
+      }
+      const incoming = page.items.map((product) => toProductView(product));
+      const globalSearchResults = mergeProductViews(this.data.globalSearchResults, incoming);
+      this.setData({
+        globalSearchResults,
+        searchMatchCount: page.meta.total,
+        searchRenderedCount: globalSearchResults.length,
+        searchHasMore: page.meta.hasMore,
+        searchOffset: page.meta.offset + page.meta.limit
+      });
+      prefetchProductImages(incoming);
+    } catch {
+      if (this.isCurrentSearch(requestId, keyword)) {
+        wx.showToast({ title: "加载更多失败，请重试", icon: "none" });
+      }
+    } finally {
+      if (this.isCurrentSearch(requestId, keyword)) {
+        this.setData({ searchLoadingMore: false });
+      }
+    }
+  },
+  resetSearchScrollPosition() {
+    // scroll-into-view 只有值变化才会生效：先清空再指向顶部锚点。
+    this.setData({ searchScrollAnchor: "" }, () => {
+      this.setData({ searchScrollAnchor: SEARCH_SCROLL_ANCHOR });
+    });
+  },
+  resetCatalogScrollPosition() {
+    this.setData({ catalogScrollAnchor: "" }, () => {
+      this.setData({ catalogScrollAnchor: CATALOG_SCROLL_ANCHOR });
     });
   },
   onSearchInput(event: WechatMiniprogram.Input) {
     const value = String(event.detail.value || "");
     this.setData({ searchText: value });
-    this.applySearch(value);
+    this.scheduleSearch(value);
   },
   clearSearch() {
-    this.setData({
-      searchText: "",
-      globalSearchResults: []
-    });
-  },
-  async switchCategory(event: WechatMiniprogram.TouchEvent) {
-    const categoryId = event.currentTarget.dataset.categoryId as string;
-    const sectionIndex = this.data.categorySections.findIndex((item) => item.id === categoryId);
-    if (sectionIndex === -1) {
-      return;
-    }
-
-    const section = this.data.categorySections[sectionIndex];
-    
-    this.setData({
-      searchText: "",
-      globalSearchResults: []
-    });
-
-    if (!section.loaded && section.id !== ALL_PRODUCTS_CATEGORY_ID) {
-      this.setData({ loading: true });
-      try {
-        const products = await listProducts({ categoryId: section.id, sort: "popular" });
-        const productViews = products.map((product) => toProductView(product));
-
-        // 将新商品合并到 allProducts 和“全部商品”分区
-        const { allProducts, categorySections } = this.data;
-        const existingIds = new Set(allProducts.map((p) => p.id));
-        const newProducts = products.filter((p) => !existingIds.has(p.id));
-
-        if (newProducts.length > 0) {
-          const updatedAllProducts = [...allProducts, ...newProducts];
-          const allSectionIndex = categorySections.findIndex((s) => s.id === ALL_PRODUCTS_CATEGORY_ID);
-          
-          if (allSectionIndex !== -1) {
-            const allSection = categorySections[allSectionIndex];
-            const updatedAllSectionProducts = [...allSection.products, ...newProducts.map((product) => toProductView(product))];
-            
-            this.setData({
-              allProducts: updatedAllProducts,
-              [`categorySections[${allSectionIndex}].products`]: updatedAllSectionProducts,
-              [`categorySections[${allSectionIndex}].countLabel`]: String(updatedAllSectionProducts.length)
-            });
-          }
-        }
-
-        const key = `categorySections[${sectionIndex}]`;
-        const updatedSection = {
-          ...section,
-          products: productViews,
-          loaded: true,
-          countLabel: String(productViews.length),
-          hasMatches: productViews.length > 0
-        };
-        this.setData({ [key]: updatedSection });
-        this.applyActiveCategory(updatedSection);
-      } catch {
-        // 分类懒加载失败：保留全部商品并标记降级，不清空当前内容
-        this.setData({ categoriesDegraded: true });
-        wx.showToast({ title: "分类加载失败，已展示全部商品", icon: "none" });
-        this.applyActiveCategory(section);
-      } finally {
-        this.setData({ loading: false });
-      }
-      return;
-    }
-
-    this.applyActiveCategory(section);
-  },
-  switchToAll() {
-    // 分类空态兜底：一键切回全部商品
-    this.setData({
-      searchText: "",
-      globalSearchResults: [],
-      activeCategoryId: ALL_PRODUCTS_CATEGORY_ID
-    });
-    const allSection = this.data.categorySections.find((section) => section.id === ALL_PRODUCTS_CATEGORY_ID);
-    if (allSection) {
-      this.applyActiveCategory(allSection);
-    }
-  },
-  loadMoreProducts() {
-    if (this.data.loadingMore || !this.data.hasMoreProducts) {
-      return;
-    }
-    const visibleProductCount = Math.min(
-      this.data.visibleProductCount + PRODUCTS_PAGE_SIZE,
-      this.data.activeSectionProducts.length
-    );
-    const activeProducts = getVisibleProducts(this.data.activeSectionProducts, visibleProductCount);
-    this.setData({
-      loadingMore: true,
-      visibleProductCount,
-      activeProducts,
-      hasMoreProducts: visibleProductCount < this.data.activeSectionProducts.length
-    });
-    prefetchProductImages(activeProducts.slice(Math.max(0, visibleProductCount - PRODUCTS_PAGE_SIZE)));
-    this.setData({ loadingMore: false });
+    this.setData({ searchText: "" });
+    this.resetSearchState();
   },
   refreshCartSummary() {
     const cartItems = getCartItems();
@@ -618,20 +654,20 @@ Page<ProductsPageData, WechatMiniprogram.IAnyObject>({
     this.setData({
       cartItemCount,
       cartTotalText: formatFen(cartTotalFen),
-      cartSummaryText: cartItemCount > 0 ? cartItemCount + " 件已选 · 闪送费下单前确认" : "还没有选择商品",
+      cartSummaryText:
+        cartItemCount > 0 ? cartItemCount + " 件已选 · 闪送费下单前确认" : "还没有选择商品",
       cartBarVisible: cartItemCount > 0
     });
   },
   quickAddProduct(event: WechatMiniprogram.TouchEvent) {
-    const productId = event.currentTarget.dataset.id as string;
+    const productId = String(event.currentTarget.dataset.id || "");
     if (!productId) {
       return;
     }
     const product =
-      getProductFromViews(this.data.activeSectionProducts, productId) ||
-      getProductFromViews(this.data.globalSearchResults, productId) ||
-      this.data.allProducts.find((item) => item.id === productId);
-    if (!product || !product.isActive || product.stock <= 0) {
+      getProductFromViews(this.data.activeProducts, productId) ||
+      getProductFromViews(this.data.globalSearchResults, productId);
+    if (!product || product.isPurchasable === false || !product.isActive || product.stock <= 0) {
       wx.navigateTo({ url: `${ROUTES.productDetail}?id=${productId}` });
       return;
     }
@@ -646,33 +682,26 @@ Page<ProductsPageData, WechatMiniprogram.IAnyObject>({
       imageUrl: product.imageUrl,
       priceFen: product.priceFen,
       quantity: 1,
-      stock: product.stock,
+      stock: product.stock
     });
     this.refreshCartSummary();
-    wx.showToast({ title: "已加入预订单", icon: "success" });
+    wx.showToast({ title: getProductAddToastLabel(product), icon: "success" });
   },
   onProductImageError(event: WechatMiniprogram.TouchEvent) {
-    // 图片运行时加载失败：按商品定位全部命中项并切换占位，保持固定宽高
-    const productId = event.currentTarget.dataset.id as string;
+    // 图片运行时加载失败：按商品定位当前渲染项并切换占位，保持固定宽高。
+    const productId = String(event.currentTarget.dataset.id || "");
     if (!productId) {
       return;
     }
     const updates: Record<string, boolean> = {};
-    this.data.categorySections.forEach((section, sectionIndex) => {
-      section.products.forEach((product, productIndex) => {
-        if (product.id === productId && !product.imageFailed) {
-          updates[`categorySections[${sectionIndex}].products[${productIndex}].imageFailed`] = true;
-        }
-      });
+    this.data.activeProducts.forEach((product, productIndex) => {
+      if (product.id === productId && !product.imageFailed) {
+        updates[`activeProducts[${productIndex}].imageFailed`] = true;
+      }
     });
     this.data.globalSearchResults.forEach((product, resultIndex) => {
       if (product.id === productId && !product.imageFailed) {
         updates[`globalSearchResults[${resultIndex}].imageFailed`] = true;
-      }
-    });
-    this.data.activeProducts.forEach((product, productIndex) => {
-      if (product.id === productId && !product.imageFailed) {
-        updates[`activeProducts[${productIndex}].imageFailed`] = true;
       }
     });
     if (Object.keys(updates).length > 0) {
@@ -680,7 +709,10 @@ Page<ProductsPageData, WechatMiniprogram.IAnyObject>({
     }
   },
   openProduct(event: WechatMiniprogram.TouchEvent) {
-    const productId = event.currentTarget.dataset.id as string;
+    const productId = String(event.currentTarget.dataset.id || "");
+    if (!productId) {
+      return;
+    }
     wx.navigateTo({
       url: `${ROUTES.productDetail}?id=${productId}`
     });

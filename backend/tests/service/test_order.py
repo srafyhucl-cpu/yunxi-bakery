@@ -1133,6 +1133,36 @@ async def test_create_order_rejects_sold_out_or_inactive_product(
         )
 
 
+async def test_create_order_rejects_display_only_product_with_stock(
+    db: aiosqlite.Connection,
+    service: OrderApplicationService,
+) -> None:
+    """“非卖品仅展示”条目即使有库存也不能被绕过页面直接下单。"""
+    await seed_catalog_product(
+        db,
+        item_id=81005,
+        title="安佳黄油（非卖品仅展示）",
+        price_fen=160000,
+        stock=9999,
+    )
+
+    with pytest.raises(ValueError, match="商品仅供展示，不可下单: 81005"):
+        await service.create_order(
+            {
+                "items": [
+                    {
+                        "productId": "81005",
+                        "title": "安佳黄油（非卖品仅展示）",
+                        "priceFen": 160000,
+                        "quantity": 1,
+                    }
+                ],
+                "expectTime": "2026-06-18 18:00",
+            },
+            user_id="display-only-user",
+        )
+
+
 async def test_create_order_rejects_invalid_expect_time(
     service: OrderApplicationService,
 ) -> None:

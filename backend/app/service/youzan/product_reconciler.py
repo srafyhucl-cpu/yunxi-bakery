@@ -30,6 +30,8 @@ _SOLD_NUM_CONCURRENCY = 10
 _ITEM_BASE_BATCH_SIZE = 10
 VECTOR_SYNC_RETRY_CEILING = 3
 VECTOR_SYNC_LEASE_SECONDS = 900
+# 空在售集合保护：上游异常返回空结果时不得把本地在售商品整批下架
+EMPTY_ONSALE_GUARD_ERROR = "onsale_empty_guard"
 
 
 class ProductReconcileService:
@@ -60,6 +62,14 @@ class ProductReconcileService:
         onsale_items = await self._client.list_onsale_items()
         onsale_ids = self._extract_onsale_ids(onsale_items)
         local_ids = await self._product_repo.list_active_item_ids()
+
+        if local_ids and not onsale_ids:
+            # 上游返回空在售集合但本地仍有在售商品：属于异常空结果，禁止整批下架。
+            logger.error(
+                "有赞在售列表为空且本地仍有 %d 条在售商品，已跳过本轮下架：请先核查有赞接口鉴权与 IP 白名单",
+                len(local_ids),
+            )
+            return self._build_empty_onsale_summary(len(local_ids), start_ts)
 
         deactivated: list[int] = []
         errors: list[str] = []
@@ -118,6 +128,24 @@ class ProductReconcileService:
             "errors": errors,
             "product_vector_sync": vector_sync,
             "duration_ms": duration_ms,
+        }
+
+    def _build_empty_onsale_summary(
+        self,
+        active_count: int,
+        start_ts: datetime,
+    ) -> dict:
+        """构造空在售集合保护命中的对账摘要，保持返回字段与正常轮次一致。"""
+        return {
+            "checked": active_count,
+            "onsale_from_youzan": 0,
+            "deactivated": 0,
+            "deactivated_ids": [],
+            "sold_num_synced": 0,
+            "category_synced": 0,
+            "errors": [EMPTY_ONSALE_GUARD_ERROR],
+            "product_vector_sync": {},
+            "duration_ms": int((datetime.now() - start_ts).total_seconds() * 1000),
         }
 
     async def reconcile_product_vectors(self) -> dict[str, int]:

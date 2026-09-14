@@ -13,15 +13,12 @@
   <view class="page-pinned page-pinned--empty"></view>
   <scroll-view class="page-scroll" scroll-y enhanced show-scrollbar="{{false}}" bindscrolltolower="loadMore" lower-threshold="120">
     <view class="page">
-      <session-notice
-        wx:if="{{!sessionView.loggedIn}}"
-        status-text="{{sessionView.statusText}}"
-        badge-text="{{sessionView.badgeText}}"
-        description="{{loginStateText}}"
-        action-text="去登录"
-        icon-text="订"
-        bind:action="goProfile"
-      ></session-notice>
+      <view wx:if="{{!sessionView.loggedIn}}" class="yunxi-state yunxi-state--page">
+        <view class="yunxi-state__icon yunxi-state__icon--package" aria-hidden="true"></view>
+        <text class="yunxi-state__title">登录后查看订单</text>
+        <text class="yunxi-state__hint">{{loginStateText}}</text>
+        <button class="primary-button yunxi-state__action" bindtap="goProfile">去登录</button>
+      </view>
       <view wx:if="{{sessionView.loggedIn}}" class="filter-tabs-bar">
         <view
           wx:for="{{filterTabs}}"
@@ -37,14 +34,17 @@
           <view class="filter-tab-indicator" wx:if="{{item.selected}}"></view>
         </view>
       </view>
-      <view wx:if="{{sessionView.loggedIn && loadFailed && filteredOrders.length === 0}}" class="yunxi-state">
-        <view class="yunxi-state__icon">订单</view>
+      <view wx:if="{{sessionView.loggedIn && loadFailed && filteredOrders.length === 0}}" class="yunxi-state yunxi-state--page">
+        <view class="yunxi-state__icon yunxi-state__icon--wifi-off" aria-hidden="true"></view>
         <text class="yunxi-state__title">订单加载失败</text>
         <text class="yunxi-state__hint">网络开小差了，重试一下吧</text>
         <button class="primary-button yunxi-state__action" bindtap="retryLoad">重新加载</button>
       </view>
-      <view wx:elif="{{sessionView.loggedIn && filteredOrders.length === 0}}" class="empty">
-        <text>{{loading ? '订单加载中...' : emptyText}}</text>
+      <view wx:elif="{{sessionView.loggedIn && filteredOrders.length === 0}}" class="yunxi-state yunxi-state--page">
+        <view class="yunxi-state__icon yunxi-state__icon--{{loading ? 'loader' : 'package'}}" aria-hidden="true"></view>
+        <text class="yunxi-state__title">{{loading ? '正在加载订单' : emptyText}}</text>
+        <text class="yunxi-state__hint">{{loading ? '正在同步当前微信身份的订单，请稍候' : '选购喜欢的商品，下单后可在这里查看制作、配送和取货进度'}}</text>
+        <button wx:if="{{!loading}}" class="primary-button yunxi-state__action" bindtap="goProducts">去选购</button>
       </view>
       <view wx:elif="{{sessionView.loggedIn}}" class="order-list">
         <view wx:for="{{filteredOrders}}" wx:key="id" class="order-card yunxi-card" data-id="{{item.id}}" bindtap="openOrder">
@@ -60,8 +60,8 @@
           </view>
           <text class="order-title">{{item.itemTitle || '未命名商品'}} × {{item.itemCount || 1}}</text>
           <view class="order-meta">
-            <text class="order-meta__line">收货人：{{item.receiverContactText}}</text>
-            <text class="order-meta__line">期望时间：{{item.expectTimeText}}</text>
+            <text class="order-meta__line">{{item.fulfillmentTypeText}} · {{item.receiverLabel}}：{{item.receiverContactText}}</text>
+            <text class="order-meta__line">{{item.expectTimeLabel}}：{{item.expectTimeText}}</text>
           </view>
           <view class="order-footer">
             <text>{{item.createdAt}}</text>

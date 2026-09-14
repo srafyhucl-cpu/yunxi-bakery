@@ -138,12 +138,13 @@
   color: var(--yunxi-text-muted);
 }
 
-.primary-btn {
+/* 需要带页面作用域压过 app.wxss 的 button:not([size="mini"]) 重置，否则背景透明而文字为白色。 */
+.coupons-page button.primary-btn {
   margin-top: 24rpx;
   min-width: 200rpx;
-  height: 84rpx;
-  min-height: 84rpx;
-  line-height: 84rpx;
+  height: 88rpx;
+  min-height: 88rpx;
+  line-height: 88rpx;
   padding: 0 40rpx;
   box-sizing: border-box;
   color: #FFFFFF;
@@ -154,7 +155,7 @@
   box-shadow: 0 8rpx 20rpx rgba(61, 51, 45, 0.16);
 }
 
-.primary-btn:active {
+.coupons-page button.primary-btn:active {
   transform: scale(0.97);
   opacity: 0.94;
 }

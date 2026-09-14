@@ -13,6 +13,7 @@ import subprocess
 import sys
 import time
 import uuid
+from contextlib import closing
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -258,7 +259,7 @@ def _start_claim_worker(database_path: Path) -> subprocess.Popen[bytes]:
 def _wait_for_processing(database_path: Path) -> bool:
     deadline = time.monotonic() + PROCESSING_WAIT_SECONDS
     while time.monotonic() < deadline:
-        with sqlite3.connect(database_path) as connection:
+        with closing(sqlite3.connect(database_path)) as connection:
             row = connection.execute(
                 "SELECT status FROM inbox_events WHERE message_key = ?",
                 (SYNTHETIC_MESSAGE_KEY,),

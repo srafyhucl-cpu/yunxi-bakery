@@ -8,6 +8,7 @@ from app.models.customer_group import CustomerGroup
 from app.models.customer_group import GroupCampaign
 from app.models.customer_group import GroupRegistration
 from app.repository.customer_group_repo import CustomerGroupRepo
+from app.service.order.schedule import OrderScheduleService
 from app.utils import now_str
 
 DEFAULT_GROUP_NAME = "未命名客户群"
@@ -16,8 +17,13 @@ DEFAULT_GROUP_NAME = "未命名客户群"
 class CustomerGroupOperationsService:
     """客户群运营一期应用服务。"""
 
-    def __init__(self, repo: CustomerGroupRepo) -> None:
+    def __init__(
+        self,
+        repo: CustomerGroupRepo,
+        schedule_service: OrderScheduleService,
+    ) -> None:
         self._repo = repo
+        self._schedule_service = schedule_service
 
     async def bind_group(self, payload: dict[str, Any]) -> dict[str, Any]:
         chat_id = _required_text(payload, "chatId", "请填写客户群 chat_id")
@@ -89,6 +95,12 @@ class CustomerGroupOperationsService:
         customer_phone = _required_phone(payload)
         product_name = _required_text(payload, "productName", "请填写商品")
         quantity = _required_quantity(payload)
+        desired_time = _required_text(
+            payload,
+            "desiredTime",
+            "请选择期望取货/配送时间",
+        )
+        await self._schedule_service.validate_expect_time(desired_time)
         fulfillment_method = str(payload.get("fulfillmentMethod", "pickup")).strip()
         if fulfillment_method not in ("pickup", "delivery"):
             raise ValueError("请选择正确的履约方式")
@@ -108,7 +120,7 @@ class CustomerGroupOperationsService:
             product_name=product_name,
             quantity=quantity,
             fulfillment_method=fulfillment_method,
-            desired_time=str(payload.get("desiredTime", "")).strip(),
+            desired_time=desired_time,
             address=str(payload.get("address", "")).strip(),
             remark=str(payload.get("remark", "")).strip(),
             status="pending",

@@ -8,15 +8,12 @@
   <view class="page-pinned page-pinned--empty"></view>
   <scroll-view class="page-scroll" scroll-y enhanced show-scrollbar="{{false}}">
     <view class="page checkout-page">
-      <session-notice
-        wx:if="{{loginStateText}}"
-        status-text="{{sessionView.statusText}}"
-        badge-text="{{sessionView.badgeText}}"
-        description="{{loginStateText}}"
-        action-text="{{isLoggedIn ? '返回' : '去登录'}}"
-        icon-text="结"
-        bind:action="handleSessionAction"
-      ></session-notice>
+      <view wx:if="{{!isLoggedIn}}" class="yunxi-state yunxi-state--page">
+        <view class="yunxi-state__icon yunxi-state__icon--clipboard-check" aria-hidden="true"></view>
+        <text class="yunxi-state__title">登录后确认订单</text>
+        <text class="yunxi-state__hint">登录后可自提、闪送并提交订单</text>
+        <button class="primary-button yunxi-state__action" bindtap="handleSessionAction">去登录</button>
+      </view>
       <view wx:if="{{isLoggedIn && checkoutItems.length}}" class="checkout-summary yunxi-card hover-scale fade-in">
         <view>
           <text class="checkout-summary__eyebrow">本次购买</text>
@@ -34,7 +31,7 @@
         </view>
       </view>
       <view wx:if="{{isLoggedIn && !checkoutItems.length}}" class="yunxi-state checkout-empty-state">
-        <view class="yunxi-state__icon">购</view>
+        <view class="yunxi-state__icon yunxi-state__icon--shopping-bag" aria-hidden="true"></view>
         <text class="yunxi-state__title">还没有选择商品</text>
         <text class="yunxi-state__hint">先从商品列表选择蛋糕或点心，再确认自提或北京闪送</text>
         <button class="primary-button yunxi-state__action" bindtap="goShopping">去选购</button>
@@ -58,7 +55,7 @@
       <view wx:if="{{isLoggedIn && checkoutItems.length}}" class="checkout-notice fade-in">
         <block wx:if="{{deliveryType === 'pickup'}}">
           <text class="notice-main">建议提前一天预订 · 到店自取（09:00 - 19:30）</text>
-          <text class="notice-sub">自提门店：{{pickupAddress || '北京市朝阳区芸熙烘焙'}}</text>
+          <text class="notice-sub">自提门店：{{pickupAddress || '请联系客服确认取货地址'}}</text>
         </block>
         <block wx:else>
           <text class="notice-main">北京同城闪送专送 · 运费按收货地址实测</text>
@@ -100,13 +97,22 @@
             end="{{dateEndValue}}"
             bindchange="selectExpectDate"
           >
-            <view class="time-picker">日期：{{selectedDateValue || '请选择'}}</view>
+            <view class="time-picker">
+              <text class="time-picker__value">日期：{{selectedDateValue || '请选择'}}</text>
+              <text class="time-picker__chevron"></text>
+            </view>
           </picker>
           <picker mode="selector" value="{{selectedHourIndex}}" range="{{hourOptions}}" bindchange="selectExpectHour">
-            <view class="time-picker">小时：{{hourOptions[selectedHourIndex] || '18'}}</view>
+            <view class="time-picker">
+              <text class="time-picker__value">小时：{{hourOptions[selectedHourIndex] || '18'}}</text>
+              <text class="time-picker__chevron"></text>
+            </view>
           </picker>
           <picker mode="selector" value="{{selectedMinuteIndex}}" range="{{minuteOptions}}" bindchange="selectExpectMinute">
-            <view class="time-picker">分钟：{{minuteOptions[selectedMinuteIndex] || '00'}}</view>
+            <view class="time-picker">
+              <text class="time-picker__value">分钟：{{minuteOptions[selectedMinuteIndex] || '00'}}</text>
+              <text class="time-picker__chevron"></text>
+            </view>
           </picker>
         </view>
         <view class="time-preview">期望时间：{{expectTime || '未选择'}}</view>
@@ -117,12 +123,12 @@
         </view>
       </view>
       <view wx:if="{{isLoggedIn && checkoutItems.length}}" class="benefit-panel">
-        <view class="benefit-row" bindtap="toggleCouponPanel">
+        <view class="benefit-row coupon-row {{availableCoupons.length === 0 ? 'benefit-row--static' : ''}}" bindtap="toggleCouponPanel">
           <text class="benefit-label">优惠券</text>
-          <text class="benefit-value">
+          <text class="benefit-value {{availableCoupons.length === 0 ? 'is-muted' : ''}}">
             {{selectedCouponId ? '已选 1 张' : (availableCoupons.length ? availableCoupons.length + ' 张可用' : '暂无可用')}}
           </text>
-          <text class="benefit-arrow">{{showCouponPanel ? '▲' : '▼'}}</text>
+          <text wx:if="{{availableCoupons.length > 0}}" class="benefit-arrow">{{showCouponPanel ? '▲' : '▼'}}</text>
         </view>
         <view wx:if="{{showCouponPanel}}" class="coupon-panel">
           <view
@@ -140,13 +146,13 @@
         </view>
         <view class="benefit-row" bindtap="togglePointsRow">
           <text class="benefit-label">积分抵扣</text>
-          <switch class="asset-switch asset-switch--points" checked="{{pointsEnabled}}" disabled="{{orderLocked || pointsBalance <= 0}}" color="#3D332D" bindchange="onPointsSwitch" />
+          <switch wx:if="{{orderLocked || pointsBalance > 0}}" class="asset-switch asset-switch--points" checked="{{pointsEnabled}}" disabled="{{orderLocked}}" color="#3D332D" bindchange="onPointsSwitch" />
           <text class="benefit-value {{pointsBalance <= 0 && !orderLocked ? 'is-muted' : ''}}">{{orderLocked ? '积分已应用' : (pointsBalance > 0 ? '可用 ' + pointsBalance + ' 积分' : '暂无可用积分')}}</text>
         </view>
         <text wx:if="{{orderLocked}}" class="benefit-note">积分已应用，取消请先取消订单</text>
         <view class="benefit-row" bindtap="toggleBalanceRow">
           <text class="benefit-label">余额抵扣</text>
-          <switch class="asset-switch asset-switch--balance" checked="{{balanceEnabled}}" disabled="{{balanceFen <= 0}}" color="#3D332D" bindchange="onBalanceSwitch" />
+          <switch wx:if="{{balanceFen > 0}}" class="asset-switch asset-switch--balance" checked="{{balanceEnabled}}" color="#3D332D" bindchange="onBalanceSwitch" />
           <text class="benefit-value {{balanceFen <= 0 ? 'is-muted' : ''}}">{{balanceFen > 0 ? '可用 ' + balanceFen / 100 + ' 元' : '暂无可用余额'}}</text>
         </view>
       </view>
@@ -197,6 +203,7 @@
     <view class="checkout-footer__total">
       <text class="muted">实付（估算）</text>
       <text class="checkout-footer__amount">{{estimateRemainFenText}}</text>
+      <text class="checkout-footer__note">{{footerAmountNote}}</text>
     </view>
     <button
       class="primary-button checkout-footer__submit hover-scale"

@@ -1,5 +1,6 @@
 # Storefront MiniApp API 契约
 
+
 提供方：`YunxiBakeBot`，即 `Bakery Commerce Platform` 的 `Platform` 主仓。
 
 消费方：`YunxiBakeMiniApp`，即 `Storefront MiniApp` 前台渠道仓。
@@ -81,6 +82,8 @@ MVP block 类型：
 | `memberSummary` | 会员摘要 |
 | `serviceGrid` | 服务入口宫格 |
 | `richText` | 长说明内容 |
+
+`quickLinks.props.items` 使用 `iconKey` 表达顾客端图标（如 `points`、`recharge`）；历史配置中的 `iconText` 仅为兼容字段，小程序不得把文字渲染进图标底座。
 
 `memberSummary.props` 字段：
 
@@ -269,12 +272,16 @@ Query：
 
 返回小程序商品页左侧分类列表。该接口由 `YunxiBakeBot` 从有赞商品同步落库字段生成，按后台排序返回。
 
+只返回至少命中一个当前在售商品的公开分类；`productCount` 由在售商品宽表现场统计，不信任同步缓存值。当前同步源没有可命中的分类映射时，允许返回空数组，小程序退化为“全部商品”视图，不展示空分类。
+
 分类来源优先级：
 
 1. `youzan.item.base.search` 返回的 `classification_id` / `classification_ids`，落库为稳定分类字段，用于小程序主分类。
 2. `youzan.item.classification.search` 返回的 `classification_id -> name` 映射，用于把稳定分类 ID 转成中文分类名。
 3. 有赞商品 `tag_ids` 与 `youzan.itemcategories.tags.get` 分组名称，作为旧分组兼容。
 4. 分类名暂未能从有赞名称接口解析时，后端使用“有赞分类 {id}”兜底；不得用商品名、规格、价格或推荐标签充当分类名。
+
+`category.id` 必须保留真实数据命名空间：`classification_ids_json` 命中项输出 `youzan-classification-{classificationId}`，`tag_ids_json` 命中项输出 `youzan-tag-{tagId}`。不得把 tag 伪装成 classification；否则列表看起来有分类，点开后却无法命中商品。
 
 ```json
 {
@@ -306,11 +313,17 @@ Query：
 - `categoryId` 可选，分类 ID。
 - `ids` 可选，逗号分隔商品 ID。
 - `featured` 可选，是否只返回主推商品。
+- `keyword` 可选，服务端按商品标题、详情内容与标签做包含匹配搜索（最长 50 字）；顾客端搜索框防抖后请求该参数，不再在本地对全量目录过滤。
+- `limit` 可选，单页条数，默认 50，服务端上限 100；顾客端商品页首屏 12 条，搜索结果每页 30 条。
+- `offset` 可选，翻页偏移，默认 0；下一页偏移必须取响应 `meta.offset + meta.limit`，不能用已渲染卡片数代替。
 - `sort` 可选，传 `popular` 时按真实销量降序返回（同 `item_no` 同款合并销量）；不传或其他值时按商品更新时间降序返回。顾客端商品页固定使用 `popular`，不再按更新时间伪造人气。
 - `categoryId` 可传 `youzan-classification-{classificationId}`，后端按 `classification_ids_json` 精确过滤。
 - `categoryId` 可传 `youzan-tag-{tagId}`，后端按有赞商品 `tag_ids_json` 精确过滤，用于旧分组兼容。
 - `soldText` 是后端按真实 `sold_num` 生成的销量文案（如 `已售 999`）。接口不返回 `招牌`、`热卖`、`新品`、`限量` 等营销徽标字段，小程序也不得按列表位置或标签关键字本地推断；商品卡只展示有数据来源的 `现货`、`暂时售罄`、`已下架`。
-- 商品响应同时返回稳定 `categoryId` 与可展示的 `categoryName`；小程序左侧分类优先使用 `GET /product-categories` 驱动，分类接口不可用时才按商品字段兜底聚合。
+- `isPurchasable=false` 表示原料说明或品牌展示条目，商品仍可出现在目录与详情中，但小程序不得展示数量步进器、加入购物车或立即购买；后端创建订单时必须再次拒绝，不能只依赖页面隐藏按钮。
+- 商品响应同时返回稳定 `categoryId` 与可展示的 `categoryName`；小程序左侧分类以 `GET /product-categories` 为唯一来源，分类接口不可用或返回空列表时降级为单一「全部商品」分区，不按商品字段伪造分类数量。
+
+`description`、`subtitle`、`tags`、`specs` 只输出顾客可读内容。后端必须过滤有赞同步原文中的内部字段、秒级库存明细、无意义数字标签、`h5.youzan.com` 直购链接和 `[UMP: ...]` 标记；`tags` 不返回已过滤标签的原始形态。
 
 ```json
 {
@@ -327,14 +340,24 @@ Query：
       "categoryName": "生日蛋糕",
       "stock": 20,
       "isActive": true,
+      "isPurchasable": true,
       "tags": ["生日蛋糕"],
       "description": "适合生日与家庭聚会",
       "specs": ["6寸", "8寸"],
       "notices": ["需提前24小时预订"]
     }
-  ]
+  ],
+  "meta": {
+    "total": 310,
+    "limit": 12,
+    "offset": 0,
+    "hasMore": true
+  }
 }
+
 ```
+
+`meta.total` 是当前过滤条件下的真实命中总数（不是本页条数），分类切换时以该分类的 `meta.total` 为准；`meta.hasMore` 决定是否还能触底加载；`meta.offset + meta.limit` 是下一页的请求偏移。前端不得用本地数组长度推断总数或偏移。
 
 `imageUrl` 有图时返回后端同域代理路径，缺图时返回空字符串。小程序客户端在商品 service 层将该路径补全为当前 `API_BASE_URL` 下的完整 URL，不在页面层拼接资源地址。小程序不直接依赖有赞或第三方图片域名，避免微信合法域名和热链策略影响页面渲染。
 
@@ -356,6 +379,7 @@ Query：
     "categoryName": "生日蛋糕",
     "stock": 20,
     "isActive": true,
+    "isPurchasable": true,
     "tags": ["生日蛋糕"],
     "description": "适合生日与家庭聚会",
     "specs": ["6寸", "8寸"],
@@ -392,7 +416,7 @@ Query：
 {
   "requestId": "quote_20260909_001",
   "fulfillmentMethod": "beijing_delivery",
-  "pickupAddress": "北京市朝阳区云熙烘焙工坊",
+  "pickupAddress": "北京市东城区南竹杆胡同2号银河SOHO",
   "receiverName": "大海",
   "receiverPhone": "18800000000",
   "receiverAddress": "北京市朝阳区测试路 1 号",
@@ -455,7 +479,7 @@ Query：
   "receiverPhone": "18800000000",
   "deliveryType": "pickup",
   "fulfillmentMethod": "pickup",
-  "pickupAddress": "北京市朝阳区云熙烘焙工坊",
+  "pickupAddress": "北京市东城区南竹杆胡同2号银河SOHO",
   "deliveryAddress": "",
   "expectTime": "2026-06-18 18:00",
   "remark": "少糖"
@@ -529,6 +553,7 @@ Query：
         "receiverName": "大海",
         "receiverPhone": "18800000000",
         "deliveryType": "pickup",
+        "pickupAddress": "北京市东城区南竹杆胡同2号银河SOHO",
         "deliveryAddress": "",
         "expectTime": "2026-06-18 18:00",
         "remark": "少糖"
@@ -575,6 +600,7 @@ Query：
     "receiverName": "大海",
     "receiverPhone": "18800000000",
     "deliveryType": "pickup",
+    "pickupAddress": "北京市东城区南竹杆胡同2号银河SOHO",
     "deliveryAddress": "",
     "expectTime": "2026-06-18 18:00",
     "remark": "少糖",
@@ -592,6 +618,8 @@ Query：
 ```
 
 `timeline` 按状态事件时间顺序返回。小程序提交订单、后台确认订单、开始制作、配送/待取、完成或取消订单时都会追加事件。小程序订单详情页优先展示真实事件时间；历史订单没有事件记录时客户端可回退为状态推导时间线。
+
+`pickupAddress` 是下单时固化的自提门店地址，自提订单用它展示取货地点；北京闪送订单仍以 `deliveryAddress` 为收货地址。
 
 ### POST `/api/v1/miniapp/orders/{orderId}/cancel`
 
@@ -886,7 +914,7 @@ MVP 阶段通过 `campaignId` 完成客户群触达归因；`opengid_to_chatid` 
 | `productName` | 必填，登记商品或需求 |
 | `quantity` | 必填，正整数 |
 | `fulfillmentMethod` | `pickup` 或 `delivery` |
-| `desiredTime` | 必填，建议格式 `YYYY-MM-DD HH:mm` |
+| `desiredTime` | 必填，格式 `YYYY-MM-DD HH:mm`；服务端按北京时间校验，不得早于当前时间、不得超出营业时段，当天登记还须在 17:00 截止前提交 |
 | `address` | `delivery` 时必填，`pickup` 时可为空 |
 | `remark` | 可选 |
 

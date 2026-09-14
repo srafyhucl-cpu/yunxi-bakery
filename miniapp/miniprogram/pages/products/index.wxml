@@ -24,13 +24,18 @@
         confirm-type="search"
         bindinput="onSearchInput"
       />
-      <text wx:if="{{searchText}}" class="products-search__clear" bindtap="clearSearch">×</text>
+      <text
+        wx:if="{{searchText}}"
+        class="products-search__clear"
+        bindtap="clearSearch"
+        aria-label="清空搜索"
+      >×</text>
     </view>
   </view>
 
   <view class="page-scroll products-scroll-region">
     <view wx:if="{{loadFailed}}" class="yunxi-state">
-      <view class="yunxi-state__icon">!</view>
+        <view class="yunxi-state__icon yunxi-state__icon--wifi-off" aria-hidden="true"></view>
       <text class="yunxi-state__title">商品加载失败</text>
       <text class="yunxi-state__hint">网络开小差了，重试一下吧</text>
       <button class="primary-button yunxi-state__action" bindtap="retryLoad">重新加载</button>
@@ -49,8 +54,17 @@
       enhanced
       show-scrollbar="{{false}}"
       hidden="{{!searchText || loadFailed || (loading && !loaded)}}"
+      bindscrolltolower="loadMoreSearchResults"
+      scroll-into-view="{{searchScrollAnchor}}"
+      scroll-with-animation="{{false}}"
     >
       <view class="products-global-search__inner">
+        <view id="products-search-top" class="products-scroll-anchor"></view>
+        <view wx:if="{{searchLoading}}" class="products-search-status">正在搜索…</view>
+        <view wx:if="{{globalSearchResults.length > 0}}" class="products-search-summary">
+          <text class="products-search-summary__count">共找到 {{searchMatchCount}} 款商品</text>
+          <text class="products-search-summary__hint">已展示 {{searchRenderedCount}} 款 · 按销量排序</text>
+        </view>
         <view class="products-grid">
           <view
             wx:for="{{globalSearchResults}}"
@@ -78,11 +92,12 @@
             <view class="product-info">
               <text class="product-title">{{product.title}}</text>
               <view class="product-meta-row">
-                <text class="product-stock {{product.isUnavailable ? 'is-muted' : ''}}">{{product.stockText}}</text>
+                <text wx:if="{{product.stockText && !product.isDisplayOnly}}" class="product-stock {{product.isUnavailable ? 'is-muted' : ''}}">{{product.stockText}}</text>
                 <text class="product-hint">{{product.purchaseHint}}</text>
               </view>
               <view class="product-info__bottom">
-                <text class="product-price yunxi-price"><text class="yunxi-price__unit">自提价 </text>{{product.priceText}}</text>
+                <text wx:if="{{product.isDisplayOnly}}" class="product-price is-display-only">{{product.priceText}}</text>
+                <text wx:else class="product-price yunxi-price"><text class="yunxi-price__unit">自提价 </text>{{product.priceText}}</text>
                 <view
                   class="product-action-btn hover-scale {{product.isUnavailable ? 'is-muted' : ''}}"
                   data-id="{{product.id}}"
@@ -93,9 +108,20 @@
           </view>
         </view>
 
-        <view wx:if="{{globalSearchResults.length === 0}}" class="products-empty">
+        <view wx:if="{{searchHasMore}}" class="products-load-more" bindtap="loadMoreSearchResults">
+          查看更多搜索结果
+        </view>
+
+        <view wx:if="{{searchFailed}}" class="products-empty">
+          <text class="products-empty__title">搜索失败</text>
+          <text class="products-empty__hint">网络开小差了，重试一下</text>
+          <view class="products-empty__action" bindtap="retrySearch">重新搜索</view>
+        </view>
+
+        <view wx:if="{{globalSearchResults.length === 0 && !searchLoading && !searchFailed}}" class="products-empty">
           <text class="products-empty__title">暂时没有匹配商品</text>
-          <text class="products-empty__hint">请尝试输入其他关键词进行全局检索</text>
+          <text class="products-empty__hint">换个关键词试试，或先看看全部商品</text>
+          <view class="products-empty__action" bindtap="clearSearch">查看全部商品</view>
         </view>
       </view>
     </scroll-view>
@@ -120,14 +146,21 @@
       </scroll-view>
 
       <view class="products-content-wrapper">
-        <scroll-view class="products-content" scroll-y enhanced show-scrollbar="{{false}}">
+        <scroll-view class="products-content" scroll-y enhanced show-scrollbar="{{false}}" bindscrolltolower="loadMoreProducts" scroll-into-view="{{catalogScrollAnchor}}" scroll-with-animation="{{false}}">
           <view class="products-content__inner">
+            <view id="products-catalog-top" class="products-scroll-anchor"></view>
             <view class="products-heading">
               <view>
                 <text class="products-heading__title">{{activeCategoryTitle}}</text>
-                <text class="products-heading__hint">{{activeCategorySubtitle}} · {{activeCategoryCountLabel}} 款</text>
+                <text class="products-heading__hint">{{activeCategoryCountLabel}} 款 · 按销量排序</text>
               </view>
-              <text class="products-heading__service">自提价</text>
+            </view>
+            <view wx:if="{{catalogLoading && activeProducts.length === 0}}" class="products-skeleton products-skeleton--inline">
+              <view wx:for="{{[1, 2, 3, 4]}}" wx:key="*this" class="products-skeleton__card yunxi-card">
+                <view class="products-skeleton__image yunxi-skeleton"></view>
+                <view class="products-skeleton__line yunxi-skeleton"></view>
+                <view class="products-skeleton__line--short yunxi-skeleton"></view>
+              </view>
             </view>
             <view class="products-grid products-list">
               <view
@@ -157,11 +190,12 @@
                 <view class="product-info">
                   <text class="product-title">{{product.title}}</text>
                   <view class="product-meta-row">
-                    <text class="product-stock {{product.isUnavailable ? 'is-muted' : ''}}">{{product.stockText}}</text>
+                    <text wx:if="{{product.stockText && !product.isDisplayOnly}}" class="product-stock {{product.isUnavailable ? 'is-muted' : ''}}">{{product.stockText}}</text>
                     <text class="product-hint">{{product.purchaseHint}}</text>
                   </view>
                   <view class="product-info__bottom">
-                    <text class="product-price yunxi-price"><text class="yunxi-price__unit">自提价 </text>{{product.priceText}}</text>
+                    <text wx:if="{{product.isDisplayOnly}}" class="product-price is-display-only">{{product.priceText}}</text>
+                    <text wx:else class="product-price yunxi-price"><text class="yunxi-price__unit">自提价 </text>{{product.priceText}}</text>
                     <view
                       class="product-action-btn hover-scale {{product.isUnavailable ? 'is-muted' : ''}}"
                       data-id="{{product.id}}"
@@ -176,7 +210,7 @@
               查看更多 {{activeCategoryTitle}}
             </view>
 
-            <view wx:if="{{activeProducts.length === 0 && activeCategoryId !== 'all'}}" class="products-empty">
+            <view wx:if="{{activeProducts.length === 0 && activeCategoryId !== 'all' && !catalogLoading}}" class="products-empty">
               <text class="products-empty__title">该分类暂无商品</text>
               <text class="products-empty__hint">再看看其他商品吧</text>
               <view class="products-empty__action" bindtap="switchToAll">查看全部商品</view>

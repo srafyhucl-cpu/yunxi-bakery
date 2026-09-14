@@ -1,4 +1,5 @@
 import { STORAGE_KEYS } from "../constants/storage";
+import { isAddressDetailedEnough } from "./address";
 import {
   deleteAddress,
   listAddresses,
@@ -164,8 +165,12 @@ export function validateAddressBookDraft(draft: AddressBookDraft): string {
   if (!ADDRESS_PHONE_PATTERN.test(normalizeText(draft.receiverPhone))) {
     return "请填写正确的 11 位手机号";
   }
-  if (!normalizeText(draft.address)) {
+  const address = normalizeText(draft.address);
+  if (!address) {
     return "请填写收货地址";
+  }
+  if (!isAddressDetailedEnough(address)) {
+    return "请补充小区、楼栋或门牌号";
   }
   return "";
 }

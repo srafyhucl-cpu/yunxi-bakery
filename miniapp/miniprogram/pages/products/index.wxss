@@ -98,6 +98,10 @@
   height: 88rpx;
   color: #FFFFFF;
   background: var(--yunxi-text-subtle);
+  /* 触控目标保留 88rpx，可视圆点收到 52rpx，避免清空按钮把搜索栏撑高 */
+  box-sizing: border-box;
+  border: 18rpx solid transparent;
+  background-clip: padding-box;
   border-radius: 50%;
   font-size: 24rpx;
   line-height: 1;
@@ -169,6 +173,11 @@
 
 .products-skeleton__line--short {
   width: 55%;
+}
+
+/* 分类切换时的列表内骨架：只替换列表区域，不遮挡搜索栏和侧栏 */
+.products-skeleton--inline {
+  padding: 0;
 }
 
 /* 双栏联动区域 */
@@ -303,15 +312,6 @@
   line-height: 1.3;
 }
 
-.products-heading__service {
-  flex: 0 0 auto;
-  padding: 8rpx 14rpx;
-  color: var(--yunxi-brand);
-  background: var(--yunxi-brand-soft);
-  border-radius: var(--yunxi-radius-sm);
-  font-size: 20rpx;
-  font-weight: 800;
-}
 
 /* 商品卡片网格 */
 .products-grid {
@@ -420,12 +420,14 @@
 .product-hint {
   flex: 1;
   min-width: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
   color: var(--yunxi-text-muted);
-  font-size: 21rpx;
+  font-size: 22rpx;
   line-height: 1.35;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .product-info__bottom {
@@ -442,6 +444,13 @@
   color: var(--yunxi-price);
   font-weight: 900;
   white-space: nowrap;
+}
+
+/* 非卖品没有真实售价：价格位只用次要色表达“非卖品” */
+.product-price.is-display-only {
+  color: var(--yunxi-text-muted);
+  font-size: 26rpx;
+  font-weight: 700;
 }
 
 .product-action-btn {
@@ -521,6 +530,38 @@
   padding: 24rpx 28rpx calc(var(--yunxi-tabbar-occupied-height) + 40rpx);
 }
 
+/* 滚动锚点为零高度，仅用于新搜索/新分类时把列表复位到顶部 */
+.products-scroll-anchor {
+  height: 0;
+  overflow: hidden;
+}
+
+/* 搜索结果计数只陈述真实命中数，排序口径与分类列表保持一致 */
+.products-search-summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 16rpx;
+}
+
+.products-search-summary__count {
+  color: var(--yunxi-text-primary);
+  font-size: 26rpx;
+  font-weight: 800;
+}
+
+.products-search-summary__hint {
+  color: var(--yunxi-text-muted);
+  font-size: 22rpx;
+}
+
+/* 搜索进行中的过渡提示：有结果时提示刷新，无结果时占位，不改变搜索栏高度 */
+.products-search-status {
+  margin-bottom: 16rpx;
+  color: var(--yunxi-text-muted);
+  font-size: 22rpx;
+}
+
 /* 商品目录以扫描效率为先，分类导航保持轻量 */
 .products-pinned {
   gap: 14rpx;
@@ -529,13 +570,14 @@
 }
 
 .products-search {
-  min-height: 64rpx;
+  /* 输入框与清空按钮同高，输入前后搜索栏高度恒定 */
+  min-height: 88rpx;
   padding: 0 20rpx;
   border-radius: var(--yunxi-radius-sm);
 }
 
 .products-search__input {
-  height: 64rpx;
+  height: 88rpx;
 }
 
 .products-sidebar {

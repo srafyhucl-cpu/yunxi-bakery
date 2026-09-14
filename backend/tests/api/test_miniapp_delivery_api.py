@@ -28,7 +28,7 @@ def build_delivery_quote_payload() -> dict:
     return {
         "requestId": "delivery-api-quote",
         "fulfillmentMethod": "beijing_delivery",
-        "pickupAddress": "北京市朝阳区云熙烘焙工坊",
+        "pickupAddress": "北京市东城区南竹杆胡同2号银河SOHO",
         "receiverName": "配送 API",
         "receiverPhone": "18800000001",
         "receiverAddress": "北京市朝阳区测试路 1 号",

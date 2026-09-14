@@ -118,3 +118,16 @@ async def test_rejects_invalid_phone(service: CustomerAddressService) -> None:
             },
             user_id="invalid-phone-user",
         )
+
+
+async def test_rejects_district_only_address(service: CustomerAddressService) -> None:
+    """只有行政区、没有小区楼栋门牌的地址不能进入履约链路。"""
+    with pytest.raises(ValueError, match="请补充小区、楼栋或门牌号"):
+        await service.save_address(
+            {
+                "receiverName": "地址不完整",
+                "receiverPhone": "18800000011",
+                "address": "北京市东城区",
+            },
+            user_id="incomplete-address-user",
+        )

@@ -15,6 +15,7 @@ import { goBackOrHome } from "../../utils/navigation";
 import {
   buildOrderAmountView,
   formatOrderDisplayId,
+  isBeijingDelivery,
   maskReceiverPhone,
 } from "../../utils/order-summary";
 import { payOrderById } from "../../utils/order-payment";
@@ -25,7 +26,10 @@ interface OrderView extends OrderSummary {
   paymentStatusText: string;
   totalText: string;
   orderNoText: string;
+  fulfillmentTypeText: string;
+  receiverLabel: string;
   receiverContactText: string;
+  expectTimeLabel: string;
   expectTimeText: string;
   canPay: boolean;
   canCancel: boolean;
@@ -48,13 +52,17 @@ function paymentStatusText(status?: string): string {
 
 function buildOrderView(order: OrderSummary): OrderView {
   const amountView = buildOrderAmountView(order);
+  const beijingDelivery = isBeijingDelivery(order);
   return {
     ...order,
     statusText: statusText(order.status),
     paymentStatusText: paymentStatusText(order.paymentStatus),
     totalText: amountView.totalText,
     orderNoText: formatOrderDisplayId(order.id),
+    fulfillmentTypeText: amountView.deliveryTypeText,
+    receiverLabel: beijingDelivery ? "收货人" : "联系人",
     receiverContactText: `${order.receiverName || "收货人待确认"} · ${maskReceiverPhone(order.receiverPhone)}`,
+    expectTimeLabel: beijingDelivery ? "期望配送" : "预约取货",
     expectTimeText: order.expectTime || "待确认",
     canPay: canPayOrder(order),
     canCancel: canUserCancelOrder(order),
@@ -94,7 +102,7 @@ Page({
     activeFilter: DEFAULT_ORDER_LIST_FILTER as OrderListFilterKey,
     emptyText: getEmptyText(DEFAULT_ORDER_LIST_FILTER),
     sessionView: buildMiniappSessionView(getMiniappSession()),
-    loginStateText: "登录后可查看与当前微信身份关联的订单",
+    loginStateText: "登录后可查看制作、自提与配送进度",
     canUseOrders: false,
     loading: false,
     loadingMore: false,
@@ -132,6 +140,12 @@ Page({
   goProfile() {
     wx.switchTab({ url: ROUTES.profile });
   },
+  goProducts() {
+    if (this.data.loading || this.data.payingOrderId || this.data.cancellingOrderId) {
+      return;
+    }
+    wx.switchTab({ url: ROUTES.products });
+  },
   async loadOrders(refresh: boolean) {
     const session = getMiniappSession();
     if (!isMiniappLoggedIn(session)) {
@@ -142,7 +156,7 @@ Page({
         activeFilter: DEFAULT_ORDER_LIST_FILTER as OrderListFilterKey,
         emptyText: "请先登录后查看订单",
         sessionView: buildMiniappSessionView(session),
-        loginStateText: "请先登录后查看订单",
+        loginStateText: "登录后可查看制作、自提与配送进度",
         canUseOrders: false,
         loading: false,
         loadingMore: false,

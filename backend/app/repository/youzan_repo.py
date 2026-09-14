@@ -64,12 +64,23 @@ class YouzanProductRepo(BaseRepository):
         return [dict(row) for row in rows]
 
     async def list_public_categories(self) -> list[dict]:
-        """返回有赞商品分组，按分组排序和名称稳定输出。"""
+        """返回公开商品分组并附带真实在售商品命中数。
+
+        `tag_id` 在有赞同步里既可能是商品 tag id，也可能是 item.base 的分类 id，
+        两者落在商品宽表的不同字段，必须分开现场统计：缓存计数会漂移，且用错
+        命名空间会让侧栏出现“显示有分类、点开没有商品”的空分类。
+        """
         rows = await self._db.execute_fetchall(
-            "SELECT tag_id, title, sort, product_count "
-            "FROM youzan_product_categories "
-            "WHERE is_public = 1 "
-            "ORDER BY sort ASC, title ASC, tag_id ASC"
+            "SELECT c.tag_id, c.title, c.sort, "
+            "(SELECT COUNT(*) FROM youzan_products p WHERE p.is_active = 1 AND "
+            "EXISTS (SELECT 1 FROM json_each(CASE WHEN json_valid(p.tag_ids_json) THEN p.tag_ids_json ELSE '[]' END) jt "
+            "WHERE jt.value = c.tag_id)) AS tag_product_count, "
+            "(SELECT COUNT(*) FROM youzan_products p WHERE p.is_active = 1 AND "
+            "EXISTS (SELECT 1 FROM json_each(CASE WHEN json_valid(p.classification_ids_json) THEN p.classification_ids_json ELSE '[]' END) jc "
+            "WHERE jc.value = c.tag_id)) AS classification_product_count "
+            "FROM youzan_product_categories c "
+            "WHERE c.is_public = 1 "
+            "ORDER BY c.sort ASC, c.title ASC, c.tag_id ASC"
         )
         return [dict(row) for row in rows]
 
@@ -129,11 +140,59 @@ class YouzanProductRepo(BaseRepository):
         category_key: str,
         *,
         limit: int = 50,
+        offset: int = 0,
+        keyword: str = "",
         sort_by: str = "",
     ) -> list[dict]:
         """按稳定分类 key 查询在售商品宽表。"""
-        column = "tag_ids_json"
-        raw_id = category_key
+        column, raw_id = self._resolve_category_column(category_key)
+        clauses = ["is_active = 1", column + " LIKE ?"]
+        params: list[object] = [f'%"{raw_id}"%']
+        if keyword:
+            like = f"%{keyword}%"
+            clauses.append(
+                "(title LIKE ? OR alias LIKE ? OR tags LIKE ? OR desc LIKE ?)"
+            )
+            params.extend([like, like, like, like])
+        order_column = "sold_num" if sort_by == "soldNum" else "updated_at"
+        params.extend([limit, offset])
+        rows = await self._db.execute_fetchall(
+            "SELECT item_id, title, alias, price_fen, stock, image, is_active, "
+            "skus_json, item_props_json, desc, tags, tag_ids_json, "
+            "classification_ids_json, group_ids_json, second_group_ids_json, leaf_category_ids_json "
+            "FROM youzan_products WHERE "
+            + " AND ".join(clauses)
+            + " ORDER BY "
+            + order_column
+            + " DESC, item_id DESC LIMIT ? OFFSET ?",
+            tuple(params),
+        )
+        return [dict(row) for row in rows]
+
+    async def count_products_by_category_key(
+        self,
+        category_key: str,
+        *,
+        keyword: str = "",
+    ) -> int:
+        """返回稳定分类下与关键词匹配的在售商品总数。"""
+        column, raw_id = self._resolve_category_column(category_key)
+        clauses = ["is_active = 1", column + " LIKE ?"]
+        params: list[object] = [f'%"{raw_id}"%']
+        if keyword:
+            like = f"%{keyword}%"
+            clauses.append(
+                "(title LIKE ? OR alias LIKE ? OR tags LIKE ? OR desc LIKE ?)"
+            )
+            params.extend([like, like, like, like])
+        rows = await self._db.execute_fetchall(
+            "SELECT COUNT(*) AS c FROM youzan_products WHERE " + " AND ".join(clauses),
+            tuple(params),
+        )
+        return int(rows[0]["c"]) if rows else 0
+
+    def _resolve_category_column(self, category_key: str) -> tuple[str, str]:
+        """解析分类命名空间，列名只取固定白名单避免动态 SQL 注入。"""
         prefixes = {
             "tag-": "tag_ids_json",
             "classification-": "classification_ids_json",
@@ -141,25 +200,10 @@ class YouzanProductRepo(BaseRepository):
             "second-group-": "second_group_ids_json",
             "leaf-category-": "leaf_category_ids_json",
         }
-        for prefix, candidate_column in prefixes.items():
+        for prefix, column in prefixes.items():
             if category_key.startswith(prefix):
-                column = candidate_column
-                raw_id = category_key.replace(prefix, "", 1)
-                break
-        like = f'%"{raw_id}"%'
-        order_column = "sold_num" if sort_by == "soldNum" else "updated_at"
-        rows = await self._db.execute_fetchall(
-            "SELECT item_id, title, alias, price_fen, stock, image, is_active, "
-            "skus_json, item_props_json, desc, tags, tag_ids_json, "
-            "classification_ids_json, group_ids_json, second_group_ids_json, leaf_category_ids_json "
-            "FROM youzan_products WHERE is_active = 1 AND "
-            + column
-            + " LIKE ? ORDER BY "
-            + order_column
-            + " DESC, item_id DESC LIMIT ?",
-            (like, limit),
-        )
-        return [dict(row) for row in rows]
+                return column, category_key.replace(prefix, "", 1)
+        return "tag_ids_json", category_key
 
     async def count_current_products(
         self, *, keyword: str = "", is_active: str = ""
@@ -313,7 +357,7 @@ class YouzanProductRepo(BaseRepository):
             return {}
         placeholders = ",".join("?" * len(valid_ids))
         rows = await self._db.execute_fetchall(
-            "SELECT yp.item_id, yp.price_fen, yp.stock, yp.is_active, yp.item_no, "
+            "SELECT yp.item_id, yp.title, yp.price_fen, yp.stock, yp.is_active, yp.item_no, "
             "COALESCE(agg.total_sold, yp.sold_num) AS sold_num "
             "FROM youzan_products yp "
             "LEFT JOIN ("
@@ -327,6 +371,7 @@ class YouzanProductRepo(BaseRepository):
         )
         return {
             str(row["item_id"]): {
+                "title": row["title"] or "",
                 "price_fen": row["price_fen"],
                 "stock": row["stock"],
                 "is_active": row["is_active"],

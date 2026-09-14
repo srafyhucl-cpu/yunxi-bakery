@@ -11,7 +11,7 @@
         badge-text="{{sessionView.badgeText}}"
         description="{{loginStateText}}"
         action-text="{{sessionView.actionText}}"
-        icon-text="我"
+        icon-key="log-in"
         bind:action="refreshSession"
       ></session-notice>
 
@@ -104,7 +104,7 @@
           >
             <!-- 徽章图标 -->
             <view class="order-nav-icon-wrapper">
-              <text class="order-nav-icon">{{order.iconText}}</text>
+              <view class="order-nav-icon order-nav-icon--{{order.iconKey}}" aria-hidden="true"></view>
             </view>
             <text class="order-nav-title">{{order.title}}</text>
           </view>
@@ -127,7 +127,7 @@
             bindtap="handleServiceTap"
           >
             <view class="service-cell__left">
-              <text class="service-cell__icon">{{service.iconText}}</text>
+              <view class="service-cell__icon service-cell__icon--{{service.iconKey}}" aria-hidden="true"></view>
               <text class="service-cell__title">{{service.title}}</text>
             </view>
             <view class="service-cell__right">

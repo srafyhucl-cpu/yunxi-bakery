@@ -15,7 +15,11 @@ import {
 import { getMiniappLayoutMetrics } from "../../utils/layout";
 import { formatFen } from "../../utils/money";
 import { goBackOrHome } from "../../utils/navigation";
-import { buildOrderAmountView } from "../../utils/order-summary";
+import {
+  buildOrderAmountView,
+  formatPaymentMethodText,
+  isBeijingDelivery,
+} from "../../utils/order-summary";
 import { payOrderById } from "../../utils/order-payment";
 import { getMiniappSession } from "../../services/auth";
 import { buildMiniappSessionView, isMiniappLoggedIn } from "../../utils/session";
@@ -37,6 +41,9 @@ interface OrderDetailView extends OrderSummary {
   goodsTotalText: string;
   deliveryFeeText: string;
   deliveryTypeText: string;
+  hasDeliveryFee: boolean;
+  receiverLabel: string;
+  expectTimeLabel: string;
   canCancel: boolean;
   canPay: boolean;
   itemsView: OrderItemView[];
@@ -50,6 +57,36 @@ interface OrderDetailView extends OrderSummary {
   }>;
 }
 
+function buildProgressText(order: OrderSummary, beijingDelivery: boolean): string {
+  if (order.status === "cancelled") {
+    return "订单已取消，如需继续购买可重新下单或联系客服。";
+  }
+  if (order.status === "done") {
+    return "订单已完成，感谢购买。";
+  }
+  if (order.status === "confirmed") {
+    return beijingDelivery
+      ? "门店已确认，将按预约时间制作并安排闪送。"
+      : "门店已确认，将按预约时间准备取货。";
+  }
+  if (beijingDelivery) {
+    if (order.status === "delivering") {
+      return "闪送人员正在配送，请保持收货电话畅通。";
+    }
+    if (order.status === "making") {
+      return "门店正在制作，完成后会交接闪送配送。";
+    }
+    return "门店确认后会按预约时间制作，请留意闪送进度。";
+  }
+  if (order.status === "delivering") {
+    return "商品已备好，请按预约时间到店取货。";
+  }
+  if (order.status === "making") {
+    return "门店正在制作，完成后会进入待取货状态。";
+  }
+  return "门店确认后会按预约时间准备商品，请留意取货状态。";
+}
+
 function buildOrderDetail(order: OrderSummary): OrderDetailView {
   const items = order.items ?? [];
   const paymentStatus = order.paymentStatus || PAYABLE_PAYMENT_STATUS;
@@ -57,19 +94,20 @@ function buildOrderDetail(order: OrderSummary): OrderDetailView {
   const isCancelled = order.status === "cancelled";
   const timelineByStatus = new Map((order.timeline ?? []).map((event) => [event.status, event]));
   const amountView = buildOrderAmountView(order);
+  const beijingDelivery = isBeijingDelivery(order);
   return {
     ...order,
     statusText: ORDER_STATUS_LABELS[order.status] ?? order.status,
-    progressText: isCancelled
-      ? "订单已取消，如需继续购买可重新下单或联系客服。"
-      : "门店会按订单状态更新制作与配送进度。",
+    progressText: buildProgressText(order, beijingDelivery),
     paymentStatusText: PAYMENT_STATUS_LABELS[paymentStatus] ?? paymentStatus,
-    paymentMethodText:
-      order.paymentMethod === "mock" ? "MVP 模拟支付" : order.paymentMethod === "wechat" ? "微信支付" : "未记录",
+    paymentMethodText: formatPaymentMethodText(order.paymentMethod),
     totalText: amountView.totalText,
     goodsTotalText: amountView.goodsTotalText,
     deliveryFeeText: amountView.deliveryFeeText,
     deliveryTypeText: amountView.deliveryTypeText,
+    hasDeliveryFee: amountView.hasDeliveryFee,
+    receiverLabel: beijingDelivery ? "收货人" : "联系人",
+    expectTimeLabel: beijingDelivery ? "期望配送" : "预约取货",
     canCancel: canUserCancelOrder(order),
     canPay: canPayOrder(order),
     itemsView: items.map((item) => ({
@@ -81,6 +119,14 @@ function buildOrderDetail(order: OrderSummary): OrderDetailView {
     })),
     progressSteps: ORDER_PROGRESS_STEPS.map((step, index) => ({
       ...step,
+      title:
+        step.status === "delivering" ? (beijingDelivery ? "配送中" : "待取货") : step.title,
+      description:
+        step.status === "delivering"
+          ? beijingDelivery
+            ? "闪送人员正在送往收货地址"
+            : "商品已备好，请按预约时间到店取货"
+          : step.description,
       timeText: timelineByStatus.get(step.status)?.createdAt || "",
       note: timelineByStatus.get(step.status)?.note || "",
       state: isCancelled
@@ -102,7 +148,7 @@ Page({
     cancelling: false,
     paying: false,
     sessionView: buildMiniappSessionView(getMiniappSession()),
-    loginStateText: "登录后可查看订单详情",
+    loginStateText: "登录后可查看金额明细与履约进度",
     canLoadOrder: false,
     layoutStyle: getMiniappLayoutMetrics().pageShellStyle
   },
@@ -119,7 +165,7 @@ Page({
         order: null,
         canLoadOrder: false,
         sessionView: buildMiniappSessionView(session),
-        loginStateText: "请先登录后查看订单详情"
+        loginStateText: "登录后可查看金额明细与履约进度"
       });
       return;
     }

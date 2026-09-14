@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import automator from "miniprogram-automator";
+import { assertRealApiReachable, resolveRealApiBaseUrl } from "./lib/real-api-preflight.mjs";
 
 const root = process.cwd();
 const reportsRoot = path.join(root, "reports", "button-runtime");
@@ -16,11 +17,17 @@ function nowStamp() {
 
 async function main() {
   fs.mkdirSync(reportsRoot, { recursive: true });
+  const apiBaseUrl = resolveRealApiBaseUrl();
+  try {
+    await assertRealApiReachable(apiBaseUrl);
+  } catch (error) {
+    console.error(`${error.message}；本轮真实链路检查跳过，不覆盖上一份报告。`);
+    process.exit(2);
+  }
   const miniProgram = await automator.connect({ wsEndpoint });
   let runtimeResult;
   try {
-    runtimeResult = await miniProgram.evaluate(async function () {
-      const apiBaseUrl = "https://yunxifood.cn";
+    runtimeResult = await miniProgram.evaluate(async function (apiBaseUrl) {
       const originalCartItems = wx.getStorageSync("cartItems");
       const originalMiniappSession = wx.getStorageSync("miniappSession");
       const originalMiniappUserId = wx.getStorageSync("miniappUserId");
@@ -226,7 +233,7 @@ async function main() {
           wx.removeStorageSync("yunxiUseLocalApi");
         }
       }
-    });
+    }, apiBaseUrl);
   } finally {
     await miniProgram.disconnect();
   }

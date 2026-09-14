@@ -59,11 +59,16 @@
   gap: 16rpx;
 }
 
+.success-actions button {
+  flex: 1;
+  min-width: 0;
+}
+
 button.fulfillment-tab,
 .fulfillment-tab {
   flex: 1;
   width: auto !important;
-  min-height: 84rpx;
+  min-height: 88rpx;
   border-radius: var(--yunxi-radius-sm);
   background: #FFFFFF;
   color: var(--yunxi-text-secondary);
@@ -99,11 +104,13 @@ button.fulfillment-tab.is-active,
   min-width: 0;
 }
 
-.time-picker,
-.time-preview {
+/* 可点击的时间选择器：保留输入框外观并给出下拉指示，避免被当成静态文字 */
+.time-picker {
   display: flex;
   align-items: center;
-  min-height: 84rpx;
+  justify-content: space-between;
+  gap: 8rpx;
+  min-height: 88rpx;
   padding: 0 24rpx;
   background: var(--yunxi-surface-alt);
   border: 1rpx solid var(--yunxi-border);
@@ -112,12 +119,39 @@ button.fulfillment-tab.is-active,
   color: var(--yunxi-text-primary);
 }
 
+.time-picker__value {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.time-picker__chevron {
+  flex-shrink: 0;
+  width: 12rpx;
+  height: 12rpx;
+  border: solid var(--yunxi-text-muted);
+  border-width: 0 3rpx 3rpx 0;
+  transform: rotate(45deg);
+}
+
+/* 只读的期望时间预览：去掉边框与底色，避免被误认为可点击控件 */
 .time-preview {
   color: var(--yunxi-text-secondary);
   font-size: 24rpx;
   min-height: auto;
-  padding-top: 16rpx;
-  padding-bottom: 16rpx;
+  padding: 16rpx 4rpx 0;
+  line-height: 1.5;
+}
+
+/* 闪送运费由顾客承担，属于必须在下单前知晓的事实，不能只靠客服口头补充 */
+.delivery-fee-hint {
+  display: block;
+  padding: 0 4rpx;
+  color: var(--yunxi-text-muted);
+  font-size: 22rpx;
+  line-height: 1.5;
 }
 
 input,
@@ -165,21 +199,84 @@ textarea {
   text-align: right;
 }
 
-.registration-success {
+.success-panel {
   display: flex;
   flex-direction: column;
-  gap: 16rpx;
+  gap: 28rpx;
   padding: 32rpx;
-  text-align: center;
 }
 
-.registration-success-badge {
-  display: inline-flex;
-  align-self: center;
-  padding: 6rpx 18rpx;
-  border-radius: var(--yunxi-radius-full);
-  background: var(--yunxi-brand-soft);
-  color: var(--yunxi-brand);
+.success-heading {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+}
+
+.success-heading__icon {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 72rpx;
+  height: 72rpx;
+  color: #ffffff;
+  background: var(--yunxi-brand);
+  border-radius: 50%;
+  font-size: 34rpx;
+  font-weight: 900;
+}
+
+.success-heading__copy {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  gap: 6rpx;
+}
+
+.success-title {
+  color: var(--yunxi-text-primary);
+  font-size: 34rpx;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.success-subtitle {
+  color: var(--yunxi-text-secondary);
   font-size: 24rpx;
-  font-weight: 800;
+  line-height: 1.45;
+}
+
+.success-list {
+  padding: 0 24rpx;
+  background: var(--yunxi-surface-alt);
+  border-radius: var(--yunxi-radius-md);
+}
+
+.success-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24rpx;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid var(--yunxi-border);
+  font-size: 25rpx;
+  line-height: 1.45;
+}
+
+.success-row:last-child {
+  border-bottom: 0;
+}
+
+.success-row text:first-child {
+  flex: 0 0 auto;
+  color: var(--yunxi-text-secondary);
+}
+
+.success-row text:last-child {
+  min-width: 0;
+  color: var(--yunxi-text-primary);
+  font-weight: 700;
+  text-align: right;
+  overflow-wrap: anywhere;
 }

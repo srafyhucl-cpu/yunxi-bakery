@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from app.models.order import Order
 from app.repository.youzan_inventory_repo import YouzanInventoryRepo
 from app.repository.youzan_repo import YouzanProductRepo
+from app.service.catalog.purchasability import is_product_purchasable
 
 
 @dataclass
@@ -100,6 +101,9 @@ class OrderInventoryService:
         fallback: dict,
         stock_item: dict,
     ) -> None:
+        product_title = str(stock_item.get("title") or fallback.get("title") or "")
+        if not is_product_purchasable(product_title):
+            raise ValueError(f"商品仅供展示，不可下单: {product_id}")
         if not stock_item:
             return
         if int(stock_item.get("is_active") or 0) != 1:

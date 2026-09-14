@@ -213,7 +213,8 @@
   padding-top: 8rpx;
 }
 
-.order-action-button {
+/* 需要带页面作用域压过 app.wxss 的 button:not([size="mini"]) 重置，否则背景、内边距与触控高度都会被清零。 */
+.page button.order-action-button {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -228,19 +229,19 @@
   transition: all 0.2s ease;
 }
 
-.order-action-primary {
+.page button.order-action-primary {
   color: #FFFFFF;
   background: var(--yunxi-brand);
   box-shadow: 0 6rpx 16rpx rgba(61, 51, 45, 0.16);
 }
 
-.order-action-secondary {
+.page button.order-action-secondary {
   color: var(--yunxi-deal);
   background: #FDF1EE;
   border: 1rpx solid rgba(186, 78, 61, 0.2);
 }
 
-.order-action-button[disabled] {
+.page button.order-action-button[disabled] {
   color: var(--yunxi-text-subtle);
   background: var(--yunxi-surface-alt);
   box-shadow: none;

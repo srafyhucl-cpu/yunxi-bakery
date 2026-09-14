@@ -1,6 +1,3 @@
 {
-  "navigationBarTitleText": "收货地址",
-  "usingComponents": {
-    "session-notice": "/components/session-notice/index"
-  }
+  "navigationBarTitleText": "收货地址"
 }

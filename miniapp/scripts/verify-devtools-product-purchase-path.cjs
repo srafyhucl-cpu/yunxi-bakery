@@ -1,5 +1,6 @@
 const automator = require("miniprogram-automator");
 const fs = require("node:fs");
+const { finalizeAuditStatus, exitForAuditStatus } = require("./lib/devtools-audit-status.cjs");
 
 const WS_ENDPOINT = process.env.MINIAPP_AUTOMATOR_WS || "ws://127.0.0.1:9420";
 const REPORT_PATH = "reports/devtools/product-purchase-path-audit.json";
@@ -47,11 +48,8 @@ async function waitForValue(readValue, description) {
 }
 
 function findPurchasableProduct(catalogData) {
-  const products = Array.isArray(catalogData.allProducts)
-    ? catalogData.allProducts
-    : Array.isArray(catalogData.categorySections)
-      ? catalogData.categorySections.flatMap((section) => section.products || [])
-      : [];
+  // 商品页只保留服务端分页结果，首屏 activeProducts 就是目录选购入口。
+  const products = Array.isArray(catalogData.activeProducts) ? catalogData.activeProducts : [];
   return products.find((product) => product && product.isActive && Number(product.stock) > 0);
 }
 
@@ -127,6 +125,49 @@ async function main() {
     if (!actionTexts.includes("加入购物车") || !actionTexts.includes("立即购买")) {
       throw new Error("在售商品详情缺少加入购物车或立即购买操作");
     }
+
+    const serviceIcons = await detail.$$(".detail-service__icon");
+    const serviceLabels = await detail.$$(".detail-service__label");
+    const serviceIconAudits = [];
+    for (const icon of serviceIcons) {
+      const iconText = (await icon.text()).trim();
+      const backgroundImage = await icon.style("background-image");
+      const iconSize = await icon.size();
+      serviceIconAudits.push({
+        text: iconText,
+        backgroundImage,
+        size: `${Math.round(iconSize.width)}x${Math.round(iconSize.height)}`
+      });
+    }
+    const serviceLabelTexts = [];
+    for (const label of serviceLabels) {
+      serviceLabelTexts.push((await label.text()).trim());
+    }
+    report.checks.push({
+      state: "product-detail-service-icons",
+      count: serviceIcons.length,
+      labels: serviceLabelTexts,
+      icons: serviceIconAudits
+    });
+    if (serviceIcons.length !== 2 || serviceLabels.length !== 2) {
+      throw new Error("商品详情底部必须保留客服与购物车两个服务入口");
+    }
+    if (!serviceLabelTexts.includes("客服") || !serviceLabelTexts.includes("购物车")) {
+      throw new Error(`商品详情服务入口文案异常：${serviceLabelTexts.join("、")}`);
+    }
+    for (const iconAudit of serviceIconAudits) {
+      if (iconAudit.text) {
+        throw new Error(`商品详情服务入口仍在用文字充当图标：${iconAudit.text}`);
+      }
+      if (!iconAudit.backgroundImage || iconAudit.backgroundImage === "none") {
+        throw new Error("商品详情服务入口图标未渲染");
+      }
+      const [width, height] = iconAudit.size.split("x").map(Number);
+      if (width < 18 || height < 18) {
+        throw new Error(`商品详情服务入口图标过小：${iconAudit.size}`);
+      }
+    }
+
     if (
       actionsOffset &&
       actionsSize &&
@@ -135,6 +176,49 @@ async function main() {
     ) {
       throw new Error("商品详情购买操作未完整处于可视区域");
     }
+
+    // 底部常驻操作栏与滚动内容的安全距离：既不能遮挡最后一段内容，也不能留出大片空白。
+    const detailScrollView = await detail.$(".page-scroll");
+    if (!detailScrollView || !actionsOffset) {
+      throw new Error("商品详情缺少可测量的滚动容器或底部操作栏");
+    }
+    const sectionElements = await detail.$$(".detail-content > .detail-section");
+    if (sectionElements.length === 0) {
+      throw new Error("商品详情未找到可测量的内容分区");
+    }
+    await detailScrollView.scrollTo(0, 100000);
+    await sleep(500);
+    const lastSection = sectionElements[sectionElements.length - 1];
+    const lastSectionOffset = await lastSection.offset();
+    const lastSectionSize = await lastSection.size();
+    const footerGap = actionsOffset.top - (lastSectionOffset.top + lastSectionSize.height);
+    report.checks.push({
+      state: "product-detail-footer-gap",
+      lastSectionBottom: Number((lastSectionOffset.top + lastSectionSize.height).toFixed(2)),
+      actionsTop: Number(actionsOffset.top.toFixed(2)),
+      gap: Number(footerGap.toFixed(2))
+    });
+    if (footerGap < 0) {
+      throw new Error(`商品详情底部操作栏遮挡最后一段内容：间隙 ${footerGap.toFixed(2)}px`);
+    }
+    try {
+      fs.mkdirSync("reports/devtools", { recursive: true });
+      await miniProgram.screenshot({
+        path: "reports/devtools/final-product-detail-footer.png",
+        fullPage: false
+      });
+    } catch (error) {
+      report.checks.push({
+        state: "product-detail-footer-screenshot",
+        ok: false,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+    if (footerGap > 48) {
+      throw new Error(`商品详情底部留下过大空白：间隙 ${footerGap.toFixed(2)}px`);
+    }
+    await detailScrollView.scrollTo(0, 0);
+    await sleep(300);
 
     const addToCartIndex = actionTexts.findIndex((text) => text === "加入购物车");
     const addToCartButton = addToCartIndex >= 0 ? actionButtons[addToCartIndex] : null;
@@ -167,9 +251,72 @@ async function main() {
     );
     const cartItem = await cart.$(".cart-item");
     const cartFooter = await cart.$(".cart-footer");
+    const cartTitle = await cart.$(".cart-item .cart-title");
     const cartItemOffset = cartItem ? await cartItem.offset() : null;
     const cartItemSize = cartItem ? await cartItem.size() : null;
     const cartFooterOffset = cartFooter ? await cartFooter.offset() : null;
+    const cartTitleSize = cartTitle ? await cartTitle.size() : null;
+    const cartTitleLineClamp = cartTitle
+      ? await cartTitle.style("-webkit-line-clamp")
+      : "";
+    const cartTitleWhiteSpace = cartTitle ? await cartTitle.style("white-space") : "";
+    const cartTitleDisplay = cartTitle ? await cartTitle.style("display") : "";
+    if (cartTitle) {
+      report.checks.push({
+        state: "cart-title-layout",
+        lineClamp: cartTitleLineClamp,
+        display: cartTitleDisplay,
+        whiteSpace: cartTitleWhiteSpace,
+        titleSize: cartTitleSize,
+        cartItemSize,
+      });
+      if (Number(cartTitleLineClamp) !== 2 || cartTitleWhiteSpace === "nowrap") {
+        throw new Error("购物车商品名未按两行展示");
+      }
+      if (!cartTitleSize || cartTitleSize.width < 180 || cartTitleSize.height < 34) {
+        throw new Error(
+          `购物车商品名可用区域过小：${cartTitleSize ? `${cartTitleSize.width}x${cartTitleSize.height}px` : "未知"}`
+        );
+      }
+    } else {
+      throw new Error("购物车商品行缺少商品名");
+    }
+
+    // 数量为 1 时减号必须保持减号语义：改成“✕”会让顾客误以为点击直接删除。
+    const minusButton = await cart.$(".cart-item .stepper-btn--minus");
+    const minusText = minusButton ? (await minusButton.text()).trim() : "";
+    const minusSize = minusButton ? await minusButton.size() : null;
+    report.checks.push({
+      state: "cart-stepper-minus-at-one",
+      quantity: Array.isArray(cartData.items) && cartData.items.length ? cartData.items[0].quantity : null,
+      text: minusText,
+      size: minusSize,
+    });
+    if (!minusButton) {
+      throw new Error("购物车商品行缺少数量减号控件");
+    }
+    if (minusText !== "-") {
+      throw new Error(`购物车减号语义错误：数量为 1 时显示“${minusText || "空"}”，应保持“-”并保留移除确认`);
+    }
+    if (!minusSize || minusSize.width < 44 || minusSize.height < 44) {
+      throw new Error(
+        `购物车减号触控区域不足 44px：${minusSize ? `${minusSize.width}x${minusSize.height}` : "未知"}`
+      );
+    }
+
+    try {
+      fs.mkdirSync("reports/devtools", { recursive: true });
+      await miniProgram.screenshot({
+        path: "reports/devtools/final-cart-real-product.png",
+        fullPage: false,
+      });
+    } catch (error) {
+      report.checks.push({
+        state: "cart-screenshot",
+        ok: false,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
 
     report.checks.push({
       state: "cart-after-add",
@@ -202,6 +349,7 @@ async function main() {
       await miniProgram.disconnect();
     }
     fs.mkdirSync("reports/devtools", { recursive: true });
+    report.status = finalizeAuditStatus(report);
     fs.writeFileSync(REPORT_PATH, JSON.stringify(report, null, 2), "utf8");
   }
 
@@ -210,9 +358,10 @@ async function main() {
   for (const error of report.errors) {
     console.error(`  x ${error}`);
   }
-  if (report.status !== "PASS") {
-    process.exit(1);
+  if (report.blockedReason) {
+    console.log(`  ! ${report.blockedReason}`);
   }
+  exitForAuditStatus(report.status);
 }
 
 main();

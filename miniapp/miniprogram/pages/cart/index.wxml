@@ -4,7 +4,7 @@
   <scroll-view class="page-scroll" scroll-y enhanced show-scrollbar="{{false}}">
     <view class="page cart-page">
       <view wx:if="{{items.length === 0}}" class="yunxi-state">
-        <view class="yunxi-state__icon">购</view>
+        <view class="yunxi-state__icon yunxi-state__icon--shopping-cart" aria-hidden="true"></view>
         <text class="yunxi-state__title">购物车空空的</text>
         <text class="yunxi-state__hint">还没有选购商品哦，快去挑挑吧</text>
         <button class="primary-button yunxi-state__action" bindtap="goShopping">去选购</button>
@@ -12,23 +12,25 @@
       
       <view wx:else class="cart-list">
         <view wx:for="{{items}}" wx:key="productId" class="cart-item yunxi-card hover-scale stagger-fade-in" style="animation-delay: {{index * 0.05}}s">
-          <view class="cart-check">✓</view>
-          <view class="cart-image">
-            <image wx:if="{{item.imageUrl && !item.imageFailed}}" class="cart-cover" src="{{item.imageUrl}}" mode="aspectFill" data-id="{{item.productId}}" binderror="onCartImageError" />
-            <view wx:else class="yunxi-image-fallback">
-              <text class="yunxi-image-fallback__mark">芸</text>
+          <view class="cart-set">
+            <view class="cart-check">✓</view>
+            <view class="cart-image" data-id="{{item.productId}}" bindtap="openProduct">
+              <image wx:if="{{item.imageUrl && !item.imageFailed}}" class="cart-cover" src="{{item.imageUrl}}" mode="aspectFill" data-id="{{item.productId}}" binderror="onCartImageError" />
+              <view wx:else class="yunxi-image-fallback">
+                <text class="yunxi-image-fallback__mark">芸</text>
+              </view>
             </view>
           </view>
           <view class="cart-info">
-            <view class="cart-info__header">
-              <text class="cart-title">{{item.title}}</text>
-              <text class="tag">{{item.stockText}}</text>
-            </view>
+            <text class="cart-title" data-id="{{item.productId}}" bindtap="openProduct">{{item.title}}</text>
             <view class="cart-info__footer">
-              <text class="cart-price yunxi-price">{{item.priceText}}</text>
+              <view class="cart-price-group">
+                <text class="cart-price yunxi-price">{{item.priceText}}</text>
+                <text wx:if="{{item.stockText}}" class="tag">{{item.stockText}}</text>
+              </view>
               <view class="cart-stepper">
                 <view class="stepper-btn stepper-btn--minus" data-id="{{item.productId}}" bindtap="decreaseQty">
-                  {{item.quantity === 1 ? '✕' : '-'}}
+                  -
                 </view>
                 <text class="stepper-val">{{item.quantity}}</text>
                 <view class="stepper-btn stepper-btn--plus" data-id="{{item.productId}}" bindtap="increaseQty">+</view>
@@ -55,9 +57,9 @@
             </view>
           </view>
           <text class="recommend-name">{{item.title}}</text>
-          <text class="recommend-sold">{{item.soldText}}</text>
+          <text class="recommend-hint">{{item.hintText}}</text>
           <view class="recommend-bottom">
-            <text class="cart-price yunxi-price">{{item.priceText}}</text>
+            <text class="cart-price yunxi-price{{item.isDisplayOnly ? ' is-display-only' : ''}}">{{item.priceText}}</text>
             <view
               class="recommend-action {{item.isUnavailable ? 'is-muted' : ''}}"
               data-id="{{item.id}}"

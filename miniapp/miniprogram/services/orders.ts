@@ -46,6 +46,7 @@ export interface OrderSummary {
   deliveryType?: string;
   fulfillmentMethod?: "pickup" | "beijing_delivery";
   deliveryQuoteId?: string;
+  pickupAddress?: string;
   deliveryAddress?: string;
   expectTime?: string;
   remark?: string;

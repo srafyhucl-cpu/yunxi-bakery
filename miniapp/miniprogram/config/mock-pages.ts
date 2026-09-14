@@ -70,8 +70,8 @@ export const MOCK_PAGE_CONFIGS: Record<string, ShopPageConfig> = {
         enabled: true,
         props: {
           items: [
-            { id: "points", title: "积分商城", subtitle: "查看积分", iconText: "积分", linkType: "page", linkTarget: "profile" },
-            { id: "recharge", title: "充值中心", subtitle: "查看余额", iconText: "充值", linkType: "page", linkTarget: "profile" }
+            { id: "points", title: "积分商城", subtitle: "查看积分", iconKey: "points", linkType: "page", linkTarget: "profile" },
+            { id: "recharge", title: "充值中心", subtitle: "查看余额", iconKey: "recharge", linkType: "page", linkTarget: "profile" }
           ]
         }
       },

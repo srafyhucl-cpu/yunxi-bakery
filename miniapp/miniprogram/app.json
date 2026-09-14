@@ -37,7 +37,7 @@
       },
       {
         "pagePath": "pages/products/index",
-        "text": "全部分类"
+        "text": "商品"
       },
       {
         "pagePath": "pages/cart/index",
@@ -49,7 +49,7 @@
       },
       {
         "pagePath": "pages/profile/index",
-        "text": "会员中心"
+        "text": "我的"
       }
     ]
   },

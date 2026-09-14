@@ -20,7 +20,7 @@
         badge-text="{{sessionView.badgeText}}"
         description="{{loginStateText}}"
         action-text="{{loginActionText}}"
-        icon-text="登"
+        icon-key="{{sessionView.loggedIn ? 'user-check' : 'log-in'}}"
         bind:action="goProfile"
       ></session-notice>
 
@@ -64,7 +64,7 @@
             data-method="delivery"
             bindtap="selectFulfillmentMethod"
           >
-            门店配送
+            北京闪送
           </button>
         </view>
 
@@ -77,13 +77,22 @@
             end="{{dateEndValue}}"
             bindchange="selectDesiredDate"
           >
-            <view class="time-picker">日期：{{selectedDateValue || '请选择'}}</view>
+            <view class="time-picker">
+              <text class="time-picker__value">日期：{{selectedDateValue || '请选择'}}</text>
+              <text class="time-picker__chevron"></text>
+            </view>
           </picker>
           <picker mode="selector" value="{{selectedHourIndex}}" range="{{hourOptions}}" bindchange="selectDesiredHour">
-            <view class="time-picker">小时：{{hourOptions[selectedHourIndex] || '18'}}</view>
+            <view class="time-picker">
+              <text class="time-picker__value">小时：{{hourOptions[selectedHourIndex] || '18'}}</text>
+              <text class="time-picker__chevron"></text>
+            </view>
           </picker>
           <picker mode="selector" value="{{selectedMinuteIndex}}" range="{{minuteOptions}}" bindchange="selectDesiredMinute">
-            <view class="time-picker">分钟：{{minuteOptions[selectedMinuteIndex] || '00'}}</view>
+            <view class="time-picker">
+              <text class="time-picker__value">分钟：{{minuteOptions[selectedMinuteIndex] || '00'}}</text>
+              <text class="time-picker__chevron"></text>
+            </view>
           </picker>
         </view>
         <view class="time-preview">期望时间：{{desiredTime || '未选择'}}</view>
@@ -93,6 +102,7 @@
           <text class="form-field__label">配送地址</text>
           <input placeholder="如：小区、楼栋、门牌号" value="{{address}}" data-field="address" bindinput="updateField" />
         </view>
+        <text wx:if="{{fulfillmentMethod === 'delivery'}}" class="delivery-fee-hint">北京同城闪送专送，运费按收货地址实测、由顾客承担，客服确认后告知。</text>
         <view class="form-field">
           <text class="form-field__label">备注</text>
           <textarea placeholder="如：生日牌文字、忌口、口味偏好等" value="{{remark}}" data-field="remark" bindinput="updateField" />
@@ -100,22 +110,30 @@
       </view>
 
       <view wx:if="{{submitted}}" class="success-panel bakery-panel">
-        <text class="success-title">登记已提交</text>
-        <view class="success-row">
-          <text>商品</text>
-          <text>{{submittedRegistration.productName}}</text>
+        <view class="success-heading">
+          <view class="success-heading__icon">✓</view>
+          <view class="success-heading__copy">
+            <text class="success-title">登记已提交</text>
+            <text class="success-subtitle">门店客服确认后会联系你，请留意客服消息。</text>
+          </view>
         </view>
-        <view class="success-row">
-          <text>数量</text>
-          <text>{{submittedRegistration.quantity}}</text>
-        </view>
-        <view class="success-row">
-          <text>期望时间</text>
-          <text>{{submittedRegistration.desiredTime}}</text>
-        </view>
-        <view class="success-row">
-          <text>状态</text>
-          <text>待客服确认</text>
+        <view class="success-list">
+          <view class="success-row">
+            <text>商品</text>
+            <text>{{submittedRegistration.productName}}</text>
+          </view>
+          <view class="success-row">
+            <text>数量</text>
+            <text>{{submittedRegistration.quantity}}</text>
+          </view>
+          <view class="success-row">
+            <text>期望时间</text>
+            <text>{{submittedRegistration.desiredTime}}</text>
+          </view>
+          <view class="success-row">
+            <text>状态</text>
+            <text>待客服确认</text>
+          </view>
         </view>
       </view>
 

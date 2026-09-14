@@ -36,7 +36,8 @@ from datetime import datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-LOGBOOK_FILE = ROOT / "LOGBOOK.md"
+# monorepo 权威日志在仓库根目录；脚本位于 backend/scripts/ 下，需从 backend 再上溯一级（M-20260914-014）。
+LOGBOOK_FILE = ROOT.parent / "LOGBOOK.md"
 VERSION_FILE = ROOT / "VERSION"
 
 # 变更类型映射

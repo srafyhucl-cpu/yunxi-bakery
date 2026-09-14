@@ -7,6 +7,7 @@ import {
   syncAddressBookFromBackend,
   validateAddressBookDraft,
 } from "../../utils/address-book";
+import { isAddressDetailedEnough } from "../../utils/address";
 import { getMiniappSession } from "../../services/auth";
 import { getMiniappLayoutMetrics } from "../../utils/layout";
 import { goBackOrHome } from "../../utils/navigation";
@@ -15,6 +16,7 @@ import { buildMiniappSessionView, isMiniappLoggedIn } from "../../utils/session"
 import type { AddressBookItem } from "../../services/address";
 
 type AddressPageMode = "manage" | "select";
+type AddressBookItemView = AddressBookItem & { needsDetailHint: boolean };
 
 function normalizeText(value: string): string {
   return value.trim();
@@ -33,7 +35,7 @@ function buildEmptyDraft() {
 Page({
   data: {
     mode: "manage" as AddressPageMode,
-    addresses: [] as AddressBookItem[],
+    addresses: [] as AddressBookItemView[],
     editing: false,
     savingAddress: false,
     defaultingAddressId: "",
@@ -41,7 +43,7 @@ Page({
     draft: buildEmptyDraft(),
     errorMessage: "",
     sessionView: buildMiniappSessionView(getMiniappSession()),
-    loginStateText: "登录后可管理常用收货地址",
+    loginStateText: "登录后可保存常用地址，下单直接选择",
     layoutStyle: getMiniappLayoutMetrics().pageShellStyle
   },
   onLoad(query: Record<string, string | undefined>) {
@@ -64,10 +66,10 @@ Page({
   async reloadAddresses() {
     if (!isMiniappLoggedIn(getMiniappSession())) {
       this.setData({
-        addresses: [] as AddressBookItem[],
+        addresses: [] as AddressBookItemView[],
         errorMessage: "",
         sessionView: buildMiniappSessionView(getMiniappSession()),
-        loginStateText: "请先登录后管理地址"
+        loginStateText: "登录后可保存常用地址，下单直接选择"
       });
       return;
     }
@@ -76,7 +78,12 @@ Page({
       loginStateText: "地址已关联当前微信身份"
     });
     const addresses = await syncAddressBookFromBackend();
-    this.setData({ addresses });
+    this.setData({
+      addresses: addresses.map((item) => ({
+        ...item,
+        needsDetailHint: !isAddressDetailedEnough(item.address)
+      }))
+    });
   },
   startCreate() {
     if (this.data.savingAddress) {

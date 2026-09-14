@@ -19,9 +19,9 @@ Component({
       type: String,
       value: ""
     },
-    iconText: {
+    iconKey: {
       type: String,
-      value: "登"
+      value: "log-in"
     }
   },
   data: {

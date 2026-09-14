@@ -4,10 +4,16 @@ import json
 
 from app.models.knowledge import KnowledgeEntry
 from app.repository.youzan_repo import YouzanProductRepo
+from app.service.catalog.customer_text import (
+    build_customer_description,
+    build_customer_specs,
+    build_customer_subtitle,
+)
+from app.service.catalog.purchasability import is_product_purchasable
 
 FALLBACK_CATEGORY_ID = "youzan-products"
 FALLBACK_CATEGORY_TITLE = "有赞同步商品"
-DEFAULT_PRODUCT_NOTICE = "手工现制商品，请下单前确认取货或配送时间。"
+DEFAULT_PRODUCT_NOTICE = "下单前请确认取货或配送时间。"
 IMAGE_PROXY_PATH_TEMPLATE = "/api/v1/miniapp/products/{product_id}/image"
 GENERIC_CATEGORY_TOKENS = frozenset({"商品", "价格", "推荐", "在售"})
 RAW_CATEGORY_ID_PREFIXES = (
@@ -36,10 +42,12 @@ class CatalogProductSerializer:
         sold_num = int(getattr(entry, "sold_num", 0) or 0)
         stock = int(getattr(entry, "stock", 0) or 0)
         category = await self._get_entry_category(entry, tags, preferred_category_id)
+        customer_description = build_customer_description(entry.content)
+        customer_specs = build_customer_specs(tags, entry.title)
         return {
             "id": str(entry.youzan_item_id or entry.id),
             "title": entry.title,
-            "subtitle": build_subtitle(entry.content),
+            "subtitle": build_customer_subtitle(customer_description),
             "imageUrl": build_product_image_url(entry),
             "priceFen": int(getattr(entry, "price_fen", 0) or 0),
             "soldText": build_sold_text(sold_num, stock),
@@ -47,9 +55,10 @@ class CatalogProductSerializer:
             "categoryName": category["title"],
             "stock": stock,
             "isActive": bool(entry.is_active),
-            "tags": tags,
-            "description": entry.content,
-            "specs": tags,
+            "isPurchasable": is_product_purchasable(entry.title),
+            "tags": customer_specs,
+            "description": customer_description,
+            "specs": customer_specs,
             "notices": [DEFAULT_PRODUCT_NOTICE],
         }
 
@@ -58,17 +67,20 @@ class CatalogProductSerializer:
         if self._youzan_product_repo is None:
             return []
         categories = await self._youzan_product_repo.list_public_categories()
-        return [
-            {
-                # youzan_product_categories 存的是有赞商品分类（classification）id，
-                # 以 classification- 前缀构建前台 ID，命中 classification_ids_json 路径
-                "id": build_youzan_category_id(f"classification-{category['tag_id']}"),
-                "title": category["title"],
-                "sort": int(category["sort"] or 0),
-                "productCount": int(category["product_count"] or 0),
-            }
-            for category in categories
-        ]
+        public_categories: list[dict] = []
+        for category in categories:
+            resolved = resolve_public_category(category)
+            if resolved is None:
+                continue
+            public_categories.append(
+                {
+                    "id": resolved["id"],
+                    "title": str(category["title"]),
+                    "sort": int(category["sort"] or 0),
+                    "productCount": resolved["productCount"],
+                }
+            )
+        return public_categories
 
     async def _get_entry_category(
         self,
@@ -141,9 +153,7 @@ class CatalogProductSerializer:
             category = await self._youzan_product_repo.get_category(candidate_tag_id)
             if category is not None and int(category.get("is_public", 0) or 0) == 1:
                 return {
-                    "id": build_youzan_category_id(
-                        f"classification-{category['tag_id']}"
-                    ),
+                    "id": build_youzan_category_id(str(category["tag_id"])),
                     "title": str(category["title"]),
                 }
         if ordered_tag_ids:
@@ -151,12 +161,31 @@ class CatalogProductSerializer:
         return None
 
 
-def build_subtitle(content: str) -> str:
-    """生成卡片副标题。"""
-    compact_content = " ".join((content or "").split())
-    if len(compact_content) <= 36:
-        return compact_content
-    return f"{compact_content[:36]}..."
+def resolve_public_category(category: dict) -> dict | None:
+    """按真实商品命中数选择分类命名空间，零命中分类不公开。
+
+    分类表 `tag_id` 既可能存商品 tag id，也可能存 item.base 分类 id，两者落在商品
+    宽表的不同字段。商品侧解析优先 classification，这里保持同一优先级，并让
+    `productCount` 等于该命名空间的实际命中数，避免点开分类与计数不一致。
+    """
+
+    raw_id = str(category.get("tag_id") or "").strip()
+    if not raw_id:
+        return None
+    tag_count = int(category.get("tag_product_count") or 0)
+    classification_count = int(category.get("classification_product_count") or 0)
+    if classification_count > 0:
+        raw_classification_id = raw_id.removeprefix("classification-")
+        return {
+            "id": build_youzan_category_id(f"classification-{raw_classification_id}"),
+            "productCount": classification_count,
+        }
+    if tag_count > 0:
+        return {
+            "id": build_youzan_category_id(raw_id),
+            "productCount": tag_count,
+        }
+    return None
 
 
 def build_sold_text(sold_num: int, stock: int) -> str:

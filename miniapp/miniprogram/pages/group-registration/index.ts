@@ -7,7 +7,6 @@ import {
 } from "../../services/group-registrations";
 import { ADDRESS_PHONE_PATTERN } from "../../utils/address-book";
 import {
-  buildDefaultExpectTime,
   buildCheckoutHourOptions,
   buildExpectTime,
   CHECKOUT_MINUTE_OPTIONS,
@@ -15,6 +14,7 @@ import {
   getCheckoutDateEnd,
   getCheckoutDateStart,
   isCheckoutDateToday,
+  resolveCheckoutSchedule,
 } from "../../utils/checkout-time";
 import { getMiniappLayoutMetrics } from "../../utils/layout";
 import { goBackOrHome } from "../../utils/navigation";
@@ -44,6 +44,29 @@ function buildQuantity(value: string): number {
   return quantity;
 }
 
+const REGISTRATION_BUSINESS_HOURS = "09:00-19:30";
+
+// 可选日期与时段必须按页面打开时的北京时间重建：模块级 data 只在进程启动时求值一次，
+// 跨过 17:00 截单点或零点后沿用旧快照会把过期日期与错误的当天标记带进登记。
+function buildRegistrationSchedule(expectTime?: string, now = new Date()) {
+  const schedule = resolveCheckoutSchedule(
+    REGISTRATION_BUSINESS_HOURS,
+    expectTime || "",
+    CHECKOUT_MINUTE_OPTIONS,
+    now
+  );
+  return {
+    dateStartValue: getCheckoutDateStart(now),
+    dateEndValue: getCheckoutDateEnd(now),
+    selectedDateValue: schedule.dateValue,
+    hourOptions: schedule.hourOptions,
+    selectedHourIndex: schedule.hourIndex,
+    selectedMinuteIndex: schedule.minuteIndex,
+    desiredTime: schedule.expectTime,
+    isSameDayRegistration: isCheckoutDateToday(schedule.dateValue, now)
+  };
+}
+
 Page({
   data: {
     campaignId: "",
@@ -54,17 +77,10 @@ Page({
     productName: "",
     quantityText: "1",
     fulfillmentMethod: "pickup" as GroupRegistrationFulfillmentMethod,
-    desiredTime: "",
+    ...buildRegistrationSchedule(),
+    minuteOptions: CHECKOUT_MINUTE_OPTIONS,
     address: "",
     remark: "",
-    dateStartValue: getCheckoutDateStart(),
-    dateEndValue: getCheckoutDateEnd(),
-    selectedDateValue: buildDefaultExpectTime().slice(0, 10),
-    hourOptions: buildCheckoutHourOptions("09:00-19:30"),
-    minuteOptions: CHECKOUT_MINUTE_OPTIONS,
-    selectedHourIndex: getDefaultCheckoutHourIndex(buildCheckoutHourOptions("09:00-19:30")),
-    selectedMinuteIndex: 0,
-    isSameDayRegistration: isCheckoutDateToday(buildDefaultExpectTime().slice(0, 10)),
     errorMessage: "",
     submitting: false,
     submitted: false,
@@ -76,17 +92,15 @@ Page({
     layoutStyle: getMiniappLayoutMetrics().pageShellStyle
   },
   onLoad(query: Record<string, string | undefined>) {
-    const defaultExpectTime = buildDefaultExpectTime("09:00-19:30");
     const productName = decodeQueryText(query.productName);
     const session = getMiniappSession();
     const loggedIn = isMiniappLoggedIn(session);
     this.setData({
+      ...buildRegistrationSchedule(),
       campaignId: normalizeText(decodeQueryText(query.campaignId)),
       groupName: decodeQueryText(query.groupName),
       campaignTitle: decodeQueryText(query.title) || "群内福利登记",
       productName,
-      desiredTime: defaultExpectTime,
-      selectedDateValue: defaultExpectTime.slice(0, 10),
       sessionView: buildMiniappSessionView(session),
       canSubmitRegistration: loggedIn,
       loginStateText: loggedIn
@@ -94,6 +108,10 @@ Page({
         : "请先登录后提交群内登记，避免登记记录无法归属到你",
       loginActionText: loggedIn ? "查看身份" : "去登录"
     });
+  },
+  onShow() {
+    // 页面在后台跨过截单点或零点后重新展示时，重建基线并把过期选择抬到最早可预约时间。
+    this.setData(buildRegistrationSchedule(this.data.desiredTime));
   },
   goBack() {
     if (this.data.submitting) {
@@ -136,7 +154,7 @@ Page({
   },
   selectDesiredDate(event: WechatMiniprogram.PickerChange) {
     const selectedDateValue = String(event.detail.value);
-    const hourOptions = buildCheckoutHourOptions("09:00-19:30", selectedDateValue);
+    const hourOptions = buildCheckoutHourOptions(REGISTRATION_BUSINESS_HOURS, selectedDateValue);
     const selectedHourIndex = getDefaultCheckoutHourIndex(hourOptions);
     this.setData({
       selectedDateValue,

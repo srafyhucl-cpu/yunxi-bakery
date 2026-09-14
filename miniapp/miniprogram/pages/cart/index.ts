@@ -2,7 +2,16 @@ import { addCartItem, getCartItems, saveCartItems } from "../../utils/cart";
 import { getMiniappLayoutMetrics } from "../../utils/layout";
 import { formatFen } from "../../utils/money";
 import { ROUTES } from "../../constants/routes";
-import { getBakeryPattern, getProductImageClass } from "../../utils/bakery";
+import {
+  getBakeryPattern,
+  getProductActionLabel,
+  getProductAddToastLabel,
+  getProductAvailabilityLabel,
+  getProductCardTip,
+  getProductImageClass,
+  getProductPriceText,
+  isProductPurchasable
+} from "../../utils/bakery";
 import { syncCustomTabBar } from "../../utils/tab-bar";
 import { listProducts } from "../../services/products";
 import type { CatalogProduct } from "../../types/catalog";
@@ -11,11 +20,12 @@ interface RecommendedProductView {
   id: string;
   title: string;
   priceText: string;
-  soldText: string;
+  hintText: string;
   imageClass: string;
   imageUrl: string;
   imageFailed: boolean;
   isUnavailable: boolean;
+  isDisplayOnly: boolean;
   actionText: string;
   priceFen: number;
   stock: number;
@@ -32,18 +42,22 @@ interface CartItemView extends CartItem {
 
 const RECOMMENDED_PRODUCT_LIMIT = 4;
 
+// 购物车推荐只承载可下单商品：非卖品没有真实售价与库存，混在加购位会让用户以为能买。
+const RECOMMENDED_PRODUCT_FETCH_LIMIT = 12;
+
 function toRecommendedProductView(product: CatalogProduct): RecommendedProductView {
-  const isUnavailable = !product.isActive || product.stock <= 0;
+  const isUnavailable = product.isPurchasable === false || !product.isActive || product.stock <= 0;
   return {
     id: product.id,
     title: product.title,
     imageUrl: product.imageUrl,
-    priceText: formatFen(product.priceFen),
-    soldText: isUnavailable ? "可咨询客服" : "建议提前1天预订",
+    priceText: getProductPriceText(product, formatFen(product.priceFen)),
+    hintText: isUnavailable ? "可咨询客服" : getProductCardTip(product),
     imageClass: getProductImageClass(product),
     imageFailed: false,
     isUnavailable,
-    actionText: isUnavailable ? "查看" : "加入",
+    isDisplayOnly: !isProductPurchasable(product),
+    actionText: getProductActionLabel(product),
     priceFen: product.priceFen,
     stock: product.stock,
     isActive: product.isActive
@@ -52,7 +66,7 @@ function toRecommendedProductView(product: CatalogProduct): RecommendedProductVi
 
 function getCartStockText(item: CartItem): string {
   if (typeof item.stock !== "number") {
-    return "建议提前1天预订";
+    return "";
   }
   if (item.stock <= 0) {
     return "暂时售罄";
@@ -63,7 +77,8 @@ function getCartStockText(item: CartItem): string {
   if (item.stock <= 5) {
     return "仅余 " + item.stock + " 件";
   }
-  return "建议提前1天预订";
+  // 胶囊只放可核对事实；长运费口径放底部合计说明，避免在窄胶囊里被截断
+  return getProductAvailabilityLabel({ title: item.title, stock: item.stock });
 }
 
 Page({
@@ -81,11 +96,16 @@ Page({
   },
   async loadRecommendedProducts() {
     try {
-      let products = await listProducts({ featured: true, limit: RECOMMENDED_PRODUCT_LIMIT });
+      let products = await listProducts({ featured: true, limit: RECOMMENDED_PRODUCT_FETCH_LIMIT });
       if (!products.length) {
-        products = await listProducts({ limit: RECOMMENDED_PRODUCT_LIMIT });
+        products = await listProducts({ limit: RECOMMENDED_PRODUCT_FETCH_LIMIT });
       }
-      this.setData({ recommendedProducts: products.slice(0, RECOMMENDED_PRODUCT_LIMIT).map(toRecommendedProductView) });
+      this.setData({
+        recommendedProducts: products
+          .filter((product) => isProductPurchasable(product))
+          .slice(0, RECOMMENDED_PRODUCT_LIMIT)
+          .map(toRecommendedProductView)
+      });
     } catch {
       this.setData({ recommendedProducts: [] });
     }
@@ -187,7 +207,7 @@ Page({
       stock: product.stock,
     });
     this.refreshCartData();
-    wx.showToast({ title: "已加入预订单", icon: "success" });
+    wx.showToast({ title: getProductAddToastLabel(product), icon: "success" });
   },
   goShopping() {
     wx.switchTab({
@@ -195,9 +215,13 @@ Page({
     });
   },
   openProduct(event: WechatMiniprogram.TouchEvent) {
-    const productId = event.currentTarget.dataset.id as string;
+    const productId = (event.currentTarget.dataset.id as string | undefined)?.trim();
+    if (!productId) {
+      wx.showToast({ title: "商品信息加载中", icon: "none" });
+      return;
+    }
     wx.navigateTo({
-      url: `${ROUTES.productDetail}?id=${productId}`
+      url: `${ROUTES.productDetail}?id=${encodeURIComponent(productId)}`
     });
   },
   checkout() {

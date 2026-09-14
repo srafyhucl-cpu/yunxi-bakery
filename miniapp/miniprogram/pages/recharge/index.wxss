@@ -125,12 +125,30 @@
   color: var(--yunxi-text-primary);
 }
 
+.custom-input-wrap {
+  flex: 1;
+  min-width: 0;
+  height: 88rpx;
+  display: flex;
+  align-items: center;
+  padding: 0 20rpx;
+  border: 1rpx solid var(--yunxi-border-medium);
+  border-radius: var(--yunxi-radius-sm);
+  background: var(--yunxi-surface-alt);
+}
+
 .custom-input {
   flex: 1;
-  border-bottom: 2rpx solid var(--yunxi-border);
-  padding: 12rpx 8rpx;
+  min-width: 0;
+  height: 88rpx;
+  padding: 0;
   font-size: 32rpx;
+  line-height: 88rpx;
   color: var(--yunxi-text-primary);
+}
+
+.custom-input-placeholder {
+  color: var(--yunxi-text-muted);
 }
 
 .custom-unit {
@@ -145,10 +163,8 @@
 }
 
 .records-empty {
-  padding: 40rpx 0;
-  text-align: center;
-  color: var(--yunxi-text-muted);
-  font-size: 26rpx;
+  align-items: flex-start;
+  text-align: left;
 }
 
 .record-row {
@@ -187,8 +203,9 @@
 }
 
 .recharge-page button.primary-btn[disabled] {
-  color: rgba(255, 255, 255, 0.8);
-  background: #A3B5AC;
+  color: var(--yunxi-text-secondary) !important;
+  background: var(--yunxi-surface-alt) !important;
+  border: 1rpx solid var(--yunxi-border-medium) !important;
   box-shadow: none;
 }
 

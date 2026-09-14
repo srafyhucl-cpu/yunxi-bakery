@@ -1,5 +1,13 @@
  import { ROUTES } from "../../constants/routes";
-import { getProductImageClass } from "../../utils/bakery";
+import {
+  getProductActionLabel,
+  getProductAddToastLabel,
+  getProductAvailabilityLabel,
+  getProductCardTip,
+  getProductImageClass,
+  getProductPriceText,
+  isProductPurchasable
+} from "../../utils/bakery";
 import { addCartItem, getCartItems } from "../../utils/cart";
 import { API_BASE_URL } from "../../services/config";
 import { getMiniappSession } from "../../services/auth";
@@ -61,6 +69,7 @@ interface ProductCardView extends CatalogProduct {
   badgeText: string;
   deliveryTip?: string;
   isUnavailable: boolean;
+  isDisplayOnly: boolean;
   actionText: string;
 }
 
@@ -81,12 +90,29 @@ function normalizeQuickLinksProps(props: PageBlock["props"]): QuickLinksProps {
   };
 }
 
+// 装修配置的历史模型仍可能携带 iconText；顾客端统一按语义键渲染，禁止把文字塞进图标底座。
+function resolveQuickLinkIconKey(link: QuickLinksProps["items"][number]): string {
+  const configuredKey = String(link.iconKey || "").trim();
+  if (/^(points|recharge|link)$/.test(configuredKey)) {
+    return configuredKey;
+  }
+  const identity = [link.id, link.linkTarget, link.title].join(" ").toLowerCase();
+  if (identity.includes("points") || identity.includes("积分")) {
+    return "points";
+  }
+  if (identity.includes("recharge") || identity.includes("充值")) {
+    return "recharge";
+  }
+  return "link";
+}
+
 function buildQuickLinks(block: PageBlock): HomeBlockView {
   const props = normalizeQuickLinksProps(block.props);
   return {
     ...block,
     quickLinkItems: props.items.map((link) => ({
       ...link,
+      iconKey: resolveQuickLinkIconKey(link),
       titleText: `${link.title} >`,
     })),
   };
@@ -213,13 +239,14 @@ async function buildHomeBlocks(config: ShopPageConfig): Promise<HomeBlockView[]>
       }
       const products = sourceProducts.map((product) => ({
         ...product,
-        priceText: `自提价 ${formatFen(product.priceFen)}`,
+        priceText: getProductPriceText(product, `自提价 ${formatFen(product.priceFen)}`),
         imageClass: getProductImageClass(product),
         imageFailed: false,
-        badgeText: product.stock > 0 ? "可预订" : product.isActive ? "暂时售罄" : "已下架",
-        deliveryTip: product.stock > 0 ? "提前1天预订 · 闪送/自取" : "可咨询客服或先看其他商品",
-        isUnavailable: !product.isActive || product.stock <= 0,
-        actionText: !product.isActive || product.stock <= 0 ? "查看" : "预订"
+        badgeText: getProductAvailabilityLabel(product),
+        deliveryTip: getProductCardTip(product),
+        isUnavailable: product.isPurchasable === false || !product.isActive || product.stock <= 0,
+        isDisplayOnly: !isProductPurchasable(product),
+        actionText: getProductActionLabel(product)
       }));
       return { ...block, products };
     }
@@ -367,7 +394,7 @@ Page({
       stock: product.stock
     });
     this.refreshCartSummary();
-    wx.showToast({ title: "已加入预订单", icon: "success" });
+    wx.showToast({ title: getProductAddToastLabel(product), icon: "success" });
   },
   goToCart() {
     wx.switchTab({ url: ROUTES.cart });

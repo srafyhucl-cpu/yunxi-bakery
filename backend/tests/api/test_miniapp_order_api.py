@@ -189,6 +189,8 @@ async def test_miniapp_order_api_detail_returns_timeline(app: FastAPI) -> None:
                         "quantity": 1,
                     }
                 ],
+                "deliveryType": "pickup",
+                "pickupAddress": "北京市东城区南竹杆胡同2号银河SOHO",
                 "expectTime": "2026-06-18 18:00",
             },
             headers=headers,
@@ -201,6 +203,7 @@ async def test_miniapp_order_api_detail_returns_timeline(app: FastAPI) -> None:
 
     assert detail_response.status_code == 200
     data = detail_response.json()["data"]
+    assert data["pickupAddress"] == "北京市东城区南竹杆胡同2号银河SOHO"
     assert [event["status"] for event in data["timeline"]] == ["pending"]
     assert data["timeline"][0]["note"] == "用户提交订单"
 

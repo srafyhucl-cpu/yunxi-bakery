@@ -131,7 +131,7 @@ async def test_miniapp_products_api_lists_filters_and_reads_detail(
         assert detail["imageUrl"] == "https://img.example/api-strawberry.jpg"
         assert detail["priceFen"] == 26800
         assert detail["soldText"] == "已售 12"
-        assert detail["categoryId"] == "youzan-classification-281476346"
+        assert detail["categoryId"] == "youzan-tag-281476346"
         assert detail["categoryName"] == "生日蛋糕"
         assert detail["tags"] == ["生日蛋糕", "草莓"]
 
@@ -139,7 +139,7 @@ async def test_miniapp_products_api_lists_filters_and_reads_detail(
         assert categories_response.status_code == 200
         assert categories_response.json()["data"] == [
             {
-                "id": "youzan-classification-281476346",
+                "id": "youzan-tag-281476346",
                 "title": "生日蛋糕",
                 "sort": 10,
                 "productCount": 1,
@@ -154,6 +154,12 @@ async def test_miniapp_products_api_lists_filters_and_reads_detail(
         assert [product["id"] for product in category_response.json()["data"]] == [
             "71001"
         ]
+        assert category_response.json()["meta"] == {
+            "total": 1,
+            "limit": 50,
+            "offset": 0,
+            "hasMore": False,
+        }
 
 
 @pytest.mark.asyncio
@@ -272,3 +278,44 @@ async def test_miniapp_products_api_supports_popular_sort(
         "73003",
         "73001",
     ]
+
+
+@pytest.mark.asyncio
+async def test_miniapp_products_api_returns_keyword_pagination_meta(
+    db: aiosqlite.Connection,
+    app: FastAPI,
+) -> None:
+    """公开商品 API 应保留数组响应，同时通过 meta 返回服务端分页信息。"""
+    await seed_miniapp_product(
+        db, item_id=74001, title="API 曲奇一", keywords="曲奇,饼干", sold_num=30
+    )
+    await seed_miniapp_product(
+        db, item_id=74002, title="API 曲奇二", keywords="曲奇,饼干", sold_num=20
+    )
+    await seed_miniapp_product(
+        db, item_id=74003, title="API 蛋糕", keywords="蛋糕", sold_num=99
+    )
+
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as client:
+        response = await client.get(
+            "/api/v1/miniapp/products",
+            params={
+                "keyword": "曲奇",
+                "limit": "1",
+                "offset": "0",
+                "sort": "popular",
+            },
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert [product["id"] for product in payload["data"]] == ["74001"]
+    assert payload["meta"] == {
+        "total": 2,
+        "limit": 1,
+        "offset": 0,
+        "hasMore": True,
+    }
