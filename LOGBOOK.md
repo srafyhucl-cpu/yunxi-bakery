@@ -1,3 +1,17 @@
+## [2026-09-18] - docs(ops): 记录日活 100 的服务器容量基线
+
+task_id: T-OPS-CAPACITY-BASELINE
+trace_id: 20260918-server-capacity-baseline
+run_id: 20260918-server-capacity-baseline-r1
+owner: AI 员工
+status: completed
+status_label: 已完成（completed）
+scope: 根据用户提供的当日店铺实时访客数、浏览量截图，记录日活约 100 的电商小程序最低容量基线与后续扩容触发条件。
+implementation: 新增 `docs/specs/2026-09-18-server-capacity-baseline.md`，明确最低 `1 核 2 GB / 40 GB SSD / 3 Mbps`、正式推荐 `2 核 4 GB` 应用服务器加 `1 核 2 GB` 独立数据库、图片走对象存储和 CDN，并记录 CPU、内存、QPS、并发、日活和突发流量等升级触发条件。
+verification: 核对截图内容与 SHA-256；容量结论仅用于低流量规划，未将其登记为压测、生产验收或上线批准。纯文档变更未运行全量测试。
+evidence: docs/specs/2026-09-18-server-capacity-baseline.md；截图 SHA-256 `A8EB4716854B9003608A0C1A01ED24004FC2ED5C7BFF49D80A04BF17F5B67CF4`、`4ACE92B7F236445CE8AAB4B8C8DA2839B0348319CF29B56C5D57F42441D1A277`
+limitations: 截图属于店铺前台观测口径，不能替代应用 QPS、数据库、支付回调和 AI 并发指标；部署或扩容前必须以真实监控重新核对。
+
 ## [2026-09-18] - fix(miniapp): 商品详情沉浸式导航标题对比度收口
 
 task_id: T-MINIAPP-COMMERCE-UX-REDESIGN

@@ -33,6 +33,7 @@ ______________________________________________________________________
 | 需要追溯架构决策 | [adr/README.md](adr/README.md) |
 | 需要登记上线或交接证据 | [core/evidence-index.md](core/evidence-index.md) |
 | 需要确认当前生产目录、静态入口或发布目标 | [../release/server-layout.md](../release/server-layout.md) |
+| 需要核对日活 100 的服务器容量基线与扩容触发条件 | [../specs/2026-09-18-server-capacity-baseline.md](../specs/2026-09-18-server-capacity-baseline.md) |
 | 需要更新或审计项目 Skill | `.agents/SKILL_AUDIT.md`、`.agents/skills/yunxi-harness-engineering/SKILL.md`、`docs/AGENTS/skill-reference.md` |
 | 查看 Harness 全面评审与外部对标 | [HARNESS-MATURITY-REVIEW-20260830.md](HARNESS-MATURITY-REVIEW-20260830.md) |
 | 查看 Harness P0 改进队列 | 评审报告第五节；P0 包含中文治理控制面、运行 manifest/episode、策略即代码、统一 CI 入口和受控临时产物清理 |
