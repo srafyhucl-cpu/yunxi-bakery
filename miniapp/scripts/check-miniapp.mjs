@@ -998,6 +998,30 @@ function checkProductDetailScrollNav() {
   if (!/background:\s*#/.test(solidMatch[1])) {
     fail("商品详情滚动后的悬浮栏必须使用不透明背景，透明背景会让正文与状态栏文字重叠");
   }
+  // 沉浸态标题压在商家上传的商品大图上，明暗不可控：必须有自带底衬，不能依赖图片恰好够浅。
+  const immersiveTitleMatch = detailWxss.match(
+    /\.detail-nav\s+\.page-fixed-safe__title\s*\{([\s\S]*?)\n}/
+  );
+  if (!immersiveTitleMatch) {
+    fail("商品详情沉浸态必须为导航标题定义独立样式，否则深色标题直接压在深色商品图上不可读");
+  } else {
+    const immersiveTitleRule = immersiveTitleMatch[1];
+    const titleSurfaceMatch = immersiveTitleRule.match(
+      /background:\s*rgba\(\s*255\s*,\s*255\s*,\s*255\s*,\s*(0(?:\.\d+)?|1(?:\.0+)?)\s*\)/
+    );
+    if (!titleSurfaceMatch || Number(titleSurfaceMatch[1]) < 0.8) {
+      fail("商品详情沉浸态标题必须有不低于 0.8 不透明度的白色底衬，否则深色商品图上标题不可读");
+    }
+    if (/transition:[^;]*background/.test(immersiveTitleRule)) {
+      fail("商品详情标题底衬不得参与过渡动画，DevTools 与低端机会读到半透明中间值");
+    }
+  }
+  const solidTitleMatch = detailWxss.match(
+    /\.detail-nav\.detail-nav--solid\s+\.page-fixed-safe__title\s*\{([\s\S]*?)\n}/
+  );
+  if (!solidTitleMatch || !/background:\s*transparent\s*;/.test(solidTitleMatch[1])) {
+    fail("商品详情滚动实底后必须移除标题底衬，避免白底叠白底");
+  }
 }
 
 // 商品卡购买说明必须完整可读：字号不小于 22rpx，且允许两行展示，不用单行 nowrap 截断关键运费口径。

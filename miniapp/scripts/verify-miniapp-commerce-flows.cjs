@@ -38,6 +38,61 @@ function resolveColorAlpha(color) {
   return channels.length === 3 ? 1 : 0;
 }
 
+function parseRgbaColor(color) {
+  const parts = (String(color || "").match(/rgba?\(([^)]+)\)/) || [])[1];
+  if (!parts) {
+    return null;
+  }
+  const channels = parts.split(",").map((part) => Number.parseFloat(part));
+  if (channels.length < 3 || channels.some((channel) => !Number.isFinite(channel))) {
+    return null;
+  }
+  return {
+    r: channels[0],
+    g: channels[1],
+    b: channels[2],
+    a: channels.length >= 4 ? channels[3] : 1
+  };
+}
+
+function composeOver(foreground, backdrop) {
+  return {
+    r: foreground.r * foreground.a + backdrop.r * (1 - foreground.a),
+    g: foreground.g * foreground.a + backdrop.g * (1 - foreground.a),
+    b: foreground.b * foreground.a + backdrop.b * (1 - foreground.a)
+  };
+}
+
+function relativeLuminance(color) {
+  const toLinear = (value) => {
+    const channel = value / 255;
+    return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * toLinear(color.r) + 0.7152 * toLinear(color.g) + 0.0722 * toLinear(color.b);
+}
+
+function contrastRatio(first, second) {
+  const firstLuminance = relativeLuminance(first);
+  const secondLuminance = relativeLuminance(second);
+  const lighter = Math.max(firstLuminance, secondLuminance);
+  const darker = Math.min(firstLuminance, secondLuminance);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+// 标题底栅是半透明的，实际底色取决于身后的商品图；
+// 按全白与全黑两个边界各算一次并取更差的一侧，避免用“看起来还行”的截图当结论。
+function worstCaseTitleContrast(textColor, surfaceColor) {
+  const text = parseRgbaColor(textColor);
+  const surface = parseRgbaColor(surfaceColor);
+  if (!text || !surface) {
+    return 0;
+  }
+  return Math.min(
+    contrastRatio(text, composeOver(surface, { r: 255, g: 255, b: 255 })),
+    contrastRatio(text, composeOver(surface, { r: 0, g: 0, b: 0 }))
+  );
+}
+
 async function navigateAndWait(miniProgram, route, isTabPage = false) {
   const expectedRoute = route.split("?")[0];
   if (isTabPage) {
@@ -249,14 +304,24 @@ async function main() {
     const detailScroll = await detail.$(".page-scroll");
     const detailNav = await detail.$(".detail-nav");
     const initialNavClass = detailNav ? (await detailNav.attribute("class")) || "" : "";
+    const detailNavTitle = await detail.$(".detail-nav .page-fixed-safe__title");
+    const initialTitleColor = detailNavTitle ? await detailNavTitle.style("color") : "";
+    const initialTitleBackground = detailNavTitle
+      ? await detailNavTitle.style("background-color")
+      : "";
     let scrolledNavClass = "";
     let scrolledNavBackground = "";
+    let scrolledTitleBackground = "";
     let restoredNavClass = "";
+    let restoredTitleBackground = "";
     if (detailScroll && detailNav) {
       await detailScroll.scrollTo(0, 240);
       for (let index = 0; index < 12; index += 1) {
         scrolledNavClass = (await detailNav.attribute("class")) || "";
         scrolledNavBackground = await detailNav.style("background-color");
+        if (detailNavTitle) {
+          scrolledTitleBackground = await detailNavTitle.style("background-color");
+        }
         if (scrolledNavClass.includes("detail-nav--solid") && resolveColorAlpha(scrolledNavBackground) >= 0.9) {
           break;
         }
@@ -267,6 +332,9 @@ async function main() {
       for (let index = 0; index < 12; index += 1) {
         restoredNavClass = (await detailNav.attribute("class")) || "";
         const restoredNavBackground = await detailNav.style("background-color");
+        if (detailNavTitle) {
+          restoredTitleBackground = await detailNavTitle.style("background-color");
+        }
         if (!restoredNavClass.includes("detail-nav--solid") && resolveColorAlpha(restoredNavBackground) < 0.1) {
           break;
         }
@@ -291,6 +359,28 @@ async function main() {
         solidNavAlpha >= 0.9 &&
         !restoredNavClass.includes("detail-nav--solid"),
       "商品详情滚动后悬浮栏未切实底，正文会穿透到状态栏与返回控件下方"
+    );
+
+    // 沉浸态标题必须自带底衬：商家上传的商品图明暗不可控，深色标题直接压图会不可读。
+    const immersiveTitleSurfaceAlpha = resolveColorAlpha(initialTitleBackground);
+    const immersiveTitleContrast = worstCaseTitleContrast(initialTitleColor, initialTitleBackground);
+    addCheck(
+      report,
+      "product-detail-immersive-title-contrast",
+      {
+        route: detail.path,
+        titleColor: initialTitleColor,
+        titleBackground: initialTitleBackground,
+        worstCaseContrast: Number(immersiveTitleContrast.toFixed(2)),
+        solidTitleBackground: scrolledTitleBackground,
+        restoredTitleBackground
+      },
+      Boolean(detailNavTitle) &&
+        immersiveTitleSurfaceAlpha >= 0.8 &&
+        immersiveTitleContrast >= 4.5 &&
+        resolveColorAlpha(scrolledTitleBackground) < 0.1 &&
+        resolveColorAlpha(restoredTitleBackground) >= 0.8,
+      "商品详情沉浸态标题缺少足够对比度底衬，或滚动实底后未复位标题底衬"
     );
 
     await miniProgram.callWxMethod("setStorageSync", CART_STORAGE_KEY, [

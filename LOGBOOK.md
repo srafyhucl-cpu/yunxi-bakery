@@ -1,3 +1,17 @@
+## [2026-09-18] - fix(miniapp): 商品详情沉浸式导航标题对比度收口
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260918-miniapp-immersive-nav-title-contrast-r58
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 逐页目视复核商品详情首屏时发现，沉浸式悬浮栏只做了“滚动切实底”的 class 切换；首屏标题“商品详情”用深色文字直接压在商家上传的商品大图上，可读性完全取决于商品图明暗，深色商品图上标题会与背景同色。
+implementation: `pages/product-detail/index.wxss` 为沉浸态标题补半透明白底胶囊（`rgba(255, 255, 255, 0.92)` + 1rpx 边框 + 轻阴影，居中并与返回按钮垂直对齐），`.detail-nav--solid` 下把底衬还原为透明；`check-miniapp.mjs#checkProductDetailScrollNav()` 增加底衬不透明度 ≥ 0.8、不得参与过渡、实底态必须移除底衬三条静态断言；`verify-miniapp-commerce-flows.cjs` 新增 `product-detail-immersive-title-contrast`，把半透明底衬分别叠到纯白与纯黑两个边界上计算对比度并取更差一侧，要求 ≥ 4.5:1，并校验实底态底衬消失、回顶后恢复。
+verification: `npm run typecheck`、`npm run check:miniapp`（15 页 / 15 路由）PASS；`devtools:verify-commerce-flows` PASS（标题 `rgb(43, 39, 36)` 压 `rgba(255, 255, 255, 0.92)`，最坏情况对比度 12.37:1，实底态标题底衬 `rgba(0, 0, 0, 0)`、回顶后恢复 `rgba(255, 255, 255, 0.92)`）；`devtools:verify-all-pages` 页面断言 15/15 页 + 8/8 未登录态、`devtools:product-purchase-path` 全部检查项无失败（后端 `127.0.0.1:7001` 健康，`0.133.0-p2trial.3`，未重启）；两者截图证据因 DevTools `fail to capture screenshot` 记为环境 BLOCKED。
+evidence: ERRORS.md M-20260918-001；docs/harness-engineering/core/evidence-index.md E-20260918-001；miniapp/reports/devtools/miniapp-commerce-flows.json；miniapp/reports/devtools/commerce-flow-detail.png；miniapp/reports/devtools/all-pages-devtools-audit.json；miniapp/reports/devtools/product-purchase-path-audit.json
+limitations: 本轮只改商品详情展示层与守卫，未触碰订单、支付、退款与配送后端逻辑；真机、真实微信支付/退款、真实闪送与生产验收仍未执行；闪送开放平台资料与测试权限、有赞分类-商品接口 IP 白名单仍为外部阻塞。
+
 ## [2026-09-14] - fix(miniapp): 首页快捷入口图标键白名单与真实后端全页复测
 
 task_id: T-MINIAPP-COMMERCE-UX-REDESIGN

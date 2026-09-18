@@ -3203,3 +3203,18 @@ python -B backend/scripts/check_mistake_ledger.py
 - linked_trace: `20260908-miniapp-commerce-ux-redesign`
 - linked_files: `miniapp/miniprogram/pages/home/index.wxss`; `miniapp/miniprogram/pages/chat/index.wxss`; `miniapp/scripts/check-miniapp.mjs`; `miniapp/scripts/verify-all-15-pages-devtools.cjs`
 - next_time_signal: 运行态报图标背景为空时，先执行 `LITERAL_REDACTION_MARKERS` 字面量检查，再把问题定位到选择器、缓存或编译。
+
+## M-20260918-001：沉浸式商品详情导航标题缺少底衬，深色商品图上不可读
+
+- status: guarded
+- first_seen: 2026-09-18
+- severity: medium
+- symptom: 商品详情首屏标题“商品详情”以深色文字直接压商家上传的商品大图；截图中标题正落在数字蜡烛包装的高光与金色图案交界处，文字与背景互相干扰；换成深色商品图时同一条标题会与背景同色，顾客读不到当前页身份。
+- root_cause: `.detail-nav` 沉浸态把 `page-fixed-safe` 的白色底与应用级标题样式一起透明化，只保留了“滚动后切实底”的 class 切换；页面唯一可用的底衬 `.page-fixed-safe::after` 又被 `has-custom-title` 显式 `display: none`，标题可读性因此完全依赖商品图恰好够浅。
+- impact: 商品详情是成交主路径，首屏标题是顾客确认“是否进对商品”的主要锚点；该缺陷只在深色或花哨商品图上暴露，只看浅色商品图的验收与静态检查都会漏掉。
+- fix: `product-detail/index.wxss` 为沉浸态标题补半透明白底胶囊（`rgba(255, 255, 255, 0.92)` + 1rpx 边框 + 轻阴影，胶囊中心与返回按钮垂直居中对齐），滚动切实底后用 `.detail-nav--solid` 规则把底衬还原为透明，避免白底叠白底；`check-miniapp.mjs` 的 `checkProductDetailScrollNav()` 增加沉浸态底衬不透明度 ≥ 0.8、不得参与过渡、实底态必须移除底衬三条静态断言；`verify-miniapp-commerce-flows.cjs` 增加 `product-detail-immersive-title-contrast` 运行态断言，按“底衬叠到纯白图”与“底衬叠到纯黑图”两个边界各算一次对比度并取更差一侧，要求 ≥ 4.5:1，同时校验滚动实底后底衬消失、回滚顶部后恢复。
+- new_guardrail: 沉浸式导航上的文字不得依赖商家图片明暗，必须自带底衬；底衬类改动必须同时有静态不透明度断言与 DevTools 运行态对比度断言，截图目视不能替代数值结论。
+- verification: `npm run check:miniapp` PASS（15 页 / 15 路由）；`npm run typecheck` PASS；`devtools:verify-commerce-flows` PASS，运行态实测标题 `rgb(43, 39, 36)` 压 `rgba(255, 255, 255, 0.92)`，最坏情况对比度 12.37:1，实底态标题底衬 `rgba(0, 0, 0, 0)`、回顶后恢复 `rgba(255, 255, 255, 0.92)`；`devtools:verify-all-pages` 页面断言 15/15 页 + 8/8 未登录态通过、`devtools:product-purchase-path` 全部检查项无失败，两者截图证据因 DevTools `fail to capture screenshot` 环境阻断，报告记为 BLOCKED（`blockedReason` 已写明只缺截图）。
+- linked_trace: `20260908-miniapp-commerce-ux-redesign`
+- linked_files: `miniapp/miniprogram/pages/product-detail/index.wxss`; `miniapp/scripts/check-miniapp.mjs`; `miniapp/scripts/verify-miniapp-commerce-flows.cjs`
+- next_time_signal: 看到“文字压在图片上”的页面（沉浸式详情、活动头图），先查文字自身有没有底衬或阴影，再讨论字号与位置。

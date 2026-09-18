@@ -40,6 +40,28 @@
   box-shadow: 0 8rpx 20rpx rgba(61, 51, 45, 0.05);
 }
 
+/* 商品大图由商家上传，明暗不可控：深色标题直接压深色图会失去可读性。
+   沉浸态给标题一层半透明白底胶囊（叠在纯黑图上仍保持足够对比度），
+   滚动切实底后胶囊隐去，避免白底叠白底；胶囊中心与返回按钮垂直居中对齐。 */
+.detail-nav .page-fixed-safe__title {
+  left: 50%;
+  right: auto;
+  bottom: 26rpx;
+  height: 60rpx;
+  padding: 0 28rpx;
+  border: 1rpx solid rgba(61, 51, 45, 0.06);
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 4rpx 14rpx rgba(61, 51, 45, 0.08);
+  transform: translateX(-50%);
+}
+
+.detail-nav.detail-nav--solid .page-fixed-safe__title {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
 /* 沉浸式大图展示 */
 .detail-hero {
   position: relative;
