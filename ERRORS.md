@@ -3218,3 +3218,33 @@ python -B backend/scripts/check_mistake_ledger.py
 - linked_trace: `20260908-miniapp-commerce-ux-redesign`
 - linked_files: `miniapp/miniprogram/pages/product-detail/index.wxss`; `miniapp/scripts/check-miniapp.mjs`; `miniapp/scripts/verify-miniapp-commerce-flows.cjs`
 - next_time_signal: 看到“文字压在图片上”的页面（沉浸式详情、活动头图），先查文字自身有没有底衬或阴影，再讨论字号与位置。
+
+## M-20260918-002：商品目录页头隐藏主页控件与重复门店名
+
+- status: guarded
+- first_seen: 2026-09-18
+- severity: medium
+- symptom: 商品目录运行态复核中，`.page-fixed-safe__home` 渲染为 35×35px 的空白区域：无文字、无背景图（`background-image: none`）、无背景色（`rgba(0, 0, 0, 0)`）；同一页头标题为“芸熙烘焙（银河SOHO店）”（宽 266px），紧下方固定信息卡首行又显示“银河SOHO店”，门店身份连续重复两遍，且与购物车/客服/我的三个 tab 页的品牌页头不一致。
+- root_cause: 商品页沿用了 `has-custom-title` 自定义页头，但 `.page-fixed-safe__home` 只声明了布局尺寸和 `display: flex`，没有图标字形、背景图或可见文本；标题直接绑定 `SHOP_CONFIG.displayName`，把品牌与门店名一起塞进了页头。
+- impact: 隐形点击区违反交互可发现性，顾客可能误触返回首页或把空白区域当作布局故障；重复门店名占用页头宽度，且商品 tab 的页头语言与其它 tab 不一致。
+- fix: 商品目录页头恢复为与购物车/客服/我的一致的默认品牌页头 `<view class="page-fixed-safe"></view>`；移除 `goHome()`、`storeName` 数据字段与 `.page-fixed-safe__home` 死样式；门店名只在固定信息卡出现一次，首页入口由自定义 TabBar 承担。
+- new_guardrail: `check-miniapp.mjs#checkNoHeaderHomeControl()` 禁止任何页面再渲染 `page-fixed-safe__home`；`verify-all-15-pages-devtools.cjs#inspectProductsHeader()` 运行态断言隐藏主页控件数为 0、固定信息卡门店名非空、页头标题不得包含门店名、页头容器高度不小于 20px。
+- verification: `npm run typecheck` PASS；`npm run check:miniapp` PASS（15 页 / 15 路由）；`devtools:verify-all-pages` PASS（15/15 页 + 8/8 未登录态，截图补齐；`hiddenHomeControlCount=0`、页头标题为空、固定卡门店“银河SOHO店”、页头容器 88px）；`devtools:verify-commerce-flows` PASS；`devtools:product-purchase-path` PASS。
+- linked_trace: `20260908-miniapp-commerce-ux-redesign`
+- linked_files: `miniapp/miniprogram/pages/products/index.wxml`; `miniapp/miniprogram/pages/products/index.ts`; `miniapp/miniprogram/app.wxss`; `miniapp/scripts/check-miniapp.mjs`; `miniapp/scripts/verify-all-15-pages-devtools.cjs`
+- next_time_signal: tab 页出现自定义页头时，先确认控件在运行态是否有可见图标或文字；有 class、有尺寸不等于有可见交互。
+
+## M-20260918-003：首页审计复用本地 mock 货架实例导致假失败
+
+- status: guarded
+- first_seen: 2026-09-18
+- severity: medium
+- symptom: 15 页审计首轮首页 FAIL“首页货架商品数与精选接口不一致：渲染=2，接口=6”；截图中的两张商品卡是 mock 目录里的“父亲节健康蛋糕”和“巧克力奥利奥千层”，而当时健康运行的本地后端 `featured=true&limit=6` 返回 6 款真实商品。
+- root_cause: 本地后端不可用时首页按设计回落到 `config/mock-catalog.ts`，页面实例把 mock 货架留在 `data.blocks`；审计脚本对 tab 页只用 `switchTab`，微信复用已有页面实例，后端恢复后也不会重新执行 `loadHome()`，于是新鲜接口与旧 mock 渲染被直接比较。
+- impact: 环境恢复问题被误报成 UI 回归，截图可能把 mock 商品当成真实货架证据，降低运行态审计可信度并造成重复排查。
+- fix: `verify-all-15-pages-devtools.cjs#navigateAndWait()` 在审计首页时改用 `reLaunch` 强制重建页面实例；后端健康预检保持不变。
+- new_guardrail: tab 页运行态审计必须区分“实例复用”与“当次真实数据”；凡页面存在 mock 或缓存回落分支，审计导航必须先重建页面实例或显式清理缓存，再做接口交叉断言。
+- verification: 修复后复跑 `devtools:verify-all-pages` PASS（15/15 页 + 8/8 未登录态），首页输出“货架条数交叉校验：接口=6，渲染=6”，`final-home.png` 为真实商品。
+- linked_trace: `20260908-miniapp-commerce-ux-redesign`
+- linked_files: `miniapp/scripts/verify-all-15-pages-devtools.cjs`; `miniapp/miniprogram/pages/home/index.ts`; `miniapp/miniprogram/config/mock-catalog.ts`
+- next_time_signal: 页面报“接口 N、渲染 M”且 M 条商品名能在 `mock-catalog.ts` 找到时，先查页面实例与缓存是否跨后端恢复复用，不要先改页面业务逻辑。

@@ -1,3 +1,17 @@
+## [2026-09-18] - fix(miniapp): 商品目录页头收口与首页审计实例重置
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260918-miniapp-products-header-and-home-reload-r59
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 逐页运行态复核商品目录页头时发现两个顾客可见缺陷：`.page-fixed-safe__home` 渲染为 35×35px 无图标、无文字、无背景的空白点击区；页头标题“芸熙烘焙（银河SOHO店）”与固定信息卡“银河SOHO店”连续重复。同期首页审计因页面实例保留本地后端不可用时的 mock 货架，误报“接口=6、渲染=2”。
+implementation: 商品目录页头恢复为与购物车/客服/我的一致的默认品牌页头，移除 `goHome()`、`storeName` 与 `.page-fixed-safe__home` 死样式，门店名只在固定信息卡出现一次；`check-miniapp.mjs` 新增 `checkNoHeaderHomeControl()` 禁止该隐藏控件回归；`verify-all-15-pages-devtools.cjs` 新增 `inspectProductsHeader()`（隐藏主页控件=0、门店名非空且不与页头标题重复、页头高度 ≥20px），并让首页审计改用 `reLaunch` 重置页面实例，避免复用 mock 数据。
+verification: `npm run typecheck` PASS；`npm run check:miniapp` PASS（15 页 / 15 路由）；`devtools:verify-all-pages` PASS（15/15 页 + 8/8 未登录态，截图补齐；商品页 `hiddenHomeControlCount=0`、页头标题为空、固定卡门店“银河SOHO店”、页头容器 88px；首页“接口=6，渲染=6”）；`devtools:verify-commerce-flows` PASS；`devtools:product-purchase-path` PASS。
+evidence: ERRORS.md M-20260918-002、M-20260918-003；docs/harness-engineering/core/evidence-index.md E-20260918-002；miniapp/reports/devtools/all-pages-devtools-audit.json；miniapp/reports/devtools/final-products.png；miniapp/reports/devtools/final-home.png；miniapp/reports/devtools/miniapp-commerce-flows.json；miniapp/reports/devtools/product-purchase-path-audit.json
+limitations: 本轮只改小程序展示层与审计脚本；真机、真实微信支付/退款、真实闪送与生产验收仍未执行；闪送开放平台资料与测试权限、有赞分类-商品接口 IP 白名单仍为外部阻塞。
+
 ## [2026-09-18] - docs(ops): 记录日活 100 的服务器容量基线
 
 task_id: T-OPS-CAPACITY-BASELINE

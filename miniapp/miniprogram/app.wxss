@@ -120,24 +120,6 @@ button::after {
   white-space: nowrap;
 }
 
-.page-fixed-safe__home {
-  position: absolute;
-  left: var(--yunxi-page-gutter);
-  bottom: 8rpx;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  width: 68rpx;
-  height: 68rpx;
-  color: var(--yunxi-brand);
-  font-size: 34rpx;
-  font-weight: 800;
-}
-
-.page-fixed-safe__home:active {
-  opacity: 0.72;
-}
-
 .page-fixed-safe__title {
   position: absolute;
   left: 120rpx;
@@ -159,7 +141,6 @@ button::after {
   display: none;
 }
 
-.page-fixed-safe.has-custom-title .page-fixed-safe__home,
 .page-fixed-safe.has-custom-title .page-fixed-safe__title {
   display: flex;
 }

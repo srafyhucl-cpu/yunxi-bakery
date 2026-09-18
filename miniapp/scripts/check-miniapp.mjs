@@ -423,16 +423,12 @@ function checkNonTabPageBackNavigation(wxmlSource, methods, pagePath) {
   }
 }
 
-function checkFixedSafeHomeAction(wxmlSource, methods, pagePath) {
+function checkNoHeaderHomeControl(wxmlSource, pagePath) {
   if (!wxmlSource.includes("page-fixed-safe__home")) {
     return;
   }
-  if (!wxmlSource.includes('bindtap="goHome"') && !wxmlSource.includes('catchtap="goHome"')) {
-    fail(`${pagePath}.wxml shows page-fixed-safe__home but does not bind it to goHome`);
-  }
-  if (!methods.has("goHome")) {
-    fail(`${pagePath}.ts shows page-fixed-safe__home but does not define goHome`);
-  }
+  // 商品目录曾用无图标、无文字的主页控件占位，真机渲染为不可见点击区，且与自定义 TabBar 的首页入口重复。
+  fail(`${pagePath}.wxml renders page-fixed-safe__home; use the custom tab bar for home navigation instead of a hidden header control`);
 }
 
 function checkDynamicLinksUseUnifiedNavigation(tsSource, wxmlSource, pagePath) {
@@ -1572,7 +1568,7 @@ for (const pagePath of appPages) {
   checkFormFieldLabels(wxmlSource, pagePath);
   checkCustomerFacingCopy(tsSource, `${pagePath}.ts`);
   checkCustomerFacingCopy(wxmlSource, `${pagePath}.wxml`);
-  checkFixedSafeHomeAction(wxmlSource, methods, pagePath);
+  checkNoHeaderHomeControl(wxmlSource, pagePath);
   checkDynamicLinksUseUnifiedNavigation(tsSource, wxmlSource, pagePath);
   for (const handler of handlers) {
     if (!methods.has(handler)) {

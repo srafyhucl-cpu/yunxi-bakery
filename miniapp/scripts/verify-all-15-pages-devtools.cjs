@@ -205,7 +205,13 @@ async function navigateAndWait(miniProgram, pageDef) {
   const url = `/${pageDef.path}${query}`;
   for (let attempt = 0; attempt < 3; attempt++) {
     if (TAB_BAR_PAGES.has(pageDef.path)) {
-      await miniProgram.switchTab(url);
+      // 首页实例会保留启动时的数据；后端不可用时页面曾回落到 mock 货架，switchTab 会一直复用旧实例。
+      // 审计必须重置首页实例，确保截图和条数断言来自当次健康后端，而不是历史 mock 数据。
+      if (pageDef.path === "pages/home/index") {
+        await miniProgram.reLaunch(url);
+      } else {
+        await miniProgram.switchTab(url);
+      }
     } else {
       await miniProgram.reLaunch(url);
     }
@@ -560,6 +566,48 @@ async function inspectProductDetailScrollNav(page, pageDef, result) {
   audit.ok = audit.errors.length === 0;
   result.detailScrollNav = audit;
   result.errors.push(...audit.errors);
+}
+
+// 商品目录导航头验证：自定义 TabBar 已提供首页入口，页头不得再出现不可见主页控件，门店名也不得在页头与固定信息卡重复。
+async function inspectProductsHeader(page, pageDef, result) {
+  if (pageDef.path !== "pages/products/index") {
+    return;
+  }
+  const audit = { ok: true, details: [], errors: [] };
+  result.productsHeader = audit;
+  const hiddenHomeControls = await page.$$(".page-fixed-safe__home");
+  audit.hiddenHomeControlCount = hiddenHomeControls.length;
+  if (hiddenHomeControls.length > 0) {
+    audit.errors.push(`商品目录页头仍存在 ${hiddenHomeControls.length} 个不可见主页控件`);
+  }
+  const navTitle = await page.$(".page-fixed-safe__title");
+  const navTitleText = navTitle ? (await navTitle.text()).trim() : "";
+  const branchLabel = await page.$(".products-pinned .products-store__branch");
+  const branchText = branchLabel ? (await branchLabel.text()).trim() : "";
+  audit.navTitleText = navTitleText;
+  audit.branchText = branchText;
+  audit.details.push(`页头标题="${navTitleText}"，固定信息卡门店="${branchText}"`);
+  if (!branchText) {
+    audit.errors.push("商品目录固定信息卡缺少门店名称");
+  }
+  if (navTitleText && branchText && navTitleText.includes(branchText)) {
+    audit.errors.push(`商品目录页头标题与固定信息卡门店名重复："${navTitleText}" 包含 "${branchText}"`);
+  }
+  const fixedSafe = await page.$(".page-fixed-safe");
+  if (fixedSafe) {
+    const fixedSafeSize = await fixedSafe.size();
+    audit.fixedSafeHeight = fixedSafeSize.height;
+    audit.details.push(`页头容器高度=${fixedSafeSize.height}px`);
+    if (!fixedSafeSize.height || fixedSafeSize.height < 20) {
+      audit.errors.push(`商品目录页头容器高度异常：${fixedSafeSize.height}px`);
+    }
+  } else {
+    audit.errors.push("商品目录缺少 .page-fixed-safe 页头容器");
+  }
+  audit.ok = audit.errors.length === 0;
+  if (audit.errors.length > 0) {
+    result.errors.push(...audit.errors);
+  }
 }
 
 async function inspectCommerceState(page, pageDef, result) {
@@ -1412,6 +1460,9 @@ async function verifyPage(miniProgram, pageDef, viewportWidth, screenshotPrefix 
     }
     if (pageDef.path === "pages/product-detail/index") {
       await inspectProductDetailScrollNav(page, pageDef, result);
+    }
+    if (pageDef.path === "pages/products/index") {
+      await inspectProductsHeader(page, pageDef, result);
     }
     if (pageDef.path === "pages/profile/index") {
       await inspectProfileShortcuts(page, pageDef, result);

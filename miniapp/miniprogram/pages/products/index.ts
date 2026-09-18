@@ -45,7 +45,6 @@ interface ProductView extends CatalogProduct {
 interface ProductsPageData {
   layoutStyle: string;
   searchText: string;
-  storeName: string;
   branchName: string;
   businessHours: string;
   loaded: boolean;
@@ -269,7 +268,6 @@ Page<ProductsPageData, WechatMiniprogram.IAnyObject>({
   data: {
     layoutStyle: getMiniappLayoutMetrics().pageShellStyle,
     searchText: "",
-    storeName: SHOP_CONFIG.displayName,
     branchName: SHOP_CONFIG.branchName,
     businessHours: SHOP_CONFIG.businessHours,
     loaded: false,
@@ -314,9 +312,6 @@ Page<ProductsPageData, WechatMiniprogram.IAnyObject>({
   },
   onUnload() {
     this.clearSearchDebounce();
-  },
-  goHome() {
-    wx.switchTab({ url: ROUTES.home });
   },
   clearSearchDebounce() {
     if (this.data.searchDebounceTimer) {

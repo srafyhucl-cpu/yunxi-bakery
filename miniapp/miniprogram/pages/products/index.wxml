@@ -1,8 +1,5 @@
 <view class="page-shell page-shell--tabbar" style="{{layoutStyle}}">
-  <view class="page-fixed-safe has-custom-title">
-    <view class="page-fixed-safe__home" bindtap="goHome" aria-label="返回首页"></view>
-    <view class="page-fixed-safe__title">{{storeName}}</view>
-  </view>
+  <view class="page-fixed-safe"></view>
   <view class="page-pinned products-pinned">
     <view class="products-store">
       <view class="products-store__copy">
