@@ -5,7 +5,7 @@
 > 中文优先：人类可读内容使用中文；`task_id`、`trace_id`、`status`、`owner`、`branch`、`as_of_commit`、`version` 和路径保持稳定机器字段。
 > 最小阅读集：所有 Agent 先读 `AGENTS.md` 与本文件；执行具体任务时再读对应 `docs/tasks/*.md`，按需读取专业契约。
 
-**最后更新**：2026-09-18（as_of_commit: `13b12b4dd66204327ea0f9922d5cceba504a493c`；version: `0.133.0-p2trial.3`）
+**最后更新**：2026-09-19（as_of_commit: `39dbf6b3ae68e2262fb4393cb789a1751ee0784d`；version: `0.133.0-p2trial.3`）
 
 > 当前状态口径：P1 承接验证已于 2026-08-30 经项目负责人确认正式关闭；P2 准备段已完成，真人执行段已阻塞（blocked），尚未启动。Harness P0 与中文治理控制面已完成，版本号以 `backend/VERSION` 为准，代码快照以当前 `git rev-parse HEAD` 为准。
 
@@ -13,8 +13,8 @@
 ## 机器快照（当前事实）
 
 ```yaml
-updated_at: 2026-09-18
-as_of_commit: 13b12b4dd66204327ea0f9922d5cceba504a493c
+updated_at: 2026-09-19
+as_of_commit: 39dbf6b3ae68e2262fb4393cb789a1751ee0784d
 version: 0.133.0-p2trial.3
 current_branch: main
 workspace_state: clean
@@ -81,6 +81,7 @@ state_owner: 项目负责人＋AI 员工
 > r57 图标键白名单：`T-MINIAPP-COMMERCE-UX-REDESIGN` 把首页快捷入口 `iconKey` 从任意小写键收紧为 points/recharge/link 白名单（未知键回退 link），并由 `check-miniapp.mjs` 静态守卫锁定；本地后端保持 `127.0.0.1:7001` 健康，`devtools:service-smoke` 真实接口 4/4、15/15 页 + 8/8 未登录态、电商流程与购买路径复测 PASS；当前线上装修配置未下发 `quickLinks` 块，该图标键路径由静态守卫、typecheck 与 r56 的 DevTools 注入验证覆盖，证据登记为 `E-20260914-012` 的 update_20260914_r56b。
 > r58 沉浸式导航标题对比度：`T-MINIAPP-COMMERCE-UX-REDESIGN` 新增 `E-20260918-001`（商品详情沉浸式导航标题对比度收口，run_id `20260918-miniapp-immersive-nav-title-contrast-r58`）。商品详情首屏标题原先用深色文字直接压商家上传的商品大图，可读性取决于图片明暗；现为沉浸态标题补半透明白底胶囊，滚动实底后还原透明，并新增静态底衬守卫与 DevTools 最坏情况对比度断言。运行态实测最坏情况对比度 12.37:1、实底态底衬透明、回顶恢复；15/15 页 + 8/8 未登录态与购买路径检查项均无失败，截图证据因 DevTools 截图能力不可用记为环境阻塞（BLOCKED）。闪送真实联调两项与真实支付/退款、生产验收仍未完成。
 > r59 商品目录页头与审计实例：`T-MINIAPP-COMMERCE-UX-REDESIGN` 新增 `E-20260918-002`（商品目录页头收口与首页审计实例重置，run_id `20260918-miniapp-products-header-and-home-reload-r59`）。商品目录页头原先渲染 35×35px 无图标、无文字、无背景的 `page-fixed-safe__home` 隐形点击区，且页头标题与固定信息卡重复门店名；现恢复与其它 tab 页一致的默认品牌页头，移除 `goHome()`、`storeName` 和死样式，门店名只在固定信息卡出现一次。审计新增 `checkNoHeaderHomeControl()` 与 `inspectProductsHeader()`，并让首页审计改用 `reLaunch` 重置 tab 页实例，修复后端恢复后复用 mock 货架导致的“接口=6、渲染=2”假失败。运行态 15/15 页 + 8/8 未登录态、电商流程与购买路径 PASS，截图补齐；闪送真实联调两项与真实支付/退款、生产验收仍未完成。
+> r60 结算金额口径与未登录头像：`T-MINIAPP-COMMERCE-UX-REDESIGN` 新增 `E-20260919-001`、`E-20260919-002`（结算金额口径一致性与未登录头像线性化，run_id `20260919-miniapp-checkout-amount-consistency-and-profile-avatar-r60`）。结算页顶部购买卡原先写“1 件商品 · 自提价 / ¥0.00”，同屏底栏却是“实付（估算）¥224.00 / 已含闪送费 ¥26.00”，中间商品行又是 ¥198.00；根因是 `totalText` 只在 `loadCheckout()` 写一次、不参与 `refreshEstimate()` 重算，且副文案没有“商品小计”口径，现统一由 `refreshEstimate()` 写入，夹具改为调用页面自身重算，新增 `checkout-pickup-amounts`、`checkout-delivery-amounts` 两条断言。未登录个人中心头像原为大号单字“我”，现改为标准人像线性图标，仅已登录且有姓名时渲染首字；新增 `checkProfileGuestAvatar()` 静态守卫与运行态头像断言，个人中心纳入确定性未登录态集合（8/8 → 9/9）。运行态 15/15 页 + 9/9 未登录态、电商流程（15 项）与购买路径 PASS；闪送真实联调两项与真实支付/退款、生产验收仍未完成。
 
 ### 已完成（completed）
 
