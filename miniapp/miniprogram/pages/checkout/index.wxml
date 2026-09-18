@@ -17,7 +17,7 @@
       <view wx:if="{{isLoggedIn && checkoutItems.length}}" class="checkout-summary yunxi-card hover-scale fade-in">
         <view>
           <text class="checkout-summary__eyebrow">本次购买</text>
-          <text class="checkout-summary__hint">{{checkoutItems.length}} 件商品 · 自提价</text>
+          <text class="checkout-summary__hint">{{checkoutItems.length}} 件商品 · 商品小计（自提价）</text>
         </view>
         <text class="checkout-total">{{totalText}}</text>
       </view>

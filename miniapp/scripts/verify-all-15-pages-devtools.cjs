@@ -1093,6 +1093,32 @@ async function inspectProfileShortcuts(page, pageDef, result) {
     }
   }
   result.profileShortcutIconSamples = iconSamples;
+
+  // 头像要么是可辨认的图形，要么是有姓名的首字；未登录/无姓名时不得用单字占位。
+  const avatar = await page.$(".profile-avatar");
+  const pageData = await page.data();
+  const loggedIn = Boolean(pageData.sessionView?.loggedIn);
+  const memberName = String(pageData.memberProps?.name || "").trim();
+  const avatarText = avatar ? (await avatar.text()).trim() : "";
+  const avatarBackground = avatar ? ((await avatar.style("background-image")) || "") : "";
+  result.profileAvatar = {
+    loggedIn,
+    hasMemberName: Boolean(memberName),
+    textLength: avatarText.length,
+    hasIconBackground: Boolean(avatarBackground && avatarBackground !== "none"),
+  };
+  if (!avatar) {
+    result.errors.push(pageDef.path + ": 缺少会员头像容器");
+  } else if (!loggedIn || !memberName) {
+    if (avatarText) {
+      result.errors.push(pageDef.path + `: 未登录或无姓名头像不得渲染单字占位（${avatarText}）`);
+    }
+    if (!avatarBackground || avatarBackground === "none") {
+      result.errors.push(pageDef.path + ": 未登录或无姓名头像缺少可渲染的人像图标");
+    }
+  } else if (avatarText !== memberName[0]) {
+    result.errors.push(pageDef.path + ": 已登录头像首字与会员姓名不一致");
+  }
 }
 
 async function inspectCustomerFacingCopy(page, pageDef, result) {
@@ -1570,6 +1596,7 @@ async function captureLoggedOutStates(miniProgram, viewportWidth) {
   }
 
   const pageDefs = ALL_15_PAGES.filter((pageDef) => [
+    "pages/profile/index",
     "pages/orders/index",
     "pages/checkout/index",
     "pages/order-detail/index",

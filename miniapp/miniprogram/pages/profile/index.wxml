@@ -18,10 +18,10 @@
       <!-- 会员资料头部 -->
       <view class="profile-header">
         <view class="profile-user-info">
-          <!-- 头像边框 -->
+          <!-- 头像边框：有姓名才用首字头像，未登录或无姓名一律用标准人像图标，禁止单字占位 -->
           <view class="profile-avatar-frame">
-            <view class="profile-avatar">
-              {{sessionView.loggedIn ? (memberProps.name ? memberProps.name[0] : '微') : '我'}}
+            <view class="profile-avatar {{sessionView.loggedIn && memberProps.name ? 'profile-avatar--initial' : 'profile-avatar--guest'}}">
+              <text wx:if="{{sessionView.loggedIn && memberProps.name}}">{{memberProps.name[0]}}</text>
             </view>
           </view>
           <!-- 资料文字 -->

@@ -1442,6 +1442,22 @@ function checkCartDecreaseButtonSemantics() {
   }
 }
 
+// 未登录个人中心不得用“我/微”这类单字充当头像，必须渲染可辨认的人像线性图标。
+function checkProfileGuestAvatar() {
+  const profileWxml = readText(path.join(miniappRoot, "pages", "profile", "index.wxml"));
+  const profileWxss = readText(path.join(miniappRoot, "pages", "profile", "index.wxss"));
+  if (!profileWxml.includes("profile-avatar--guest")) {
+    fail("个人中心头像必须按登录态区分 profile-avatar--guest 占位");
+  }
+  if (profileWxml.includes("'我'") || profileWxml.includes("'微'")) {
+    fail("个人中心不得用单个汉字充当占位头像");
+  }
+  const guestRule = profileWxss.match(/\.profile-avatar--guest\s*\{[^}]*\}/);
+  if (!guestRule || !guestRule[0].includes("background-image")) {
+    fail("个人中心未登录头像缺少可渲染的人像图标样式");
+  }
+}
+
 // 结算固定栏必须说明估算金额是否已含闪送费，避免顾客只看到总额却不知道金额来源。
 function checkCheckoutFooterAmountSource() {
   const checkoutWxml = readText(path.join(miniappRoot, "pages", "checkout", "index.wxml"));
@@ -1505,6 +1521,7 @@ checkCartTagCopy();
 checkCartRecommendedActionCopy();
 checkProductDetailServiceIcons();
 checkProfileShortcutIcons();
+checkProfileGuestAvatar();
 checkEmptyStateIcons();
 checkWxssDataUriIntegrity();
 checkIconSurfaceConsistency();

@@ -591,3 +591,13 @@ Expected: 门禁通过或明确记录既有失败、未验证项和阻塞原因�
 补充（r59）：商品目录页头收口与首页审计实例重置（M-20260918-002、M-20260918-003，E-20260918-002）。逐页运行态复核商品 tab 时发现两处展示问题：一是页头左侧的 `.page-fixed-safe__home` 在真机/模拟器渲染为 35×35px 的空白点击区，既无图标也无文字，顾客看不出这里可以返回首页；二是页头标题用 `SHOP_CONFIG.displayName` 渲染“芸熙烘焙（银河SOHO店）”（266px 宽），紧下方固定信息卡的“银河SOHO店”再次出现，同一门店身份连续占两行。商品 tab 是 TabBar 页，首页入口已由自定义 TabBar 承担，因此页头恢复为与购物车/客服/我的一致的默认品牌头，移除 `goHome()`、`storeName` 与 `.page-fixed-safe__home` 死样式，门店名只在固定信息卡出现一次。
 
 门禁同步：`check-miniapp.mjs` 以 `checkNoHeaderHomeControl()` 取代原 `checkFixedSafeHomeAction()`，禁止任何页面重新渲染该隐藏控件；`verify-all-15-pages-devtools.cjs` 新增 `inspectProductsHeader()`，断言隐藏主页控件为 0、固定信息卡门店名非空、页头标题不包含门店名、页头容器高度 ≥20px。审计脚本另修复一处假失败：首页在本地后端不可用时会回落到 `mock-catalog.ts`，而 tab 页 `switchTab` 会复用旧实例，后端恢复后仍拿旧 mock 货架与新鲜接口比较；现审计首页改用 `reLaunch` 重置实例（M-20260918-003）。运行态结果：`devtools:verify-all-pages` PASS（15/15 页 + 8/8 未登录态，截图补齐；商品页 `hiddenHomeControlCount=0`、页头标题为空、固定卡门店“银河SOHO店”、页头 88px；首页“接口=6，渲染=6”）、`devtools:verify-commerce-flows` PASS、`devtools:product-purchase-path` PASS、`typecheck`/`check:miniapp` PASS。后续项：闪送真实联调（Task 1 Step 3、Task 3 Step 5）与真实支付/退款、生产验收仍为外部阻塞。
+
+## 补充记录（r60）
+
+补充（r60）：结算金额口径一致性与未登录头像线性化（M-20260919-001、M-20260919-002，E-20260919-001、E-20260919-002）。逐张目视复核 r59 后的截图发现两处顾客可见缺陷：一是结算页顶部购买卡“本次购买 / 1 件商品 · 自提价 / ¥0.00”与底栏“实付（估算）¥224.00 / 已含闪送费 ¥26.00”同屏矛盾，中间商品行又是 ¥198.00，顾客无法判断哪个是订单总价；二是未登录个人中心头像是一个白色圆环里的大号“我”字，与页面其它已线性化的入口图标不是同一套语言（M-20260914-024 的同类缺陷复发）。
+
+结算金额口径：顶部金额原先只绑定 `totalText`，而该字段仅在 `loadCheckout()` 从购物车写入一次；`refreshEstimate()` 重算的是底部“实付（估算）/底栏说明”一组字段，两条链路互不覆盖，审计夹具又只 `setData` 不调用重算，于是把残留的 ¥0.00 当成渲染证据。现 `refreshEstimate()` 统一写入 `totalText`（商品小计、自提价口径），顶部副文案改为“N 件商品 · 商品小计（自提价）”，夹具改为调用页面自身重算方法；`verify-miniapp-commerce-flows.cjs` 新增 `checkout-pickup-amounts`、`checkout-delivery-amounts` 两条运行态断言，同时比对顶部小计、费用明细（商品金额 / 闪送运费 / 实付（估算））与底栏金额和来源说明。运行态实测：自提态 `商品小计=¥198.00`、底栏 `¥198.00 / 自提价 · 免运费`；闪送报价态 `商品小计=¥198.00`、`闪送运费=¥26.00`、`实付（估算）=¥224.00`、底栏 `¥224.00 / 已含闪送费 ¥26.00`。
+
+未登录头像：`profile/index.wxml` 原先用三元表达式渲染单字兜底（未登录 '我'、已登录无姓名 '微'）。现按登录态拆分为 `profile-avatar--guest` / `profile-avatar--initial`，只有“已登录且有姓名”才渲染姓名首字，其余一律渲染标准人像线性图标（`.profile-avatar--guest` 内联背景图，data URI 前缀复用 `app.wxss` 既有图标）。`check-miniapp.mjs` 新增 `checkProfileGuestAvatar()`；`verify-all-15-pages-devtools.cjs#inspectProfileShortcuts()` 新增头像断言（未登录/无姓名必须无文字且背景图非空，有姓名时首字必须与会员姓名一致），并把个人中心加入确定性未登录态集合（8/8 → 9/9）。
+
+运行态结果：`typecheck`、`check:miniapp`（15 页 / 15 路由）、`devtools:verify-all-pages`（15/15 页 + 9/9 未登录态，登录态头像 `textLength=1` 无背景图、未登录态 `textLength=0` 且背景图非空）、`devtools:verify-commerce-flows`（15 项）、`devtools:product-purchase-path` 均 PASS；另补 `final-logged-out-profile.png` 作为未登录头像目视证据。后续项：闪送真实联调（Task 1 Step 3、Task 3 Step 5）与真实支付/退款、生产验收仍为外部阻塞。

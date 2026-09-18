@@ -48,6 +48,14 @@
   font-weight: 800;
 }
 
+/* 未登录或无姓名时不用单字占位，改用标准人像线性图标。 */
+.profile-avatar--guest {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233D332D' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 56rpx 56rpx;
+}
+
 .profile-meta {
   display: flex;
   flex-direction: column;

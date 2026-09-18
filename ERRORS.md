@@ -3248,3 +3248,33 @@ python -B backend/scripts/check_mistake_ledger.py
 - linked_trace: `20260908-miniapp-commerce-ux-redesign`
 - linked_files: `miniapp/scripts/verify-all-15-pages-devtools.cjs`; `miniapp/miniprogram/pages/home/index.ts`; `miniapp/miniprogram/config/mock-catalog.ts`
 - next_time_signal: 页面报“接口 N、渲染 M”且 M 条商品名能在 `mock-catalog.ts` 找到时，先查页面实例与缓存是否跨后端恢复复用，不要先改页面业务逻辑。
+
+## M-20260919-001：结算页顶部金额不参与重算且未标明“商品小计”
+
+- status: guarded
+- first_seen: 2026-09-19
+- severity: medium
+- symptom: `commerce-flow-checkout-quoted.png` 同一屏出现两组矛盾金额：顶部购买卡写“本次购买 / 1 件商品 · 自提价 / ¥0.00”，底栏写“实付（估算）¥224.00 / 已含闪送费 ¥26.00”，而中间商品行是 ¥198.00，顾客无法判断哪个是订单总价。
+- root_cause: 顶部金额绑定 `totalText`，只在 `loadCheckout()` 里从购物车写入一次；`refreshEstimate()` 重算的是 `estimateRemainFenText` 与 `footerAmountNote` 一组字段，两条金额链路互不覆盖。审计夹具只 `setData` 注入状态、不调用页面自身的重算方法，于是把残留的 ¥0.00 当作真实渲染证据；同时顶部副文案只写“自提价”，没有“商品小计”口径，即使金额正确也无法解释 ¥198 与 ¥224 的差异。
+- impact: 结算页是付款前最后一屏，同屏两个金额且口径不明会让顾客怀疑运费被重复计算；审计侧则可能把夹具残留值当成页面缺陷、把真实缺陷当成夹具问题，两个方向都会浪费排查时间。
+- fix: `pages/checkout/index.ts#refreshEstimate()` 统一写入 `totalText`（商品小计、自提价口径）并注明与底栏同步刷新；`index.wxml` 顶部副文案改为“N 件商品 · 商品小计（自提价）”；`verify-miniapp-commerce-flows.cjs#applyCheckoutState()` 注入后调用页面自身的 `refreshEstimate()`；新增 `checkout-pickup-amounts` 与 `checkout-delivery-amounts` 两条运行态断言，同时比对顶部小计、费用明细（商品金额 / 闪送运费 / 实付（估算））与底栏金额及来源说明。
+- new_guardrail: 同一屏多处金额必须由同一次重算路径产出并各自标注口径；DevTools 夹具注入状态后必须调用页面自身的重算方法，禁止只 `setData` 就截图或断言。
+- verification: `npm run typecheck` PASS；`npm run check:miniapp` PASS（15 页 / 15 路由）；`devtools:verify-commerce-flows` PASS（15 项，自提态 `商品小计=¥198.00/底栏=¥198.00`，闪送报价态 `商品小计=¥198.00`、`闪送运费=¥26.00`、`实付（估算）=¥224.00`、底栏 `已含闪送费 ¥26.00`）；`devtools:verify-all-pages` PASS（15/15 页 + 9/9 未登录态）；`devtools:product-purchase-path` PASS。
+- linked_trace: `20260908-miniapp-commerce-ux-redesign`
+- linked_files: `miniapp/miniprogram/pages/checkout/index.ts`; `miniapp/miniprogram/pages/checkout/index.wxml`; `miniapp/scripts/verify-miniapp-commerce-flows.cjs`
+- next_time_signal: 页面上出现两个金额时，先确认它们是否来自同一次重算、是否各自带口径标签；夹具注入后再看到 0 元或旧值，先查重算方法有没有被调用。
+
+## M-20260919-002：未登录个人中心用单字“我”充当头像占位
+
+- status: guarded
+- first_seen: 2026-09-19
+- severity: low
+- symptom: `final-profile.png` 未登录态头像是一个白色圆环里的大号“我”字，与页面其它已线性化的入口图标（订单四宫格、特色服务列表、自定义 TabBar 人像）不是同一套语言，看起来像未替换的占位稿。
+- root_cause: `pages/profile/index.wxml` 用三元表达式给头像渲染单字兜底（未登录 '我'、已登录无姓名 '微'），头像节点既没有图形资源也没有守卫；M-20260914-024 收口空态与身份徽标时，静态守卫只覆盖 `.yunxi-state__icon` 与 `.session-notice__icon`，头像不在检查范围内。
+- impact: 会员中心是顾客查看订单与会员资产的入口，头像占位与同一页面的线性图标体系冲突，直接削弱页面完成度；同类“单汉字冒充图标”缺陷此前已判定过两次，属于复发。
+- fix: `pages/profile/index.wxml` 按登录态拆分为 `profile-avatar--guest` / `profile-avatar--initial`，只有“已登录且有姓名”才渲染姓名首字，其余一律渲染标准人像线性图标；`index.wxss` 新增 `.profile-avatar--guest` 内联人像背景图（data URI 前缀复用 `app.wxss` 既有图标，避免手写前缀出错，参见 M-20260914-025）；`check-miniapp.mjs` 新增 `checkProfileGuestAvatar()`；`verify-all-15-pages-devtools.cjs#inspectProfileShortcuts()` 新增头像断言，并把个人中心加入确定性未登录态集合。
+- new_guardrail: 头像与图标位要么渲染有含义的图形，要么渲染有真实来源的首字；静态守卫除空态与身份徽标外，必须覆盖个人中心头像；新增图形图标必须同时有静态背景图断言与运行态“无文字 + 背景图非空”断言。
+- verification: `npm run check:miniapp` PASS（15 页 / 15 路由）；`npm run typecheck` PASS；`devtools:verify-all-pages` PASS（15/15 页 + 9/9 未登录态，登录态头像 `textLength=1` 且无背景图、未登录态 `textLength=0` 且背景图非空，新增 `final-logged-out-profile.png` 目视确认为人像图标）；`devtools:verify-commerce-flows` 与 `devtools:product-purchase-path` PASS。
+- linked_trace: `20260908-miniapp-commerce-ux-redesign`
+- linked_files: `miniapp/miniprogram/pages/profile/index.wxml`; `miniapp/miniprogram/pages/profile/index.wxss`; `miniapp/scripts/check-miniapp.mjs`; `miniapp/scripts/verify-all-15-pages-devtools.cjs`
+- next_time_signal: 看到圆形或方形底座里只有一个汉字（我 / 微 / 登 等）时，按 M-20260914-024 的口径当成图标缺陷处理，先查该节点有没有可渲染背景图，不要靠换字或调字号。

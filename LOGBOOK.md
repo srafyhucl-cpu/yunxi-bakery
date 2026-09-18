@@ -1,4 +1,18 @@
 ## [2026-09-18] - fix(miniapp): 商品目录页头收口与首页审计实例重置
+## [2026-09-19] - fix(miniapp): 结算金额口径一致性与未登录头像线性化
+
+task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
+trace_id: 20260908-miniapp-commerce-ux-redesign
+run_id: 20260919-miniapp-checkout-amount-consistency-and-profile-avatar-r60
+owner: AI 员工
+status: active
+status_label: 进行中（active）
+scope: 逐张目视复核 r59 后的运行态截图时发现两处顾客可见缺陷：结算页顶部购买卡与底栏同屏展示两组对不上的金额（顶部“1 件商品 · 自提价 ¥0.00”对上底栏“实付（估算）¥224.00 / 已含闪送费 ¥26.00”，中间商品行又是 ¥198.00）；未登录个人中心头像是一个白色圆环里的大号“我”字，和页面其它已线性化的图标不是同一套语言。
+implementation: `pages/checkout/index.ts#refreshEstimate()` 新增统一写入 `totalText`（商品小计、自提价口径），顶部卡片不再依赖只在 `loadCheckout()` 写一次的旧值；`checkout/index.wxml` 副文案改为“N 件商品 · 商品小计（自提价）”，让两个金额的差异有明确口径；`verify-miniapp-commerce-flows.cjs` 的夹具改为注入后调用页面自身 `refreshEstimate()`，并新增 `checkout-pickup-amounts`、`checkout-delivery-amounts` 两条运行态断言，同时比对顶部小计、费用明细与底栏金额和说明。`profile/index.wxml` 按登录态拆分为 `profile-avatar--guest` / `profile-avatar--initial`，只有已登录且有姓名才渲染首字，其余渲染标准人像线性图标；`profile/index.wxss` 新增 `.profile-avatar--guest` 内联人像背景图；`check-miniapp.mjs` 新增 `checkProfileGuestAvatar()`；`verify-all-15-pages-devtools.cjs#inspectProfileShortcuts()` 新增头像断言并把个人中心加入确定性未登录态集合。
+verification: `npm run typecheck` PASS；`npm run check:miniapp` PASS（15 页 / 15 路由）；`devtools:verify-commerce-flows` PASS（15 项，自提态 `商品小计=¥198.00/底栏=¥198.00`，闪送报价态 `商品小计=¥198.00`、`闪送运费=¥26.00`、`实付（估算）=¥224.00`、底栏 `已含闪送费 ¥26.00`）；`devtools:verify-all-pages` PASS（15/15 页 + 9/9 未登录态，登录态头像 `textLength=1` 无背景图、未登录态 `textLength=0` 且背景图非空）；`devtools:product-purchase-path` PASS。
+evidence: ERRORS.md M-20260919-001、M-20260919-002；docs/harness-engineering/core/evidence-index.md E-20260919-001、E-20260919-002；miniapp/reports/devtools/miniapp-commerce-flows.json；miniapp/reports/devtools/commerce-flow-checkout-quoted.png；miniapp/reports/devtools/all-pages-devtools-audit.json；miniapp/reports/devtools/final-profile.png；miniapp/reports/devtools/final-logged-out-profile.png；miniapp/reports/devtools/product-purchase-path-audit.json
+limitations: 本轮只改小程序展示层与审计脚本；确定性未登录态从 8 页扩到 9 页（新增个人中心）。真机、真实微信支付/退款、真实闪送与生产验收仍未执行；闪送开放平台资料与测试权限、有赞分类-商品接口 IP 白名单仍为外部阻塞。
+
 
 task_id: T-MINIAPP-COMMERCE-UX-REDESIGN
 trace_id: 20260908-miniapp-commerce-ux-redesign

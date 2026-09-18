@@ -206,8 +206,8 @@ Page({
     this.setData({
       isLoggedIn: true
     });
-    const totalFen = getCartItems().reduce((sum, item) => sum + item.priceFen * item.quantity, 0);
     const checkoutItems = getCartItems();
+    const totalFen = checkoutItems.reduce((sum, item) => sum + item.priceFen * item.quantity, 0);
     const shopSettings = await getShopSettings();
     await syncAddressBookFromBackend();
     const selectedAddress = getSelectedAddress();
@@ -252,7 +252,7 @@ Page({
       getPoints().catch(() => null),
       getMyCoupons().catch(() => null)
     ]);
-    const goodsFen = getCartItems().reduce((sum, item) => sum + item.priceFen * item.quantity, 0);
+    const goodsFen = checkoutItems.reduce((sum, item) => sum + item.priceFen * item.quantity, 0);
     const availableCoupons = couponsData
       ? this.buildCouponList(couponsData.coupons || [], goodsFen)
       : [];
@@ -615,6 +615,8 @@ Page({
     this.setData({
       estimateCouponFen: couponFen,
       estimateRemainFen: remainFen,
+      // 顶部购买卡展示商品小计（自提价口径），与底栏实付估算同步刷新，避免停留旧金额或 0 元。
+      totalText: formatFen(goodsFen),
       goodsFenText: formatFen(goodsFen),
       estimateCouponFenText: formatDeductionFen(couponFen),
       estimateRemainFenText: formatFen(remainFen),

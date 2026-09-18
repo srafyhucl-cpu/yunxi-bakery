@@ -156,6 +156,35 @@ async function readScheduleState(page) {
   };
 }
 
+// 顶部购买卡、费用明细和底栏各自有金额文案，必须同时读取，才能发现“小计已刷新、实付仍停在旧值”这类不一致。
+async function readCheckoutAmountState(page) {
+  const data = await page.data();
+  const summaryHint = await page.$(".checkout-summary__hint");
+  const summaryTotal = await page.$(".checkout-total");
+  const footerAmount = await page.$(".checkout-footer__amount");
+  const footerNote = await page.$(".checkout-footer__note");
+  const breakdown = {};
+  for (const row of await page.$$(".amount-row")) {
+    const cells = [];
+    for (const cell of await row.$$("text")) {
+      cells.push((await cell.text()).trim());
+    }
+    if (cells.length >= 2) {
+      breakdown[cells[0]] = cells[cells.length - 1];
+    }
+  }
+  return {
+    summaryHint: summaryHint ? (await summaryHint.text()).trim() : "",
+    summaryTotal: summaryTotal ? (await summaryTotal.text()).trim() : "",
+    footerAmount: footerAmount ? (await footerAmount.text()).trim() : "",
+    footerNote: footerNote ? (await footerNote.text()).trim() : "",
+    totalText: String(data.totalText || ""),
+    goodsFenText: String(data.goodsFenText || ""),
+    estimateRemainFenText: String(data.estimateRemainFenText || ""),
+    breakdown,
+  };
+}
+
 async function applyCheckoutState(page, state) {
   await page.setData({
     isLoggedIn: true,
@@ -189,6 +218,8 @@ async function applyCheckoutState(page, state) {
     submitting: false,
   });
   await page.callMethod("syncExpectTimeSchedule");
+  // 注入态同样要走页面自身的金额重算，否则顶部小计/底栏说明会停在旧值（见 ERRORS M-20260918-004）。
+  await page.callMethod("refreshEstimate");
   await page.callMethod("refreshSubmitState");
   await sleep(160);
 }
@@ -438,6 +469,20 @@ async function main() {
         pickupState.deliveryFeeFen === 0,
       "门店自提结算未按免配送费进入可提交态"
     );
+    const pickupAmounts = await readCheckoutAmountState(checkout);
+    addCheck(
+      report,
+      "checkout-pickup-amounts",
+      pickupAmounts,
+      pickupAmounts.summaryHint.includes("商品小计") &&
+        pickupAmounts.summaryTotal === "¥198.00" &&
+        pickupAmounts.totalText === "¥198.00" &&
+        pickupAmounts.footerAmount === "¥198.00" &&
+        pickupAmounts.footerNote === "自提价 · 免运费" &&
+        pickupAmounts.breakdown["商品金额"] === "¥198.00" &&
+        pickupAmounts.breakdown["实付（估算）"] === "¥198.00",
+      "自提结算的顶部商品小计、费用明细与底栏实付金额不一致"
+    );
 
     await applyCheckoutState(checkout, {
       deliveryType: "delivery",
@@ -458,6 +503,21 @@ async function main() {
         quotedState.deliveryQuoteId === "quote-ui-audit" &&
         quotedState.deliveryFeeFen === 2600,
       "闪送已报价态未携带有效报价并进入可提交态"
+    );
+    const quotedAmounts = await readCheckoutAmountState(checkout);
+    addCheck(
+      report,
+      "checkout-delivery-amounts",
+      quotedAmounts,
+      quotedAmounts.summaryHint.includes("商品小计") &&
+        quotedAmounts.summaryTotal === "¥198.00" &&
+        quotedAmounts.totalText === "¥198.00" &&
+        quotedAmounts.breakdown["商品金额"] === "¥198.00" &&
+        quotedAmounts.breakdown["闪送运费"] === "¥26.00" &&
+        quotedAmounts.breakdown["实付（估算）"] === "¥224.00" &&
+        quotedAmounts.footerAmount === "¥224.00" &&
+        quotedAmounts.footerNote === "已含闪送费 ¥26.00",
+      "闪送已报价结算的顶部商品小计、费用明细与底栏实付金额不一致"
     );
     const scheduleState = await readScheduleState(checkout);
     addCheck(
