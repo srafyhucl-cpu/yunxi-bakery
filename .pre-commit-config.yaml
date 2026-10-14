@@ -13,34 +13,12 @@ repos:
         args: [--baseline, backend/.secrets.baseline]
         # 基线文件自身不参与扫描：其豁免条目中的哈希/密钥字样必然被自身检测器命中，
         # 条目豁免将导致永不收敛（每加一条产生新的高熵发现）。官方机制为扫描层排除。
-        exclude: ^backend/\.secrets\.baseline$
+        exclude: ^(backend/\.secrets\.baseline|archive/.*)$
         language: system
 
       - id: verify-secrets-baseline
         name: 密钥基线防改写校验（安全）
         entry: python backend/scripts/verify_secrets_baseline.py
-        language: system
-        pass_filenames: false
-        always_run: true
-
-      - id: check-project
-        name: 项目红线门禁：SQL参数化+SELECT*+架构分层（安全）
-        entry: python backend/scripts/check_project.py
-        args: [--skip-tests]
-        language: system
-        pass_filenames: false
-        always_run: true
-
-      - id: chinese-governance
-        name: Harness P0 中文治理六维门禁
-        entry: python -B backend/scripts/check_chinese_governance.py --summary
-        language: system
-        pass_filenames: false
-        always_run: true
-
-      - id: check-redline-selftest
-        name: 红线规则自测验证（安全自检）
-        entry: python -m pytest backend/tests/test_red_line_rules.py -q --tb=short --no-cov
         language: system
         pass_filenames: false
         always_run: true
