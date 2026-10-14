@@ -57,8 +57,8 @@ class AlertService:
     def _is_rate_limited(self, key: str) -> bool:
         """检查告警是否在冷却期内。"""
         now = time.monotonic()
-        last = _rate_limit_store.get(key, 0.0)
-        if now - last < _RATE_LIMIT_SECONDS:
+        last = _rate_limit_store.get(key)
+        if last is not None and now - last < _RATE_LIMIT_SECONDS:
             return True
         _rate_limit_store[key] = now
         return False
