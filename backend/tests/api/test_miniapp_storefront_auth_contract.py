@@ -47,6 +47,9 @@ async def test_login_token_can_access_protected_order_api_without_legacy_header(
 
     monkeypatch.setattr(StorefrontAuthService, "_request_wechat_session", fake_request)
     monkeypatch.setattr(
+        StorefrontAuthService, "_is_wechat_configured", lambda self: True
+    )
+    monkeypatch.setattr(
         "app.api.channels.storefront._user.settings.STOREFRONT_AUTH_ALLOW_LEGACY_HEADER",
         False,
     )

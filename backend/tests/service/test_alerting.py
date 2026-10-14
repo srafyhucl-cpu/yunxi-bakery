@@ -7,6 +7,7 @@ from app.service import alerting
 
 @pytest.mark.asyncio
 async def test_alerting_uses_httpx_transport(monkeypatch) -> None:
+    alerting._rate_limit_store.clear()
     captured: dict[str, object] = {}
 
     class _Response:

@@ -12,9 +12,10 @@ def test_agents_llm_import_does_not_import_langchain_runtime() -> None:
     assert "langchain_openai" not in sys.modules
 
 
-def test_langchain_chat_model_factory_builds_mimo_model() -> None:
+def test_langchain_chat_model_factory_builds_mimo_model(monkeypatch) -> None:
     from app.service.agents import llm
 
+    monkeypatch.setattr(llm.settings, "MIMO_API_KEY", "mock-mimo-key")
     llm._MODEL_REGISTRY.clear()
     llm._TRANSPORT_REGISTRY.clear()
     model = llm.get_langchain_chat_model(provider="mimo", model="mimo-test")

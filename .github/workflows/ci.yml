@@ -40,7 +40,7 @@ jobs:
 
       - name: Run Core Business Tests
         run: |
-          python -m pytest backend/tests/api backend/tests/service backend/tests/repository backend/tests/middleware backend/tests/migrations -q
+          python -m pytest backend/tests/api backend/tests/service backend/tests/repository backend/tests/middleware backend/tests/migrations --tb=short -ra
 
       - name: Run Code Syntax Check
         run: |
