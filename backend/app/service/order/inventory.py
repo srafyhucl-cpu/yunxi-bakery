@@ -46,7 +46,7 @@ class OrderInventoryService:
             items.append(
                 NormalizedOrderItem(
                     product_id=product_id,
-                    title=fallback["title"],
+                    title=str(stock_item.get("title") or fallback["title"]),
                     price_fen=int(stock_item.get("price_fen") or fallback["price_fen"]),
                     quantity=fallback["quantity"],
                     uses_catalog_inventory=bool(stock_item),

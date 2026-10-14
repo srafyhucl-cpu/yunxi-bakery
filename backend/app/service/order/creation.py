@@ -13,6 +13,7 @@ from app.models.order import Order, OrderStatus
 from app.models.session import SessionCreate
 from app.repository.order_repo import OrderRepo
 from app.repository.session_repo import SessionRepo
+from app.service.order.fulfillment_dual_track import OrderFulfillmentDualTrackService
 from app.service.order.inventory import NormalizedOrderItem, OrderInventoryService
 from app.service.order.payment_runtime import build_initial_payment
 from app.service.order.schedule import BEIJING_DELIVERY_TYPE, OrderScheduleService
@@ -44,6 +45,7 @@ class OrderCreationService:
         schedule_service: OrderScheduleService,
         timeline_service: OrderTimelineService,
         delivery_service: DeliveryApplicationService | None = None,
+        dual_track_service: OrderFulfillmentDualTrackService | None = None,
     ) -> None:
         self._order_repo = order_repo
         self._session_repo = session_repo
@@ -51,6 +53,10 @@ class OrderCreationService:
         self._schedule_service = schedule_service
         self._timeline_service = timeline_service
         self._delivery_service = delivery_service
+        self._dual_track_service = (
+            dual_track_service
+            or OrderFulfillmentDualTrackService(order_repo=order_repo)
+        )
 
     async def create_order(
         self,
@@ -66,6 +72,12 @@ class OrderCreationService:
             raise ValueError("订单商品不能为空")
         goods_total_fen = self._goods_total_fen(order_items)
         delivery = await self._schedule_service.build_delivery(payload)
+        await self._dual_track_service.validate_fulfillment(
+            items=payload.get("items", []),
+            normalized_items=order_items,
+            delivery=delivery,
+            expect_time=delivery.get("expectTime", ""),
+        )
         payable_fen = await self._apply_delivery_quote(
             delivery,
             goods_total_fen=goods_total_fen,
@@ -110,14 +122,28 @@ class OrderCreationService:
             SessionCreate(id="", channel=STOREFRONT_CHANNEL, user_id=user_id)
         )
         now = datetime.now().strftime(TIME_FORMAT)
+        raw_items_map = {
+            str(item.get("product_id") or item.get("productId")): item
+            for item in payload.get("items", [])
+        }
+        product_dicts = []
+        for item in order_items:
+            d = dict(item.__dict__)
+            raw = raw_items_map.get(str(item.product_id), {})
+            if "customization" in raw:
+                d["customization"] = raw["customization"]
+            if "fulfillment_type" in raw or "fulfillmentType" in raw:
+                d["fulfillment_type"] = raw.get("fulfillment_type") or raw.get(
+                    "fulfillmentType"
+                )
+            product_dicts.append(d)
+
         return Order(
             id=self._build_order_id(),
             session_id=session.id,
             channel=STOREFRONT_CHANNEL,
             user_id=user_id,
-            products=json.dumps(
-                [item.__dict__ for item in order_items], ensure_ascii=False
-            ),
+            products=json.dumps(product_dicts, ensure_ascii=False),
             total_amount=float(fen_to_yuan_str(payable_fen)),
             delivery=json.dumps(delivery, ensure_ascii=False),
             payment=json.dumps(build_initial_payment(now), ensure_ascii=False),

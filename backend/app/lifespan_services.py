@@ -131,7 +131,11 @@ def init_services(repos: dict[str, Any], vs: Any, bm25: Any = None) -> dict[str,
         repo=repos["customer_group_repo"],
         schedule_service=order_schedule_service,
     )
-    storefront_auth_service = StorefrontAuthService()
+    storefront_auth_service = StorefrontAuthService(
+        customer_repo=repos.get("customer_master_repo"),
+        member_balance_repo=repos.get("member_balance_repo"),
+        db=getattr(repos.get("order_repo"), "_db", None),
+    )
     customer_consent_service = CustomerConsentService(repos["customer_profile_repo"])
     privacy_lifecycle_service = PrivacyLifecycleService(
         repos.get("privacy_repo") or PrivacyRepo(None)

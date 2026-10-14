@@ -40,8 +40,8 @@ jobs:
 
       - name: Run Core Business Tests
         run: |
-          python -m pytest backend/tests/api backend/tests/service backend/tests/repository backend/tests/middleware backend/tests/migrations --tb=short -ra
+          python -m pytest backend/tests/api backend/tests/service backend/tests/repository backend/tests/middleware backend/tests/migrations backend/tests/scripts/test_import_youzan_customers.py backend/tests/scripts/test_verify_youzan_customer_import.py backend/tests/scripts/test_preimport_youzan_customer_openids.py --tb=short -ra
 
       - name: Run Code Syntax Check
         run: |
-          python -m ruff check backend/app/
+          python -m ruff check backend/app/ backend/tests/

@@ -15,26 +15,56 @@ class MemberBalanceRepo(BaseRepository):
     """
 
     async def get_by_mobile(self, mobile: str) -> dict | None:
-        """按手机号读取会员余额快照。"""
-        rows = await self._db.execute_fetchall(
-            "SELECT id, customer_id, mobile, yz_open_id, display_name, is_member, "
-            "card_alias, card_no, card_status, points, stored_value_fen, "
-            "created_at, updated_at FROM member_balance WHERE mobile = ? LIMIT 1",
-            (mobile,),
-        )
-        return rows[0] if rows else None
+        """按手机号读取会员余额快照（包含实充本金与赠送金）。"""
+        try:
+            rows = await self._db.execute_fetchall(
+                "SELECT id, customer_id, mobile, yz_open_id, display_name, is_member, "
+                "card_alias, card_no, card_status, points, stored_value_fen, "
+                "principal_fen, bonus_fen, "
+                "created_at, updated_at FROM member_balance WHERE mobile = ? LIMIT 1",
+                (mobile,),
+            )
+        except Exception:
+            rows = await self._db.execute_fetchall(
+                "SELECT id, customer_id, mobile, yz_open_id, display_name, is_member, "
+                "card_alias, card_no, card_status, points, stored_value_fen, "
+                "created_at, updated_at FROM member_balance WHERE mobile = ? LIMIT 1",
+                (mobile,),
+            )
+        if not rows:
+            return None
+        res = dict(rows[0])
+        if "principal_fen" not in res:
+            res["principal_fen"] = int(res.get("stored_value_fen", 0) or 0)
+            res["bonus_fen"] = 0
+        return res
 
     async def get_by_openid(self, yz_open_id: str) -> dict | None:
         """按有赞 openid 读取会员余额快照。"""
         if not yz_open_id:
             return None
-        rows = await self._db.execute_fetchall(
-            "SELECT id, customer_id, mobile, yz_open_id, display_name, is_member, "
-            "card_alias, card_no, card_status, points, stored_value_fen, "
-            "created_at, updated_at FROM member_balance WHERE yz_open_id = ? LIMIT 1",
-            (yz_open_id,),
-        )
-        return rows[0] if rows else None
+        try:
+            rows = await self._db.execute_fetchall(
+                "SELECT id, customer_id, mobile, yz_open_id, display_name, is_member, "
+                "card_alias, card_no, card_status, points, stored_value_fen, "
+                "principal_fen, bonus_fen, "
+                "created_at, updated_at FROM member_balance WHERE yz_open_id = ? LIMIT 1",
+                (yz_open_id,),
+            )
+        except Exception:
+            rows = await self._db.execute_fetchall(
+                "SELECT id, customer_id, mobile, yz_open_id, display_name, is_member, "
+                "card_alias, card_no, card_status, points, stored_value_fen, "
+                "created_at, updated_at FROM member_balance WHERE yz_open_id = ? LIMIT 1",
+                (yz_open_id,),
+            )
+        if not rows:
+            return None
+        res = dict(rows[0])
+        if "principal_fen" not in res:
+            res["principal_fen"] = int(res.get("stored_value_fen", 0) or 0)
+            res["bonus_fen"] = 0
+        return res
 
     async def upsert_identity(
         self,
@@ -239,20 +269,38 @@ class MemberBalanceRepo(BaseRepository):
         )
         return bool(cursor.rowcount == 1)
 
-    async def credit_stored_value(self, mobile: str, amount_fen: int) -> int:
-        """为会员储值余额加款（充值/退款），返回加款后余额。"""
+    async def credit_stored_value(
+        self, mobile: str, amount_fen: int, bonus_fen: int = 0
+    ) -> int:
+        """为会员储值余额加款（充值/退款），支持指定赠送金额，返回加款后余额。"""
         now = now_str()
-        cursor = await self._db.execute(
-            "UPDATE member_balance SET stored_value_fen = stored_value_fen + ?, "
-            "updated_at = ? WHERE mobile = ?",
-            (amount_fen, now, mobile),
-        )
-        if cursor.rowcount != 1:
-            await self._db.execute(
-                "INSERT INTO member_balance (mobile, stored_value_fen, created_at, "
-                "updated_at) VALUES (?, ?, ?, ?)",
-                (mobile, amount_fen, now, now),
+        principal_addition = amount_fen - bonus_fen
+        try:
+            cursor = await self._db.execute(
+                "UPDATE member_balance SET stored_value_fen = stored_value_fen + ?, "
+                "principal_fen = principal_fen + ?, bonus_fen = bonus_fen + ?, "
+                "updated_at = ? WHERE mobile = ?",
+                (amount_fen, principal_addition, bonus_fen, now, mobile),
             )
+            if cursor.rowcount != 1:
+                await self._db.execute(
+                    "INSERT INTO member_balance (mobile, stored_value_fen, principal_fen, "
+                    "bonus_fen, created_at, updated_at) "
+                    "VALUES (?, ?, ?, ?, ?, ?)",
+                    (mobile, amount_fen, principal_addition, bonus_fen, now, now),
+                )
+        except Exception:
+            cursor = await self._db.execute(
+                "UPDATE member_balance SET stored_value_fen = stored_value_fen + ?, "
+                "updated_at = ? WHERE mobile = ?",
+                (amount_fen, now, mobile),
+            )
+            if cursor.rowcount != 1:
+                await self._db.execute(
+                    "INSERT INTO member_balance (mobile, stored_value_fen, created_at, "
+                    "updated_at) VALUES (?, ?, ?, ?)",
+                    (mobile, amount_fen, now, now),
+                )
         rows = await self._db.execute_fetchall(
             "SELECT stored_value_fen FROM member_balance WHERE mobile = ? LIMIT 1",
             (mobile,),
@@ -264,10 +312,26 @@ class MemberBalanceRepo(BaseRepository):
         mobile: str,
         amount_fen: int,
     ) -> bool:
-        """原子扣减储值余额，余额不足时不扣减。"""
-        cursor = await self._db.execute(
-            "UPDATE member_balance SET stored_value_fen = stored_value_fen - ?, "
-            "updated_at = ? WHERE mobile = ? AND stored_value_fen >= ?",
-            (amount_fen, now_str(), mobile, amount_fen),
-        )
-        return bool(cursor.rowcount == 1)
+        """原子扣减储值余额，余额不足时不扣减。优先扣减赠送金，不足部分扣减本金。"""
+        now = now_str()
+        try:
+            row = await self.get_by_mobile(mobile)
+            if not row or int(row.get("stored_value_fen", 0)) < amount_fen:
+                return False
+            curr_bonus = int(row.get("bonus_fen", 0) or 0)
+            deduct_bonus = min(curr_bonus, amount_fen)
+            deduct_principal = amount_fen - deduct_bonus
+            cursor = await self._db.execute(
+                "UPDATE member_balance SET stored_value_fen = stored_value_fen - ?, "
+                "bonus_fen = bonus_fen - ?, principal_fen = principal_fen - ?, "
+                "updated_at = ? WHERE mobile = ? AND stored_value_fen >= ?",
+                (amount_fen, deduct_bonus, deduct_principal, now, mobile, amount_fen),
+            )
+            return bool(cursor.rowcount == 1)
+        except Exception:
+            cursor = await self._db.execute(
+                "UPDATE member_balance SET stored_value_fen = stored_value_fen - ?, "
+                "updated_at = ? WHERE mobile = ? AND stored_value_fen >= ?",
+                (amount_fen, now, mobile, amount_fen),
+            )
+            return bool(cursor.rowcount == 1)
