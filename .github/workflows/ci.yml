@@ -17,6 +17,8 @@ jobs:
       PYTHONUTF8: "1"
       PYTHONDONTWRITEBYTECODE: "1"
       YUNXI_USE_FAKE_EMBEDDING: "1"
+      PYTHONPATH: "backend"
+      TZ: "Asia/Shanghai"
 
     steps:
       - name: Checkout
