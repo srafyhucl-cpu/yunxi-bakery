@@ -1,6 +1,9 @@
 """订单支付真实实现。"""
 
+from collections.abc import Awaitable, Callable
+
 from app.config import settings
+from app.logger import setup_logger
 from app.models.order import Order, OrderStatus
 from app.repository.order_repo import OrderRepo
 from app.repository.order_event_repo import OrderEventRepo
@@ -24,16 +27,18 @@ from app.service.order.payment_state import (
     build_initial_payment,
     build_mock_payment_session,
     build_order_description,
-    compute_remain_fen,
     dumps_payment,
     extract_openid,
     loads_json_object,
     loads_payment,
     now_text,
+    resolve_external_paid_fen,
     status_value,
 )
 from app.service.order.serialization import OrderSerializationService
 from app.utils import yuan_to_fen
+
+logger = setup_logger()
 
 
 class OrderPaymentRuntimeService:
@@ -60,6 +65,8 @@ class OrderPaymentRuntimeService:
             raise ValueError("订单已取消")
         payment = loads_payment(order.payment)
         payment_status = str(payment.get("status", PAYMENT_STATUS_UNPAID))
+        if self._is_refund_terminal(payment):
+            raise ValueError("订单已退款，不能继续支付")
         if payment_status == PAYMENT_STATUS_PAID:
             return PaymentSession(
                 mode=PAYMENT_MODE_WECHAT,
@@ -73,16 +80,21 @@ class OrderPaymentRuntimeService:
             )
         if payment_status == PAYMENT_STATUS_EXPIRED:
             raise ValueError("订单支付已超时")
-        if (
-            payment_status == PAYMENT_STATUS_PARTIAL
-            and int(payment.get("balanceFen", 0) or 0) > 0
-        ):
-            raise ValueError("订单已部分支付，请完成剩余支付")
         if not self._wechat_pay_ready():
+            if int(payment.get("wechatPrepayFen", 0) or 0) > 0:
+                raise ValueError("订单已发起微信支付，微信支付暂不可用，请稍后重试")
             if not settings.ALLOW_MOCK_PAYMENT:
                 raise ValueError("微信支付未配置，生产环境不提供 mock 支付")
             return build_mock_payment_session(order.id)
+        total_fen = resolve_external_paid_fen(
+            payment,
+            yuan_to_fen(order.total_amount),
+        )
+        if total_fen <= 0:
+            raise ValueError("订单无需外部支付")
+        order = await self._lock_wechat_prepay_amount(order, total_fen)
         prepay = await self._create_wechat_jsapi_prepay(order)
+        await self._ensure_wechat_prepay_session_current(order.id, total_fen)
         payment_params = self._build_wechat_payment_params(prepay.prepay_id)
         return PaymentSession(
             mode=PAYMENT_MODE_WECHAT,
@@ -103,6 +115,8 @@ class OrderPaymentRuntimeService:
         payment = loads_payment(order.payment)
         payment_status = str(payment.get("status", PAYMENT_STATUS_UNPAID))
         if payment_status == PAYMENT_STATUS_PAID:
+            if self._is_refund_terminal(payment):
+                raise ValueError("订单已退款，不能确认支付")
             from app.service.coupon import CouponService
             from app.service.points.payment import PointsPaymentService
 
@@ -111,8 +125,12 @@ class OrderPaymentRuntimeService:
                 order
             )
             return self._serializer.serialize(order)
+        if self._is_refund_terminal(payment):
+            raise ValueError("订单已退款，不能确认支付")
         if payment_status == PAYMENT_STATUS_EXPIRED:
             raise ValueError("订单支付已超时")
+        if int(payment.get("wechatPrepayFen", 0) or 0) > 0:
+            raise ValueError("订单已发起微信支付，不能改用模拟支付")
         now = now_text()
         if payment_status == PAYMENT_STATUS_PARTIAL:
             payment.update(
@@ -169,8 +187,8 @@ class OrderPaymentRuntimeService:
         from app.service.order.notify_intake import (
             DECISION_CLAIMED,
             DECISION_DUPLICATE,
+            build_notify_key,
             claim_notify,
-            complete_notify,
             extract_notify_identity,
         )
 
@@ -184,29 +202,42 @@ class OrderPaymentRuntimeService:
             return {"duplicate": True}
         if claim["decision"] != DECISION_CLAIMED:
             raise ValueError("微信支付通知处理中或需人工处理，请稍后重试")
-        resource = payload.get("resource")
-        if not isinstance(resource, dict):
-            raise ValueError("微信支付通知缺少 resource")
-        transaction = self._decrypt_wechat_resource(resource)
-        order_id = str(transaction.get("out_trade_no", "")).strip()
-        if not order_id:
-            raise ValueError("微信支付通知缺少订单号")
-        trade_state = str(transaction.get("trade_state", "")).strip()
-        if trade_state != WECHAT_PAY_SUCCESS_STATE:
-            await complete_notify(db, event_id, claim["claim_token"])
-            return {"orderId": order_id, "ignored": True, "tradeState": trade_state}
-        await self._validate_wechat_transaction(transaction)
-        paid_at = self._wechat_pay_service.format_success_time(
-            str(transaction.get("success_time", ""))
+        message_key = build_notify_key(event_id)
+
+        async def process() -> dict:
+            resource = payload.get("resource")
+            if not isinstance(resource, dict):
+                raise ValueError("微信支付通知缺少 resource")
+            transaction = self._decrypt_wechat_resource(resource)
+            order_id = str(transaction.get("out_trade_no", "")).strip()
+            if not order_id:
+                raise ValueError("微信支付通知缺少订单号")
+            trade_state = str(transaction.get("trade_state", "")).strip()
+            if trade_state != WECHAT_PAY_SUCCESS_STATE:
+                return {
+                    "orderId": order_id,
+                    "ignored": True,
+                    "tradeState": trade_state,
+                }
+            await self._validate_wechat_transaction(transaction)
+            paid_at = self._wechat_pay_service.format_success_time(
+                str(transaction.get("success_time", ""))
+            )
+            transaction_id = str(transaction.get("transaction_id", "")).strip()
+            updated = await self._mark_wechat_payment_paid(
+                order_id,
+                paid_at=paid_at,
+                transaction_id=transaction_id,
+            )
+            return self._serializer.serialize(updated)
+
+        return await self._run_claimed_notify(
+            db,
+            message_key,
+            claim,
+            process,
+            event_id=event_id,
         )
-        transaction_id = str(transaction.get("transaction_id", "")).strip()
-        updated = await self._mark_wechat_payment_paid(
-            order_id,
-            paid_at=paid_at,
-            transaction_id=transaction_id,
-        )
-        await complete_notify(db, event_id, claim["claim_token"])
-        return self._serializer.serialize(updated)
 
     async def handle_wechat_refund_notify(
         self,
@@ -218,8 +249,8 @@ class OrderPaymentRuntimeService:
         from app.service.order.notify_intake import (
             DECISION_CLAIMED,
             DECISION_DUPLICATE,
+            build_notify_key,
             claim_notify,
-            complete_notify,
             extract_notify_identity,
         )
         from app.service.order.refund_notification import (
@@ -237,16 +268,26 @@ class OrderPaymentRuntimeService:
             return {"duplicate": True, "kind": "duplicate"}
         if claim["decision"] != DECISION_CLAIMED:
             raise ValueError("微信退款通知处理中或需人工处理，请稍后重试")
-        resource = payload.get("resource")
-        if not isinstance(resource, dict):
-            raise ValueError("微信退款通知缺少 resource")
-        transaction = self._decrypt_wechat_resource(resource)
-        notify = RefundNotifyNormalizer().normalize(transaction)
-        result = await WechatRefundNotificationService(
-            self._order_repo
-        ).apply_refund_notify(notify)
-        await complete_notify(db, event_id, claim["claim_token"])
-        return result
+        message_key = build_notify_key(event_id)
+
+        async def process() -> dict:
+            resource = payload.get("resource")
+            if not isinstance(resource, dict):
+                raise ValueError("微信退款通知缺少 resource")
+            transaction = self._decrypt_wechat_resource(resource)
+            notify = RefundNotifyNormalizer().normalize(transaction)
+            return await WechatRefundNotificationService(
+                self._order_repo,
+                claim_transaction=self._notification_service.claim_refund_transaction,
+            ).apply_refund_notify(notify)
+
+        return await self._run_claimed_notify(
+            db,
+            message_key,
+            claim,
+            process,
+            event_id=event_id,
+        )
 
     async def reconcile_pay_from_query(self, query: dict) -> dict:
         """由支付查询恢复，通知与查询共用落账路径，乱序安全。"""
@@ -255,7 +296,6 @@ class OrderPaymentRuntimeService:
             DECISION_DUPLICATE,
             build_notify_key,
             claim_notify_key,
-            complete_notify_key,
         )
         from app.service.order.wechat_normalizers import PayQueryNormalizer
 
@@ -272,26 +312,31 @@ class OrderPaymentRuntimeService:
             return self._serializer.serialize(order)
         if claim["decision"] != DECISION_CLAIMED:
             raise ValueError("微信支付查询恢复处理中或需人工处理，请稍后重试")
-        if result.trade_state != WECHAT_PAY_SUCCESS_STATE:
-            await complete_notify_key(db, message_key, claim["claim_token"])
-            return {"orderId": result.out_trade_no, "ignored": True}
-        if result.mchid != settings.WECHAT_PAY_MCH_ID:
-            raise ValueError("微信支付查询商户号不匹配")
-        if result.appid != settings.WECHAT_MINIAPP_APP_ID:
-            raise ValueError("微信支付查询 appid 不匹配")
-        order = await self._order_repo.get_order(result.out_trade_no)
-        if order is None:
-            raise ValueError("订单不存在")
-        if yuan_to_fen(order.total_amount) != result.total_fen:
-            raise ValueError("微信支付查询金额异常")
-        paid_at = self._wechat_pay_service.format_success_time(result.success_time)
-        updated = await self._mark_wechat_payment_paid(
-            result.out_trade_no,
-            paid_at=paid_at,
-            transaction_id=result.transaction_id,
-        )
-        await complete_notify_key(db, message_key, claim["claim_token"])
-        return self._serializer.serialize(updated)
+
+        async def process() -> dict:
+            if result.trade_state != WECHAT_PAY_SUCCESS_STATE:
+                return {"orderId": result.out_trade_no, "ignored": True}
+            if result.mchid != settings.WECHAT_PAY_MCH_ID:
+                raise ValueError("微信支付查询商户号不匹配")
+            if result.appid != settings.WECHAT_MINIAPP_APP_ID:
+                raise ValueError("微信支付查询 appid 不匹配")
+            order = await self._order_repo.get_order(result.out_trade_no)
+            if order is None:
+                raise ValueError("订单不存在")
+            await self._notification_service.validate_order_amount(
+                order,
+                result.total_fen,
+                mismatch_message="微信支付查询金额异常",
+            )
+            paid_at = self._wechat_pay_service.format_success_time(result.success_time)
+            updated = await self._mark_wechat_payment_paid(
+                result.out_trade_no,
+                paid_at=paid_at,
+                transaction_id=result.transaction_id,
+            )
+            return self._serializer.serialize(updated)
+
+        return await self._run_claimed_notify(db, message_key, claim, process)
 
     async def reconcile_refund_from_query(
         self, query: dict, *, payer_total_fen: int
@@ -302,7 +347,6 @@ class OrderPaymentRuntimeService:
             DECISION_DUPLICATE,
             build_notify_key,
             claim_notify_key,
-            complete_notify_key,
         )
         from app.service.order.refund_notification import (
             WechatRefundNotificationService,
@@ -317,11 +361,53 @@ class OrderPaymentRuntimeService:
             return {"duplicate": True, "kind": "duplicate"}
         if claim["decision"] != DECISION_CLAIMED:
             raise ValueError("微信退款查询恢复处理中或需人工处理，请稍后重试")
-        applied = await WechatRefundNotificationService(
-            self._order_repo
-        ).apply_refund_query(result, payer_total_fen=payer_total_fen)
-        await complete_notify_key(db, message_key, claim["claim_token"])
-        return applied
+
+        async def process() -> dict:
+            return await WechatRefundNotificationService(
+                self._order_repo,
+                claim_transaction=self._notification_service.claim_refund_transaction,
+            ).apply_refund_query(result, payer_total_fen=payer_total_fen)
+
+        return await self._run_claimed_notify(db, message_key, claim, process)
+
+    async def _run_claimed_notify(
+        self,
+        db,
+        message_key: str,
+        claim: dict,
+        process: Callable[[], Awaitable[dict]],
+        *,
+        event_id: str = "",
+    ) -> dict:
+        """提交租约后原子执行业务与完成标记，失败时持久化重试状态。"""
+        claim_token = int(claim["claim_token"])
+        await db.commit()
+        try:
+            async with self._order_repo.transaction():
+                result = await process()
+                from app.service.order.notify_intake import complete_notify_key
+
+                await complete_notify_key(db, message_key, claim_token)
+            return result
+        except Exception as exc:
+            try:
+                async with self._order_repo.transaction():
+                    from app.service.order.notify_intake import fail_notify_key
+
+                    await fail_notify_key(
+                        db,
+                        message_key,
+                        claim_token,
+                        str(exc),
+                        event_id=event_id,
+                    )
+            except Exception as mark_failed_error:
+                logger.error(
+                    "微信支付通知失败状态记录异常 key=%s err=%s",
+                    message_key,
+                    mark_failed_error,
+                )
+            raise
 
     async def _get_user_order(self, order_id: str, *, user_id: str) -> Order:
         order = await self._order_repo.get_order(order_id)
@@ -339,8 +425,6 @@ class OrderPaymentRuntimeService:
         order = await self._order_repo.get_order(order_id)
         if order is None:
             raise ValueError("订单不存在")
-        if status_value(order) == OrderStatus.CANCELLED.value:
-            raise ValueError("订单已取消")
         return await self._notification_service.mark_paid(
             order_id,
             paid_at=paid_at,
@@ -353,6 +437,11 @@ class OrderPaymentRuntimeService:
 
     def _wechat_pay_ready(self) -> bool:
         return self._wechat_pay_service.is_ready()
+
+    @staticmethod
+    def _is_refund_terminal(payment: dict) -> bool:
+        """判断支付快照是否已进入不可继续支付的退款终态。"""
+        return str(payment.get("refundStatus", "")) in {"full", "over"}
 
     def _verify_wechat_notify_signature(
         self,
@@ -370,12 +459,7 @@ class OrderPaymentRuntimeService:
 
     async def _create_wechat_jsapi_prepay(self, order: Order) -> WechatPayPrepayResult:
         payment = loads_payment(order.payment)
-        coupon_fen = int(payment.get("couponFen", 0) or 0)
-        balance_fen = int(payment.get("balanceFen", 0) or 0)
-        points_fen = int(payment.get("pointsFen", 0) or 0)
-        total_fen = compute_remain_fen(
-            yuan_to_fen(order.total_amount), coupon_fen, balance_fen, points_fen
-        )
+        total_fen = resolve_external_paid_fen(payment, yuan_to_fen(order.total_amount))
         if total_fen <= 0:
             raise ValueError("订单无需外部支付")
         payer_openid = extract_openid(order.user_id)
@@ -396,6 +480,57 @@ class OrderPaymentRuntimeService:
 
     def _sign_with_rsa(self, message: str) -> str:
         return self._wechat_pay_service.sign_with_rsa(message)
+
+    async def _lock_wechat_prepay_amount(
+        self,
+        order: Order,
+        total_fen: int,
+    ) -> Order:
+        """在调用微信前原子固化本次外部支付金额。"""
+        payment = loads_payment(order.payment)
+        locked_fen = int(payment.get("wechatPrepayFen", 0) or 0)
+        if locked_fen > 0:
+            if locked_fen != total_fen:
+                raise ValueError("订单微信支付金额冲突，请重新发起支付")
+            return order
+        payment.update(
+            {
+                "externalPaidFen": total_fen,
+                "wechatPrepayFen": total_fen,
+            }
+        )
+        async with self._order_repo.transaction():
+            updated = await self._order_repo.update_payment_if_snapshot_unchanged(
+                order.id,
+                order.payment,
+                dumps_payment(payment),
+                now_text(),
+            )
+            if updated is not None:
+                return updated
+            latest = await self._order_repo.get_order(order.id)
+        if latest is None:
+            raise ValueError("订单不存在")
+        latest_payment = loads_payment(latest.payment)
+        latest_locked_fen = int(latest_payment.get("wechatPrepayFen", 0) or 0)
+        if latest_locked_fen == total_fen:
+            return latest
+        raise ValueError("订单支付状态更新冲突，请重新发起支付")
+
+    async def _ensure_wechat_prepay_session_current(
+        self,
+        order_id: str,
+        total_fen: int,
+    ) -> None:
+        """外部预下单返回后再次确认订单仍可返回该会话。"""
+        latest = await self._order_repo.get_order(order_id)
+        if latest is None:
+            raise ValueError("订单不存在")
+        if status_value(latest) == OrderStatus.CANCELLED.value:
+            raise ValueError("订单已取消")
+        payment = loads_payment(latest.payment)
+        if int(payment.get("wechatPrepayFen", 0) or 0) != total_fen:
+            raise ValueError("订单支付状态已变化，请重新发起支付")
 
 
 __all__ = [

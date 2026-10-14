@@ -457,7 +457,13 @@ D1_MATRIX_LEGACY_WRITE_MODULES: tuple[str, ...] = (
 # 含 _repo.consume / _repo.refund 等正则时代漏检的仓储写方法）。
 D1_MATRIX_ALLOWED_WRITE_FUNCTIONS: dict[str, frozenset[str]] = {
     "app/service/coupon/admin.py": frozenset({"grant_coupon"}),
-    "app/service/coupon/inventory.py": frozenset({"consume_once", "refund_once"}),
+    # r77 外部核销收敛：`_open_external_consume_case` 是 consume_once /
+    # refund_once 共用的对账案件写入点（外部权威侧已核销时不得回滚已到账收款，
+    # 也不得本地再核销，只能把争议的 deducted_fen 追加成 coupon_reconcile_case）。
+    # 对应 ADR 0008 D1-B「外部观察只追加事实与案件，不改投影 / 当前态」。
+    "app/service/coupon/inventory.py": frozenset(
+        {"consume_once", "refund_once", "_open_external_consume_case"}
+    ),
     "app/service/coupon/payment.py": frozenset(
         {"apply_coupon_snapshot", "clear_coupon_snapshot", "consume_on_payment"}
     ),
@@ -538,6 +544,7 @@ _D1_EXPLICIT_WRITE_ATTRS: frozenset[str] = frozenset(
         "cancel_unpaid_order",
         "claim_payment_transaction",
         "upsert_identity",
+        "mirror_youzan_points",
         "credit_points",
         "deduct_points_if_sufficient",
         "credit_stored_value",

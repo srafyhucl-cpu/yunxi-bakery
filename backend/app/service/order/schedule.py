@@ -32,16 +32,29 @@ class OrderScheduleService:
 
     async def build_delivery(self, payload: dict) -> dict:
         """构建订单配送信息，并确保预约时间可履约。"""
+        from app.service.customer.address_support import (
+            validate_address,
+            validate_receiver_contact,
+        )
+
         expect_time = str(payload.get("expectTime", "")).strip()
         await self.validate_expect_time(expect_time)
         fulfillment_method = self._resolve_fulfillment_method(payload)
+        receiver_name = str(payload.get("receiverName", "")).strip()
+        receiver_phone = str(payload.get("receiverPhone", "")).strip()
+        delivery_address = str(payload.get("deliveryAddress", "")).strip()
+        validate_receiver_contact(receiver_name, receiver_phone)
+        if fulfillment_method == BEIJING_DELIVERY_TYPE:
+            if not delivery_address:
+                raise ValueError("请填写配送地址")
+            validate_address(receiver_name, receiver_phone, delivery_address)
         delivery_dict = {
-            "receiverName": str(payload.get("receiverName", "")).strip(),
-            "receiverPhone": str(payload.get("receiverPhone", "")).strip(),
+            "receiverName": receiver_name,
+            "receiverPhone": receiver_phone,
             "deliveryType": fulfillment_method,
             "fulfillmentMethod": fulfillment_method,
             "pickupAddress": str(payload.get("pickupAddress", "")).strip(),
-            "deliveryAddress": str(payload.get("deliveryAddress", "")).strip(),
+            "deliveryAddress": delivery_address,
             "expectTime": expect_time,
         }
         delivery_quote_id = str(payload.get("deliveryQuoteId", "")).strip()

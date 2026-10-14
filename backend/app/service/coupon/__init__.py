@@ -94,6 +94,16 @@ class CouponService:
         total_fen = self._total_fen(order)
         balance_fen = int(payment.get("balanceFen", 0) or 0)
         points_fen = int(payment.get("pointsFen", 0) or 0)
+        wechat_prepay_fen = int(payment.get("wechatPrepayFen", 0) or 0)
+        if wechat_prepay_fen > 0:
+            return {
+                "orderId": order.id,
+                "totalFen": total_fen,
+                "balanceFen": balance_fen,
+                "pointsFen": points_fen,
+                "available": [],
+                "remainFen": wechat_prepay_fen,
+            }
         if balance_fen > 0:
             # 余额已扣的真实 partial：与 apply_coupon 守卫一致，预览返回空可用券
             return {

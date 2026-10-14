@@ -101,11 +101,11 @@ class OrderInventoryService:
         fallback: dict,
         stock_item: dict,
     ) -> None:
+        if not stock_item:
+            raise ValueError(f"商品不存在: {product_id}")
         product_title = str(stock_item.get("title") or fallback.get("title") or "")
         if not is_product_purchasable(product_title):
             raise ValueError(f"商品仅供展示，不可下单: {product_id}")
-        if not stock_item:
-            return
         if int(stock_item.get("is_active") or 0) != 1:
             raise ValueError(f"商品已下架: {product_id}")
         stock = self._to_non_negative_int(stock_item.get("stock"))
@@ -115,7 +115,7 @@ class OrderInventoryService:
         if quantity > stock:
             raise ValueError(f"商品库存不足: {product_id}")
         price_fen = self._to_non_negative_int(stock_item.get("price_fen"))
-        if price_fen <= 0 and self._to_non_negative_int(fallback.get("price_fen")) <= 0:
+        if price_fen <= 0:
             raise ValueError(f"商品价格无效: {product_id}")
 
     def _build_fallback_item_map(self, raw_items: list) -> dict[str, dict]:

@@ -47,9 +47,13 @@ class OrderSerializationService:
             "remark": order.remark,
             "paymentStatus": str(payment.get("status", "unpaid")),
             "paymentMethod": str(payment.get("method", "")),
+            "balanceFen": int(payment.get("balanceFen", 0) or 0),
             "paymentPaidAt": str(payment.get("paidAt", "")),
             "paymentExpiredAt": str(payment.get("expiredAt", "")),
             "paymentExpiredReason": str(payment.get("expiredReason", "")),
+            "paymentRefundStatus": str(payment.get("refundStatus", "")),
+            "paymentRefundAmountFen": int(payment.get("refundAmountFen", 0) or 0),
+            "paymentRefundReason": str(payment.get("refundReason", "")),
             "timeline": timeline,
         }
 

@@ -84,3 +84,7 @@ class CouponInventoryEntry:
     deducted_fen: int = 0
     consumed_at: str = ""
     refunded_at: str = ""
+    # 消费周期：唯一键 (coupon_id, status, mobile, cycle_no) 的周期维度。
+    # 一个周期 = 一次「持有 → 核销 →（退款）冲正」，退款后由退款腿在新周期
+    # 补写 TAKE 使同一张券可再次使用（r78，M-20260926-028）。
+    cycle_no: int = 0

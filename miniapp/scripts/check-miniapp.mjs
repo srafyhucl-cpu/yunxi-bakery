@@ -1473,6 +1473,30 @@ function checkCheckoutFooterAmountSource() {
   }
 }
 
+function checkPendingOrderVisibility() {
+  const checkoutTs = readText(checkoutPagePath);
+  const submitOrderBody = extractPageMethodBodies(checkoutTs).get("submitOrder") || "";
+  if (!/savePendingOrder\s*\(orderId\)[\s\S]*setData\s*\(\s*\{[\s\S]*pendingBarVisible\s*:\s*true[\s\S]*orderLocked\s*:\s*true/.test(submitOrderBody)) {
+    fail("创建待支付订单后必须立即显示待支付操作栏");
+  }
+}
+
+function checkPendingOrderSnapshotIsolation() {
+  const checkoutTs = readText(checkoutPagePath);
+  const checkoutWxml = readText(path.join(miniappRoot, "pages", "checkout", "index.wxml"));
+  const savePendingOrderBody = extractPageMethodBodies(checkoutTs).get("savePendingOrder") || "";
+  const submitOrderBody = extractPageMethodBodies(checkoutTs).get("submitOrder") || "";
+  if (!/form\s*:\s*this\.getPendingOrderForm\(\)/.test(savePendingOrderBody)) {
+    fail("待支付订单必须保存表单快照，不能只保存商品签名");
+  }
+  if (!/pending\s*&&\s*!pendingMatchesCurrentOrder[\s\S]*cancelOrder\s*\(pending\.orderId\)[\s\S]*createOrder/.test(submitOrderBody)) {
+    fail("待支付订单快照不一致时必须先取消旧订单再创建新订单");
+  }
+  if (!checkoutWxml.includes("pendingOrderMatchesCurrentOrder") || !checkoutWxml.includes("创建新订单")) {
+    fail("待支付订单与当前购物车不一致时必须提供创建新订单动作");
+  }
+}
+
 function checkTabBarLabels(appConfig) {
 
   const customItems = Array.from(
@@ -1531,6 +1555,8 @@ checkLoginStateHintCopy();
 checkCartDecreaseButtonSemantics();
 checkAddressDetailCompleteness();
 checkCheckoutFooterAmountSource();
+checkPendingOrderVisibility();
+checkPendingOrderSnapshotIsolation();
 checkTabBarLabels(appConfig);
 checkUnifiedNavigationCoverage();
 

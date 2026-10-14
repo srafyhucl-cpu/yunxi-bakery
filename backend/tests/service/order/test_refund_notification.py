@@ -5,6 +5,7 @@ import json
 import aiosqlite
 import pytest
 
+from app.config import settings
 from app.models.order import Order, OrderStatus
 from app.repository.config_repo import ConfigRepo
 from app.repository.member_balance_repo import MemberBalanceRepo
@@ -15,7 +16,9 @@ from app.repository.wechat_refund_event_repo import WechatRefundEventRepo
 from app.repository.youzan_inventory_repo import YouzanInventoryRepo
 from app.repository.youzan_repo import YouzanProductRepo
 from app.service.order import OrderApplicationService
+from app.service.order.notify_intake import build_notify_key
 from app.service.order.payment_state import loads_payment
+from app.service.stored_value.payment import StoredValueOrderPaymentService
 
 MOBILE = "13800009000"
 OPENID = "openid_refund_001"
@@ -112,19 +115,21 @@ def _refund_notify(
     out_refund_no: str,
     refund_fen: int,
     payer_refund_fen: int,
+    total_fen: int = 19800,
     payer_total_fen: int = 19800,
+    transaction_id: str = "4200000000202606170000000001",
 ) -> dict:
     """构造已解密的退款成功事务体。"""
     return {
         "mchid": "mch-test",
         "out_trade_no": order_id,
-        "transaction_id": "4200000000202606170000000001",
+        "transaction_id": transaction_id,
         "out_refund_no": out_refund_no,
         "refund_id": f"wx-{out_refund_no}",
         "refund_status": "SUCCESS",
         "success_time": "2026-06-17T13:00:00+08:00",
         "amount": {
-            "total": 19800,
+            "total": total_fen,
             "refund": refund_fen,
             "payer_total": payer_total_fen,
             "payer_refund": payer_refund_fen,
@@ -148,7 +153,9 @@ async def test_full_refund_end_to_end_with_balance_leg(
     await _seed_paid_order(db, "order-ref-1", 198.00, balance_fen=2000)
     await _patch_mch(monkeypatch)
     service = _service(db)
-    notify = _refund_notify("order-ref-1", "R1", 17800, 17800)
+    notify = _refund_notify(
+        "order-ref-1", "R1", 17800, 17800, total_fen=17800, payer_total_fen=17800
+    )
     result = await service.reconcile_refund_from_query(
         notify, payer_total_fen=19800 - 2000
     )
@@ -173,6 +180,233 @@ async def test_full_refund_end_to_end_with_balance_leg(
         ("order-ref-1",),
     )
     assert len(events) == 1
+
+
+@pytest.mark.asyncio
+async def test_late_payment_query_records_paid_fact_after_full_refund_of_partial_order(
+    db: aiosqlite.Connection, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """退款先到时，迟到支付查询应记录真实微信事实但不重新结算资产。"""
+    await _seed_member(db)
+    await db.execute(
+        "INSERT OR IGNORE INTO sessions (id, channel, user_id, status) "
+        "VALUES (?, ?, ?, ?)",
+        ("session-partial-refund", "miniapp", USER_ID, "active"),
+    )
+    await OrderRepo(db).create_order(
+        Order(
+            id="order-ref-partial",
+            session_id="session-partial-refund",
+            channel="miniapp",
+            user_id=USER_ID,
+            products="[]",
+            total_amount=198.00,
+            delivery="{}",
+            payment=json.dumps(
+                {
+                    "status": "partial",
+                    "method": "combined",
+                    "balanceFen": 2000,
+                    "remainFen": 17800,
+                    "couponFen": 0,
+                    "pointsFen": 0,
+                    "pointsUsed": 0,
+                    "paidAt": "",
+                    "createdAt": "2026-06-17 11:00:00",
+                }
+            ),
+            status=OrderStatus.PENDING,
+            remark="",
+            created_at="2026-06-17 11:00:00",
+            updated_at="2026-06-17 11:30:00",
+        )
+    )
+    await db.commit()
+    await _patch_mch(monkeypatch)
+    monkeypatch.setattr(settings, "WECHAT_MINIAPP_APP_ID", "appid-test")
+
+    service = _service(db)
+    refund_result = await service.reconcile_refund_from_query(
+        _refund_notify(
+            "order-ref-partial",
+            "R-partial",
+            17800,
+            17800,
+            total_fen=17800,
+            payer_total_fen=17800,
+        ),
+        payer_total_fen=17800,
+    )
+    assert refund_result["kind"] == "acknowledged"
+    assert await MemberBalanceRepo(db).get_stored_value_fen(MOBILE) == 2000
+
+    recovered = await service.reconcile_pay_from_query(
+        {
+            "out_trade_no": "order-ref-partial",
+            "mchid": "mch-test",
+            "appid": "appid-test",
+            "trade_state": "SUCCESS",
+            "amount": {"total": 17800, "currency": "CNY"},
+            "transaction_id": "4200000000202606170000000001",
+            "success_time": "2026-06-17T12:00:00+08:00",
+        }
+    )
+    assert recovered["paymentStatus"] == "paid"
+
+    order = await OrderRepo(db).get_order("order-ref-partial")
+    assert order is not None
+    payment = loads_payment(order.payment)
+    assert payment["status"] == "paid"
+    assert payment["refundStatus"] == "full"
+    assert payment["transactionId"] == "4200000000202606170000000001"
+    transactions = await db.execute_fetchall(
+        "SELECT order_id FROM payment_transactions WHERE transaction_id = ?",
+        ("4200000000202606170000000001",),
+    )
+    assert [dict(row) for row in transactions] == [{"order_id": "order-ref-partial"}]
+
+
+@pytest.mark.asyncio
+async def test_late_payment_query_records_paid_fact_after_full_refund(
+    db: aiosqlite.Connection, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """退款先到时，迟到支付查询应保留真实支付事实但不重新结算资产。"""
+    await _seed_member(db)
+    await db.execute(
+        "INSERT OR IGNORE INTO sessions (id, channel, user_id, status) "
+        "VALUES (?, ?, ?, ?)",
+        ("session-unpaid-refund", "miniapp", USER_ID, "active"),
+    )
+    await OrderRepo(db).create_order(
+        Order(
+            id="order-ref-unpaid",
+            session_id="session-unpaid-refund",
+            channel="miniapp",
+            user_id=USER_ID,
+            products="[]",
+            total_amount=198.00,
+            delivery="{}",
+            payment=json.dumps(
+                {
+                    "status": "unpaid",
+                    "method": "",
+                    "couponFen": 0,
+                    "balanceFen": 0,
+                    "pointsFen": 0,
+                    "pointsUsed": 0,
+                    "paidAt": "",
+                    "createdAt": "2026-06-17 11:00:00",
+                }
+            ),
+            status=OrderStatus.PENDING,
+            remark="",
+            created_at="2026-06-17 11:00:00",
+            updated_at="2026-06-17 11:30:00",
+        )
+    )
+    await db.commit()
+    await _patch_mch(monkeypatch)
+    monkeypatch.setattr(settings, "WECHAT_MINIAPP_APP_ID", "appid-test")
+
+    service = _service(db)
+    refund_result = await service.reconcile_refund_from_query(
+        _refund_notify("order-ref-unpaid", "R-unpaid", 19800, 19800),
+        payer_total_fen=19800,
+    )
+    assert refund_result["kind"] == "acknowledged"
+
+    payment_result = await service.reconcile_pay_from_query(
+        {
+            "out_trade_no": "order-ref-unpaid",
+            "mchid": "mch-test",
+            "appid": "appid-test",
+            "trade_state": "SUCCESS",
+            "amount": {"total": 19800, "currency": "CNY"},
+            "transaction_id": "4200000000202606170000000001",
+            "success_time": "2026-06-17T12:00:00+08:00",
+        }
+    )
+    assert payment_result["paymentStatus"] == "paid"
+
+    order = await OrderRepo(db).get_order("order-ref-unpaid")
+    assert order is not None
+    payment = loads_payment(order.payment)
+    assert payment["status"] == "paid"
+    assert payment["refundStatus"] == "full"
+    assert payment["transactionId"] == "4200000000202606170000000001"
+    assert payment.get("pointsAwarded", 0) == 0
+
+
+@pytest.mark.asyncio
+async def test_refund_events_with_different_transactions_are_rejected_before_payment(
+    db: aiosqlite.Connection, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """支付事实未到时，不同微信交易号的退款不得合并并触发全额补偿。"""
+    await db.execute(
+        "INSERT OR IGNORE INTO sessions (id, channel, user_id, status) "
+        "VALUES (?, ?, ?, ?)",
+        ("session-refund-transaction-mismatch", "miniapp", USER_ID, "active"),
+    )
+    await OrderRepo(db).create_order(
+        Order(
+            id="order-refund-transaction-mismatch",
+            session_id="session-refund-transaction-mismatch",
+            channel="miniapp",
+            user_id=USER_ID,
+            products="[]",
+            total_amount=198.00,
+            delivery="{}",
+            payment=json.dumps(
+                {
+                    "status": "unpaid",
+                    "method": "",
+                    "couponFen": 0,
+                    "balanceFen": 0,
+                    "pointsFen": 0,
+                    "pointsUsed": 0,
+                    "createdAt": "2026-06-17 11:00:00",
+                }
+            ),
+            status=OrderStatus.PENDING,
+            remark="",
+            created_at="2026-06-17 11:00:00",
+            updated_at="2026-06-17 11:00:00",
+        )
+    )
+    await db.commit()
+    await _patch_mch(monkeypatch)
+    service = _service(db)
+
+    first = await service.reconcile_refund_from_query(
+        _refund_notify(
+            "order-refund-transaction-mismatch",
+            "R-mismatch-1",
+            8000,
+            8000,
+            transaction_id="wx-refund-1",
+        ),
+        payer_total_fen=19800,
+    )
+    second = await service.reconcile_refund_from_query(
+        _refund_notify(
+            "order-refund-transaction-mismatch",
+            "R-mismatch-2",
+            11800,
+            11800,
+            transaction_id="wx-refund-2",
+        ),
+        payer_total_fen=19800,
+    )
+
+    assert first["kind"] == "acknowledged"
+    assert second["kind"] == "rejected_recorded"
+    order = await OrderRepo(db).get_order("order-refund-transaction-mismatch")
+    assert order is not None
+    payment = loads_payment(order.payment)
+    assert payment["refundStatus"] == "partial"
+    assert payment["refundFen"] == 8000
+    events = await WechatRefundEventRepo(db).get_by_out_refund_no("R-mismatch-2")
+    assert events is None
 
 
 @pytest.mark.asyncio
@@ -298,3 +532,89 @@ async def test_notify_then_query_share_single_fact(
     order = await OrderRepo(db).get_order("order-ref-6")
     assert order is not None
     assert loads_payment(order.payment)["refundStatus"] == "full"
+
+
+@pytest.mark.asyncio
+async def test_refund_compensation_failure_rolls_back_business_and_persists_retry(
+    db: aiosqlite.Connection,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """补偿异常应回滚事实与资产写入，仅保留可重试 intake 失败状态。"""
+    await _seed_member(db)
+    await _seed_paid_order(
+        db,
+        "order-ref-intake-retry",
+        198.00,
+        balance_fen=2000,
+    )
+    await _patch_mch(monkeypatch)
+    original_refund = StoredValueOrderPaymentService.refund_order_balance
+
+    async def refund_then_fail(self, order) -> None:
+        await MemberBalanceRepo(db).credit_stored_value(MOBILE, 2000)
+        raise RuntimeError("余额补偿失败")
+
+    monkeypatch.setattr(
+        StoredValueOrderPaymentService,
+        "refund_order_balance",
+        refund_then_fail,
+    )
+    service = _service(db)
+    notify = _refund_notify(
+        "order-ref-intake-retry",
+        "R-intake-retry",
+        17800,
+        17800,
+        total_fen=17800,
+        payer_total_fen=17800,
+    )
+
+    with pytest.raises(RuntimeError, match="余额补偿失败"):
+        await service.reconcile_refund_from_query(
+            notify,
+            payer_total_fen=17800,
+        )
+
+    message_key = build_notify_key("query:refund:R-intake-retry")
+    intake_rows = await db.execute_fetchall(
+        "SELECT status, attempt_count, last_error FROM inbox_events "
+        "WHERE message_key = ?",
+        (message_key,),
+    )
+    assert len(intake_rows) == 1
+    assert intake_rows[0]["status"] == "failed"
+    assert int(intake_rows[0]["attempt_count"]) == 1
+    assert "余额补偿失败" in str(intake_rows[0]["last_error"])
+    assert await MemberBalanceRepo(db).get_stored_value_fen(MOBILE) == 0
+    event = await WechatRefundEventRepo(db).get_by_out_refund_no("R-intake-retry")
+    assert event is None
+    order = await OrderRepo(db).get_order("order-ref-intake-retry")
+    assert order is not None
+    assert "refundStatus" not in loads_payment(order.payment)
+
+    await db.execute(
+        "UPDATE inbox_events SET next_attempt_at = datetime('now', '-1 second') "
+        "WHERE message_key = ?",
+        (message_key,),
+    )
+    await db.commit()
+    monkeypatch.setattr(
+        StoredValueOrderPaymentService,
+        "refund_order_balance",
+        original_refund,
+    )
+
+    result = await service.reconcile_refund_from_query(
+        notify,
+        payer_total_fen=17800,
+    )
+
+    assert result["kind"] == "acknowledged"
+    assert await MemberBalanceRepo(db).get_stored_value_fen(MOBILE) == 2000
+    processed_rows = await db.execute_fetchall(
+        "SELECT status, attempt_count FROM inbox_events WHERE message_key = ?",
+        (message_key,),
+    )
+    assert [dict(row) for row in processed_rows] == [
+        {"status": "processed", "attempt_count": 2}
+    ]

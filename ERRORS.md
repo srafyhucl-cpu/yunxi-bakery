@@ -4,6 +4,544 @@
 
 ______________________________________________________________________
 
+## M-20260926-036：商品关键词检索的 count 查询缺 youzan_products join，且占位符与参数个数不一致，小程序商品搜索直接 500
+
+- status: guarded
+- first_seen: 2026-09-26
+- severity: high
+- symptom: r80 执行上线候选收口的全量测试时暴露。`python -m pytest backend/tests/ -q` 三项失败，其中两项同根：小程序商品列表按关键词搜索时，`test_miniapp_products_api_returns_keyword_pagination_meta` 与 `test_list_products_page_supports_keyword_search_and_offset` 双双失败。定向复现的确定性错误是 `sqlite3.OperationalError: no such column: yp.title`，抛在 `KnowledgeProductRepo.count_products`。用户在小程序商品页输入任何非空关键词即命中：服务先算总数再取列表，`total = await self._product_repo.count_products(search=...)` 第一个就抛错，整页 500，商品列表与后台商品管理搜索同时不可用。
+- root_cause: **两个独立缺陷叠在同一个共享 WHERE 构造器上**。`KnowledgeProductRepo._build_product_where` 是静态方法且被两个查询复用：`get_all_products` 的 SQL 是 `FROM knowledge_base kb LEFT JOIN youzan_products yp ON ...`，`count_products` 的 SQL 却只有 `FROM knowledge_base kb WHERE ...`——**没有 join**。工作区里把 `search` 子句从 `kb.title / kb.content / kb.keywords` 扩成跨表检索（新增 `yp.title` / `yp.tags` / `yp.item_no`）后，共用该子句的 `count_products` 立刻失去 `yp` 别名，SQLite 在**准备语句阶段**就报 `no such column`。第二个缺陷在同一段代码里：子句写了 4 个 `?`，`params` 只 `extend` 了 3 个 keyword；由于 A 先在准备阶段抛错，B 被完全掩盖，直到绕过 count 直调带 join 的查询才暴露为 `sqlite3.ProgrammingError: Incorrect number of bindings supplied. The current statement uses 6, and there are 5 supplied.`（6 = 4 检索 + limit + offset，5 = 3 检索 + limit + offset）。注意本条**不是 r79 引入的**：`git diff` 显示该跨表检索是工作区里既有的未提交改动（LOGBOOK 多轮记为「现有用户改动 `knowledge_product_repo.py` 保持原样」），但它此前从未被全量测试执行到，也没有任何测试覆盖「只被有赞侧字段命中」这一新增检索意图，因此缺陷一直潜伏到 r80 上线候选收口才暴露。
+- impact: 小程序商品搜索与后台商品管理搜索在输入任意非空关键词时整页 500，属核心链路上「商品 -> 购物车 -> 下单」的前置查询不可用；非空关键词是用户的常规操作而非边缘输入，无需任何特殊状态配合即可触发。另有一处更隐蔽的后果：若只修 A 不修 B，`get_all_products` 会在执行期抛绑定数错误；若只修 B 不修 A，仍是准备期报错——两个缺陷都必须修，缺一即换一种方式崩溃。
+- fix: 已修复（r80）。两处最小改动，都在该文件内：(1) `count_products` 的 SQL 补上与 `get_all_products` **完全相同**的 `LEFT JOIN youzan_products yp ON kb.youzan_item_id = CAST(yp.item_id AS TEXT)`。该 join 不会放大计数：`youzan_products.item_id` 是 `INTEGER PRIMARY KEY`（`backend/app/migrations/schema.py`），`knowledge_base.youzan_item_id` 侧有唯一索引，故为 1:1 连接，LEFT JOIN 不产生扇出。(2) `params.extend` 由 3 个 keyword 补齐为 4 个，与子句占位符逐项对齐。同时把该约束写进 `_build_product_where` 的 docstring：**任何使用本构造器的查询都必须自己 JOIN `youzan_products yp`**，且占位符与参数个数必须逐项对齐——因为构造器本身不会替你加 join，这个隐式契约此前只存在于口头默契。
+- new_guardrail: 新增 `backend/tests/service/test_catalog_youzan_keyword_search.py` 四项，锁定的是此前**完全无覆盖**的那部分意图：参数化三项分别只改有赞侧 `title` / `tags` / `item_no` 之一、把 `knowledge_base` 侧改成与关键词完全无关，断言 `get_all_products` 与 `count_products` **都**命中且两者条数一致（`total == len(rows)` 这一条同时锁住「分页 meta 的总页数不能与实际返回条数脱节」）；第四项 `test_count_products_does_not_inflate_on_youzan_join` 专门锁住上面那个「join 不得放大计数」的前提，防止后人把 LEFT JOIN 换成会扇出的 INNER/RIGHT 写法或改用非唯一键连接。
+- verification: 修复前先用临时直调把 A、B 拆开分别证实（`count_products(search)` → `OperationalError: no such column: yp.title`；绕过 count 直调 `get_all_products(search)` → `ProgrammingError: uses 6, supplied 5`），确认是**两个**独立缺陷而非一个；空 search 对照组正常，证明触发条件精确是「search 非空」。修复后新测试 4 项全绿，两条原本失败的全量用例转绿。**五轮变异探针全部承重并已全部还原**（还原后逐文件 sha256 一致、裸 LF 计数 0、备份文件已删）：探针 1 参数退回 3 个 → 转红；探针 2 count 去掉 join → 转红；探针 3/4/5 分别单独抽掉 `yp.tags` / `yp.item_no` / `yp.title` 并**同步对齐参数数**（避免红因退化成绑定数错误那种无效红）→ 均转红，证明新测试对每个新增检索字段都非空转。**如实记录本轮无「未转红探针」。** 另核实 `check_project.py` 对本文件报的三条函数体量 WARN（`_build_product_where` 61 行 / `get_all_products` 59 行 / `upsert_product_knowledge` 60 行，评审线 50 行）**均为既有超线**（剔除本轮新增行后分别为 57 / 59 / 60 行），非本轮引入，且为 WARN 非阻断。
+- linked_trace: 20260925-miniapp-core-loop-candidate-review
+- linked_files: `backend/app/repository/knowledge_product_repo.py`; `backend/tests/service/test_catalog_youzan_keyword_search.py`; `backend/tests/service/test_catalog.py`; `backend/tests/api/test_miniapp_catalog_api.py`; `ERRORS.md`; `LOGBOOK.md`; `PROJECT-STATE.md`; `docs/harness-engineering/core/evidence-index.md`
+- next_time_signal: **把一段 WHERE/条件构造器抽成可复用的静态方法时，必须同时枚举它的每一个调用方，并逐个核对「这段 SQL 需要的表别名是否都在」**——构造器只负责产出子句文本，不负责让子句里的表别名存在。判据很直接：子句里出现了 `x.y` 形式的跨表引用，就去 `x` 在每个调用方的 FROM/JOIN 子句里找得到，找不到就是 500。第二个同源教训是**占位符与参数个数必须一起数**：SQL 字符串里的 `?` 和 `params` 列表是两份需要手工对齐的清单，少一个的表现是 `Incorrect number of bindings supplied`，而它常常被同一段代码里更早抛出的另一个错误掩盖（本条就是被 `no such column` 完全掩盖，直到绕过前一个错误才暴露）——所以定位这类问题时，**要先设法把 A 修掉再看 B 会不会浮出来**，而不是修好一个就收工。第三个教训关于覆盖面：这次全量测试暴露的缺陷，其引入改动（跨表关键词检索）是一个**没有任何测试覆盖的新意图**，已有的 `test_list_products_page_supports_keyword_search_and_offset` 只测了「知识库侧字段能命中」，新增的「有赞侧字段能命中」从未被断言——**新增检索维度必须自带一条只靠该维度才能通过的用例**，否则这段代码可以整段删掉而测试全绿。第四条元教训：**潜伏缺陷的发现时机取决于验证的广度，不是缺陷的年龄**。本条不是 r79 引入的，是工作区里早就存在的未提交改动，只因 r1-r79 一直只跑定向与相邻回归、从未执行过全量，才在上线候选收口时第一次被跑到。这条不能反过来推论「以后该多跑全量」（测试节奏约束是明确的），正确结论是：**改动要出现在验证范围内**——跨表检索这种改动应当在当轮就补上覆盖它的那条用例，而不是等全量测试兜底。
+
+## M-20260926-035：主体删除与导出按裸 user_id 匹配身份链，对真实小程序用户恒不命中，客户主档层全量留存；且删除先删父表撞外键
+
+- status: guarded
+- first_seen: 2026-09-26
+- severity: high
+- symptom: 用户调用主体删除（`DELETE /api/v1/miniapp/privacy/subject`）返回 `{"code":0,"status":"revoked"}`，`customer_consent_ledger` 也确实置为 `revoked`，但 `customer_master`、`customer_identity_links`、`customer_source_snapshots` 三张表**整行留存**：`customer_master` 里仍有 `primary_phone`、`display_name`、`birthday`、`wechat_region`，身份链接里仍有裸 openid，来源快照里仍有原始客户 JSON。同一主体的导出（`GET /api/v1/miniapp/privacy/subject/export`）里 `customer_master` 与 `customer_identity_links` 两段恒为空数组，顾客拿不到自己的客户主档。两条路径对**每个真实小程序用户**都如此。
+- root_cause: 身份标识口径在两处对不上。写入侧 `CustomerMasterService.build_miniapp_openid_identity`（`master.py:118`）把**裸 openid** 存进 `customer_identity_links.identity_value`；读取侧 `StorefrontAuthService.login`（`storefront/auth.py:25`）下发给前台的是 `wx_{openid}`，订单与会话里的 `user_id` 也是这个带前缀形态（仓内其余链路都先用 `extract_openid` 剥前缀再查，例如 `stored_value/member.py:44`、`payment_runtime.py`）。而 `PrivacyRepo._customer_ids` 与 `_delete_customer_records` 第 1 步都只按 `identity_value = user_id` 原值匹配，于是 `wx_` 前缀让匹配**恒不命中**：`customer_ids` 恒为空，主档层整层被跳过，接口却照常报成功。第二个根因是删除顺序：`_delete_customer_records` 第 1 步先删 `customer_identity_links`，第 2、3 步才删 `customer_source_snapshots` / `customer_merge_reviews`，而后两张表都声明了 `REFERENCES customer_identity_links(id)`（`schema.py`）、建库 `PRAGMA foreign_keys = ON`、且为 `on_delete=NO ACTION`，因此只要快照引用了待删链接就会抛 `FOREIGN KEY constraint failed` 并回滚整笔删除。该顺序缺陷当前被前一个根因**掩盖**（第 1 步匹配不到任何行，删不到链接也就撞不上外键）——这正是两处必须同批修复的原因。本条与 `M-20260926-032`/`033`/`034` 是同一族的第四、第五个实例：前三例分别是软引用留孤儿、外部不可逆动作、硬外键拒绝删父表，本例是**匹配口径与存储口径不一致导致整层漏删**。
+- impact: 主体删除权与主体导出权对全部真实小程序用户静默失效：系统在被明确告知「已删除」的同时保留了完整客户主档 PII，且不留任何异常或对账痕迹。资金侧无损（储值账本按手机号记账、对 orders 无外键，结清在删除前完成），不构成资产损失。顺序缺陷一旦被独立触发，同一接口会以 500 形式**永久**阻断该用户删除（重试无望）。按项目门禁口径，本条不属崩溃/资金/活锁类，故不定 P0；定 P1 的依据是：主体删除是核心用户权利，而此处出现的是「接口报告成功、实际全量留存」的确定性假成功，且顺序缺陷会让同一路径对每个真实用户直接抛错并永久阻断删除。
+- fix: 两处同批修复，均在 `privacy_repo.py`。其一，把主体标识归一收成全仓唯一的纯函数 `normalize_miniapp_openid` / `subject_identity_candidates`（落在 `app/utils.py`，`extract_openid` 改为委托，仓储层不反向依赖 service 层），`_customer_ids` 改为按候选集合 `IN` 匹配 `identity_value` / `identity_value_normalized` / `source_record_id`；`export_subject` 复用同一个 `_customer_ids`，导出随之恢复。其二，`_delete_customer_records` 改为**先取待删链接 ID，再按 `identity_link_id` 清 `customer_source_snapshots` 与 `customer_merge_reviews`，最后才删链接**，子表清理口径与链接删除口径同源判定。
+- new_guardrail: `backend/tests/service/order/test_core_loop_candidate_r76.py` 三个用例，造数一律走真实业务动作（`CustomerMasterService.build_miniapp_openid_identity` 工厂 + `CustomerMasterRepo` 写入 + `OrderRepo.create_order`），不手工 UPDATE 终态。`test_real_miniapp_erasure_must_clear_customer_master_layer` 锁定删除口径，并以「订单确已删除」作防空洞断言，确保残留不是整笔请求失败造成的假象；`test_export_must_include_customer_layer_for_real_miniapp_subject` 锁定导出口径；`test_erasure_must_clear_snapshot_children_before_identity_links` 锁定删除顺序。同时**重写**了 r73 的 `test_stored_value_refund_account_survives_subject_erasure`：该用例原先把「客户主档与身份链在删除后仍完好」写成期望值，其 docstring 的排除理由正是「`_customer_ids` 恒不命中」这一缺陷本身；修复后该前提被推翻，改写为 `test_stored_value_settles_before_customer_layer_erasure`，断言真正保护退款的不变量——结清先于销毁、且同事务。
+- verification: 修复前 3 项全部稳定失败，且失败原因各异：口径项残留 `(1,1,0)`（并有订单已删的防空洞断言兜底）、导出项拿到 `assert []`、顺序项在 `privacy_repo.py:240` 的 `DELETE FROM customer_identity_links` 处抛 `sqlite3.IntegrityError: FOREIGN KEY constraint failed`。修复后 3 项全绿并连续 5 轮退出码 `0,0,0,0,0`。变异探针四轮全部如期转红：撤销 `_customer_ids` 归一（口径项与导出项同时转红）、把身份链接删除提到最前（顺序项转红）、让 `subject_identity_candidates` 只返回原值（口径项与导出项同时转红）、把结清挪到主体删除之后（r73 重写后的守卫与 r73 原孤儿守卫同时转红），每轮还原后校验 sha256 完全一致。**一个探针未转红并已如实定性**：摘掉按 `identity_link_id` 清子表的两步后测试仍绿——核对导入链路 `CustomerImportService._create_snapshot` 的两个调用点可知生产始终同时写入 `customer_id` 与 `identity_link_id` 且指向同一客户，故该分支在当前生产形态下是纵深防御而非已证活的守卫；不计入「守卫承重」。附带确认 `customer_master.merge_into_customer_id` 虽有自引用外键，但全仓无任何写入点，故删除主档不会因它撞外键；`member_balance` 与 `coupon_*` 的 `customer_id` 是无外键普通 TEXT，同样不受影响。相邻回归 202 项、200 通过、2 项失败即 r67/r68 故意保留的红色复现测试。真实微信支付/退款、真实有赞券与积分、真实闪送、真机、生产 API、生产验收和正式上线仍未验证，正式上线继续为 No-Go。
+- linked_trace: 20260925-miniapp-core-loop-candidate-review
+- linked_files: `backend/app/repository/privacy_repo.py`; `backend/app/utils.py`; `backend/app/service/order/payment_state.py`; `backend/tests/service/order/test_core_loop_candidate_r76.py`; `backend/tests/service/order/test_core_loop_candidate_r73.py`
+- next_time_signal: 凡是「拿一个标识去匹配一张表」的链路，动手前先回答一个问题：**写入侧存的是什么形态，读取侧拿的是什么形态？** 本例写入侧存裸 openid、读取侧拿 `wx_` 前缀 user_id，两侧差一个前缀就让匹配恒不命中，而这类失效**不报错、不告警、照常返回成功**。可行的核对手段是全仓搜同一标识的写入点与读取点，确认是否有人做了归一（本仓其余链路都先 `extract_openid`，唯独隐私链路没有）。配套的第二问：**修好匹配之后，这条路径会不会撞上别的约束？** 本例的删除顺序缺陷正是被前一个缺陷掩盖的，若只修前者，「静默漏删」会升级成「永久阻断删除」，比原缺陷更严重——所以修匹配口径与修约束顺序必须同批做、一起验。第三问留给评审：**当一条守卫的成立理由本身就是缺陷时，它比没有守卫更危险**，因为它会把缺陷固化成契约、还会让后续复核误以为该区域已受保护（r73 即是如此，本轮连同 r74、r75 的空转用例一并归为同一族教训）。
+
+## M-20260926-034：主体删除与保留期清理删除订单时漏清硬外键子表，使已支付用户永久无法行使删除权、合规作业永久失败
+
+- status: guarded
+- first_seen: 2026-09-26
+- severity: high
+- symptom: 用户完成过一次真实微信支付后，再调用主体删除（`DELETE /api/v1/miniapp/privacy/subject`）必然失败：`sqlite3.IntegrityError: FOREIGN KEY constraint failed`，事务在 `privacy_repo.py:202` 的 `DELETE FROM orders` 处抛出并整体回滚。删除请求**永久**失败，重试多少次都一样，用户的主体数据永远删不掉。同一缺陷的第二条路径是隐私保留期清理（`backend/scripts/apply_privacy_retention.py`）：库里存在已过保留期的 `done`/`cancelled` 已支付订单时，清理作业同样撞外键失败。
+- root_cause: `payment_transactions.order_id`（`schema.py:123`）与 `delivery_orders.order_id`（`v035_delivery_quotes.sql:20`）都声明了 `REFERENCES orders(id)`，建库时 `PRAGMA foreign_keys = ON`（`schema.py:572`）且两张表都是 `on_delete=NO ACTION`——即**数据库层强制 orders 不能在子表存活时被删**。而两条删除路径都只把 `orders` 当叶子表处理：`PrivacyRepo.delete_subject` 的清理清单里有 `order_events`（无外键，纯软引用）却独独漏了这两张硬外键表；`purge_expired` 的 orders 删除同样如此。这与 `M-20260926-032`/`033` 是**同一族根因的第三个实例**：前两轮暴露的是「软引用留孤儿」和「外部不可逆动作」，本条是「硬外键直接拒绝删除」。三者的共同教训是：删除订单前必须把「所有以订单为父的表」列全，而不是只清理自己刚想起来的那几张。保留期路径的破坏面更大：五张表（messages → profiles → retrieval_logs → address_audit → orders）在**同一个事务**内按序执行，orders 排在最后，一旦抛错会把前面四张表已删的行**全部回滚**，使整个合规作业永久失败且一条数据都留不下来。
+- impact: 合规侧两项核心能力同时失效：主体删除权对**所有真实付过款的用户**永久不可用（下单闪送单的用户亦然），隐私保留期清理作业在有历史已支付订单的库上永久失败并连带回滚其余四张表的清理。触发条件为「用户有过一笔带交易认领的订单」与「行使删除权/跑保留期作业」的时间重叠，第一条属当前即可复现的真实可达路径。资金侧无损（认领行与订单一并删除，删除后不存在可被重复认领的订单），故不构成资产损失。
+- fix: 两条路径同形修复，均在删 `orders` **之前**先清两张硬外键子表。`delete_subject` 在 `order_events` 清理之后、`DELETE FROM orders` 之前新增两条按用户作用域的 `DELETE FROM payment_transactions / delivery_orders ... WHERE order_id IN (SELECT id FROM orders WHERE user_id = ?)`；`purge_expired` 把 orders 分支抽成 `_purge_orders(cutoff)`，同样先清两张子表再删订单，过滤口径沿用原 `done`/`cancelled` + `updated_at < cutoff`。子表清理是安全的：交易认领与配送行都以订单为唯一定位依据，订单本身按用户请求删除后二者已无独立留存价值；且删除发生在同一事务内，失败即整体回滚，不会出现「子表清了但订单还在」的中间态。
+- new_guardrail: `backend/tests/service/order/test_core_loop_candidate_r75.py` 四个用例。`test_paid_user_can_still_erase_subject` 走**真实预支付 + 真实支付通知**把订单付成功（先断言 `payment_transactions` 确有该交易号），再执行删除，锁定修复前稳定失败于 `FOREIGN KEY constraint failed`。`test_delivery_order_user_can_still_erase_subject` 锁定第二张外键表，防止只修一张。`test_erasure_keeps_other_users_payment_claims` 与 `test_retention_purge_completes_for_paid_orders` 各自的末段断言是**过度删除护栏**：删除必须按用户/按截止作用域限定，否则一次主体删除就会抹掉全仓交易认领，r50 修好的「同一交易号只能绑定一个订单」保证随之失效。同轮修正了 r74 自身的空转用例（见 `verification`）。
+- verification: 修复前 2 项稳定失败（均为 `FOREIGN KEY constraint failed`），修复后 4 项全绿并连续 5 轮退出码 `0,0,0,0,0`；变异探针七轮（撤销 `delete_subject` 的 `payment_transactions` 清理、撤销 `delivery_orders` 清理、去掉用户作用域造成过度删除、把两张子表清理挪到删订单之后、撤销 `_purge_orders` 的 `payment_transactions` 清理、撤销其 `delivery_orders` 清理、去掉保留期截止/终态作用域）**全部如期转红**，每轮还原后校验字节完全一致。**同轮修正了 r74 的一处空转用例**：`test_settled_wechat_prepay_does_not_block_erasure` 原先直接 `UPDATE orders SET payment=...` 造 paid 态，绕过真实支付入口，因此从未产生 `payment_transactions` 行——它「证明」了已支付用户可删除，实际上真实用户会撞本条外键；已改为走真实预支付与真实通知，并用专项探针确认该用例在撤销修复后**单独**转红（`已非空转`），不再空转。相邻回归 `tests/service/order/` 全目录加储值/券库存/券支付/积分支付/积分服务/隐私生命周期共 271 项，269 项通过，唯一 2 项失败即 r67/r68 故意保留的红色复现测试，与 r74 基线一致；`ruff check` 与 `ruff format --check` 通过（同前几轮：生产文件原为纯 CRLF，须还原为 CRLF）；`git diff --check` 退出码 0；SQL 拼接门禁自检确认全仓 f-string SQL 命中 0 处（修复刻意不用 f-string 拼 SQL，只用 `?` 绑定）；`privacy_repo.py` 397 行，已在 `check_file_sizes.py` 更新职责评审记录说明 `_purge_orders` 与删除子表清理同属隐私数据所有权边界。证据 `E-20260926-075`。
+- linked_trace: 20260925-miniapp-core-loop-candidate-review
+- linked_files: `backend/app/repository/privacy_repo.py`; `backend/tests/service/order/test_core_loop_candidate_r75.py`; `backend/tests/service/order/test_core_loop_candidate_r74.py`; `backend/app/migrations/schema.py`; `backend/app/migrations/v035_delivery_quotes.sql`; `backend/scripts/apply_privacy_retention.py`; `backend/scripts/check_file_sizes.py`; `ERRORS.md`; `PROJECT-STATE.md`; `LOGBOOK.md`; `docs/harness-engineering/core/evidence-index.md`
+- next_time_signal: 凡是「按主体/按时间批量删除父记录」的链路，动手前先回答一个问题：**哪些表以这张表为父？** 三种关系要分开处理：硬外键（`REFERENCES` + `foreign_keys=ON`，父表删不掉子表存活，必须先清子表）、软引用（按 `biz_id` 之类文本关联、无外键，删了会留孤儿——`M-20260926-032` 的储值账本）、外部不可逆动作（外部系统已生效且无撤销通道，只能拒绝——`M-20260926-033` 的在途预支付）。可靠的枚举方式不是 grep 表结构文件，而是**对迁移后的真实库跑 `PRAGMA foreign_key_list` 全表遍历**——本轮就是这么拿到确切的 17 条外键清单的，凭源码阅读很容易漏。另外两条元教训：(1) **夹具必须走真实入口**。r74 那条护栏用 `UPDATE` 直接造出业务终态，看起来在验证「已支付订单不阻塞删除」，实际绕过了唯一会产生外键行的真实路径，于是「通过」却什么都没证明；凡是断言依赖某张关联表有行的场景，夹具必须由真实业务动作产生那些行。(2) **同一事务内多表清理要检查顺序**。orders 排在最后这一事实把故障从「一张表删不掉」放大成「整批清理全部回滚」，这类顺序依赖在测试里只有刻意构造多张待清表才暴露。
+
+## M-20260926-033：主体删除销毁仍有在途微信预支付的订单，使真实到账资金失去全部本地凭据
+
+- status: guarded
+- first_seen: 2026-09-26
+- severity: high
+- symptom: 用户下单后发起微信预支付（`wechatPrepayFen` 锁定 10,000 分），未付款即行使主体删除（`DELETE /api/v1/miniapp/privacy/subject`），订单被物理删除。用户随后在微信侧完成真实付款，支付成功通知按 `out_trade_no` 到达时 `mark_paid` 抛 `ValueError("订单不存在")`，通知按 intake 重投直至 `dead_letter`。修复前复现输出为 `微信已到账 10000 分但本地无凭据：订单存在=False，交易认领=[]，对账案件=[]`——钱确实收到了，但本地既没有订单、没有 `payment_transactions` 交易认领、也没有任何对账案件可以转人工。
+- root_cause: 与 `M-20260926-032` 同源但**不可用同一手段修复**。`M-20260926-032` 那条储值腿之所以能救，是因为扣减事实虽然软引用订单，但「退多少钱」这个义务量完全由本地快照决定，删除前逐单 `refund_order_balance` 结清即可。微信尾款腿不同：**预下单会话在微信侧已经生效，而我方没有撤销通道**——`WechatPayClient.create_jsapi_prepay` 发送的请求体不含 `time_expire`，会话有效期完全由微信侧默认值决定，本地既不能声明失效也不能主动关闭。r73 的修复只挑了 `balanceFen > 0` 的订单做结清，`wechatPrepayFen > 0` 的在途腿整个落在守卫之外，属于修复自身引入的覆盖缺口。这条腿在删除前**没有任何本地可执行的补偿动作**：既不能退款（钱还没到账），也不能撤销（微信侧不可撤销），唯一能保证「到账资金必有本地凭据」的做法就是**拒绝删除**。
+- impact: 客户已支付的资金在本地无任何落点：不入订单、不认领交易、不建对账案件、不进 `dead_letter` 告警、支付查询恢复路径同样按 `out_trade_no` 回查不到订单。即「钱收了、系统里查无此单」。触发条件为「微信预支付已发起」与「用户行使主体删除权」的时间重叠，属真实可达路径（微信预支付会话默认有效期约 2 小时，远长于 `PAYMENT_TIMEOUT_MINUTES=30`，且本地超时关单也不撤销微信会话）。与 `M-20260926-032` 合并看是**同一个缺陷的两条腿**：r73 补了储值腿，本条补微信腿。
+- fix: `PrivacyRepo` 新增 `list_orders_with_live_wechat_prepay(user_id)`，用 `json_extract` 挑出 `wechatPrepayFen > 0` 且支付状态 `!= 'paid'` 的订单——**已支付订单被有意排除**，其资金已到账落账，不应继续阻塞用户行使删除权；过滤**不限定履约状态**，因此 `cancelled` 但预支付仍在途的订单同样被拦下，因为迟到支付会走 `_record_cancelled_external_payment`，而该路径依赖订单行存在。`PrivacyLifecycleService.delete_subject` 在同一事务内、结清储值腿**之前**先调用 `_reject_live_wechat_prepay`，命中即抛 `ValueError` 并给出可操作指引（先完成支付或等支付超时关闭后重试），整个删除事务回滚。失败关闭而非静默放行是刻意的：宁可让删除请求显式失败并提示用户稍后重试，也不能让在途支付会话指向一个已消失的订单。
+- new_guardrail: `backend/tests/service/order/test_core_loop_candidate_r74.py::test_subject_erasure_must_not_destroy_order_with_live_wechat_prepay` 用 `_ReadyWechatPay` 替身（`is_ready=True` + 真实 `WechatPayPrepayResult`）让 `prepare_payment` **真正走通加锁路径**锁定 `wechatPrepayFen`，再执行主体删除并投递真实支付成功通知，断言「已到账资金必须有本地凭据」且必须**真的落账**（`landed` 为真、交易认领恰为 `["4200000000202609267400000001"]`）——不允许用「建了对账案件就算过」蒙混过关。`test_cancelled_order_with_live_wechat_prepay_also_blocks_erasure` 锁定状态过滤不可收窄到履约状态。`test_settled_wechat_prepay_does_not_block_erasure` 是修复自带的**过度阻塞护栏**：已支付订单的预支付标记必须放行，否则修复会退化成「有预支付记录的用户永远删不掉」。`test_plain_unpaid_order_without_prepay_does_not_block_erasure` 锁定 `wechatPrepayFen > 0` 这一子句本身承重。
+- verification: 修复前 1 项稳定失败（`微信已到账 10000 分但本地无凭据：订单存在=False，交易认领=[]，对账案件=[]`），修复后 6 项全绿并连续 5 轮退出码 `0,0,0,0,0`；变异探针四轮（撤销 `_reject_live_wechat_prepay` 调用、给查询加 `status != 'cancelled'`、去掉 `!= 'paid'` 放行、去掉 `wechatPrepayFen > 0` 过滤）**全部如期转红**，每轮还原后均校验字节完全一致；其中第四轮探针首次尝试时**没有转红**，原因是没有测试覆盖「既无预支付也未支付的普通未支付订单」这一夹具——即探针先暴露了本轮自己的覆盖缺口，补测后该探针才具备判别力，如实记录而非直接算作战果。相邻回归 `tests/service/order/` 全目录加储值/券库存/券支付/积分支付/积分服务/隐私生命周期共 267 项，265 项通过，唯一 2 项失败即 r67 与 r68 两个故意保留的红色复现测试，与 r72/r73 基线一致；`ruff check` 与 `ruff format --check` 通过（同 r73：两个生产文件原为纯 CRLF，须还原为 CRLF 才能通过 format 检查）；`git diff --check` 退出码 0；错误账本 `entries=245`、开发总表 `tasks=41`、中文治理 `files=16 / coverage=1.0 / failed=0`；`privacy_repo.py` 因新增查询达 350 行，已在 `check_file_sizes.py` 更新职责评审记录说明这两条查询属同一主体删除守卫的成对子句、非可独立拆分的职责。证据 `E-20260926-074`。
+- linked_trace: 20260925-miniapp-core-loop-candidate-review
+- linked_files: `backend/app/repository/privacy_repo.py`; `backend/app/service/privacy_lifecycle.py`; `backend/tests/service/order/test_core_loop_candidate_r74.py`; `backend/app/service/order/payment_notification.py`; `backend/app/service/order/notify_intake.py`; `backend/scripts/check_file_sizes.py`; `ERRORS.md`; `PROJECT-STATE.md`; `LOGBOOK.md`; `docs/harness-engineering/core/evidence-index.md`
+- next_time_signal: 修复「删除前先结清」这类问题时，**必须先按腿分类，再决定每条腿用哪种手段**。判别问题不是「这条腿有没有本地扣减事实」，而是「**在外部系统那边已经生效的不可逆动作，本地有没有对应的撤销或查询通道**」：储值腿的义务量完全由本地快照决定，所以能结清；微信预支付一旦预下单成功，外部状态就无法回退，本地只剩「拒绝」这一个安全选项。第二个教训：**修复自身要复核覆盖面，不能只复核自己新增的那行守卫**。r73 写完 `_settle_holding_stored_value` 后，「删除前要处理储值」这个心智模型就定型了，r74 的问题恰恰出在**没人问过「还有没有别的腿」**——所以每次新增这类守卫，都要回头把「这个实体上可能挂着哪些资产/外部事实」列全，而不是只覆盖当前这一条。第三，元教训的反面：探针不转红有两种成因（本轮 r73：守卫是纵深防御；本轮 r74：我的夹具没覆盖到该分支），两者都**不能算战果**，必须先区分清楚再决定是补守卫还是补测试。
+
+## M-20260926-032：主体删除连带销毁订单，使已扣未结的储值永久失去退款凭据
+
+- status: guarded
+- first_seen: 2026-09-26
+- severity: high
+- symptom: 用户用组合支付下单，储值腿 3,000 分已真实扣减（`member_balance.stored_value_fen` 由 30,000 降到 27,000，`balance_ledger` 写入 `combined_pay:{order_id}` −3,000），外部尾款尚未支付、订单停留在 `partial`。此时该用户调用主体删除（`DELETE /api/v1/miniapp/privacy/subject`）后：订单行被物理删除、余额**仍停在 27,000**、储值账本保留一条 −3,000 扣减，且 `points_refund_reconcile` **没有任何案件**。此后不存在任何订单对象可供 `refund_order_balance` 退回，也不建对账案件、不进 `dead_letter`、无告警——该 3,000 分成为只能靠人工翻账本才能发现的静默损失。
+- root_cause: 资产账本与业务实体之间缺少删除前的结清约束，且该缺失是**结构性**的而非守卫写错。`PrivacyRepo.delete_subject` 无条件执行 `DELETE FROM orders WHERE user_id = ?`，而承载扣减事实的 `balance_ledger`（`v022_member_stored_value.sql`）对 `orders` **没有外键**、也不参与删除，于是“订单消失、扣减留存”成为合法状态。更关键的是删不掉也救不回：`schema.py:26` 定义 `orders.session_id TEXT NOT NULL REFERENCES sessions(id)`，而同一函数末尾 `DELETE FROM sessions WHERE user_id = ?`，因此**保留订单这条路本身走不通**（本轮变异探针实测报 `FOREIGN KEY constraint failed`），唯一正确解法是在删除订单**之前**把仍被占用的储值结清。对照同仓正确范式：`refund_notification._compensate_full_refund` 对“钱已到账、腿待补”的三腿逐一幂等补偿后才落账，说明本仓早已确立“删/结账前先结清资产腿”的合同，唯独隐私删除链路漏掉了这一步。
+- impact: 客户储值资产不可恢复损失，且无自动收敛出口：不建案件、不进 `dead_letter`、无重试路径，账本层面（`combined_pay:{id}` −3,000 无对应 `order_refund:{id}` +3,000）虽可事后审计发现，但没有任何代码消费该不变量。触发条件为“组合支付或余额支付已扣储值、尾款未付”与“用户行使主体删除权”的时间重叠，属真实可达路径（组合支付的 `partial` 窗口最长为 `PAYMENT_TIMEOUT_MINUTES=30`）。
+- fix: 在删除前结清。`PrivacyRepo` 新增 `list_orders_holding_stored_value(user_id)`，用 `json_extract` 挑出 `balanceFen > 0` 且支付状态属 `unpaid`/`partial` 的订单——**已支付订单被有意排除**，其储值已换货、不属占用。`PrivacyLifecycleService.delete_subject` 在同一事务内先调用 `_settle_holding_stored_value` 逐单走既有 `StoredValueOrderPaymentService.refund_order_balance`（幂等键 `order_refund:{order_id}`，并按 `refund_notification._compensate_full_refund` 的既有写法用同一 `DatabaseHandle` 构造服务以保证同连接固化），结清失败即抛出并回滚整个删除事务：宁可让主体删除显式失败待人工介入，也不允许储值在删除成功的同时失去退款路径。
+- new_guardrail: `backend/tests/service/order/test_core_loop_candidate_r73.py::test_subject_erasure_must_not_orphan_outstanding_stored_value` 走真实 `PrivacyLifecycleService` + 真实组合支付，断言“余额已原路退回”或“订单仍可退回”二者至少成立，修复前稳定失败于 `余额=27000（初始 30000），订单存在=False`。`test_subject_erasure_must_not_refund_settled_stored_value` 是修复自身引入的**过度退款护栏**：已支付订单的储值已换货，删除主体时余额必须保持已扣，防止修复退化为“把所有带储值的订单都退一遍”而凭空增发储值。
+- verification: 修复前 1 项稳定失败（`assert (27000 == 30000 or None is not None)`），修复后 4 项全绿；变异探针四轮——撤销结清调用、收窄状态过滤丢掉 `partial`、放开状态过滤含 `paid` 三轮均如期转红，第四轮去掉 `balanceFen > 0` 过滤**未**转红，如实判定该子句为纵深防御而非独立承重（`refund_order_balance` 自身已有 `balance_fen <= 0` 早返回），每轮还原后均校验字节完全一致；r73 连续 5 轮退出码 `0,0,0,0,0`；相邻回归 `tests/service/order/` 全目录加储值/券库存/券支付/积分支付/积分服务/隐私生命周期共 261 项，259 项通过，唯一 2 项失败即 r67 与 r68 两个故意保留的红色复现测试，与 r72 基线一致；`ruff check` 与 `ruff format --check` 通过（注意本仓 `backend/` 两个生产文件原为纯 CRLF，`apply_patch` 写入会引入混合换行导致 `ruff format --check` 误报，须还原为 CRLF）；`git diff --check` 退出码 0；证据 `E-20260926-073`。
+- linked_trace: 20260925-miniapp-core-loop-candidate-review
+- linked_files: `backend/app/repository/privacy_repo.py`; `backend/app/service/privacy_lifecycle.py`; `backend/tests/service/order/test_core_loop_candidate_r73.py`; `backend/app/service/order/refund_notification.py`; `backend/app/service/stored_value/payment.py`; `backend/app/migrations/v022_member_stored_value.sql`; `ERRORS.md`; `PROJECT-STATE.md`; `LOGBOOK.md`; `docs/harness-engineering/core/evidence-index.md`
+- next_time_signal: 凡是“按主体/按用户批量删除”的合规删除链路，都要先问一句：**被删实体上是否挂着别的表里的资产事实**。资产账本（`balance_ledger` / `points_ledger`）通常按 `biz_id` 软引用业务单据而不是外键硬引用，因为账本要活得比订单长——这在正常路径下是优点，在删除路径下正好变成“订单没了、账还在、没人管”的孤儿。判断方法不是看有没有外键，而是看**被删对象是否唯一承载了某个待结清义务的定位信息**：`refund_order_balance` 的入参是 `Order`，订单一删，退款路径的入口就消失了。另外注意删除顺序制造的死锁式约束：本例中 `orders.session_id` 外键指向 `sessions`，而删除函数先删订单后删会话，于是“保留订单来兜住退款”被数据库直接拒绝——修复方向因此被迫从“保住凭据”转向“提前结清”，这类约束只有真的去试一次才会暴露。还有一条元教训：**探针转红是常规结果，探针不转红也是结果**。本轮第四个探针（去掉 `balanceFen > 0` 过滤）没有让测试变红，说明该子句并非独立承重；如实记录它属于纵深防御，而不是把它算进“守卫承重”的战果里。
+
+## M-20260926-031：有赞积分事件缺失 total 时把会员积分余额清零
+
+- status: guarded
+- first_seen: 2026-09-26
+- severity: high
+- symptom: 一条 `total` 字段缺失、为空串、为 `null` 或为非数值的 `POINTS` webhook 事件，就能把会员的**全部**积分余额清零。修复前四种输入全部复现：会员有赞镜像存量 500 分，事件到达后 `member_balance.points` 变为 0。流水侧同时写入 `total=0`，看起来是一条合法的「有赞权威余额为 0」声明，因此按流水对账无法识别这是畸形输入导致的写坏。
+- root_cause: 「容忍转换」语义被用在权威写入路径上。`member_helpers.to_int` 的合同是「失败返回 0」，这对可选字段是合理的；但 `_handle_points_event` 把有赞 `total` 直接作为权威值写进 `member_balance.points`，其 SQL 是 `points = CASE WHEN ? IS NOT NULL THEN ? ELSE points END`——`0 is not None` 成立，于是「输入不可用」被折叠成的 `0` 照样落库，把「未知」伪装成「确实为零」。该函数只对 `unique_id` 做了缺失校验，对 `total` **完全没有校验**，而同文件 `_handle_coupon_event` 对 `coupon_id`/`status` 是有校验的，说明这是遗漏而非有意设计。
+- impact: 客户积分资产一次性全额损失，且无任何对账信号可发现（流水看起来是合法的权威零余额声明）。触发条件仅为上游一条字段缺失或变体的 payload，不需要任何本地状态配合，属真实可达路径。与 `M-20260926-030`（合法 `total` 覆盖本地发分）不同：本条是**缺失输入未校验**导致的错误写入，不需要切换权威即可单点修复。
+- fix: 在 `member_helpers` 新增 `is_usable_int`，显式区分「输入为真 0」与「输入不可用」（`None` / 纯空白串 / 无法 `float()` 解析）；`_handle_points_event` 在写流水与覆盖投影**之前**校验 `total`，不可用则记 `logger.warning` 并直接返回，既不写流水也不覆盖余额投影，与 `_handle_coupon_event` 的既有处理形状一致。`total` 只解析一次并复用于流水 `total` 与投影 `points`，消除两处重复 `to_int` 可能产生的口径漂移。
+- new_guardrail: `backend/tests/service/order/test_core_loop_candidate_r70.py::test_malformed_youzan_points_event_must_not_zero_out_balance` 参数化覆盖 `total` 字段缺失 / 空串 / null / 非数值四种畸形输入，断言余额保持不变；同文件 `test_valid_youzan_points_event_still_overwrites_balance` 是对照组，锁定「合法 `total` 仍必须按第一阶段语义覆盖」，防止修复退化为「一律不覆盖」而把有赞权威镜像整个关掉。
+- verification: 修复前 4 项稳定失败（`assert 0 == 500`），对照组通过；`git stash push -- backend/app/service/youzan/event_member.py backend/app/service/youzan/member_helpers.py` 后复跑确认红态可复现，`git stash pop` 恢复后 5 项全部通过，退出码 0；因 `member_helpers.py` 为整个有赞会员事件路径共用，额外跑广义回归（会员账务 / 积分支付 / 积分仓储 / 积分规则 / 积分服务 / 有赞事件边界 / webhook 分发 / webhook 重试 / webhook UoW 原子性 / 小程序积分 API / 有赞 webhook 事件仓储）11 个文件 68 项全部通过，退出码 0；相邻 r12-r70 候选回归 53 个文件，唯一 2 项失败即 r67 与 r68 两个故意保留的复现测试；`ruff check`、`ruff format --check` 通过，证据 `E-20260926-070`。
+- linked_trace: 20260925-miniapp-core-loop-candidate-review
+- linked_files: `backend/app/service/youzan/event_member.py`; `backend/app/service/youzan/member_helpers.py`; `backend/tests/service/order/test_core_loop_candidate_r70.py`; `backend/app/repository/member_balance_repo.py`; `ERRORS.md`; `PROJECT-STATE.md`; `LOGBOOK.md`; `docs/harness-engineering/core/evidence-index.md`
+- next_time_signal: 「容忍转换返回默认值」的函数（`to_int` / `to_fen` 这类失败返回 0 或 0 分的助手）绝不能直接喂给权威写入路径。要先分清调用点的两类语义：可选字段（缺失无害，用默认值兜底）和权威值（缺失即等于一个具体的错误断言）。可靠的判别信号有两个——目标列的写入是不是覆盖式（`CASE WHEN ? IS NOT NULL THEN ?`，此时 `0` 与 `None` 语义相同但来源不同），以及该值是否来自外部系统。后者尤其危险：外部 payload 的字段可能缺失、为空或变体，而默认值会把「上游没说」变成「余额确实为零」。另外，做这类修复时必须同时写一个**合法输入的对照组**，否则最省事的修法就是「干脆不覆盖」，那会把整个权威镜像悄悄关掉，且没有任何测试会发现。
+
+## M-20260926-030：有赞积分权威镜像抹掉本地发分，退款按原流水收回后形成流水自洽的客户净损失
+
+- status: guarded
+- first_seen: 2026-09-26
+- severity: high
+- symptom: 会员有赞侧存量 500 分，在小程序对 10,000 分订单全额微信支付后按 `award_points` 发放 100 分，`member_balance.points` 变为 600，`points:award:{order_id}` 流水写入 +100。此后有赞发生任意一次积分变动（如用户在有赞店铺消费拿到积分），`POINTS` webhook 携带 `total=550` 到达，`member_balance.points` 被**直接覆盖**回 550，本地发放的 100 分凭空消失，而 award 流水仍在。若该订单随后全额退款，`refund_settled_points` 按原流水 `deduct` 收回 100 分，余额落到 450——客户净损失 100 分，且这 100 分从未真正到账。
+- root_cause: 同一张余额投影表被两种不兼容的语义写入。`event_member._handle_points_event` 在 `POINTS_AUTHORITY != "local"`（默认 `youzan`）时调用 `MemberBalanceRepo.upsert_identity`，其 SQL 是 `points = CASE WHEN ? IS NOT NULL THEN ? ELSE points END`，即**用外部 `total` 覆盖**；而本地订单发分走 `PointsLedgerService.credit` → `MemberBalanceRepo.credit_points`，SQL 是 `points = points + ?`，即**累加**。两者的差值无法自愈，因为 `app/service/youzan/member_api.py` 只有 `query_points` / `list_customer_coupons` / `get_coupon_group_detail` / `list_customer_cards` 四个查询方法，**没有积分写接口**——本地发放的积分在架构上永远不可能被计入有赞 `total`，因此每一次有赞积分事件都必然抹掉它。
+- impact: 客户积分资产净损失，且**按流水对账无法发现**：`points:award:{order_id}`(+100) 与 `points:refund:{order_id}:clawback`(-100) 金额与归属完全自洽（同 `biz_id`、同账户），退款事实本身也完整落账（`refundStatus=full`、`refundFen=10000`），没有任何异常信号指向这 100 分从未到账。触发条件为「小程序订单发分」与「任意有赞积分事件」的时间先后，属真实可达路径。
+- fix: 已修复（r79）。按 AGENTS.md「积分属项目承接范围、不得以阶段标签规避核心业务缺陷」裁决，本条**不按原记录「须等第二阶段权威切换」处理**，而是单点修复语义冲突本身——外部权威总额与本地账本净额是两个不同的事实，不该挤在同一列的同一个含义里。新增迁移 `v038_points_authority_anchor.sql` 增 `youzan_points_base`（外部权威锚点）并回填既有行为 `youzan_points_base = points`（唯一不发明数据的保守口径：修复前行为本就是「最近一次镜像后余额 == 有赞 total」，回填后首次镜像结果与修复前完全一致、不产生回归；迁移前已被旧覆盖逻辑抹掉的本地发分无法从现有数据反推，不尝试追回）。新增 `MemberBalanceRepo.mirror_youzan_points`：余额恒等于 `youzan_points_base`（外部权威锚点）+ 本地账本净额，镜像只移动锚点并按偏移量 `points - youzan_points_base` 重算余额，**不触碰本地账本已写入的净额**；偏移量在同一条 `UPDATE` 内现算，读写同一行由 SQLite 写锁串行化，不存在读到陈旧偏移的窗口。两个外部写入方（有赞 `POINTS` webhook 与 `member_loyalty` 导入）一并改走该路径。**同时把误用入口焊死**：`upsert_identity` 的 `points` 参数已从签名中移除，使「绝对覆盖余额」这一误用无法再次通过编译与静态检查；新写方法 `mirror_youzan_points` 已补入 `check_project.py` 的 `D1_MATRIX_ALLOWED_WRITE_FUNCTIONS` 显式清单，使 D1-0 直接写状态守卫继续覆盖新路径。**本轮刻意未做**第二阶段 `POINTS_AUTHORITY=local` 权威切换：那是另一项独立的架构裁决（跨渠道积分双花），与本条「同一列两种语义」的根因无关，不应捆绑执行。
+- new_guardrail: `backend/tests/service/order/test_core_loop_candidate_r79.py` 六条：①`test_youzan_points_mirror_must_not_destroy_locally_awarded_points` 端到端复现（支付发分 100 → 外部镜像 550 → 断言 650）；②`test_full_refund_after_mirror_must_not_net_lose_awarded_points` 锁定本条的核心后果（镜像后全额退款，最终余额 == 外部权威总额 550，既不净损失也不多拿）；③`test_repeated_mirror_tracks_external_delta_and_keeps_local_net` 锁死「外部总额是锚点、本地账本是偏移量」结构（第二次镜像外部降到 450，本地 100 仍保留）；④`test_mirror_must_not_resurrect_locally_deducted_points` 是 ③ 的**反向不变量**——只保护发分不丢而允许扣减被抹掉的实现等于凭空给客户发分；⑤`test_mirror_after_lazy_created_account_keeps_local_award` 覆盖最易漏的懒建路径：r65 已确认「新注册会员缺少 `member_balance` 行」命中每个未建档新会员的首次下单，`credit_points` 的 `UPDATE` 影响 0 行后走 `INSERT` 懒建账户，该 `INSERT` 不写锚点（默认 0 = 从未镜像过、余额全部是本地净额），此后首次镜像仍必须保留本地发分；⑥`test_local_points_authority_mirror_must_not_touch_local_balance` 保留第二阶段 `local` 权威的验收起点。**同步改写两处把缺陷当契约的既有期望**：r69 的 `test_youzan_points_mirror_must_not_destroy_locally_awarded_points` 原断言「镜像后余额 == 550（本地 100 被抹掉）」且「退款后净余额 450」，r70 的 `test_valid_youzan_points_event_still_overwrites_balance` 更是把覆盖语义写进了测试名，两者均改为修复后的正确不变量（r70 改名为 `..._still_applies_external_total`，其「合法 total 必须被应用、不能一律忽略」的原意保留）。三份夹具（r69/r70/r79）同时从裸 `INSERT INTO member_balance` 改为走真实导入入口 `mirror_youzan_points`，因为裸 INSERT 会让 `youzan_points_base` 停在默认 0，使后续镜像把整笔余额误当本地净额而重复累加。
+- verification: 修复前 r79 六条中五条红、且红的原因全部是外部绝对总额 `550` 覆盖了本地净额（`assert 550 == ((500 + 50) + 100)` / `assert 450 == (500 + 50)` / `assert 550 == ((500 + 50) - 200)`），即红点与根因精确同源，非偶发失败；期间发现并修正了本轮自己的两处测试缺陷：一条用例漏 monkeypatch 商户号/AppID 导致失败于「微信支付通知商户号不匹配」而非根因，夹具裸 INSERT 未写锚点导致偏移量虚高，均已修正后才认定红态成立。修复后六条全绿。**五轮变异探针全部承重并已全部还原**（残留计数 0，还原后逐文件 sha256 校验一致）：探针 A 退回绝对覆盖 `points = ?` → 5 条转红（含新增的懒建账户用例，证明其非空转）；探针 B 不更新外部锚点 → 转红（偏移量反复重算）；探针 C 取消 `POINTS_AUTHORITY != "local"` 分支 → r69 的第二阶段用例转红；探针 D 取消 `is_usable_int(total)` 校验 → r70 畸形输入用例转红；探针 E 专项复核懒建账户用例非空转。**如实记录本轮无「未转红探针」。**相邻回归 `backend/tests/service/order/` 全目录加 `test_member_accounting.py`、`test_points_service.py`、`test_points_payment.py`、`test_miniapp_points_api.py`、`test_miniapp_balance_api.py`、`test_stored_value.py`、`test_coupon_inventory.py`、`test_coupon_payment.py`、`tests/repository/test_privacy_lifecycle.py`、`tests/scripts/test_check_project.py` 共 313 项全通过。`ruff check`（All checks passed）与 `ruff format --check`（7 files already formatted）；`git diff --check`（退出码 0）；`python backend/scripts/check_project.py --skip-tests` 质量门禁通过且 D1-0 直接写状态守卫 PASS；`check_project_development_register.py`（tasks=41）；`check_chinese_governance.py --summary`（files=16 / coverage=1.0 / failed=0）；`check_mistake_ledger.py`（entries=247）。本轮为代码与 Harness 记录变更，按测试节奏约束只跑定向与相邻回归，未跑全量测试。证据 `E-20260926-079`。
+- linked_trace: 20260925-miniapp-core-loop-candidate-review
+- linked_files: `backend/tests/service/order/test_core_loop_candidate_r79.py`; `backend/tests/service/order/test_core_loop_candidate_r69.py`; `backend/tests/service/order/test_core_loop_candidate_r70.py`; `backend/app/repository/member_balance_repo.py`; `backend/app/service/youzan/event_member.py`; `backend/app/service/member_loyalty.py`; `backend/app/migrations/v038_points_authority_anchor.sql`; `backend/scripts/check_project.py`; `docs/specs/2026-08-12-member-loyalty-asset-matrix-design.md`; `PROJECT-STATE.md`; `LOGBOOK.md`; `docs/harness-engineering/core/evidence-index.md`
+- next_time_signal: 「权威侧覆盖」与「本地累加」写同一张投影表时，差值必然被抹掉，而且没有任何对账信号——因为流水记录的是意图，投影记录的是余额，两者永远不会互相校验。看到 `CASE WHEN ? IS NOT NULL THEN ? ELSE col END` 这种覆盖式 upsert，就要问三个问题：本地是否也有写这张表的路径？外部权威能否回写本地写入的值（有没有对应的写接口）？如果不能，那本地写入就是临时值，覆盖后不可恢复。**根治这类冲突的手法是拆维度而不是选权威**：外部权威总额与本地账本净额是两个不同的事实，硬塞进同一列的同一个含义必然互相抹除；正确做法是显式建一个外部锚点列，让余额恒等于「锚点 + 本地偏移」，镜像只移动锚点。挑选「谁是权威」只是把冲突推迟到下一次写入，而拆维度能把两类写入彻底分开。另外注意**回填口径要选不发明数据的那一个**：把既有行的锚点回填为当前余额，看起来会「丢失」本地净额，但那恰好等价于修复前的行为，不产生回归；而按流水反推锚点反而会凭空把历史上已被覆盖抹掉的资产还回来，等于造钱。还有一条夹具纪律：**夹具必须走真实写入口**。本轮三份夹具原本用裸 `INSERT INTO member_balance` 造「余额来自外部」的初始态，新列默认值 0 使整笔余额被误当本地净额而虚高，一度把修复后的实现测成 1150；改成走真实导入入口后才如实表达该初始态。最后，「按原流水收回」的补偿逻辑，都要检查原流水对应的资产是否可能已经被别的权威源覆盖——收回一件从未真正到账的东西，等于凭空扣客户的钱，而且流水层面完全看不出来。
+
+## M-20260926-029：有赞权威侧券核销与小程序支付竞争，把已到账收款回滚成永远不落单
+
+- status: guarded
+- first_seen: 2026-09-26
+- severity: high
+- symptom: 用户在小程序应用优惠券快照（券库存仍为 `TAKE`）后尚未完成支付期间，同一张券在有赞侧被核销，有赞 `COUPON_CUSTOMER_PROMOTION`(status=CONSUME) webhook 到达并写入 `source='webhook'` 的 `CONSUME` 行（`order_no` 为有赞侧订单号）。此后微信支付成功通知到达，9,000 分已真实到账，但 `consume_once` 抛 `ValueError: 优惠券已被其他订单核销`，该异常位于支付事务内，把整笔收款连同交易认领一起回滚：订单停留 `partial` 未支付、`payment_transactions` 无认领行、inbox 置 `failed` 且 `last_error` 为该异常。
+- root_cause: 核销守卫缺第三种语义。`COUPON_AUTHORITY` 默认 `youzan`（`config.py:127`），此时有赞**就是**券权威方，`CouponInventoryRepo.get_latest_state` 不按 `source` 过滤、只按 `src_rank`（`order`/`local`=2，其余=1）降权排序，`webhook` 来源的 `CONSUME` 成为本地核销守卫的判定依据——这在当前权威体制下是**设计如此**，不是缺陷（外部观察不得改投影的约束属 `coupon_mode=local` 切换后的 FP-2 范围，ADR 0008 状态 pending、最早窗口 2027-06 且需负责人批准，见 `docs/harness-engineering/adr/0008-accounting-core-consistency.md`）。真正的缺陷在守卫本身：`consume_once` 只区分「同单幂等」与「跨单拒绝」，没有「资产归属在第三方、我方无权抢占」这一支——于是把「有赞侧确实已消耗该券」当成了本单可挽回的本地错误，抛错回滚收款。守卫位于支付事务内最后一步，抛错即回滚全部已到账事实。
+- impact: 客户已付款但订单永远不落单、微信交易号从未被认领（对账时本地无任何支付痕迹），且无自动收敛出口：通知按 `MAX_INBOX_ATTEMPTS=5` 重试后进入 `dead_letter` 且不再自动认领（`notify_intake.py` 的 `claim_notify_key` 对 `dead_letter` 返回 `DECISION_DEAD`），而 `reconcile_pay_from_query` 在 `backend/app/` 内没有任何生产调用方，超时扫描的 `PAYMENT_TIMEOUT_MINUTES=30` 远大于 5 次重试的 75 秒窗口。即已到账资金既不能自动落账，也不能自动恢复，只能人工介入。触发条件为「小程序持券快照未支付」与「同券在有赞侧被使用」的时间重叠，属真实可达路径。
+- fix: 已修复（r77）。守卫按「冲突的 CONSUME 是否归属本地」拆成三支，而不是按「同单/跨单」两支：新增 `coupon_reconcile_case` 表（`v036_coupon_reconcile_case.sql`）+ `CouponReconcileRepo`（`case_key` 幂等追加，支付腿与退款腿共用一条案件）。`consume_once` 遇到 `source` 非 `order`/`local` 的跨单 `CONSUME` 时不核销、不抛错、开案件如实记录被争议的 `deducted_fen`，让已到账收款落账；平台按案件吸收或追偿这笔有界可对账的抵扣金额。`refund_once` 同步补归属守卫：只有本单本地核销过的 `CONSUME` 才允许写 `BACK`，否则（本次修复新打通的可达路径）全额退款会在有赞侧已消耗的券之上写一条本单 `source=order` 的 `BACK` 行，把券放回可用池形成二次使用。本地跨单核销仍按原样抛错——那是 r63 已定稿的防双花契约，平台是权威方可以拒付，不在本次范围。**刻意不做**的部分：ADR 0008 D1-B 的 `coupon_observation` + `coupon_current_state` 投影重写属 FP-2 工作包（`0008-accounting-core-consistency.md` 状态 pending，前置依赖 FP-1/FP-3/FP-4，最早 2027-06 且须负责人批准），本轮只复用 D1-B 已定稿的 `coupon_reconcile_case` 案件语义，不提前执行未批准的权威切换。
+- new_guardrail: `backend/tests/service/order/test_core_loop_candidate_r68.py` 重写为三条契约测试（修复前三条均稳定失败于 `inventory.py:42` 的 `ValueError: 优惠券已被其他订单核销`，与本缺陷根因同点）：`test_arrived_payment_lands_when_coupon_was_consumed_externally` 锁定「收款落 `paid` + 交易号被认领 + inbox `processed` + 本地不核销 + 一条 open 案件」；`test_external_consume_conflict_refund_does_not_return_coupon` 锁定退款腿不写 `BACK`；`test_arrived_payment_notify_is_idempotent_after_external_conflict` 锁定重投走重复短路且不二次开案。三次变异探针确认守卫承重：放松支付腿外部分支 → 三条转红；放松退款腿归属守卫 → 第二条转红并出现 `source=order` 的 `BACK` 行；反转 `_is_local_state` 使外部被视为本地 → r68 转红而 r63 与 `test_coupon_inventory.py` 保持绿，证明该谓词真正区分两支而非一味放行。
+- verification: 修复前 r68 三条测试均失败于 `inventory.py:42`（退出码 1），修复后 3 passed；三次变异探针逐一确认守卫承重并已全部还原（`if False`/`and False` 残留计数为 0）；券相邻回归 273 项中 272 项通过，唯一失败为 `test_core_loop_candidate_r67.py::test_refunded_coupon_can_be_reused_on_new_order`（`ValueError: 优惠券不可用`），即 `M-20260926-028` 故意保留的红，与本条无关；`check_project.py --skip-tests` 的 D1-0 直接写状态守卫 PASS（新增写路径 `_open_external_consume_case` 已按「矩阵新增写路径必须同步方法级 allowlist」补入 `D1_MATRIX_ALLOWED_WRITE_FUNCTIONS`）；证据 `E-20260926-077`。
+- linked_trace: 20260925-miniapp-core-loop-candidate-review
+- linked_files: `backend/tests/service/order/test_core_loop_candidate_r68.py`; `backend/app/service/coupon/inventory.py`; `backend/app/service/coupon/payment.py`; `backend/app/repository/coupon_inventory_repo.py`; `backend/app/service/youzan/event_member.py`; `backend/app/service/order/payment_notification.py`; `docs/harness-engineering/adr/0008-accounting-core-consistency.md`; `docs/specs/2026-08-12-member-loyalty-followup-local-authority.md`; `PROJECT-STATE.md`; `LOGBOOK.md`; `docs/harness-engineering/core/evidence-index.md`
+- next_time_signal: 「权威侧状态」与「本地当前态」不是同一件事。默认 `authority=youzan` 时读路径不过滤 `source`，意味着任何外部 `webhook`/`import` 行都能参与本地判定——看到 `get_latest_state` 这类「按来源降权排序」的读函数时，要逐个确认被降权但未被过滤的来源会不会在某个时刻压过本地行。另外，凡是位于支付事务内、失败会回滚已确认收款事实的守卫，都必须能表达「资产归属在第三方、我方无权抢占」这种第三语义；只区分「同单/跨单」的守卫迟早会把外部事实当成本地可挽回的错误。与 `M-20260926-028` 一起看：外部观察分离与本地多周期是同一笔债务，缺一半就会从另一侧漏出。
+
+## M-20260926-028：全额退款退回的优惠券被永久作废，无法再次使用
+
+- status: guarded
+- first_seen: 2026-09-26
+- severity: high
+- symptom: 用户用优惠券下单并支付成功后券核销为 `CONSUME`；订单全额退款时 `refund_coupon` 把券写成 `BACK` 行并退回给用户。此后同一张券再也无法使用：`apply_coupon_snapshot` 抛「优惠券不可用」，`CouponInventoryRepo.consume` 因最新态不是 `TAKE` 返回 `None`，`get_my_coupons` 的可用券列表也把它过滤掉。小程序券中心仍把 `BACK` 归入「已退回」独立 tab，用户以为券已回到账户，实际永久失效。
+- root_cause: 结构性限制，不是守卫写错。`v024_coupon_module.sql` 的 `CREATE UNIQUE INDEX idx_coupon_inventory_dedup ON coupon_inventory(coupon_id, status, mobile)` 使同一张券只能存在一条 `CONSUME` 行，因此 `TAKE → CONSUME → BACK → CONSUME` 的第二个周期在数据库层被禁止。当前的「仅 `TAKE` 可消费」状态检查只是让 `BACK` 表现为终态，并未提供任何回到 `TAKE` 的路径；全仓唯一写 `TAKE` 的入口是 `coupon/admin.py:104` 的后台发券，它生成新的 `coupon_id`，无法复活原券。有赞 webhook 也无法补救：`event_member.py` 的 `get_by_dedup_key(coupon_id, status, mobile)` 会跳过重复状态，且 `get_latest_state` 按 `src_rank DESC` 排序，本地 `order` 行（权重 2）永久压制 `webhook`/`import` 行（权重 1）。该缺陷已由 ADR 0008 登记为 FP-2/FP-3。同库正确范式已存在可对照：`points_ledger` 与 `balance_ledger` 用 `UNIQUE(unique_id)`，唯一键是业务操作（含 `order_id`，如 `points:redeem:{order_id}` / `points:refund:{order_id}:clawback` / `order_refund:{order_id}`）而非状态，因此同一订单的不同补偿周期天然不冲突，积分与储值退款均可重复执行。只有 `coupon_inventory` 把券身份与状态混进唯一键，是本仓唯一的多周期阻断孤例——这意味着迁移不需要发明新范式，只需把券对齐到同库既有的「唯一键=业务操作」约定。
+- impact: 客户在全额退款拿回全部现金的同时永久损失券面价值，且无任何自动或人工恢复路径，属客户资产不可恢复损失。命中每一次「用券支付后全额退款」的真实业务路径。
+- fix: 已修复（r78）。修复路径不新建 ADR 0008 D1-B 的事件表+投影表，而是把 `coupon_inventory` 原地对齐到同库既有约定「唯一键 = 业务操作」：`points_ledger`/`balance_ledger` 用 `UNIQUE(unique_id)`，键内含 `order_id`（`points:redeem:{order_id}` / `order_refund:{order_id}`），故同一订单的不同补偿周期天然不冲突，只有 `coupon_inventory` 把**状态**混进唯一键是全仓唯一的多周期阻断孤例。`v037_coupon_use_cycle.sql` 增 `cycle_no INTEGER NOT NULL DEFAULT 0`、删 `idx_coupon_inventory_dedup`、建 `idx_coupon_inventory_cycle (coupon_id, status, mobile, cycle_no)`；既有行统一落 cycle 0（旧唯一键本就限制每状态至多一行，迁移不产生冲突）。退款腿 `CouponInventoryRepo.refund` 改为写**两行**：周期 c 的 `BACK`（冲正事实，函数返回值）+ 周期 c+1 的 `TAKE`（重新建立可持有事实），`consume` 复制最新态的 `cycle_no`。选「`BACK` 冲正 + 新周期 `TAKE` 恢复」而非「让 `BACK` 直接可消费」，是为了让 `apply_coupon_snapshot`/`redeem_preview` 继续只认 `TAKE`，与小程序 `member-assets.ts` 的 `BACK→已退回`/`TAKE→可用` 映射一致，前端与 `miniapp/docs/api-contract.md` 无需改动。`get_latest_state`/`list_by_mobile`/`list_all` 的排序把 `cycle_no DESC` 放在 `occurred_at DESC` **之前**：周期是因果序，外部事件可令时间戳乱序倒置，时间戳只承担同源展示序。`coupon/payment.py` 的 savepoint 冲突断言同步放宽为接受最新态 ∈ {`BACK`, `TAKE`} 且 `order_no` 匹配本单。ADR 0008 的 D1-B 事件表+投影表设计仍是 FP-2/FP-3 权威切换的前置门禁，本次只解除「第二个消费周期不可表达」这一阻断，不宣称 D1-B 已实施。
+- new_guardrail: `backend/tests/service/order/test_core_loop_candidate_r67.py` 现有 4 条：①`test_refunded_coupon_can_be_reused_on_new_order` 是本缺陷的端到端复现（A 单核销→全额退款→B 单重新应用并核销，断言周期序列 `[0,0,0,1,1]` 且最新态为 cycle 1 的 `TAKE`），修复后已转绿；②`test_repeated_full_refund_does_not_duplicate_coupon_rows` 同时从服务入口（第二次返回 `duplicate`、不再进腿）与仓储腿（直接重入 `refund_coupon`）两侧堵住重复退款把同一张券反复冲正/恢复；③`test_dedup_key_scopes_same_status_to_one_use_cycle` 锁定新唯一键——跨周期第二次 `CONSUME` 必须成功、同周期重复仍须抛 `IntegrityError`，防止有人日后把 `cycle_no` 从唯一键里删掉来「简化」；④`test_latest_state_prefers_higher_cycle_over_later_timestamp` 用跨周期乱序时间戳锁定「周期优先于时间」的排序，防止排序被改回「时间最新即当前态」。r63 的 `test_refunded_coupon_cannot_be_reused_by_another_order` 原期望值本身是本缺陷的直接后果，已重写为 `test_refunded_coupon_returns_to_holder_without_writing_back_for_others`：A 单全额退款后 B 单**合法地**能用这张券（券已回到持有人手里），但仍断言不得为 B 单写 `BACK` 行——缺陷消失不等于守卫消失。
+- verification: 修复前 `test_refunded_coupon_can_be_reused_on_new_order` 使用真实 SQLite 文件连接、真实 `handle_wechat_payment_notify`/`handle_wechat_refund_notify` 通知入口、真实券应用/核销/退回服务，稳定失败于 `backend/app/service/coupon/payment.py:65` 抛「优惠券不可用」（证据 `E-20260926-067`）；根因测试当时 1 项通过（退出码 0）。修复后 r67 四条全绿；**变异探针四轮全部承重并已全部还原**（`探针`/`if False`/`and False` 残留计数 0）：探针 A 把唯一键改回三列 → 4 条全部转红且报 `UNIQUE constraint failed: ...coupon_id, status, mobile`，即原缺陷签名；探针 B 去掉新周期 `TAKE` → 3 条转红；探针 C 放松 `refund` 的 `latest != CONSUME → return None` → 恰好 2 条幂等测试转红；探针 D 反转 `cycle_no DESC` 的排序位次 → **首次探针未转红，如实判为「未被承重的守卫」而非胜利**，补上跨周期乱序时间戳夹具后重跑才如实转红（`assert 1 == 2`），该守卫现已诚实承重。相邻回归 `backend/tests/service/order/` 全目录加 `test_coupon_inventory.py`/`test_coupon_payment.py`/`test_stored_value.py`/`test_points_service.py`/`tests/repository/test_privacy_lifecycle.py` 共 276 项全通过，r67/r68 两条故意保留的红均已转绿；`ruff check` + `ruff format --check` 全过；`git diff --check` 退出码 0；`check_project.py --skip-tests` 质量门禁通过且 D1-0 直接写状态守卫 PASS（新增写路径仍在既有 allowlist 函数 `coupon_inventory_repo.refund` 内，无需扩表）；`check_project_development_register.py` tasks=41；`check_chinese_governance.py --summary` files=16/coverage=1.0/failed=0；`check_mistake_ledger.py` entries=247；`check_file_sizes.py` 仍仅被既有 `app/service/catalog/application.py` 职责评审缺口阻断，非本轮引入；`check_evidence_index.py` 仍 failed 且为本轮改动前即存在的 32 条 `repo:` 哈希失配（每轮改动共享文件都会使前轮记录失配），非本轮引入。证据 `E-20260926-078`。
+- linked_trace: 20260925-miniapp-core-loop-candidate-review
+- linked_files: `backend/tests/service/order/test_core_loop_candidate_r67.py`; `backend/app/repository/coupon_inventory_repo.py`; `backend/app/service/coupon/payment.py`; `backend/app/service/coupon/__init__.py`; `docs/harness-engineering/adr/0008-accounting-core-consistency.md`; `PROJECT-STATE.md`; `LOGBOOK.md`; `docs/harness-engineering/core/evidence-index.md`
+- next_time_signal: 看到状态机里有 `BACK`/`RETURN`/`REVERSED` 这类「反向」状态时，先确认它有没有回到可用态的迁移路径，再看消费侧的守卫——如果消费只接受初态，那这个反向状态就是事实上的终态，规格里写的「可再用」与实现就脱节了。另外凡是给事实表加了 `UNIQUE(业务键 + 状态)` 的地方，都要单独确认多周期场景：唯一索引会把「第二次进入同一状态」直接变成并发冲突，而不是幂等命中——遇到这种表先去找同库既有的多周期实现（`points_ledger` / `balance_ledger` 的 `UNIQUE(unique_id)` 键内含 `order_id`），不要直接发明事件表。再有一条方法论：**「测试全绿」不等于守卫承重**。本轮排序守卫（`cycle_no` 必须压过 `occurred_at`）的变异探针第一次跑并没有让任何测试转红，如实判为「未被承重的守卫」而不是当作胜利，补上跨周期乱序时间戳的夹具后才转红；夹具和守卫是一对，缺夹具的绿灯是假的。
+
+## M-20260926-027：会员缺少积分账户行时发分守卫把已到账支付回滚成永远不落单
+
+- status: guarded
+- first_seen: 2026-09-26
+- severity: high
+- symptom: 新注册小程序会员（会员主档与 openid 身份链已建、但没有 `member_balance` 行）用微信支付下单，全额到账通知到达后，`PointsPaymentService.award_on_payment` 抛出「积分账户不存在，订单 X 不得视为已支付」，`_run_claimed_notify` 的事务边界把整笔支付回滚：订单停留 `unpaid`、微信交易号未被认领、积分未发放，通知被标记失败后无限重试且每次同样失败。
+- root_cause: `award_on_payment` 在 `get_by_mobile` 返回空时无条件抛错，把「账户行尚未建档」与「有积分抵扣却查不到抵扣归属」两种语义混为一谈。但下游 `MemberBalanceRepo.credit_points` 本身就带懒创建（`UPDATE` 影响 0 行时 `INSERT`），也就是说紧接着的操作本来就会把账户行建出来，抛错与下游行为自相矛盾。更关键的是该守卫没有区分是否存在需要保护的积分抵扣：无抵扣时发分纯属会员福利，账户缺失不构成任何资产风险。
+- impact: 客户已付款但订单永远不落单、无法自动收敛也无法人工对账（订单侧没有任何支付痕迹），属于资金搁浅 P1。由于 `member_balance` 行只由有赞会员同步、会员忠诚度导入或储值/积分首次变动懒创建，纯微信支付的新会员不会触发其中任何一条，该缺陷命中每一个尚未建档的新会员首次下单。
+- fix: 按「是否存在需要保护的积分抵扣」拆分守卫。`points_used > 0` 且账户缺失时维持抛错（无法核验抵扣归属，放行会形成免费抵扣）；`points_used > 0` 且账户漂移时维持抛错；`points_used == 0` 且账户缺失时不再阻断，`member_balance_id` 置空，由发分链路的 `credit_points` 懒创建账户并正常入账与记账。
+- new_guardrail: `test_missing_points_account_must_not_strand_arrived_payment` 用真实支付通知入口覆盖「会员无积分账户行」，断言订单落为已支付、认领交易号、账户行被懒创建且积分照常入账；`test_consume_honours_locked_snapshot_after_expiry` 同属该类守卫的既有覆盖。凡位于支付事务内、失败会回滚已确认收款事实的守卫，其失败原因必须按「是否存在需要保护的资产归属」分类，不得把「记录尚未建档」与「归属无法核验」合并处理。
+- verification: 修复前 r65 稳定失败（支付返回「积分账户不存在」，订单 `unpaid`、交易号未认领、积分账户仍无行）；修复后 r63+r64+r65 连续 5 轮退出码 `0,0,0,0,0`，相邻 r12-r65 候选回归 48 个文件、101 项通过，退出码 0；积分仓储/支付/规则/服务/积分 API 回归退出码 0；覆盖 r63-r65 全部改动面的广义回归 359 项通过，退出码 0；`ruff check`、`ruff format --check` 通过，证据 `E-20260926-065`。
+- linked_trace: 20260925-miniapp-core-loop-candidate-review
+- linked_files: `backend/app/service/points/payment.py`; `backend/tests/service/order/test_core_loop_candidate_r65.py`; `PROJECT-STATE.md`; `LOGBOOK.md`; `docs/harness-engineering/core/evidence-index.md`
+- next_time_signal: 新增或收紧位于支付/退款事务内的守卫前，先问三个问题：这个失败原因是否可能发生、发生时是否意味着「资产归属无法核验」、以及回滚收款事实是不是唯一合理的响应。特别注意「懒创建」的下游函数——如果它已经能自行补齐记录，上游就不该因为记录缺失而抛错。
+## M-20260926-026：核销守卫收紧后把已到账支付回滚成永远不落单
+
+- status: guarded
+- first_seen: 2026-09-26
+- severity: high
+- symptom: r63 把 `consume_once()` 的静默空结果改为抛错后，优惠券在「应用时有效、支付前跨过有效期」这一路径上，微信 9,000 分已真实到账，但核销守卫抛出「优惠券核销未落账，请对账处理」，`_run_claimed_notify` 的事务边界把整笔支付回滚：订单停留在 `partial` 未支付、微信交易号未被认领、券仍为 `TAKE`，通知被标记失败后无限重试且每次同样失败。
+- root_cause: `CouponInventoryRepo.consume()` 用同一个 `None` 同时表达两种语义——「券已被其他订单核销或退回」（必须阻断）与「本单有效应用的券已过期」（订单持有已锁定的抵扣金额）。r63 只把前者改成阻断，没有拆分后者。而核销是支付事务内的最后一步，此时资金已到账，任何拒绝核销的分支都会连坐掉已确认的收款事实。
+- impact: 客户已付款但订单永远不落单、无法自动收敛，也无法通过重投自愈，属于资金搁浅 P1；且该状态比修复前更差——修复前订单至少是已支付、可人工对账。
+- fix: 移除 `consume()` 中的有效期复查。有效期与抵扣金额的权威关口在 `apply_coupon_snapshot`（按模板校验 `is_coupon_available` 并锁定 `couponFen`），核销阶段按应用时锁定的快照兑现，券记为已消耗，不给用户留下可二次使用的抵扣。`consume_once()` 保留 r63 的阻断语义，只针对「券归属其他订单」。
+- new_guardrail: `test_coupon_expiring_after_apply_must_not_strand_arrived_payment` 用真实支付通知入口覆盖「应用后过期」，断言订单落为已支付、认领交易号且券真实核销；`test_consume_honours_locked_snapshot_after_expiry` 在仓储层锁定同一契约。任何位于支付事务内、失败会回滚收款事实的守卫，都必须区分「资产被他人占用」与「我方已锁定条件与当前时钟不一致」两类失败原因。
+- verification: 修复前 r64 稳定失败（订单 `partial` 未支付、交易号未认领、券仍 `TAKE`）；修复后 r63+r64 连续 5 轮退出码 `0,0,0,0,0`，相邻 r12-r64 候选回归 47 个文件、100 项通过，退出码 0；券/订单/积分/储值/支付 API 广义回归 341 项通过，退出码 0；`ruff check`、`ruff format --check` 通过，证据 `E-20260926-064`。
+- linked_trace: 20260925-miniapp-core-loop-candidate-review
+- linked_files: `backend/app/repository/coupon_inventory_repo.py`; `backend/app/service/coupon/inventory.py`; `backend/tests/service/order/test_core_loop_candidate_r64.py`; `backend/tests/service/test_coupon_inventory.py`; `PROJECT-STATE.md`; `LOGBOOK.md`; `docs/harness-engineering/core/evidence-index.md`
+- next_time_signal: 把「静默放行」改成「抛错」之前，先确认这个守卫是否位于会回滚已确认资金事实的事务内；如果在，就必须逐条枚举失败原因并证明每一条都应当连坐收款事实。同时，回归范围必须覆盖所有断言被改契约的测试文件——r63 的回归漏掉 `test_coupon_inventory.py`，导致其中与修复直接矛盾的断言直到 r64 才暴露。
+## M-20260926-025：券核销未落行被静默当作已核销，导致一张券抵扣两单
+
+- status: guarded
+- first_seen: 2026-09-26
+- severity: high
+- symptom: 同一张优惠券先后被两个订单应用快照（应用不改变券态，仍为 `TAKE`）；订单 A 支付成功核销券后又发生全额退款，券随退款写回 `BACK`。此后订单 B 支付成功通知到达时，券无法再次核销，但订单 B 仍以 `paid` 完成，支付快照保留 `couponFen=1000`、`remainFen=9000` 并发放 90 积分，而券账本只有 `TAKE`/`CONSUME(A)`/`BACK(A)`，没有 B 的核销行。
+- root_cause: `CouponInventoryRepo.consume()` 在最新态不是 `TAKE`（已退回、已过期或状态缺失）时返回 `None` 而不是抛错；`CouponInventoryService.consume_once()` 直接把 `None` 透传给调用方，`CouponPaymentService.consume_on_payment()` 又不检查返回值，于是支付路径把「券未核销」当成「已核销」放行。守卫只覆盖了最新态为 `CONSUME` 的跨单双花分支，漏掉了 `BACK`/过期/缺失分支。
+- impact: 一张券同时让两个订单各抵扣 1,000 分，且券本身以 `BACK` 回到用户手里可再次使用，属于核心资产双花 P1；由于券账本没有 B 的核销行，人工对账也无法从账本看出 B 白拿的折扣。
+- fix: `consume_once()` 在 `consume()` 返回 `None` 时重读最新态：只有最新态是本单的 `CONSUME` 才按幂等返回，否则抛出「优惠券核销未落账，请对账处理」。该异常沿用既有跨单双花守卫的失败语义，在支付事务内回滚订单支付落账与交易认领。
+- new_guardrail: `test_coupon_snapshot_on_two_orders_cannot_double_spend` 与 `test_refunded_coupon_cannot_be_reused_by_another_order` 使用真实 SQLite 文件、真实微信支付/退款通知入口、真实券服务与真实支付快照，覆盖「另一订单已核销」与「券已退回」两条拒绝分支，并断言失败订单不落 `paid`、不认领交易号、券账本不出现越权核销或退回行。
+- verification: 修复前第二个用例稳定失败（订单 B 以 `paid`、`couponFen=1000` 完成且无 B 的核销行）；修复后 r63 连续 5 轮退出码 `0,0,0,0,0`，相邻 r12-r63 候选回归 46 个文件、99 项通过，退出码 0，耗时 68 秒；券/订单/积分/储值与订单目录回归退出码 0，耗时 91 秒；`ruff check`、`ruff format --check` 通过，证据 `E-20260926-063`。
+- linked_trace: 20260925-miniapp-core-loop-candidate-review
+- linked_files: `backend/app/service/coupon/inventory.py`; `backend/tests/service/order/test_core_loop_candidate_r63.py`; `PROJECT-STATE.md`; `LOGBOOK.md`; `docs/harness-engineering/core/evidence-index.md`
+- next_time_signal: 任何返回 `None` 表示「未落行」的仓储方法，其调用方都必须显式区分「未落行」与「已成功」；支付类守卫不能只覆盖并发冲突分支，必须同时覆盖目标行因状态、有效期或前置事实缺失而无法写入的所有分支。
+
+## M-20260925-024：并发测试把合法的 SQLite 锁重试误判为业务失败
+
+- status: guarded
+- first_seen: 2026-09-25
+- severity: medium
+- symptom: `test_core_loop_candidate_r43.py` 的支付通知与查询恢复并发测试最终要求两个 inbox 的 `attempt_count` 必须严格为 `[1, 2]`；本轮真实调度允许两个入口各自在旧快照锁冲突后重试一次，实际为 `[2, 2]`，但两个事件最终均为 `processed`，订单、交易、到账事件和资产结算均唯一。
+- root_cause: 测试把某一次 SQLite 锁竞争后的固定胜出顺序和重试次数当成业务合同，没有只断言最终事实与合法重试上限。
+- impact: 合法并发调度会造成相邻回归假红，掩盖真实支付/资产回归证据并诱导修改正确的生产代码；不造成生产业务数据错误。
+- fix: 保留两个 inbox 均 `processed`、唯一支付事实和唯一资产结算断言，只将最终尝试次数约束为每条记录 1 到 2 次。
+- new_guardrail: r43 测试连续 5 轮及 43 文件相邻回归必须稳定通过；任何并发测试都应断言最终业务事实和最大尝试次数，不断言未承诺的锁调度顺序。
+- verification: 修正前相邻回归稳定失败于 `[2, 2] != [1, 2]`，单独 r43 复跑可通过；修正后 r43 连续 5 轮退出码 `0,0,0,0,0`，最终 43 文件、213 个测试项相邻回归退出码 0，耗时 104.17 秒；Ruff、Ruff format 和 `git diff --check` 通过。
+- linked_trace: 20260925-miniapp-core-loop-candidate-review
+- linked_files: `backend/tests/service/order/test_core_loop_candidate_r43.py`; `PROJECT-STATE.md`; `LOGBOOK.md`; `docs/harness-engineering/core/evidence-index.md`
+- next_time_signal: 并发测试不得把可重试锁的固定胜出顺序当作业务合同；必须同时验证最终状态、唯一事实、资产不重复和重试上限。
+
+## M-20260925-023：退款先到时同一微信交易号可补偿两个订单
+
+- status: guarded
+- first_seen: 2026-09-25
+- severity: high
+- symptom: 两个不同订单都已进入组合支付 `partial` 状态并各自扣减 2,000 分余额；两个不同退款事件携带同一个微信原支付交易号先后或并发到达时，修复前两个订单都会写入全额退款事实并各退回一次 2,000 分余额。
+- root_cause: 微信支付成功入口会先认领 `payment_transactions` 的交易号，但退款事实先于支付事实到达时，退款服务直接写退款事件和资产补偿，没有先通过统一支付交易认领能力确认原支付交易号的订单归属。
+- impact: 同一笔微信原支付资金事实可被两个订单重复消费，导致两个退款事实、两条对账案件和两次余额补偿，属于核心账务重复补偿 P1。
+- fix: 退款通知与退款查询恢复在写退款事实和补偿资产前，统一调用支付通知服务的交易认领能力；首胜订单获得唯一交易归属，败者返回 `rejected_recorded` 并建立对账案件，不写退款事实、不更新退款快照、不补偿余额、积分或优惠券。
+- new_guardrail: `test_same_transaction_refund_cannot_compensate_two_orders` 使用两个真实 SQLite 文件连接和两套独立会员/余额/组合支付订单，参数化 `first_winner=order_a/order_b`，固定同一微信交易号的两个退款事件只能补偿首胜订单一次。
+- verification: 修复前两个参数化时序均稳定复现双订单退款事实和双余额补偿；修复后 r50 两个参数化用例通过，最终版连续 5 轮退出码 `0,0,0,0,0`，相邻核心候选、支付/退款通知与查询、储值、优惠券、积分、架构守卫、文件体量守卫和 MiniApp 支付 API 回归 186 项通过，退出码 0，耗时 82.10 秒，证据 `E-20260925-050`。
+- linked_trace: 20260925-miniapp-core-loop-candidate-review
+- linked_files: `backend/app/service/order/payment_notification.py`; `backend/app/service/order/payment_runtime.py`; `backend/app/service/order/refund_notification.py`; `backend/tests/service/order/test_core_loop_candidate_r50.py`; `backend/tests/service/order/test_core_loop_candidate_r47.py`; `backend/scripts/check_file_sizes.py`; `PROJECT-STATE.md`; `LOGBOOK.md`; `docs/harness-engineering/core/evidence-index.md`
+- next_time_signal: 任何允许支付或退款事实乱序到达的入口，在写订单事实或补偿资产前都必须先认领外部交易号的唯一订单归属；退款先到时也不得绕过统一交易认领。
+
+## M-20260925-022：积分服务测试继续使用已失效的商品兜底夹具
+
+- status: guarded
+- first_seen: 2026-09-25
+- severity: medium
+- symptom: r33 相邻回归中，积分服务的两个 preview 用例稳定失败于“商品不存在: p_m3_001”；测试仍直接使用空的有赞商品/库存仓储，却继续假设下单可从客户端 `priceFen` 兜底。
+- root_cause: r18 已将未知商品改为失败关闭并禁止用客户端价格修补目录事实，但 `test_points_service.py` 的订单夹具没有随生产契约切换到仓库已有的真实内存合成目录 helper。
+- impact: 业务生产代码没有回归，但积分 preview 相邻回归会持续假红，掩盖后续真实积分试算或支付联动问题。
+- fix: `test_points_service.py` 改用合成目录仓储，并以测试专用子类为 `p_m3_001` 登记明确的 10000 分目录价；不放宽生产商品存在与价格守卫，也不改写共享历史测试夹具的证据哈希。
+- new_guardrail: 积分 preview 测试必须通过真实内存目录商品创建订单；`test_points_service.py` 与 r18 后的未知商品失败关闭契约共同运行，不能再依赖客户端价格兜底。
+- verification: 修正前同组相邻回归 82 项中 2 项确定性失败；修正后 r33 与积分、券、支付通知、r32、MiniApp 支付 API 相邻回归 83 项通过，退出码 0，耗时 16.45 秒；MiniApp 积分围栏 1 项和 15 页/15 路由静态门禁通过，证据 `E-20260925-033`。
+- linked_trace: 20260925-miniapp-core-loop-candidate-review
+- linked_files: `backend/tests/service/test_points_service.py`; `backend/tests/service/order/test_core_loop_candidate_r33.py`; `PROJECT-STATE.md`; `LOGBOOK.md`; `docs/harness-engineering/core/evidence-index.md`
+- next_time_signal: 生产商品校验或价格事实收紧后，所有依赖下单的测试必须改用明确的服务端目录夹具；不得以客户端价格字段维持旧测试假设。
+
+## M-20260925-021：微信预支付会话返回后仍可改写支付金额
+
+- status: guarded
+- first_seen: 2026-09-25
+- severity: high
+- symptom: 100 元订单已按 100 元返回微信预支付会话后，订单仍可应用 5 元优惠券并把本地快照改为 95 元；随后真实微信按旧会话支付 100 元时，通知因金额不匹配进入 `failed`，没有生成支付交易或已支付订单事实。返回会话后继续发起全额余额、组合支付或 mock 支付还会形成第二条本地支付路径。
+- root_cause: 微信预支付准备流程只按调用时快照计算金额并在内存中生成会话，没有在调用微信前把外部实付金额和真实微信支付尝试写入订单支付快照；优惠券、储值和 mock 支付入口也没有统一的真实微信尝试锁。支付通知、查询和退款校验则按后续可变的本地余额/券/积分快照推导外部金额，导致客户端持有的微信交易与订单事实漂移。
+- impact: 用户按已返回的微信会话付款后，真实资金可以到账但本地订单无法入账，形成支付交易缺失、通知持续失败和待人工对账的确定性资产事实分裂，属于核心支付 P1。
+- fix: 普通微信支付在调用微信前以原支付快照 CAS 原子写入 `externalPaidFen` 与 `wechatPrepayFen`；组合支付真实微信尾款同步固化相同字段。金额锁定后，优惠券、全额余额、组合支付、mock 替换和 mock 兜底均拒绝重入；通知/查询/退款继续按 `externalPaidFen` 校验，取消释放余额或优惠券时不得覆盖该外部交易金额。响应不确定时保留金额锁，只允许同金额重试或取消。
+- new_guardrail: `test_wechat_prepay_locks_asset_snapshot_before_coupon_application` 必须在券仍可应用时稳定复现旧会话通知金额不匹配；修复后必须证明券被拒绝且旧金额通知可入账。`test_real_wechat_combined_payment_deducts_balance_and_locks_remainder` 和 `test_real_wechat_combined_payment_late_success_refunds_external_leg_once` 分别固定真实微信组合支付唯一余额腿、第二支付入口拒绝及取消后尾款只退款一次。
+- verification: 修复前 r32 用例稳定证明 100 元微信会话、5 元券变更、通知失败且无支付交易；修复后完整 r32 8 项连续 5 轮通过，退出码 `0,0,0,0,0`，相邻储值/券/积分/订单/通知/退款、r21-r32 与 MiniApp 订单/支付 API 回归精确 195 项通过，定向 Ruff、Ruff 格式、`git diff --check`、开发总表、中文治理和错误账本检查通过，证据 `E-20260925-032`。
+- linked_trace: 20260925-miniapp-core-loop-candidate-review
+- linked_files: `backend/app/repository/order_repo.py`; `backend/app/service/order/payment_runtime.py`; `backend/app/service/coupon/__init__.py`; `backend/app/service/coupon/payment.py`; `backend/app/service/stored_value/payment.py`; `backend/tests/service/order/test_core_loop_candidate_r32.py`; `miniapp/docs/api-contract.md`; `PROJECT-STATE.md`; `LOGBOOK.md`; `docs/harness-engineering/core/evidence-index.md`
+- next_time_signal: 任何把外部支付会话返回客户端的入口，都必须先持久化不可变交易金额和支付尝试锁；通知、查询、退款和恢复只能按该交易事实校验，不能从会继续变化的优惠/余额快照重新推导。
+
+## M-20260925-020：并发应用不同优惠券时两个请求都返回成功
+
+- status: guarded
+- first_seen: 2026-09-25
+- severity: high
+- symptom: 同一待支付订单的两个 `apply-coupon` 请求都读到未支付旧快照时，500 分券与 1000 分券两个请求均返回成功；订单最终只保留后写的一张券，但失败响应仍向客户端声称对应券已生效。
+- root_cause: `CouponPaymentService.apply_coupon_snapshot()` 读取订单后调用仅校验 `payment.status IN ('unpaid', 'partial')` 的仓储更新，没有携带服务层实际读取的原始 `payment` 作为 CAS 条件；先后提交的两个请求因此都满足状态条件并依次覆盖快照。
+- impact: 客户端可能按已被覆盖的较低抵扣金额继续支付，支付成功只核销订单最终保留的另一张券，造成成功响应、订单应付金额和优惠券资产事实不一致，属于核心结算 P1。
+- fix: 订单仓储新增基于原始 `payment` 全等、订单未取消且支付状态可写的单条原子 CAS；券服务传入请求读取的原快照，冲突统一返回“订单支付状态更新冲突”，不产生取消订单脏写。
+- new_guardrail: `test_concurrent_different_coupon_applications_only_one_succeeds` 使用两个真实 SQLite 文件连接和订单读取屏障，必须证明恰好一个请求成功、另一个返回冲突，且唯一成功响应的 `couponId/couponFen/remainFen` 与订单最终快照完全一致。
+- verification: 测试夹具修正 openid 提取格式后，修复前稳定失败于实际结果 `['ok', 'ok']` 而预期 `['conflict', 'ok']`；修复后最终测试连续 5 轮通过，券支付/券 API/储值/积分/组合支付/订单相邻回归 139 项通过，定向 Ruff 与 `git diff --check` 通过，证据 `E-20260925-030`。
+- linked_trace: 20260925-miniapp-core-loop-candidate-review
+- linked_files: `backend/app/repository/order_repo.py`; `backend/app/service/coupon/payment.py`; `backend/tests/service/order/test_core_loop_candidate_r30.py`; `PROJECT-STATE.md`; `LOGBOOK.md`; `docs/harness-engineering/core/evidence-index.md`
+- next_time_signal: 只要订单支付快照由“先读后算再写”，仓储更新就必须同时校验期望快照或其他等价版本条件；仅校验最终状态不足以防止并发覆盖。
+
+## M-20260925-019：零价目录商品创建订单时回退客户端价格
+
+- status: guarded
+- first_seen: 2026-09-25
+- severity: high
+- symptom: 真实目录商品存在但 `price_fen=0` 时，订单创建没有拒绝无效目录价格，而是回退请求中的客户端 `priceFen`；客户端可把任意低价传给服务端并形成金额错误的可支付订单。
+- root_cause: `OrderInventoryService._validate_sellable_stock()` 只在目录价格和客户端回退价格都无效时抛错，未把“真实目录记录存在但目录价格非正”识别为服务端数据错误。
+- impact: 目录商品可按客户端任意低价创建订单，造成订单应收金额、支付金额、积分/优惠券结算和履约事实不一致，属于核心订单定价 P1。
+- fix: 真实目录记录存在时，`price_fen<=0` 直接抛出“商品价格无效”；未知商品继续由商品存在守卫拒绝，不再使用客户端价格修补无效目录事实。
+- new_guardrail: `test_create_order_rejects_zero_catalog_price_instead_of_using_client_price` 必须断言拒绝、库存不扣减且不生成订单；`test_create_order_event_failure_rolls_back_reserved_inventory` 继续固定创建事务的库存、订单、事件和会话整体回滚。
+- verification: 修复前测试稳定失败于 `DID NOT RAISE ValueError`；修复后订单/储值完整服务测试退出码 0，MiniApp 订单 API 20 项、价格相关定向测试 7 项通过，目标 Ruff 与 `git diff --check` 通过，证据 `E-20260925-017`。
+- linked_trace: 20260925-miniapp-core-loop-candidate-review
+- linked_files: `backend/app/service/order/inventory.py`; `backend/tests/service/test_order.py`; `miniapp/docs/api-contract.md`; `PROJECT-STATE.md`; `LOGBOOK.md`; `docs/harness-engineering/core/evidence-index.md`
+- next_time_signal: 只要真实服务端目录记录存在，金额、库存和可售状态必须以服务端事实为准；无效目录金额应失败关闭，不能用客户端字段回退。
+
+## M-20260925-018：已支付已退款订单重新准备支付时绕过退款终态守卫
+
+- status: guarded
+- first_seen: 2026-09-25
+- severity: high
+- symptom: `refundStatus=full/over` 且订单支付状态为 `paid` 时，`prepare-payment` 在退款终态检查前直接返回已支付幂等会话；与 API 契约“支付相关入口不得重入并返回 400”不一致。
+- root_cause: `OrderPaymentRuntimeService.prepare_payment()` 先判断 `payment_status == paid` 并返回 `PaymentSession`，之后才调用 `_is_refund_terminal()`。
+- impact: 小程序可把已全额或超额退款订单重新视为可准备支付，支付终态入口行为与退款事实不一致，核心订单支付闭环可能向用户暴露错误支付状态。该路径当前未产生预下单或资产副作用，但违反已明确的支付终态契约，属于核心支付 P1。
+- fix: 将退款终态检查移动到已支付幂等分支之前；未退款的已支付订单仍保留幂等成功，退款终态订单统一抛出“订单已退款，不能继续支付”。
+- new_guardrail: `test_prepare_payment_rejects_refunded_paid_order` 参数化覆盖 `refundStatus=full/over`，并断言拒绝路径不调用微信预下单；相邻部分退款、mock、余额和普通已支付幂等回归持续执行。
+- verification: 修正测试后修复前稳定失败于 `DID NOT RAISE ValueError`；修复后储值/支付服务 32 项和 MiniApp 支付与订单 API 22 项通过，定向 Ruff 与 `git diff --check` 通过，证据 `E-20260925-016`。
+- linked_trace: 20260925-miniapp-core-loop-candidate-review
+- linked_files: `backend/app/service/order/payment_runtime.py`; `backend/tests/service/test_stored_value.py`; `miniapp/docs/api-contract.md`; `PROJECT-STATE.md`; `LOGBOOK.md`; `docs/harness-engineering/core/evidence-index.md`
+- next_time_signal: 任何支付幂等分支都必须先核对退款、取消和过期等终态事实，再决定返回幂等结果还是拒绝入口。
+
+## M-20260925-017：支付退款 intake 失败状态随业务事务回滚
+
+- status: guarded
+- first_seen: 2026-09-25
+- severity: high
+- symptom: 微信支付/退款通知或查询在业务校验、支付入账、退款事实或资产补偿阶段抛异常时，应用层外层事务把 intake 的认领更新一并回滚；`inbox_events` 不保留失败次数，相同事件每次都从首次认领重新开始，已定义的 `failed/dead_letter` 状态机在主链路不可达。
+- root_cause: `OrderApplicationService` 在 intake 认领外层持有单一业务事务，运行时没有在业务回滚后独立持久化 claim token 对应的失败状态；`fail_notify` 也始终写 `failed`，没有使用既有最大重试次数进入 `dead_letter`。
+- impact: 金额、交易号或补偿异常会形成无界重复处理，无法累计到人工处理态；补偿异常还可能让运维无法从 intake 判断真实失败原因。该问题直接影响支付/退款核心任务恢复能力，属于 P1。
+- fix: intake 认领先独立提交租约；随后在独立业务事务中提交订单事实、资产补偿和 `processed`；业务异常先回滚，再按 claim token 写 `failed`，达到 `MAX_INBOX_ATTEMPTS=5` 后写 `dead_letter`，陈旧 worker 不能覆盖新认领。
+- new_guardrail: 支付/退款通知与查询必须分别覆盖“永久业务失败最终进入 dead_letter”和“补偿异常回滚全部业务写入后只保留 failed、下一次成功只补偿一次”两条回归。
+- verification: 修复前 `test_pay_notify_amount_mismatch_eventually_enters_dead_letter` 稳定失败于 `inbox_events` 无记录；`test_refund_compensation_failure_rolls_back_business_and_persists_retry` 验证首次补偿写入随异常回滚、失败状态保留且第二次成功仅入账一次。修复后核心候选、intake、订单、储值、券、积分及 MiniApp/后台 API 192 项通过，Ruff 与 `git diff --check` 通过，证据 `E-20260925-015`。
+- linked_trace: 20260925-miniapp-core-loop-candidate-review
+- linked_files: `backend/app/service/order/application.py`; `backend/app/service/order/notify_intake.py`; `backend/app/service/order/payment_runtime.py`; `backend/tests/service/order/test_pay_notify_freshness_intake.py`; `backend/tests/service/order/test_refund_notification.py`; `miniapp/docs/api-contract.md`; `PROJECT-STATE.md`; `LOGBOOK.md`; `docs/harness-engineering/core/evidence-index.md`
+- next_time_signal: 任何“先认领再执行业务”的队列都必须明确区分租约提交、业务事务和失败状态提交；不得让业务异常同时回滚所有重试证据。
+
+## M-20260925-016：后台状态更新覆盖并发取消终态
+
+- status: guarded
+- first_seen: 2026-09-25
+- severity: high
+- symptom: 后台状态服务读取 `pending` 并完成流转校验后，若超时扫描或用户取消先把订单改为 `cancelled`，后台迟到请求仍按订单号无条件写回 `confirmed/making/delivering/done`。
+- root_cause: `OrderRepo.update_status()` 的 SQL 只有 `WHERE id = ?`，没有携带服务层已校验的期望当前状态；读后写之间存在状态覆盖竞态。
+- impact: 已取消订单可被重新推进到履约状态，破坏取消/超时终态、后台待处理队列和后续履约判断，属于订单核心状态 P1。
+- fix: 仓储改为 `WHERE id = ? AND status = ?` 的原子条件更新并检查 `rowcount`；服务层传入期望当前状态，冲突时拒绝继续记录目标状态事件。
+- new_guardrail: 后台状态推进必须覆盖“读取后并发超时关闭，再继续推进”的确定性时序，并断言订单保持 `cancelled/expired` 且不产生虚假确认事件。
+- verification: 修复前 `test_admin_status_update_does_not_overwrite_concurrent_timeout_close` 稳定失败于最终状态为 `confirmed`；修复后该测试、订单服务和后台订单 API 等 53 项通过，完整 r15 定向回归 192 项通过，Ruff 与 `git diff --check` 通过，证据 `E-20260925-015`。
+- linked_trace: 20260925-miniapp-core-loop-candidate-review
+- linked_files: `backend/app/repository/order_repo.py`; `backend/app/service/order/status_flow.py`; `backend/tests/service/order/test_core_loop_candidate_r12.py`; `PROJECT-STATE.md`; `LOGBOOK.md`; `docs/harness-engineering/core/evidence-index.md`
+- next_time_signal: 任何基于“先读状态再更新”的订单命令都必须使用期望状态 CAS 或等价原子条件，并覆盖与取消、超时、支付终态的真实并发交错。
+
+## M-20260925-015：支付服务构造期提前解析请求数据库句柄
+
+- status: guarded
+- first_seen: 2026-09-25
+- severity: critical
+- symptom: 为增加退款交易号校验而在 `WechatPaymentNotificationService` 构造器中读取 `order_repo._db` 后，生产 lifespan 使用 `OrderRepo(None)` 装配订单服务时没有请求数据库上下文，应用启动直接抛 `RuntimeError`。
+- root_cause: 混淆了应用级服务构造期和请求级数据库上下文生命周期，把本应延迟到支付执行阶段的 `WechatRefundEventRepo` 提前实例化。
+- impact: 后端应用无法完成服务装配，所有 API 不可用，属于启动级 P0；该回归由 r13 新增交易号守卫引入。
+- fix: 构造函数只保存订单仓储和支付通知依赖；`_validate_refund_transaction_identity()` 在实际支付通知/查询执行时通过当前订单仓储解析数据库句柄并创建退款事件仓储。
+- new_guardrail: 使用 `OrderRepo(None)` 的应用 lifespan 构造路径必须有脱离请求上下文的最小测试；任何依赖 `db_conn_var` 的仓储都不得在应用级服务构造器中提前访问 `_db`。
+- verification: 修复前 `test_payment_runtime_can_be_constructed_before_request_context` 稳定失败于 `RuntimeError: 数据库操作未在 db_session_scope 上下文管理器中执行！`；修复后该测试、交易号乱序回归、核心候选/退款通知/支付通知/组合退款/储值/券/积分/MiniApp 与后台 API 定向测试均通过，Ruff、diff、开发总表和错误账本门禁通过，证据 `E-20260925-014`。
+- linked_trace: 20260925-miniapp-core-loop-candidate-review
+- linked_files: `backend/app/service/order/payment_notification.py`; `backend/tests/service/order/test_core_loop_candidate_r12.py`; `backend/app/lifespan_services.py`; `backend/app/repository/base.py`; `PROJECT-STATE.md`; `LOGBOOK.md`; `docs/harness-engineering/core/evidence-index.md`
+- next_time_signal: 应用 lifespan 装配测试必须使用 `None` 仓储和真实 ContextVar 生命周期；新增请求级依赖时禁止在构造函数中读取 `_db`。
+
+## M-20260925-014：退款先到时不同微信交易号被合并入账
+
+- status: guarded
+- first_seen: 2026-09-25
+- severity: high
+- symptom: 退款事实先于支付事实到达时，订单可以接收不同微信交易号的迟到支付并直接写成已支付；支付事实尚未落库时，不同交易号的退款事件还会被累计为全额退款并触发余额、积分和优惠券补偿。
+- root_cause: 支付入账前只校验订单外部支付金额，没有读取已记录的退款事件交易号；退款事件入库前只校验商户、订单和金额，没有校验同一订单已有退款事件的交易号集合。
+- impact: 可能把不同微信资金事实绑定到同一订单，或在错误交易号组合下提前释放订单资产，造成支付/退款事实错配和重复补偿风险，属于核心账务 P1。
+- fix: 支付通知/查询认领交易号前校验订单退款事实中的交易号；退款通知在事件入库前校验已有退款事件交易号，非空且不一致时拒绝入库、建立人工对账案件，不更新累计也不执行补偿。
+- new_guardrail: 同一订单的支付事实和全部退款事实必须绑定同一微信交易号；退款先到时必须覆盖“退款先到+支付迟到”和“支付未到+不同退款交易号连续到达”两组乱序回归。
+- verification: 修复前 `test_late_payment_rejects_transaction_mismatch_after_refund_first` 稳定失败于 `DID NOT RAISE`；`test_refund_events_with_different_transactions_are_rejected_before_payment` 稳定失败于第二笔退款被确认并合并。修复后核心候选/退款通知、支付通知/组合退款、储值/券/积分和 MiniApp/后台 API 定向回归通过，Ruff 与 `git diff --check` 通过，证据 `E-20260925-013`。
+- linked_trace: 20260925-miniapp-core-loop-candidate-review
+- linked_files: `backend/app/repository/wechat_refund_event_repo.py`; `backend/app/service/order/payment_notification.py`; `backend/app/service/order/refund_notification.py`; `backend/tests/service/order/test_core_loop_candidate_r12.py`; `backend/tests/service/order/test_refund_notification.py`; `miniapp/docs/api-contract.md`; `PROJECT-STATE.md`; `LOGBOOK.md`; `docs/harness-engineering/core/evidence-index.md`
+- next_time_signal: 任何支付/退款事实乱序恢复逻辑都必须同时校验金额和交易号；事实表出现同一订单多个交易号时，必须停止自动累计和补偿并进入对账。
+
+## M-20260925-013：取消后迟到支付覆盖已有退款事实
+
+- status: guarded
+- first_seen: 2026-09-25
+- severity: high
+- symptom: 订单先收到 `partial/full/over` 退款事实并进入取消终态后，迟到的微信支付查询会无条件把支付快照改写为 `refundStatus=pending`，丢失已经发生的退款累计和终态。
+- root_cause: `WechatPaymentNotificationService._record_cancelled_external_payment()` 只区分“是否已支付”，对已有退款状态仍按普通取消迟到支付分支覆盖 `refundStatus/refundAmountFen/refundReason`；该分支没有区分无退款事实和已有退款事实。
+- impact: 真实订单的退款状态可能从已完成或部分完成回退为待退款，导致后台展示、对账和后续退款处理读取错误事实，属于核心支付退款账务事实丢失的 P1。
+- fix: 仅当支付快照没有退款状态时写入 `pending/refundAmountFen/refundReason`；已有 `partial/full/over` 时保留原退款状态、累计金额和原因，只补写真实微信支付状态、交易号和支付事件。
+- new_guardrail: 取消订单的迟到外部支付可以补写支付事实，但不得覆盖任何已有退款事实；回归必须同时覆盖 `partial/full/over` 和无退款事实的 `pending` 分支。
+- verification: 修复前 `test_cancelled_refunded_partial_order_keeps_full_refund_fact[full]` 稳定失败于 `refundStatus=pending`（预期 `full`），`test_cancelled_partially_refunded_order_keeps_refund_fact` 稳定失败于 `refundStatus=pending`（预期 `partial`）；修复后核心候选/退款通知 13/13、支付/订单/储值/券/积分及 API 定向回归通过，Ruff 与 diff 检查通过，证据 `E-20260925-012`。
+- linked_trace: 20260925-miniapp-core-loop-candidate-review
+- linked_files: `backend/app/service/order/payment_notification.py`; `backend/tests/service/order/test_core_loop_candidate_r12.py`; `backend/tests/service/order/test_refund_notification.py`; `miniapp/docs/api-contract.md`; `PROJECT-STATE.md`; `LOGBOOK.md`; `docs/harness-engineering/core/evidence-index.md`
+- next_time_signal: 任何迟到支付恢复逻辑在覆盖订单支付快照前，必须先判断 `refundStatus/refundFen/refundAmountFen` 是否已有事实；新增取消、关单或回调乱序分支时同时覆盖部分退款、终态退款和无退款三组用例。
+
+## M-20260925-012：已支付退款终态订单无法后台关单
+
+- status: guarded
+- first_seen: 2026-09-25
+- severity: high
+- symptom: 订单支付成功并收到全额微信退款通知后，履约状态停留在 `confirmed`；`making/delivering/done` 被退款终态守卫拒绝，`cancelled` 又被“已支付订单不允许取消”拒绝，真实商品预占库存无法释放。
+- root_cause: 后台关单仓储只允许 `paymentStatus=unpaid/partial`，没有把 `paymentStatus=paid && refundStatus=full/over` 视为可安全关单状态；服务层也无法区分退款流程已完成的资产补偿和普通未支付取消。
+- impact: 退款后的订单永久卡在已确认状态，预占库存持续不可售，后台无法完成订单终态收口，属于核心订单与库存状态不可恢复的 P1。
+- fix: 新增原子仓储关单条件，允许未支付/部分支付或已支付退款终态订单从 `pending/confirmed` 关闭；服务层对已支付退款终态跳过余额、积分、优惠券取消补偿，只释放预占库存并记录 `cancelled` 事件；普通已支付未退款订单继续拒绝取消。
+- new_guardrail: 退款终态关单必须使用原子支付快照条件；已支付退款终态不得重复执行退款流程已经完成的资产补偿；关单回归必须断言库存只释放一次、余额流水不重复、普通已支付未退款仍拒绝。
+- verification: 修复前 `test_admin_cannot_start_fulfillment_after_full_refund` 稳定失败于 `ValueError: 已支付订单不允许取消`；修复后订单/储值 71 项、券/积分/退款/后台订单 API 55 项、MiniApp 订单/支付 API 22 项通过，新增库存一次释放和组合支付余额不重复入账回归均通过；定向 Ruff、diff、开发总表、中文治理和错误账本检查通过，E-20260925-011 的工件哈希已补齐并通过自身校验；全量证据索引仍因 r3-r10 的 13 条旧条目共享文件哈希漂移而阻断，未改写历史证据。
+- linked_trace: 20260925-miniapp-core-loop-candidate-review
+- linked_files: `backend/app/repository/order_repo.py`; `backend/app/service/order/status_flow.py`; `backend/tests/service/test_order.py`; `backend/tests/service/test_stored_value.py`; `miniapp/docs/api-contract.md`; `PROJECT-STATE.md`; `LOGBOOK.md`; `docs/harness-engineering/core/evidence-index.md`
+- next_time_signal: 任何订单进入退款终态后，后台必须验证关单状态、库存释放和补偿幂等；新增取消分支时同时覆盖 `full/over`、重复关单、真实库存和余额/积分/券流水。
+
+## M-20260925-011：取消释放优惠券后组合支付外部腿金额漂移
+
+- status: guarded
+- first_seen: 2026-09-25
+- severity: high
+- symptom: 订单总额 5000 分、优惠券 500 分、余额 2000 分时，组合支付实际发起微信腿 2500 分；用户取消后优惠券快照被释放，迟到微信支付通知和退款通知按当前快照重新推导成 3000 分，真实 2500 分通知被拒绝或退款被建案。
+- root_cause: 支付快照只保存可重算的 `remainFen`，没有固化已发起的外部微信交易腿；取消流程允许清空优惠券字段后，支付通知、支付查询和退款通知各自重复使用当前资产快照推导外部金额。
+- impact: 真实微信资金事实无法与订单关联，可能导致已到账订单被持续判为金额异常、退款进入人工案件，且外部资金事实与余额/优惠券账务无法形成可靠闭环。
+- fix: 组合支付快照新增 `externalPaidFen` 并保存本次微信交易剩余金额；新增统一 `resolve_external_paid_fen()`，支付预下单、支付通知、支付查询、取消后迟到支付和退款通知均优先使用该不可变事实；历史订单无该字段时继续使用 `total - coupon - balance - points` 兼容推导。
+- new_guardrail: 已发起的外部支付腿必须以支付快照固化为不可变事实；取消释放优惠券或其他可重算资产时，不得重算、覆盖或重新解释已发起的微信交易金额；通知和退款测试必须覆盖快照字段缺失、原始金额校验、重复通知和资产不重复结算。
+- verification: 修复前新增 `test_cancelled_coupon_combined_payment_late_notify_uses_original_external_leg` 稳定失败于缺少 `externalPaidFen`，补齐断言后失败于 `ValueError: 微信支付通知金额不匹配`；修复后该用例支付通知和退款通知均通过，订单保持 `cancelled`、退款累计 2500 分、余额只发生一次退回，支付交易号只认领一次，积分余额保持 0；组合支付、支付通知、退款通知定向回归退出码 0，证据 `E-20260925-010`。
+- linked_trace: 20260925-miniapp-core-loop-candidate-review
+- linked_files: `backend/app/service/order/payment_state.py`; `backend/app/service/order/payment_runtime.py`; `backend/app/service/order/payment_notification.py`; `backend/app/service/order/refund_notification.py`; `backend/app/service/stored_value/payment.py`; `backend/tests/service/test_stored_value.py`; `miniapp/docs/api-contract.md`; `PROJECT-STATE.md`; `LOGBOOK.md`; `docs/harness-engineering/core/evidence-index.md`
+- next_time_signal: 任何支付快照清理可重算资产后，只要已发起外部支付或退款，就必须优先使用快照固化的外部腿金额；同时覆盖支付通知、支付查询、退款通知、重复消费和取消后迟到事实。
+
+## M-20260925-010：退款先到时迟到支付事实未落库
+
+- status: guarded
+- first_seen: 2026-09-25
+- severity: high
+- symptom: 微信全额退款查询先于支付成功查询到达时，未支付订单先写入 `refundStatus=full`，随后迟到支付查询因退款终态直接返回，订单仍为 `payment.status=unpaid`，且没有保存微信 `transactionId`。
+- root_cause: `WechatPaymentNotificationService.mark_paid()` 对所有 `refundStatus=full/over` 快照直接幂等返回，没有区分“尚未记录支付事实的 unpaid 订单”和“已经记录支付事实的 partial/paid 订单”。
+- impact: 真实已支付且已退款订单会长期显示为未支付，支付事实、退款事实和微信交易号无法关联，后台待支付口径与后续对账均可能持续错误。
+- fix: 对 `status=unpaid` 且退款终态的迟到成功支付事实，先按正常金额校验落库 `paid/wechat/transactionId`，认领交易号并记录支付事件，再跳过券、积分、余额等资产结算；组合支付 `partial/full` 继续保持 r6 的不重新激活语义。
+- new_guardrail: 退款先到时必须区分未记录支付事实的 `unpaid` 订单和已记录/部分支付订单；前者补写支付事实但不得重新结算资产，后者保持退款终态幂等返回。
+- verification: 修复前 `test_late_payment_query_records_paid_fact_after_full_refund` 稳定失败于 `paymentStatus=unpaid`；修复后该用例通过，订单为 `paid/full`、绑定交易号且 `pointsAwarded=0`；`partial/full` 回归仍通过，定向退款/储值/组合支付测试 42 项、支付/订单/后台订单 API 28 项通过；证据 `E-20260925-009`。
+- linked_trace: 20260925-miniapp-core-loop-candidate-review
+- linked_files: `backend/app/service/order/payment_notification.py`; `backend/tests/service/order/test_refund_notification.py`; `backend/tests/service/test_stored_value.py`; `PROJECT-STATE.md`; `LOGBOOK.md`; `docs/harness-engineering/core/evidence-index.md`
+- next_time_signal: 只要退款通知与支付通知/查询存在乱序可能，就必须分别覆盖 `unpaid/full` 与 `partial/full`，同时断言支付事实、交易号和资产结算是否符合各自状态语义。
+
+## M-20260925-009：已支付已退款订单重入支付会重复执行资产结算
+
+- status: guarded
+- first_seen: 2026-09-25
+- severity: high
+- symptom: 已支付订单完成全额退款后，积分退款已把会员积分余额和 `pointsAwarded` 快照清零；用户再次调用 `mock-pay` 或 `pay-with-balance` 时，已支付幂等分支仍执行券核销和积分发放，可能再次发放会员积分并重写已清零的结算快照。
+- root_cause: 两个支付服务都在 `status=paid` 分支先执行资产补偿/结算，再判断支付快照是否已进入 `refundStatus=full/over`；退款终态没有覆盖已支付重入路径。
+- impact: 已退款订单的重复支付请求会造成会员积分、订单支付快照和退款账务事实不一致，属于核心资产重复结算风险。
+- fix: `OrderPaymentRuntimeService.confirm_mock_payment()` 与 `StoredValueOrderPaymentService.pay_order_with_balance()` 在 `status=paid` 分支进入券/积分联动前检查 `refundStatus=full/over` 并拒绝；普通未退款已支付订单仍保留重复调用幂等。
+- new_guardrail: 任何已支付订单的支付重入入口都必须先识别退款终态；退款终态优先于已支付幂等返回和资产补偿/结算，重试测试必须同时断言积分余额与支付快照不变化。
+- verification: 修复前 `test_refunded_paid_order_rejects_repeat_asset_settlement` 稳定失败于 mock 重入未抛出异常；修复后 7 个本轮候选回归用例通过，已退款订单的 mock/余额重入均被拒绝，积分余额保持为 0、`pointsAwarded` 保持为 0。退款、储值、订单、积分、券和支付 API 定向回归通过；证据 `E-20260925-008`。
+- linked_trace: 20260925-miniapp-core-loop-candidate-review
+- linked_files: `backend/app/service/order/payment_runtime.py`; `backend/app/service/stored_value/payment.py`; `backend/tests/service/test_stored_value.py`; `miniapp/docs/api-contract.md`
+- next_time_signal: 只要支付入口存在 `status=paid` 幂等分支，就必须覆盖“已支付且已全额/超额退款”的重复请求，确认资产结算函数不会被再次调用。
+
+## M-20260925-008：退款终态订单仍可重新发起支付
+
+- status: guarded
+- first_seen: 2026-09-25
+- severity: high
+- symptom: 组合支付订单已扣余额、外部支付腿仍为 `partial` 时，外部支付腿退款先到会把快照记为 `refundStatus=full/over`；用户随后调用 `prepare-payment` 或 `mock-pay` 时，支付运行时仍会放行，可能重新创建微信预下单或把订单重新置为 `paid`。
+- root_cause: 支付运行时只按 `status` 区分已支付、超时和可支付状态，没有把 `refundStatus` 的 `full/over` 终态纳入支付重入守卫。
+- impact: 用户可能对已全额退款的订单再次付款；新支付款无人承接，且迟到支付可能与退款账务形成冲突，属于核心支付资金风险。
+- fix: `OrderPaymentRuntimeService.prepare_payment()` 和 `confirm_mock_payment()` 在保持已支付幂等语义的前提下，优先拒绝 `refundStatus=full/over` 的非已支付订单；不调用微信预下单，也不重新核销资产。
+- new_guardrail: 退款终态优先于所有未完成支付重入；`refundStatus=full/over` 且 `status!=paid` 的支付快照不得创建微信会话、不得确认 mock 支付、不得进入资产结算；已支付订单仍保持重复调用幂等。
+- verification: 修复前 `test_prepare_payment_rejects_refunded_partial_order_without_prepay[full/over]` 与 `test_confirm_mock_payment_rejects_refunded_partial_order[full/over]` 共 4 项均未抛出预期错误；修复后 4 项通过，微信预下单替身调用次数为 0，订单保持 `status=partial`；未退款组合支付续付、已支付幂等、退款迟到支付查询和支付 API 定向回归通过。证据 `E-20260925-007`。
+- linked_trace: 20260925-miniapp-core-loop-candidate-review
+- linked_files: `backend/app/service/order/payment_runtime.py`; `backend/tests/service/test_stored_value.py`; `backend/scripts/check_file_sizes.py`
+- next_time_signal: 任何支付准备、mock 确认、微信通知或支付查询入口，都必须先验证退款终态和支付快照状态，并断言拒绝路径没有外部支付调用或资产副作用。
+
+## M-20260925-003：partial 订单恢复金额错误使用当前余额快照
+
+- status: guarded
+- first_seen: 2026-09-25
+- severity: high
+- symptom: 组合支付已记账余额、外部支付未完成的 `partial` 订单恢复时，前端再次读取当前账户余额并从订单金额中扣除，确认弹窗和底部估算金额可能与服务端按订单快照计算的剩余应付金额不一致。
+- root_cause: 恢复路径没有区分普通 `unpaid` 与已产生余额腿的 `partial`，把恢复时账户余额当成了订单历史支付快照。
+- impact: 用户看到的支付金额与服务端实际扣款金额不一致，可能导致错误确认或无法完成组合支付续付。
+- fix: partial 订单恢复固定使用订单返回的历史 `partialBalanceFen` 和已锁定优惠券金额；缺失历史余额腿时阻断支付，不猜测金额；partial 恢复不再启用余额支付。
+- new_guardrail: 任何 partial 订单恢复都必须使用不可变支付快照，禁止用当前账户余额重算已记账余额腿。
+- verification: `test_combined_payment_remainder_can_resume_after_external_cancel`、储值/订单服务回归和 MiniApp 支付契约通过；修复内容与 API 契约已纳入 `E-20260925-005`。
+- linked_trace: 20260925-miniapp-core-loop-candidate-review
+- linked_files: `backend/app/service/order/serialization.py`; `miniapp/miniprogram/utils/member-assets.ts`; `miniapp/miniprogram/pages/checkout/index.ts`; `miniapp/tests/utils/member-assets.test.ts`; `miniapp/tests/utils/order-payment-contract.test.ts`; `miniapp/docs/api-contract.md`
+- next_time_signal: 只要订单 `paymentStatus=partial` 且 `balanceFen>0`，必须验证前端展示金额、后端续付金额和余额流水三者来自同一历史快照。
+
+## M-20260925-004：无优惠券订单被误标记为已应用资产
+
+- status: guarded
+- first_seen: 2026-09-25
+- severity: high
+- symptom: 订单创建后没有优惠券时，结算页仍可能保存 `assetsApplied=true, couponFen=0`；用户取消支付后再选择优惠券时，前端跳过 `apply-coupon`，后端继续按无券订单金额计算。
+- root_cause: 前端把“结算页存在资产状态”与“已成功向服务端应用优惠券”混为同一标志，未区分无券订单和已应用券订单。
+- impact: 页面展示金额与实际订单支付金额可能不一致，优惠券可能被用户看到但未应用到后端订单。
+- fix: 无优惠券不写入 `assetsApplied=true`；只有成功调用 `applyCoupon()` 后才保存该标志和服务端返回的 `couponFen`；已应用资产的订单禁止换选优惠券，partial 余额腿订单禁止重新应用券。
+- new_guardrail: 资产锁定标志必须以服务端成功应用资产的响应为依据，不能由本地存在性或金额为 0 推断。
+- verification: MiniApp 资产工具、订单支付契约和结算积分围栏测试通过；本问题证据归入 `E-20260925-005`。
+- linked_trace: 20260925-miniapp-core-loop-candidate-review
+- linked_files: `miniapp/miniprogram/pages/checkout/index.ts`; `miniapp/miniprogram/utils/member-assets.ts`; `miniapp/tests/utils/member-assets.test.ts`; `miniapp/tests/utils/order-payment-contract.test.ts`; `miniapp/docs/api-contract.md`
+- next_time_signal: 无券、券已应用、余额已部分支付三种状态必须分别验证前端锁定行为和服务端资产流水。
+
+## M-20260925-005：后台待支付看板漏掉 partial 订单
+
+- status: guarded
+- first_seen: 2026-09-25
+- severity: high
+- symptom: 组合支付订单已扣余额、外部支付尚未完成时，支付快照为 `partial`，履约状态仍为 `pending`；后台 `boardFilter=unpaid` 原先只匹配 `payment_status='unpaid'`，订单从待支付列表和经营汇总中消失。
+- root_cause: 后台看板筛选和汇总函数只按 `unpaid` 单一枚举处理，没有把组合支付的 `partial` 纳入待支付口径。
+- impact: 运营无法在后台看到需要继续支付或跟进的组合支付订单，容易漏单并延迟处理。
+- fix: `order_repo` 的 `unpaid` 筛选和 `read_models` 的汇总口径统一匹配 `unpaid`、`partial`，并排除已取消订单；API 契约同步明确该口径。
+- new_guardrail: 后台待支付列表与汇总必须共用同一支付状态集合，并增加 partial 集成测试防止口径分叉。
+- verification: `test_admin_order_unpaid_filter_includes_partial_payment` 通过；完整后台订单 API 6 项通过；口径变更纳入 `E-20260925-005`。
+- linked_trace: 20260925-miniapp-core-loop-candidate-review
+- linked_files: `backend/app/repository/order_repo.py`; `backend/app/service/order/read_models.py`; `backend/tests/api/test_admin_order_api.py`; `miniapp/docs/api-contract.md`
+- next_time_signal: 只要组合支付存在 `partial` 状态，就必须同时验证后台列表、经营汇总、超时扫描和继续支付入口。
+
+## M-20260925-006：后台可将未完成 partial 支付订单确认进入履约
+
+- status: guarded
+- first_seen: 2026-09-25
+- severity: high
+- symptom: 组合支付已扣余额但外部支付尚未完成时，后台调用状态更新为 `confirmed` 原先返回 200，订单从 `pending` 进入 `confirmed`，未完成支付的订单进入履约链路。
+- root_cause: `OrderAdminStatusService.update_admin_order_status()` 只校验履约状态转换，没有校验支付快照；后台确认路径与支付状态机相互独立。
+- impact: 运营可能在外部支付未完成时开始制作，且订单离开待支付超时扫描范围，造成履约状态与支付状态脱节。
+- fix: 服务层在任何非 `cancelled` 的后台状态更新前检查支付快照；`partial` 直接拒绝进入履约并保持原状态。`cancelled` 仍走余额退回、积分/券清理和库存释放。
+- new_guardrail: `partial` 订单只能续付或取消，不能进入 `confirmed`、`making`、`delivering` 或 `done`；必须用真实 API 集成测试验证拒绝后状态和支付快照均不变。
+- verification: 修复前 `test_admin_cannot_confirm_partial_payment_order` 稳定得到 200；修复后得到 400，订单保持 `pending/partial`。后台订单、订单服务、储值和支付回归通过，证据 `E-20260925-005`。
+- linked_trace: 20260925-miniapp-core-loop-candidate-review
+- linked_files: `backend/app/service/order/status_flow.py`; `backend/tests/api/test_admin_order_api.py`
+- next_time_signal: 每增加一个后台履约状态入口，都必须验证它是否允许未支付或部分支付订单进入履约。
+
+## M-20260925-007：全额退款后迟到支付查询重新激活 partial 订单
+
+- status: guarded
+- first_seen: 2026-09-25
+- severity: high
+- symptom: 组合支付订单已扣余额、外部支付腿仍为 `partial` 时，退款通知先到会把支付快照记为 `refundStatus=full`；随后迟到的支付查询仍把订单改为 `paid`，可能再次发放积分并核销优惠券。
+- root_cause: 支付通知和支付查询共用的 `mark_paid()` 只检查订单是否已支付，没有拒绝已全额或超额退款的支付快照。
+- impact: 已退款订单被重新置为已支付，形成确定性的支付、退款和会员资产账务状态冲突，并可能触发不应发生的积分与优惠券后续动作。
+- fix: `mark_paid()` 读取支付快照后先对 `refundStatus=full/over` 做终态保护，直接返回原订单，不再进入已支付资产结算。
+- new_guardrail: 退款终态优先于迟到的支付通知和查询；任何已全额或超额退款的支付快照都不得重新进入 `paid`，且不得触发积分、优惠券或履约副作用。
+- verification: 修复前 `test_late_payment_query_cannot_reactivate_fully_refunded_partial_order` 稳定失败于未抛出 `ValueError`；修复后该用例通过，支付快照保持 `status=partial/refundStatus=full`，余额退款和资产不重复结算断言通过。组合支付/退款/储值/支付 API 定向回归 31 项、Ruff 和 `git diff --check` 通过，证据 `E-20260925-006`。
+- linked_trace: 20260925-miniapp-core-loop-candidate-review
+- linked_files: `backend/app/service/order/payment_notification.py`; `backend/tests/service/order/test_refund_notification.py`
+- next_time_signal: 支付通知、支付查询、退款通知和退款查询的乱序组合测试必须覆盖“退款先到、支付后到”，并断言订单支付状态、余额、积分、优惠券和履约副作用均不重复。
+
+## M-20260925-001：组合支付外部支付取消后无法恢复剩余支付
+
+- status: guarded
+- first_seen: 2026-09-25
+- severity: high
+- symptom: 组合支付先扣除储值余额并将订单置为 `partial`，用户取消微信支付或本地 mock 外部支付后，订单列表和详情把该状态排除在可支付范围之外；即使直接调用 `prepare-payment`，服务端也因已有余额腿而拒绝继续准备剩余金额。
+- root_cause: 组合支付的余额扣减、订单支付快照和外部支付腿被分成两个阶段，但恢复入口仍按“未发生任何部分支付”的旧状态判断；前端也只把 `unpaid` 识别为可支付，并且没有持久化组合支付的中间快照状态。
+- impact: 余额已经记账但订单无法继续支付，顾客只能取消订单并等待余额退款，核心支付闭环在真实取消/重试路径中断。
+- fix: `prepare-payment` 对已有余额腿的 `partial` 订单按原支付快照继续准备剩余在线支付；`pay-with-balance` 仍拒绝已有余额腿，避免重复扣款；前端接受 `partial` 为待支付状态，组合支付成功准备后记录中间快照，恢复时直接准备剩余支付并执行 `remainderPayment`。
+- new_guardrail: 组合支付外部支付腿必须按 `totalFen - couponFen - balanceFen - pointsFen` 校验；通知、查询恢复和续付必须共用同一公式；余额腿已记账时禁止再次余额支付；`partial` 必须能通过订单列表、详情和 `prepare-payment` 三条路径继续支付。
+- verification: 修复前 `test_combined_payment_remainder_can_resume_after_external_cancel` 稳定失败于 `ValueError: 订单已部分支付，请完成剩余支付`；修复后该用例、组合支付查询恢复幂等用例、储值/订单服务 28 项、订单/支付 API 18 项及相关支付/取消/claim/退款回归 10 项通过；`npm run test:order-payment` 4/4 通过。
+- linked_trace: 20260925-miniapp-core-loop-candidate-review
+- linked_files: `backend/app/service/order/payment_runtime.py`; `backend/app/service/order/payment_notification.py`; `backend/tests/service/test_stored_value.py`; `miniapp/miniprogram/constants/order.ts`; `miniapp/miniprogram/pages/checkout/index.ts`; `miniapp/tests/utils/order-payment-contract.test.ts`; `miniapp/docs/api-contract.md`
+- next_time_signal: 只要订单存在 `paymentStatus=partial` 且 `balanceFen>0`，就必须验证用户取消外部支付后能继续剩余支付，同时核对余额流水和支付事件均不重复。
+
+## M-20260925-002：待支付配送订单恢复时重新报价覆盖旧快照
+
+- status: guarded
+- first_seen: 2026-09-25
+- severity: high
+- symptom: 结算页恢复待支付配送订单时虽然恢复了地址和 `deliveryQuoteId`，但随后仍无条件请求新的闪送报价；新报价 ID 改变订单表单指纹，提交时会把刚恢复的旧订单判定为已变化，取消旧订单并重新建单。
+- root_cause: 待支付订单恢复逻辑只把配送表单写入页面数据，没有把“已恢复原订单报价快照”作为报价刷新条件；恢复路径与新订单路径共用了无条件重新报价逻辑。
+- impact: 用户从待支付订单返回结算页后无法继续支付原订单，可能产生无意义的新订单、重复报价和后续配送金额快照不一致。
+- fix: 待支付订单的购物车签名和完整表单快照均匹配时，恢复原订单的 `deliveryQuoteId` 并跳过重新报价；只有表单或购物车不匹配时重新报价并走新建订单路径。
+- new_guardrail: 任何恢复订单快照的路径都必须验证表单指纹、报价 ID、金额和提交订单 ID 的连续性；恢复旧配送订单不得因页面加载自动刷新报价。
+- verification: 修复前 `恢复待支付配送订单时保留原报价快照` 稳定失败；修复后该用例及 MiniApp 支付契约 4/4、订单支付、积分围栏、类型检查和 15 页/15 路由静态门禁通过。
+- linked_trace: 20260925-miniapp-core-loop-candidate-review
+- linked_files: `miniapp/miniprogram/pages/checkout/index.ts`; `miniapp/tests/utils/order-payment-contract.test.ts`; `miniapp/docs/api-contract.md`
+- next_time_signal: 恢复待支付配送订单时，若请求新的报价 ID、金额或表单指纹变化，必须先证明是用户明确修改了订单字段，否则视为旧快照被覆盖。
+
 ## 记录条件
 
 出现以下任一情况，应新增条目：
@@ -1846,15 +2384,16 @@ python -B backend/scripts/check_mistake_ledger.py
 
 ## M-20260912-083：文件体量门禁存量红，`payment_runtime.py` 未登记职责评审
 
-- status: open
+- status: verified
 - first_seen: 2026-09-12
 - severity: low
 - symptom: `python -B backend/scripts/check_file_sizes.py` 退出码 1，报 `app/service/order/payment_runtime.py: 416 行（未评审阻断线 320 行，超出 96 行）`。该文件本轮未修改。
+- resolved_20260926_r79: 本条所述具体症状已不成立，状态由 open 改为 verified。`app/service/order/payment_runtime.py` 现已在 `check_file_sizes.py` 的 `OVERSIZE_REVIEW_NOTES` 登记实质职责评审（「支付运行时服务集中维护支付会话准备、mock/微信支付确认、通知与查询恢复的统一状态入口……拆分会把认领、支付事实和完成标记分散到薄转发层」），复跑 `check_file_sizes.py` 已不再报该文件；该文件在本 trace 内由 416 行增长到 551 行仍超 320 线，说明该登记是承重的而非空头过账。**残留项已按本条自己的 `next_time_signal` 单列**：`app/service/catalog/application.py`（352 行，HEAD 即超 320 线、本 trace 无 diff、未登记评审）属存量未评审项，本轮只做阅读评审、未做非必要重构——阅读结论是它确实混了一种可独立分离的职责（`fetch_product_image` / `ProductImagePayload` / `_is_remote_image_url` 属受控出网图片代理，带 SSRF 主机白名单、字节上限、超时与失败降级 404 的独立失败语义，不与商品读模型共享仓储、序列化器或数据），按 ADR 0004 属「职责混杂时按稳定可独立测试边界拆分」，留待目录域自身变更时处理，不在积分权威镜像收口轮里夹带。
 - root_cause: 该文件自 `9544acb` 审计整改后超过 320 行阻断线，但既未在 `backend/scripts/check_file_sizes.py` 的 `OVERSIZE_REVIEW_NOTES` 登记职责评审，也未完成拆分。
 - impact: 文件体量门禁在 main 上长期为红，掩盖本轮新增文件体量问题；本轮 `serialization.py` 超线先被门禁定位并拆分为 `customer_text.py`，该存量项仍未解除。
 - fix: 由订单支付域负责人完成 `payment_runtime.py` 职责评审：职责混杂则按稳定可独立测试边界拆分，职责内聚则在门禁中补充真实保留理由；禁止为压行数机械切分。
 - new_guardrail: 收口时同时运行 `check_project.py --skip-tests` 与 `check_file_sizes.py`，存量红项单独记录，禁止写成“门禁全绿”。
-- verification: `python -B backend/scripts/check_file_sizes.py` 退出码 1，仅剩该存量项；拆分后 `serialization.py` 为 276 行，本轮新增超线项已消除。
+- verification: 2026-09-12 记录：`python -B backend/scripts/check_file_sizes.py` 退出码 1，仅剩该存量项；拆分后 `serialization.py` 为 276 行，本轮新增超线项已消除。2026-09-26（r79）复核：退出码仍为 1，但报出项已不含 `payment_runtime.py`；同轮把本 trace 自身推过线的 `member_balance_repo.py`（273 行）与 `coupon_inventory_repo.py`（276 行）按 ADR 0004 补齐真实职责评审后，阻断项收窄为 `app/service/catalog/application.py` 一项存量。`backend/tests/scripts/test_check_file_sizes.py` 3 项通过。
 - linked_trace: `20260908-miniapp-commerce-ux-redesign`
 - linked_files: `backend/scripts/check_file_sizes.py`; `backend/app/service/order/payment_runtime.py`; `backend/app/service/catalog/serialization.py`; `backend/app/service/catalog/customer_text.py`
 - next_time_signal: 再次看到文件体量门禁红时，先区分“本轮新增超线”与“存量未评审项”；新增项必须在同轮拆分或给出职务评审，存量项继续单列。

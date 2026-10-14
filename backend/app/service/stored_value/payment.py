@@ -48,6 +48,8 @@ class StoredValueOrderPaymentService:
             payment = loads_payment(order.payment)
             payment_status = str(payment.get("status", PAYMENT_STATUS_UNPAID))
             if payment_status == PAYMENT_STATUS_PAID:
+                if str(payment.get("refundStatus", "")) in {"full", "over"}:
+                    raise ValueError("订单已退款，不能使用余额支付")
                 from app.service.coupon import CouponService
                 from app.service.points.payment import PointsPaymentService
 
@@ -58,6 +60,8 @@ class StoredValueOrderPaymentService:
                     order_repo=self._order_repo
                 ).award_on_payment(order)
                 return self._serialize_order_payment(order, payment)
+            if int(payment.get("wechatPrepayFen", 0) or 0) > 0:
+                raise ValueError("订单已发起微信支付，不能使用余额支付")
             if (
                 payment_status == PAYMENT_STATUS_PARTIAL
                 and int(payment.get("balanceFen", 0) or 0) > 0
@@ -122,6 +126,8 @@ class StoredValueOrderPaymentService:
         payment_status = str(payment.get("status", PAYMENT_STATUS_UNPAID))
         if payment_status == PAYMENT_STATUS_PAID:
             raise ValueError("订单已支付")
+        if int(payment.get("wechatPrepayFen", 0) or 0) > 0:
+            raise ValueError("订单已发起微信支付，不能重复发起组合支付")
         if (
             payment_status == PAYMENT_STATUS_PARTIAL
             and int(payment.get("balanceFen", 0) or 0) > 0
@@ -149,6 +155,8 @@ class StoredValueOrderPaymentService:
             payment_status = str(payment.get("status", PAYMENT_STATUS_UNPAID))
             if payment_status == PAYMENT_STATUS_PAID:
                 raise ValueError("订单已支付")
+            if int(payment.get("wechatPrepayFen", 0) or 0) > 0:
+                raise ValueError("订单已发起微信支付，不能重复发起组合支付")
             if (
                 payment_status == PAYMENT_STATUS_PARTIAL
                 and int(payment.get("balanceFen", 0) or 0) > 0
@@ -203,6 +211,9 @@ class StoredValueOrderPaymentService:
             partial_payment["couponFen"] = int(payment.get("couponFen", 0) or 0)
             partial_payment["pointsFen"] = int(payment.get("pointsFen", 0) or 0)
             partial_payment["pointsUsed"] = int(payment.get("pointsUsed", 0) or 0)
+            partial_payment["externalPaidFen"] = remain_fen
+            if remainder.get("mode") == "wechat":
+                partial_payment["wechatPrepayFen"] = remain_fen
             updated = await self._order_repo.update_payment_to_partial_if_unpaid_or_partial_active(
                 order.id,
                 dumps_payment(partial_payment),

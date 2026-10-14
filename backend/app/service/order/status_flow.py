@@ -9,7 +9,12 @@ from datetime import datetime
 from app.models.order import Order, OrderStatus
 from app.repository.order_repo import OrderRepo
 from app.service.order.inventory import OrderInventoryService
-from app.service.order.payment_state import PAYMENT_STATUS_PAID, payment_status_value
+from app.service.order.payment_state import (
+    PAYMENT_STATUS_PARTIAL,
+    PAYMENT_STATUS_PAID,
+    loads_payment,
+    payment_status_value,
+)
 from app.service.order.timeline import OrderTimelineService
 
 if TYPE_CHECKING:
@@ -40,6 +45,12 @@ STATUS_EVENT_NOTES = {
     OrderStatus.CANCELLED.value: "后台取消订单",
 }
 
+ADMIN_FULFILLMENT_STATUSES = {
+    OrderStatus.MAKING.value,
+    OrderStatus.DELIVERING.value,
+    OrderStatus.DONE.value,
+}
+
 
 class OrderAdminStatusService:
     """负责后台订单履约状态流转。"""
@@ -61,6 +72,22 @@ class OrderAdminStatusService:
         target_status = self._normalize_status(status)
         order = await self._get_order(order_id)
         current_status = self._status_value(order.status)
+        payment = loads_payment(order.payment)
+        payment_status = str(payment.get("status", "unpaid"))
+        if (
+            target_status != OrderStatus.CANCELLED.value
+            and payment_status == PAYMENT_STATUS_PARTIAL
+        ):
+            raise ValueError("订单未完成支付，不能进入履约")
+        if target_status != OrderStatus.CANCELLED.value and str(
+            payment.get("refundStatus", "")
+        ) in {"full", "over"}:
+            raise ValueError("订单已退款，不能进入履约")
+        if (
+            target_status in ADMIN_FULFILLMENT_STATUSES
+            and payment_status != PAYMENT_STATUS_PAID
+        ):
+            raise ValueError("订单未完成支付，不能进入履约")
         if target_status == current_status:
             return await self._timeline_service.serialize(order)
         if not self._can_transition(current_status, target_status):
@@ -74,11 +101,16 @@ class OrderAdminStatusService:
                 if payment_status_value(latest) == PAYMENT_STATUS_PAID:
                     raise ValueError("已支付订单不允许取消")
                 raise ValueError("当前订单状态不允许切换到目标状态")
-            await self._refund_balance(updated)
-            await self._refund_points(updated)
-            await self._clear_coupon(updated)
+            if not self._is_paid_refund_terminal(updated):
+                await self._refund_balance(updated)
+                await self._refund_points(updated)
+                await self._clear_coupon(updated)
         else:
-            updated = await self._update_status(order_id, target_status)
+            updated = await self._update_status(
+                order_id,
+                current_status,
+                target_status,
+            )
         await self._release_inventory_if_needed(updated, target_status)
         await self._timeline_service.record_event(
             order_id=order_id,
@@ -108,21 +140,33 @@ class OrderAdminStatusService:
             set(),
         )
 
-    async def _update_status(self, order_id: str, target_status: str) -> Order:
+    async def _update_status(
+        self,
+        order_id: str,
+        current_status: str,
+        target_status: str,
+    ) -> Order:
         updated = await self._order_repo.update_status(
             order_id,
+            current_status,
             target_status,
             datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         )
         if updated is None:
-            raise ValueError("订单不存在")
+            raise ValueError("当前订单状态不允许切换到目标状态")
         return updated
 
     async def _cancel_order(self, order_id: str) -> Order | None:
-        return await self._order_repo.cancel_unpaid_order(
+        return await self._order_repo.cancel_unpaid_or_refunded_order(
             order_id,
             datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         )
+
+    def _is_paid_refund_terminal(self, order: Order) -> bool:
+        payment = loads_payment(order.payment)
+        return payment_status_value(order) == PAYMENT_STATUS_PAID and str(
+            payment.get("refundStatus", "")
+        ) in {"full", "over"}
 
     async def _refund_balance(self, order: Order) -> None:
         """后台取消组合支付订单时原路退回已扣储值余额。"""
@@ -158,6 +202,7 @@ class OrderAdminStatusService:
 
 __all__ = [
     "ADMIN_ALLOWED_STATUS_TRANSITIONS",
+    "ADMIN_FULFILLMENT_STATUSES",
     "OrderAdminStatusService",
     "STATUS_EVENT_NOTES",
 ]

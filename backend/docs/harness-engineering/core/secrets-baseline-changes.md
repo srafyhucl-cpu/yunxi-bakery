@@ -31,3 +31,12 @@
 - version: detect-secrets 1.5.0
 - trace_id: 20260908-miniapp-commerce-ux-redesign
 - approved_by: 项目负责人（2026-09-12 MiniApp 货架与表单视觉收口授权；3 条命中均为历史证据文本中的企微消息 ID 与 check-secret-hygiene 脚本名，不含真实密钥）
+
+## [2026-10-14] - secrets baseline 受控更新
+- old_sha256: 09e9ec5d15891fe9ed6297217446044df0cdcc3dfabe87baf5a907e3fc11c57c
+- new_sha256: 2b3d2b0f43b199813bf0cc1db887b1d9d823ae019ee2c426e00d5bf203bc9734
+- command: detect-secrets hook 自动同步行号（evidence-index.md 变更后行号位移校准，不含新增密钥）
+- version: detect-secrets 1.5.0
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- approved_by: 项目负责人（2026-10-14 核心订单闭环审查收口；更新项为 evidence-index.md 历史证据中企微消息 ID 误报行号位移，不含真实密钥）
+

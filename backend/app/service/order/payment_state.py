@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Any
 
 from app.models.order import Order
+from app.utils import normalize_miniapp_openid
 
 PAYMENT_STATUS_UNPAID = "unpaid"
 PAYMENT_STATUS_PAID = "paid"
@@ -128,6 +129,18 @@ def compute_remain_fen(
     )
 
 
+def resolve_external_paid_fen(payment: dict, total_fen: int) -> int:
+    """解析已发起外部支付的不可变金额，兼容历史订单快照。"""
+    if "externalPaidFen" in payment:
+        return max(0, int(payment.get("externalPaidFen", 0) or 0))
+    return compute_remain_fen(
+        total_fen,
+        int(payment.get("couponFen", 0) or 0),
+        int(payment.get("balanceFen", 0) or 0),
+        int(payment.get("pointsFen", 0) or 0),
+    )
+
+
 def payment_status_value(order: Order) -> str:
     """读取订单支付状态字符串。"""
     payment = loads_payment(order.payment)
@@ -187,12 +200,7 @@ def build_order_description(order: Order) -> str:
 
 def extract_openid(user_id: str) -> str:
     """从前台用户标识中提取微信 openid。"""
-    value = str(user_id or "").strip()
-    if value.startswith("wx_"):
-        return value[3:]
-    if value.startswith("openid_"):
-        return value
-    return ""
+    return normalize_miniapp_openid(user_id)
 
 
 __all__ = [
@@ -221,5 +229,6 @@ __all__ = [
     "now_text",
     "payment_status_value",
     "parse_time",
+    "resolve_external_paid_fen",
     "status_value",
 ]

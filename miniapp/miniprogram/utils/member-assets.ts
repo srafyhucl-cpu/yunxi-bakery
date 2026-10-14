@@ -34,6 +34,41 @@ export interface PointsLedgerItem {
 
 export type PaymentBranch = "free" | "balance" | "combined" | "online";
 
+export interface PaymentEstimate {
+  couponFen: number;
+  balanceFen: number;
+  remainFen: number;
+}
+
+export function calculatePaymentEstimate(params: {
+  totalFen: number;
+  couponFen: number;
+  pendingCouponFen: number;
+  pointsFen: number;
+  currentBalanceFen: number;
+  balanceEnabled: boolean;
+  partialBalanceFen: number;
+  assetsLocked: boolean;
+}): PaymentEstimate {
+  const couponFen = params.assetsLocked
+    ? Math.max(0, Number(params.pendingCouponFen) || 0)
+    : Math.max(0, Number(params.couponFen) || 0);
+  const balanceFen = params.partialBalanceFen > 0
+    ? Math.max(0, Number(params.partialBalanceFen) || 0)
+    : params.balanceEnabled
+      ? Math.max(0, Number(params.currentBalanceFen) || 0)
+      : 0;
+  return {
+    couponFen,
+    balanceFen,
+    remainFen: Math.max(
+      0,
+      Number(params.totalFen) - couponFen - balanceFen -
+        Math.max(0, Number(params.pointsFen) || 0)
+    ),
+  };
+}
+
 function dateString(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");

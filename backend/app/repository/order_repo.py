@@ -8,6 +8,11 @@ PAYMENT_STATUS_SQL = (
     "THEN COALESCE(json_extract(payment, '$.status'), 'unpaid') "
     "ELSE 'unpaid' END"
 )
+REFUND_STATUS_SQL = (
+    "CASE WHEN json_valid(payment) "
+    "THEN COALESCE(json_extract(payment, '$.refundStatus'), '') "
+    "ELSE '' END"
+)
 
 
 class OrderRepo(BaseRepository):
@@ -70,13 +75,19 @@ class OrderRepo(BaseRepository):
         return Order(**dict(rows[0])) if rows else None
 
     async def update_status(
-        self, order_id: str, status: str, updated_at: str
+        self,
+        order_id: str,
+        expected_status: str,
+        status: str,
+        updated_at: str,
     ) -> Order | None:
-        """更新订单履约状态并返回最新订单。"""
-        await self._db.execute(
-            "UPDATE orders SET status = ?, updated_at = ? WHERE id = ?",
-            (status, updated_at, order_id),
+        """按期望当前状态原子更新履约状态，冲突时返回空。"""
+        cursor = await self._db.execute(
+            "UPDATE orders SET status = ?, updated_at = ? WHERE id = ? AND status = ?",
+            (status, updated_at, order_id, expected_status),
         )
+        if cursor.rowcount != 1:
+            return None
         return await self.get_order(order_id)
 
     async def cancel_unpaid_order(self, order_id: str, updated_at: str) -> Order | None:
@@ -165,6 +176,25 @@ class OrderRepo(BaseRepository):
             return None
         return await self.get_order(order_id)
 
+    async def update_payment_if_snapshot_unchanged(
+        self,
+        order_id: str,
+        expected_payment: str,
+        payment: str,
+        updated_at: str,
+    ) -> Order | None:
+        """仅当原支付快照未变化时写入新的支付快照。"""
+        cursor = await self._db.execute(
+            "UPDATE orders SET payment = ?, updated_at = ? "
+            "WHERE id = ? AND status != 'cancelled' AND payment = ? AND "
+            + PAYMENT_STATUS_SQL
+            + " IN ('unpaid', 'partial')",
+            (payment, updated_at, order_id, expected_payment),
+        )
+        if cursor.rowcount != 1:
+            return None
+        return await self.get_order(order_id)
+
     async def update_payment_to_paid_if_unpaid_or_partial_active(
         self,
         order_id: str,
@@ -178,6 +208,43 @@ class OrderRepo(BaseRepository):
             + PAYMENT_STATUS_SQL
             + " IN ('unpaid', 'partial')",
             (payment, updated_at, order_id),
+        )
+        if cursor.rowcount != 1:
+            return None
+        return await self.get_order(order_id)
+
+    async def record_cancelled_external_payment(
+        self,
+        order_id: str,
+        payment: str,
+        updated_at: str,
+    ) -> Order | None:
+        """原子记录已取消订单的外部到账事实，不改变履约状态。"""
+        cursor = await self._db.execute(
+            "UPDATE orders SET payment = ?, updated_at = ? "
+            "WHERE id = ? AND status = 'cancelled' AND "
+            + PAYMENT_STATUS_SQL
+            + " IN ('unpaid', 'partial', 'expired')",
+            (payment, updated_at, order_id),
+        )
+        if cursor.rowcount != 1:
+            return None
+        return await self.get_order(order_id)
+
+    async def cancel_unpaid_or_refunded_order(
+        self, order_id: str, updated_at: str
+    ) -> Order | None:
+        """原子关闭未支付订单，或已支付且已进入退款终态的订单。"""
+        cursor = await self._db.execute(
+            "UPDATE orders SET status = ?, updated_at = ? "
+            "WHERE id = ? AND status IN ('pending', 'confirmed') AND ("
+            + PAYMENT_STATUS_SQL
+            + " IN ('unpaid', 'partial') OR ("
+            + PAYMENT_STATUS_SQL
+            + " = 'paid' AND "
+            + REFUND_STATUS_SQL
+            + " IN ('full', 'over')))",
+            (OrderStatus.CANCELLED.value, updated_at, order_id),
         )
         if cursor.rowcount != 1:
             return None
@@ -312,7 +379,10 @@ class OrderRepo(BaseRepository):
 
     def _board_filter_clauses(self, board_filter: str) -> list[str]:
         if board_filter == "unpaid":
-            return [PAYMENT_STATUS_SQL + " = 'unpaid'", "status != 'cancelled'"]
+            return [
+                PAYMENT_STATUS_SQL + " IN ('unpaid', 'partial')",
+                "status != 'cancelled'",
+            ]
         if board_filter == "pending":
             return ["status = 'pending'"]
         if board_filter == "fulfilling":

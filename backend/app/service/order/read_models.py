@@ -66,7 +66,14 @@ def summary_row_matches(board_filter: str, row: dict) -> bool:
     if board_filter == "all":
         return True
     if board_filter == "unpaid":
-        return payment_status == "unpaid" and status != OrderStatus.CANCELLED.value
+        return (
+            payment_status
+            in {
+                "unpaid",
+                "partial",
+            }
+            and status != OrderStatus.CANCELLED.value
+        )
     if board_filter == "pending":
         return status == OrderStatus.PENDING.value
     if board_filter == "fulfilling":

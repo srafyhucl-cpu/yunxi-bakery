@@ -33,7 +33,7 @@ from app.service.coupon.template_sync import (
 )
 from app.service.youzan.audit_helper import mark_audit
 from app.service.youzan.member_api import YouzanMemberApi
-from app.service.youzan.member_helpers import to_bool, to_fen, to_int
+from app.service.youzan.member_helpers import is_usable_int, to_bool, to_fen, to_int
 
 logger = setup_logger()
 
@@ -135,13 +135,36 @@ async def handle_member_event(
 async def _handle_points_event(
     db, balance_repo, customer_repo, msg_obj: dict, updated_at_str: str
 ) -> None:
-    """处理 POINTS 事件：写积分流水并同步余额快照。"""
+    """处理 POINTS 事件：写积分流水并同步余额快照。
+
+    `total` 是有赞侧权威积分余额。`member_helpers.to_int` 把 `None` / 空串 /
+    非数值一律折叠成 `0`——若不校验，一条字段缺失或畸形的 POINTS 事件就会被
+    当成「有赞权威余额为 0」，把会员积分余额清零，且流水侧写成 `total=0`，
+    看起来是一条合法的权威声明，按流水对账无法识别。因此 `total` 不可用时按
+    畸形输入处理：不写流水、不动余额投影，与同文件 `_handle_coupon_event` 对
+    `coupon_id`/`status` 的处理一致。
+
+    r79（`M-20260926-030`）：第一阶段（非 `local` 权威）不再用
+    `upsert_identity(points=...)` 把 `total` 绝对覆盖进 `member_balance.points`，
+    改走 `mirror_youzan_points` 的锚点口径——`total` 是**外部权威总额**，
+    本地订单发分/扣减的净额是有赞侧不存在的资产（有赞无积分写接口），
+    绝对覆盖会抹掉它。
+    """
     unique_id = str(_first(msg_obj, "unique_id") or "")
     mobile = str(_first(msg_obj, "mobile") or "")
     yz_open_id = str(_first(msg_obj, "yz_open_id", "yzOpenId") or "")
     if not unique_id:
         logger.warning("积分事件缺少 unique_id，跳过写入")
         return
+    total_raw = msg_obj.get("total")
+    if not is_usable_int(total_raw):
+        logger.warning(
+            "积分事件 total 不可用，跳过写入以免清零余额: unique_id=%s total=%r",
+            unique_id,
+            total_raw,
+        )
+        return
+    total_points = to_int(total_raw)
     ledger_repo = PointsLedgerRepo(db)
     if await ledger_repo.get_by_unique_id(unique_id):
         logger.info("积分事件已处理，跳过: unique_id=%s", unique_id)
@@ -151,7 +174,7 @@ async def _handle_points_event(
         PointsLedgerEntry(
             unique_id=unique_id,
             amount=to_int(msg_obj.get("amount")),
-            total=to_int(msg_obj.get("total")),
+            total=total_points,
             event_type=str(msg_obj.get("event_type") or ""),
             source=LedgerSource.WEBHOOK,
             customer_id=customer_id,
@@ -161,11 +184,16 @@ async def _handle_points_event(
         )
     )
     if settings.POINTS_AUTHORITY != "local":
-        await balance_repo.upsert_identity(
+        # r79（`M-20260926-030`）：外部镜像改走锚点口径，不再用
+        # `upsert_identity(points=...)` 绝对覆盖余额。本地订单发分/扣减写入的
+        # 净额是有赞侧不存在的资产（有赞无积分写接口），绝对覆盖会把它抹掉，
+        # 随后退款按 `points:award` 流水收回这笔从未到账的积分，形成客户净损失
+        # 且流水自洽、按流水对账查不出异常的结果。
+        await balance_repo.mirror_youzan_points(
             mobile=mobile,
             customer_id=customer_id,
             yz_open_id=yz_open_id,
-            points=to_int(msg_obj.get("total")),
+            youzan_total=total_points,
         )
 
 

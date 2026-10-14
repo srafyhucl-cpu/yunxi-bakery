@@ -23,6 +23,10 @@ from app.service.order.payment_state import (
 )
 from app.service.points import PointsService
 from app.service.points.payment import POINTS_DEDUCTION_FENCE
+from tests.helpers.legacy_order_catalog import (
+    LegacyOrderInventoryRepo,
+    LegacyOrderProductRepo,
+)
 
 MOBILE = "13800000003"
 MOBILE_ORIGINAL = "13800000004"
@@ -68,8 +72,8 @@ def order_service(db: aiosqlite.Connection) -> OrderApplicationService:
         order_repo=OrderRepo(db),
         event_repo=OrderEventRepo(db),
         session_repo=SessionRepo(db),
-        product_repo=YouzanProductRepo(db),
-        inventory_repo=YouzanInventoryRepo(db),
+        product_repo=LegacyOrderProductRepo(db),
+        inventory_repo=LegacyOrderInventoryRepo(db),
         config_repo=ConfigRepo(db),
     )
 

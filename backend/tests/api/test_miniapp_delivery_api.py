@@ -76,3 +76,47 @@ async def test_delivery_quote_api_does_not_fabricate_unconfigured_fee(
     data = response.json()["data"]
     assert data["status"] == "provider_unavailable"
     assert data["deliveryFeeFen"] is None
+
+
+@pytest.mark.asyncio
+async def test_delivery_quote_api_rejects_invalid_receiver_phone(
+    app: FastAPI,
+) -> None:
+    """闪送报价不能为非法手机号创建履约快照。"""
+    payload = build_delivery_quote_payload()
+    payload["receiverPhone"] = "123"
+    transport = httpx.ASGITransport(app=app)
+
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as client:
+        response = await client.post(
+            "/api/v1/miniapp/delivery/quotes",
+            json=payload,
+            headers=storefront_auth_headers("delivery-invalid-phone-user"),
+        )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "请填写正确的 11 位手机号"
+
+
+@pytest.mark.asyncio
+async def test_delivery_quote_api_rejects_insufficient_address(
+    app: FastAPI,
+) -> None:
+    """只有行政区、没有履约细节的地址不能进入闪送报价。"""
+    payload = build_delivery_quote_payload()
+    payload["receiverAddress"] = "北京市朝阳区"
+    transport = httpx.ASGITransport(app=app)
+
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as client:
+        response = await client.post(
+            "/api/v1/miniapp/delivery/quotes",
+            json=payload,
+            headers=storefront_auth_headers("delivery-insufficient-address-user"),
+        )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "请补充小区、楼栋或门牌号"

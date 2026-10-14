@@ -54,6 +54,8 @@ class CouponPaymentService:
         payment_status = str(payment.get("status", PAYMENT_STATUS_UNPAID))
         if payment_status == PAYMENT_STATUS_PAID:
             raise ValueError("订单已支付")
+        if int(payment.get("wechatPrepayFen", 0) or 0) > 0:
+            raise ValueError("订单已发起微信支付，不能再应用优惠券")
         if int(payment.get("balanceFen", 0) or 0) > 0:
             raise ValueError("订单已部分支付，不能再应用优惠券")
         state = await self._inventory_repo.get_latest_state(
@@ -96,8 +98,11 @@ class CouponPaymentService:
                 "remainFen": remain_fen,
             }
         )
-        updated = await self._order_repo.update_payment_to_partial_if_unpaid_or_partial_active(
-            order.id, dumps_payment(payment), now
+        updated = await self._order_repo.update_payment_if_snapshot_unchanged(
+            order.id,
+            order.payment,
+            dumps_payment(payment),
+            now,
         )
         if updated is None:
             raise ValueError("订单支付状态更新冲突")
@@ -165,6 +170,7 @@ class CouponPaymentService:
                 mobile,
                 order_no=order.id,
                 occurred_at=now_text(),
+                deducted_fen=int(payment.get("couponFen", 0) or 0),
             )
         except sqlite3.OperationalError as exc:
             if "savepoint" not in str(exc).lower():
@@ -177,9 +183,11 @@ class CouponPaymentService:
             latest = await self._inventory_repo.get_latest_state(
                 coupon_id, mobile, authority=settings.COUPON_AUTHORITY
             )
+            # r78：退款腿现在除 BACK 冲正行外还在新周期补写 TAKE，最新态是
+            # 「券已回到本单客户手里」——BACK（旧形状）或新周期 TAKE 都算落账。
             if (
                 latest is None
-                or latest["status"] != CouponStatus.BACK
+                or latest["status"] not in (CouponStatus.BACK, CouponStatus.TAKE)
                 or str(latest.get("order_no", "") or "") != order.id
             ):
                 raise ValueError("优惠券退回状态异常，请对账处理") from exc

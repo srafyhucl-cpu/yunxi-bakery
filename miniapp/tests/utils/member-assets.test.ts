@@ -4,6 +4,7 @@ import {
   classifyCouponStatus,
   mapPointsSourceLabel,
   buildPaymentBranch,
+  calculatePaymentEstimate,
   resolveAssetToggle,
   isValidRechargeAmount,
   MIN_RECHARGE_FEN,
@@ -99,4 +100,23 @@ test("充值金额边界校验", () => {
   assert.equal(isValidRechargeAmount(99), false);
   assert.equal(isValidRechargeAmount(50001), false);
   assert.equal(isValidRechargeAmount(0), false);
+});
+
+test("组合支付续付估算使用历史余额腿和已锁定优惠券", () => {
+  const estimate = calculatePaymentEstimate({
+    totalFen: 5000,
+    couponFen: 1000,
+    pendingCouponFen: 500,
+    pointsFen: 0,
+    currentBalanceFen: 98_000,
+    balanceEnabled: true,
+    partialBalanceFen: 2000,
+    assetsLocked: true,
+  });
+
+  assert.deepEqual(estimate, {
+    couponFen: 500,
+    balanceFen: 2000,
+    remainFen: 2500,
+  });
 });

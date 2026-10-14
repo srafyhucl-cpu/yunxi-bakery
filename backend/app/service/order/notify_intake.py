@@ -13,13 +13,17 @@ retryable_failed），超过最大次数进入 dead_letter（需人工处理）�
 - 使用 attempt_count 作 claim token：完成与失败标记必须校验 token，
   陈旧 worker 的提交直接拒绝。
 
-归档、业务消费、完成标记必须在调用方同一事务提交；业务异常让事务
-回滚（不留半完成 intake），或显式标记 failed 等待重投。
+租约认领先独立提交；业务消费与完成标记随后在同一事务提交。业务异常
+先回滚业务事务，再按 claim token 显式标记 failed 或 dead_letter。
 """
 
 import json
 
-from app.repository.inbox_repo import InboxRepo
+from app.repository.inbox_repo import (
+    MAX_INBOX_ATTEMPTS,
+    RETRY_DELAY_SECONDS,
+    InboxRepo,
+)
 
 NOTIFY_QUEUE = "wechat_pay_notify"
 DEFAULT_NOTIFY_LEASE_SECONDS = 300
@@ -175,21 +179,47 @@ async def fail_notify(
     retryable 进入 failed 等待重投，非 retryable 直接进入 dead_letter。
     """
     message_key = build_notify_key(event_id)
+    await fail_notify_key(
+        db,
+        message_key,
+        claim_token,
+        error,
+        retryable=retryable,
+        event_id=event_id,
+    )
+
+
+async def fail_notify_key(
+    db,
+    message_key: str,
+    claim_token: int,
+    error: str,
+    *,
+    retryable: bool = True,
+    event_id: str = "",
+) -> None:
+    """按完整幂等键记录失败，达到上限后进入 dead_letter。"""
     cursor = await db.execute(
-        "UPDATE inbox_events SET status = ?, lease_until = NULL, "
-        "next_attempt_at = datetime('now', '+15 seconds'), last_error = ?, "
+        "UPDATE inbox_events SET status = CASE "
+        "WHEN ? THEN CASE WHEN attempt_count >= ? "
+        "THEN 'dead_letter' ELSE 'failed' END ELSE 'dead_letter' END, "
+        "lease_until = NULL, "
+        "next_attempt_at = datetime('now', ?), last_error = ?, "
         "updated_at = datetime('now') WHERE message_key = ? "
         "AND status = 'processing' AND attempt_count = ? "
         "AND lease_until IS NOT NULL AND lease_until > datetime('now')",
         (
-            "failed" if retryable else "dead_letter",
+            1 if retryable else 0,
+            MAX_INBOX_ATTEMPTS,
+            f"+{RETRY_DELAY_SECONDS} seconds",
             str(error or "")[:500],
             message_key,
             int(claim_token),
         ),
     )
     if int(cursor.rowcount or 0) != 1:
-        raise ValueError(f"微信支付通知认领已过期 event={event_id}，需重新认领")
+        identity = f" event={event_id}" if event_id else ""
+        raise ValueError(f"微信支付通知认领已过期{identity}，需重新认领")
 
 
 async def archive_notify(db, event_id: str, payload: dict) -> bool:

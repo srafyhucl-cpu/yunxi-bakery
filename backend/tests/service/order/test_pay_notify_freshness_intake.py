@@ -6,7 +6,9 @@ import aiosqlite
 import pytest
 
 from app.models.order import Order, OrderStatus
+from app.repository.inbox_repo import MAX_INBOX_ATTEMPTS
 from app.repository.config_repo import ConfigRepo
+from app.repository.order_event_repo import OrderEventRepo
 from app.repository.order_repo import OrderRepo
 from app.repository.session_repo import SessionRepo
 from app.repository.youzan_inventory_repo import YouzanInventoryRepo
@@ -78,6 +80,7 @@ def _service(db: aiosqlite.Connection) -> OrderApplicationService:
     """构造订单应用服务，仓库直连用例数据库。"""
     return OrderApplicationService(
         order_repo=OrderRepo(db),
+        event_repo=OrderEventRepo(db),
         session_repo=SessionRepo(db),
         product_repo=YouzanProductRepo(db),
         inventory_repo=YouzanInventoryRepo(db),
@@ -131,6 +134,42 @@ async def _seed_paid_order(
             remark="",
             created_at="2026-06-17 11:00:00",
             updated_at="2026-06-17 12:00:00",
+        )
+    )
+    await db.commit()
+
+
+async def _seed_cancelled_order(
+    db: aiosqlite.Connection, order_id: str, total_yuan: float = 198.00
+) -> None:
+    """直写已取消未支付订单，聚焦取消后的迟到支付通知。"""
+    await db.execute(
+        "INSERT OR IGNORE INTO sessions (id, channel, user_id, status) "
+        "VALUES (?, ?, ?, ?)",
+        ("session-cancelled", "miniapp", "wx_openid_cancelled", "active"),
+    )
+    await OrderRepo(db).create_order(
+        Order(
+            id=order_id,
+            session_id="session-cancelled",
+            channel="miniapp",
+            user_id="wx_openid_cancelled",
+            products="[]",
+            total_amount=total_yuan,
+            delivery="{}",
+            payment=json.dumps(
+                {
+                    "status": "unpaid",
+                    "method": "",
+                    "couponFen": 0,
+                    "balanceFen": 0,
+                    "pointsFen": 0,
+                }
+            ),
+            status=OrderStatus.CANCELLED,
+            remark="",
+            created_at="2026-06-17 11:00:00",
+            updated_at="2026-06-17 11:30:00",
         )
     )
     await db.commit()
@@ -235,3 +274,116 @@ async def test_pay_notify_then_query_single_settlement(
         ("wechat_pay_notify",),
     )
     assert len(rows) == 2
+
+
+@pytest.mark.asyncio
+async def test_cancelled_order_pay_notify_records_external_paid_fact_once(
+    db: aiosqlite.Connection, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """取消后的微信成功通知必须保留取消终态并幂等记录外部支付事实。"""
+    await _seed_cancelled_order(db, "order-cancelled-notify-1")
+    monkeypatch.setattr(
+        "app.service.order.payment_runtime.settings.WECHAT_PAY_MCH_ID", "mch-test"
+    )
+    monkeypatch.setattr(
+        "app.service.order.payment_runtime.settings.WECHAT_MINIAPP_APP_ID",
+        "appid-test",
+    )
+    transaction = _pay_payload("order-cancelled-notify-1", total_fen=19800)
+    monkeypatch.setattr(
+        "app.service.order.payment_runtime.OrderPaymentRuntimeService"
+        "._verify_wechat_notify_signature",
+        lambda self, raw_body, headers: True,
+    )
+    monkeypatch.setattr(
+        "app.service.order.payment_runtime.OrderPaymentRuntimeService"
+        "._decrypt_wechat_resource",
+        lambda self, resource: transaction,
+    )
+    service = _service(db)
+    raw_body = json.dumps({"id": "EV-cancelled-notify-1", "resource": {}}).encode(
+        "utf-8"
+    )
+
+    first = await service.handle_wechat_payment_notify(raw_body=raw_body, headers={})
+    duplicate = await service.handle_wechat_payment_notify(
+        raw_body=raw_body, headers={}
+    )
+
+    assert first["status"] == "cancelled"
+    assert first["paymentStatus"] == "paid"
+    assert first["paymentRefundStatus"] == "pending"
+    assert first["paymentRefundAmountFen"] == 19800
+    assert duplicate == {"duplicate": True}
+
+    order = await OrderRepo(db).get_order("order-cancelled-notify-1")
+    assert order is not None
+    assert order.status == OrderStatus.CANCELLED.value
+    assert "4200000000202606171234567890" in order.payment
+    paid_events = await db.execute_fetchall(
+        "SELECT status FROM order_events WHERE order_id = ? AND status = 'paid'",
+        ("order-cancelled-notify-1",),
+    )
+    assert len(paid_events) == 1
+    transactions = await db.execute_fetchall(
+        "SELECT order_id FROM payment_transactions WHERE transaction_id = ?",
+        ("4200000000202606171234567890",),
+    )
+    assert len(transactions) == 1
+
+
+@pytest.mark.asyncio
+async def test_pay_notify_amount_mismatch_eventually_enters_dead_letter(
+    db: aiosqlite.Connection,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """金额不匹配通知失败后应累计重试，达到上限进入人工处理态。"""
+    await _seed_paid_order(db, "order-bad-amount", total_yuan=198.00)
+    monkeypatch.setattr(
+        "app.service.order.payment_runtime.settings.WECHAT_PAY_MCH_ID", "mch-test"
+    )
+    monkeypatch.setattr(
+        "app.service.order.payment_runtime.settings.WECHAT_MINIAPP_APP_ID",
+        "appid-test",
+    )
+    transaction = _pay_payload("order-bad-amount", total_fen=19799)
+    monkeypatch.setattr(
+        "app.service.order.payment_runtime.OrderPaymentRuntimeService"
+        "._verify_wechat_notify_signature",
+        lambda self, raw_body, headers: True,
+    )
+    monkeypatch.setattr(
+        "app.service.order.payment_runtime.OrderPaymentRuntimeService"
+        "._decrypt_wechat_resource",
+        lambda self, resource: transaction,
+    )
+    service = _service(db)
+    raw_body = json.dumps({"id": "EV-bad-amount", "resource": {}}).encode("utf-8")
+    statuses = []
+
+    for attempt in range(1, MAX_INBOX_ATTEMPTS + 1):
+        with pytest.raises(ValueError, match="金额"):
+            await service.handle_wechat_payment_notify(
+                raw_body=raw_body,
+                headers={},
+            )
+
+        rows = await db.execute_fetchall(
+            "SELECT status, attempt_count, last_error FROM inbox_events "
+            "WHERE message_key = ?",
+            (build_notify_key("EV-bad-amount"),),
+        )
+        assert len(rows) == 1
+        statuses.append(str(rows[0]["status"]))
+        assert int(rows[0]["attempt_count"]) == attempt
+        assert "金额" in str(rows[0]["last_error"])
+        if attempt < MAX_INBOX_ATTEMPTS:
+            assert str(rows[0]["status"]) == "failed"
+            await db.execute(
+                "UPDATE inbox_events SET next_attempt_at = datetime('now', '-1 second') "
+                "WHERE message_key = ?",
+                (build_notify_key("EV-bad-amount"),),
+            )
+            await db.commit()
+
+    assert statuses == ["failed"] * (MAX_INBOX_ATTEMPTS - 1) + ["dead_letter"]

@@ -13,6 +13,25 @@ def to_int(value) -> int:
         return 0
 
 
+def is_usable_int(value) -> bool:
+    """判断输入能否被 `to_int` 真实解析（而非被折叠成 0）。
+
+    `to_int` 的「失败返回 0」容忍语义适合可选字段，但**不适合**会被当作
+    权威值写入的字段：缺失、空串与非数值都会被折叠成 `0`，从而把一个
+    「未知」伪装成「确实为零」。权威写入路径必须先用本函数区分
+    「输入为真 0」与「输入不可用」。
+    """
+    if value is None:
+        return False
+    if isinstance(value, str) and not value.strip():
+        return False
+    try:
+        float(str(value))
+    except (TypeError, ValueError):
+        return False
+    return True
+
+
 def to_bool(value) -> bool:
     """容忍转换布尔值，兼容数字与常见中英文字符串。"""
     if isinstance(value, bool):

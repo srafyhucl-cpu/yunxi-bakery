@@ -60,3 +60,12 @@ class WechatRefundEventRepo(BaseRepository):
             (order_id,),
         )
         return int(rows[0]["total"]) if rows else 0
+
+    async def list_transaction_ids(self, order_id: str) -> list[str]:
+        """列出订单退款事实中已出现过的微信交易号。"""
+        rows = await self._db.execute_fetchall(
+            "SELECT DISTINCT transaction_id FROM wechat_refund_events "
+            "WHERE order_id = ? ORDER BY transaction_id",
+            (order_id,),
+        )
+        return [str(row["transaction_id"]) for row in rows if row["transaction_id"]]

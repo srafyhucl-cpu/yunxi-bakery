@@ -10,11 +10,14 @@ from app.api.miniapp_orders import create_miniapp_orders_router
 from app.repository.order_event_repo import OrderEventRepo
 from app.repository.order_repo import OrderRepo
 from app.repository.session_repo import SessionRepo
-from app.repository.youzan_inventory_repo import YouzanInventoryRepo
 from app.repository.youzan_repo import YouzanProductRepo
 from app.service.order import OrderApplicationService
 from app.service.channels.storefront import StorefrontAuthService
 from tests.helpers.miniapp_catalog_seed import seed_miniapp_product
+from tests.helpers.legacy_order_catalog import (
+    LegacyOrderInventoryRepo,
+    LegacyOrderProductRepo,
+)
 from tests.helpers.storefront_auth import storefront_auth_headers
 
 
@@ -26,8 +29,8 @@ def app(db: aiosqlite.Connection) -> FastAPI:
         order_repo=OrderRepo(db),
         event_repo=OrderEventRepo(db),
         session_repo=SessionRepo(db),
-        product_repo=YouzanProductRepo(db),
-        inventory_repo=YouzanInventoryRepo(db),
+        product_repo=LegacyOrderProductRepo(db),
+        inventory_repo=LegacyOrderInventoryRepo(db),
         config_repo=ConfigRepo(db),
     )
     test_app.include_router(create_miniapp_orders_router(service))
@@ -99,6 +102,8 @@ async def test_miniapp_order_api_accepts_server_session_without_legacy_header(
                         "quantity": 1,
                     }
                 ],
+                "receiverName": "服务端身份测试",
+                "receiverPhone": "18800000012",
                 "expectTime": "2026-06-18 18:00",
             },
             headers={"Authorization": f"Bearer {token}"},
@@ -189,6 +194,8 @@ async def test_miniapp_order_api_detail_returns_timeline(app: FastAPI) -> None:
                         "quantity": 1,
                     }
                 ],
+                "receiverName": "时间线测试",
+                "receiverPhone": "18800000013",
                 "deliveryType": "pickup",
                 "pickupAddress": "北京市东城区南竹杆胡同2号银河SOHO",
                 "expectTime": "2026-06-18 18:00",
@@ -274,6 +281,8 @@ async def test_miniapp_order_api_mock_pay_marks_order_paid(app: FastAPI) -> None
                         "quantity": 1,
                     }
                 ],
+                "receiverName": "mock 支付测试",
+                "receiverPhone": "18800000014",
                 "expectTime": "2026-06-18 18:00",
             },
             headers=storefront_auth_headers("mock-pay-api-user"),
@@ -307,6 +316,8 @@ async def test_miniapp_order_api_mock_pay_rejects_other_user(app: FastAPI) -> No
                         "quantity": 1,
                     }
                 ],
+                "receiverName": "支付归属测试",
+                "receiverPhone": "18800000015",
                 "expectTime": "2026-06-18 18:00",
             },
             headers=storefront_auth_headers("mock-pay-owner-user"),
@@ -344,6 +355,8 @@ async def test_miniapp_order_api_mock_pay_is_disabled_by_default(
                         "quantity": 1,
                     }
                 ],
+                "receiverName": "禁用 mock 测试",
+                "receiverPhone": "18800000016",
                 "expectTime": "2026-06-18 18:00",
             },
             headers=storefront_auth_headers("disabled-mock-user"),
@@ -378,6 +391,8 @@ async def test_miniapp_order_api_prepare_payment_falls_back_to_mock(
                         "quantity": 1,
                     }
                 ],
+                "receiverName": "支付准备测试",
+                "receiverPhone": "18800000017",
                 "expectTime": "2026-06-18 18:00",
             },
             headers=storefront_auth_headers("prepare-payment-api-user"),
@@ -393,6 +408,111 @@ async def test_miniapp_order_api_prepare_payment_falls_back_to_mock(
     assert data["mode"] == "mock"
     assert data["paymentMethod"] == "mock"
     assert data["paymentParams"]["action"] == "mock-pay"
+
+
+@pytest.mark.asyncio
+async def test_miniapp_order_api_paid_order_prepare_is_idempotent_without_prepay(
+    app: FastAPI,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """已支付订单再次准备支付时只返回已支付快照，不触发微信预下单。"""
+    headers = storefront_auth_headers("paid-prepare-payment-api-user")
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as client:
+        create_response = await client.post(
+            "/api/v1/miniapp/orders",
+            json={
+                "items": [
+                    {
+                        "productId": "p_api_paid_prepare_payment",
+                        "title": "已支付支付准备蛋糕",
+                        "priceFen": 19800,
+                        "quantity": 1,
+                    }
+                ],
+                "receiverName": "已支付支付准备测试",
+                "receiverPhone": "18800000042",
+                "expectTime": "2026-06-18 18:00",
+            },
+            headers=headers,
+        )
+        order_id = create_response.json()["data"]["orderId"]
+        pay_response = await client.post(
+            f"/api/v1/miniapp/orders/{order_id}/mock-pay",
+            headers=headers,
+        )
+        assert pay_response.status_code == 200
+
+        async def fail_prepay(*_args, **_kwargs):
+            raise AssertionError("已支付订单不应再次创建微信预下单")
+
+        monkeypatch.setattr(
+            "app.service.order.payment_runtime."
+            "OrderPaymentRuntimeService._create_wechat_jsapi_prepay",
+            fail_prepay,
+        )
+        prepare_response = await client.post(
+            f"/api/v1/miniapp/orders/{order_id}/prepare-payment",
+            headers=headers,
+        )
+
+    assert prepare_response.status_code == 200
+    data = prepare_response.json()["data"]
+    assert data["paymentStatus"] == "paid"
+    assert data["paymentMethod"] == "mock"
+    assert data["paymentParams"] == {}
+
+
+@pytest.mark.asyncio
+async def test_miniapp_order_api_rejects_unknown_numeric_product_without_side_effects(
+    db: aiosqlite.Connection,
+    app: FastAPI,
+) -> None:
+    """未知数字商品应被真实目录拒绝，且不得写订单、库存、事件或支付账本。"""
+    user_id = "unknown-numeric-product-api-user"
+    headers = storefront_auth_headers(user_id)
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as client:
+        response = await client.post(
+            "/api/v1/miniapp/orders",
+            json={
+                "items": [
+                    {
+                        "productId": "999999998",
+                        "title": "客户端伪造商品",
+                        "priceFen": 1,
+                        "quantity": 1,
+                    }
+                ],
+                "receiverName": "未知商品 API",
+                "receiverPhone": "18800000043",
+                "deliveryType": "pickup",
+                "expectTime": "2026-06-18 18:00",
+                "remark": "",
+            },
+            headers=headers,
+        )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "商品不存在: 999999998"
+    assert await OrderRepo(db).list_by_user(user_id) == []
+    assert await YouzanProductRepo(db).get_by_id(999999998) is None
+    counts = await db.execute_fetchall(
+        "SELECT (SELECT COUNT(*) FROM orders) AS orders, "
+        "(SELECT COUNT(*) FROM order_events) AS order_events, "
+        "(SELECT COUNT(*) FROM payment_transactions) AS payment_transactions, "
+        "(SELECT COUNT(*) FROM sessions) AS sessions"
+    )
+    assert dict(counts[0]) == {
+        "orders": 0,
+        "order_events": 0,
+        "payment_transactions": 0,
+        "sessions": 0,
+    }
 
 
 @pytest.mark.asyncio
@@ -415,6 +535,8 @@ async def test_miniapp_order_api_prepare_payment_rejects_other_user(
                         "quantity": 1,
                     }
                 ],
+                "receiverName": "支付归属准备测试",
+                "receiverPhone": "18800000018",
                 "expectTime": "2026-06-18 18:00",
             },
             headers=storefront_auth_headers("prepare-payment-owner-user"),
@@ -427,6 +549,89 @@ async def test_miniapp_order_api_prepare_payment_rejects_other_user(
 
     assert prepare_response.status_code == 404
     assert prepare_response.json()["detail"] == "订单不存在"
+
+
+@pytest.mark.asyncio
+async def test_miniapp_pickup_order_lifecycle_creates_prepares_mock_pays_and_reads_detail(
+    db: aiosqlite.Connection,
+    app: FastAPI,
+) -> None:
+    """自提订单应完成创建、mock 支付准备、支付和详情读取闭环。"""
+    await seed_miniapp_product(
+        db,
+        item_id=82010,
+        title="API 自提闭环蛋糕",
+        price_fen=19800,
+        stock=2,
+    )
+    headers = storefront_auth_headers("pickup-lifecycle-api-user")
+    transport = httpx.ASGITransport(app=app)
+
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as client:
+        create_response = await client.post(
+            "/api/v1/miniapp/orders",
+            json={
+                "items": [
+                    {
+                        "productId": "82010",
+                        "title": "API 自提闭环蛋糕",
+                        "priceFen": 1,
+                        "quantity": 1,
+                    }
+                ],
+                "receiverName": "自提闭环测试",
+                "receiverPhone": "18800000020",
+                "deliveryType": "pickup",
+                "fulfillmentMethod": "pickup",
+                "pickupAddress": "北京市东城区南竹杆胡同2号银河SOHO",
+                "expectTime": "2026-06-18 18:00",
+            },
+            headers=headers,
+        )
+        assert create_response.status_code == 200
+        created = create_response.json()["data"]
+        order_id = created["orderId"]
+        assert created["status"] == "pending"
+        assert created["totalFen"] == 19800
+
+        prepare_response = await client.post(
+            f"/api/v1/miniapp/orders/{order_id}/prepare-payment",
+            headers=headers,
+        )
+        assert prepare_response.status_code == 200
+        prepared = prepare_response.json()["data"]
+        assert prepared["mode"] == "mock"
+        assert prepared["paymentMethod"] == "mock"
+        assert prepared["paymentStatus"] == "unpaid"
+        assert prepared["paymentParams"]["action"] == "mock-pay"
+
+        pay_response = await client.post(
+            f"/api/v1/miniapp/orders/{order_id}/mock-pay",
+            headers=headers,
+        )
+        assert pay_response.status_code == 200
+        paid = pay_response.json()["data"]
+        assert paid["paymentStatus"] == "paid"
+        assert paid["paymentMethod"] == "mock"
+
+        detail_response = await client.get(
+            f"/api/v1/miniapp/orders/{order_id}",
+            headers=headers,
+        )
+
+    assert detail_response.status_code == 200
+    detail = detail_response.json()["data"]
+    assert detail["id"] == order_id
+    assert detail["status"] == "pending"
+    assert detail["paymentStatus"] == "paid"
+    assert detail["paymentMethod"] == "mock"
+    assert detail["deliveryType"] == "pickup"
+    assert detail["pickupAddress"] == "北京市东城区南竹杆胡同2号银河SOHO"
+    assert detail["items"][0]["product_id"] == "82010"
+    assert detail["timeline"]
+    assert detail["timeline"][0]["status"] == "pending"
 
 
 @pytest.mark.asyncio
@@ -519,3 +724,99 @@ async def test_miniapp_order_api_rejects_time_outside_business_hours(
 
     assert response.status_code == 400
     assert response.json()["detail"] == "预约时间不在营业时间内"
+
+
+@pytest.mark.asyncio
+async def test_miniapp_order_api_rejects_missing_receiver_name(
+    app: FastAPI,
+) -> None:
+    """服务端不能接受无法履约联系人的订单。"""
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as client:
+        response = await client.post(
+            "/api/v1/miniapp/orders",
+            json={
+                "items": [
+                    {
+                        "productId": "p_api_missing_receiver_name",
+                        "title": "缺少联系人蛋糕",
+                        "priceFen": 19800,
+                        "quantity": 1,
+                    }
+                ],
+                "receiverName": " ",
+                "receiverPhone": "18800000040",
+                "expectTime": "2026-06-18 18:00",
+            },
+            headers=storefront_auth_headers("missing-receiver-name-user"),
+        )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "请填写联系人"
+
+
+@pytest.mark.asyncio
+async def test_miniapp_order_api_rejects_invalid_receiver_phone(
+    app: FastAPI,
+) -> None:
+    """服务端不能把非法手机号固化进订单履约快照。"""
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as client:
+        response = await client.post(
+            "/api/v1/miniapp/orders",
+            json={
+                "items": [
+                    {
+                        "productId": "p_api_invalid_receiver_phone",
+                        "title": "非法手机号蛋糕",
+                        "priceFen": 19800,
+                        "quantity": 1,
+                    }
+                ],
+                "receiverName": "手机号测试",
+                "receiverPhone": "123",
+                "expectTime": "2026-06-18 18:00",
+            },
+            headers=storefront_auth_headers("invalid-receiver-phone-user"),
+        )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "请填写正确的 11 位手机号"
+
+
+@pytest.mark.asyncio
+async def test_miniapp_order_api_rejects_beijing_delivery_without_address(
+    app: FastAPI,
+) -> None:
+    """北京闪送下单必须在报价分支前拒绝空配送地址。"""
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as client:
+        response = await client.post(
+            "/api/v1/miniapp/orders",
+            json={
+                "items": [
+                    {
+                        "productId": "p_api_missing_delivery_address",
+                        "title": "缺少配送地址蛋糕",
+                        "priceFen": 19800,
+                        "quantity": 1,
+                    }
+                ],
+                "receiverName": "配送测试",
+                "receiverPhone": "18800000041",
+                "deliveryType": "delivery",
+                "fulfillmentMethod": "beijing_delivery",
+                "deliveryAddress": "",
+                "expectTime": "2026-06-18 18:00",
+            },
+            headers=storefront_auth_headers("missing-delivery-address-user"),
+        )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "请填写配送地址"

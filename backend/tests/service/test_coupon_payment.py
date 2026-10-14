@@ -15,8 +15,6 @@ from app.repository.member_balance_repo import MemberBalanceRepo
 from app.repository.order_event_repo import OrderEventRepo
 from app.repository.order_repo import OrderRepo
 from app.repository.session_repo import SessionRepo
-from app.repository.youzan_inventory_repo import YouzanInventoryRepo
-from app.repository.youzan_repo import YouzanProductRepo
 from app.service.coupon import CouponService
 from app.service.coupon.inventory import CouponInventoryService
 from app.service.order import OrderApplicationService
@@ -25,6 +23,10 @@ from app.service.stored_value import (
     StoredValueOrderPaymentService,
 )
 from app.service.order.payment_state import dumps_payment, loads_payment, now_text
+from tests.helpers.legacy_order_catalog import (
+    LegacyOrderInventoryRepo,
+    LegacyOrderProductRepo,
+)
 
 MOBILE = "13800000004"
 OPENID = "openid_m4_coupon_001"
@@ -102,8 +104,8 @@ def order_service(db: aiosqlite.Connection) -> OrderApplicationService:
         order_repo=OrderRepo(db),
         event_repo=OrderEventRepo(db),
         session_repo=SessionRepo(db),
-        product_repo=YouzanProductRepo(db),
-        inventory_repo=YouzanInventoryRepo(db),
+        product_repo=LegacyOrderProductRepo(db),
+        inventory_repo=LegacyOrderInventoryRepo(db),
         config_repo=ConfigRepo(db),
     )
 

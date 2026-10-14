@@ -174,18 +174,27 @@ class PointsPaymentService:
                 raise ValueError(f"积分账户无法解析，订单 {order.id} 不得视为已支付")
             return
         balance_row = await self._balance_repo.get_by_mobile(mobile)
-        if balance_row is None:
-            raise ValueError(f"积分账户不存在，订单 {order.id} 不得视为已支付")
-        member_balance_id = int(balance_row["id"])
         snapshot_mid = payment.get("memberBalanceId")
-        if snapshot_mid and int(snapshot_mid) != member_balance_id:
-            raise ValueError(f"积分账户已变更，订单 {order.id} 不得结算")
-        if not snapshot_mid:
-            # 旧快照（B3.5 前）未绑定账户：结算时补绑当前解析账户
-            payment["memberBalanceId"] = str(member_balance_id)
-            await self._order_repo.update_payment(
-                order.id, dumps_payment(payment), now_text()
-            )
+        if balance_row is None:
+            # 账户缺失只在存在积分抵扣时才构成风险：此时无法核验抵扣归属，
+            # 放行会形成免费抵扣，必须阻断。无抵扣时发分纯属会员福利，
+            # 账户行尚未建档（新注册会员未同步有赞、未发生储值或积分变动）
+            # 不得阻断已到账支付——本方法在支付事务内执行，抛错会把整笔
+            # 收款事实回滚成未支付，通知重投也无法自愈。下游 credit_points
+            # 会懒创建账户行并正常入账。
+            if points_used > 0:
+                raise ValueError(f"积分账户不存在，订单 {order.id} 不得视为已支付")
+            member_balance_id = None
+        else:
+            member_balance_id = int(balance_row["id"])
+            if snapshot_mid and int(snapshot_mid) != member_balance_id:
+                raise ValueError(f"积分账户已变更，订单 {order.id} 不得结算")
+            if not snapshot_mid:
+                # 旧快照（B3.5 前）未绑定账户：结算时补绑当前解析账户
+                payment["memberBalanceId"] = str(member_balance_id)
+                await self._order_repo.update_payment(
+                    order.id, dumps_payment(payment), now_text()
+                )
         total_fen = self._total_fen(order)
         balance_fen = int(payment.get("balanceFen", 0) or 0)
         coupon_fen = int(payment.get("couponFen", 0) or 0)

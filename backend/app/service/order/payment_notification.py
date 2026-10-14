@@ -4,16 +4,17 @@ from app.config import settings
 from app.models.order import Order, OrderEvent, OrderStatus
 from app.repository.order_event_repo import OrderEventRepo
 from app.repository.order_repo import OrderRepo
+from app.repository.wechat_refund_event_repo import WechatRefundEventRepo
 from app.service.order.payment_state import (
     PAYMENT_METHOD_WECHAT,
     PAYMENT_STATUS_EXPIRED,
     PAYMENT_STATUS_PAID,
     PAYMENT_STATUS_PARTIAL,
     PAYMENT_STATUS_UNPAID,
-    compute_remain_fen,
     dumps_payment,
     loads_payment,
     now_text,
+    resolve_external_paid_fen,
     status_value,
 )
 from app.service.order.wechat_normalizers import (
@@ -57,21 +58,30 @@ class WechatPaymentNotificationService:
         order = await self._order_repo.get_order(order_id)
         if order is None:
             raise ValueError("订单不存在")
+        await self.validate_order_amount(
+            order,
+            notify.total_fen,
+            mismatch_message="微信支付通知金额不匹配",
+        )
+
+    async def validate_order_amount(
+        self,
+        order: Order,
+        external_paid_fen: int,
+        *,
+        mismatch_message: str,
+    ) -> None:
+        """按订单支付快照严格校验微信外部支付腿金额。"""
         try:
             total_order_fen = yuan_to_fen(order.total_amount)
         except ValueError:
             raise ValueError("订单金额无效") from None
         payment = loads_payment(order.payment)
-        coupon_fen = int(payment.get("couponFen", 0) or 0)
-        balance_fen = int(payment.get("balanceFen", 0) or 0)
-        points_fen = int(payment.get("pointsFen", 0) or 0)
-        expected_fen = compute_remain_fen(
-            total_order_fen, coupon_fen, balance_fen, points_fen
-        )
+        expected_fen = resolve_external_paid_fen(payment, total_order_fen)
         if expected_fen <= 0:
             raise ValueError("订单无需外部支付")
-        if notify.total_fen != expected_fen:
-            raise ValueError("微信支付通知金额不匹配")
+        if external_paid_fen != expected_fen:
+            raise ValueError(mismatch_message)
 
     async def mark_paid(
         self,
@@ -84,14 +94,27 @@ class WechatPaymentNotificationService:
         order = await self._order_repo.get_order(order_id)
         if order is None:
             raise ValueError("订单不存在")
-        if status_value(order) == OrderStatus.CANCELLED.value:
-            raise ValueError("订单已取消")
         payment = loads_payment(order.payment)
+        await self._validate_refund_transaction_identity(order.id, transaction_id)
         payment_status = str(payment.get("status", PAYMENT_STATUS_UNPAID))
+        if status_value(order) == OrderStatus.CANCELLED.value:
+            return await self._record_cancelled_external_payment(
+                order,
+                payment=payment,
+                payment_status=payment_status,
+                paid_at=paid_at,
+                transaction_id=transaction_id,
+            )
+        refund_terminal = str(payment.get("refundStatus", "")) in {"full", "over"}
         if payment_status == PAYMENT_STATUS_PAID:
             if str(payment.get("transactionId", "")) == transaction_id:
                 return order
             raise ValueError("订单已绑定其他支付交易号")
+        if refund_terminal and payment_status not in {
+            PAYMENT_STATUS_UNPAID,
+            PAYMENT_STATUS_PARTIAL,
+        }:
+            return order
         if payment_status == PAYMENT_STATUS_EXPIRED:
             raise ValueError("订单支付已超时")
         if not transaction_id:
@@ -134,8 +157,12 @@ class WechatPaymentNotificationService:
                     return latest
                 raise ValueError("订单已绑定其他支付交易号")
             raise ValueError("订单支付状态更新冲突")
-        await self._claim_transaction(transaction_id, order_id)
+        transaction_owner = await self._claim_transaction(transaction_id, order_id)
+        if transaction_owner != order_id:
+            raise ValueError("微信交易号已绑定其他订单")
         await self._record_paid_event(updated, payment["paidAt"])
+        if refund_terminal:
+            return updated
         # 微信到账后先核销券再发分：核销在支付事务内，双花 ValueError 可回滚支付；
         # 发分内部自 commit 会破坏回滚边界，必须放在核销之后
         from app.service.coupon import CouponService
@@ -147,28 +174,118 @@ class WechatPaymentNotificationService:
         )
         return updated
 
-    async def _claim_transaction(self, transaction_id: str, order_id: str) -> None:
+    async def _record_cancelled_external_payment(
+        self,
+        order: Order,
+        *,
+        payment: dict,
+        payment_status: str,
+        paid_at: str,
+        transaction_id: str,
+    ) -> Order:
+        """记录取消后的外部到账，保持取消终态并创建待退款事实。"""
+        if not transaction_id:
+            raise ValueError("微信支付通知缺少交易号")
+        if payment_status == PAYMENT_STATUS_PAID:
+            if str(payment.get("transactionId", "")) == transaction_id:
+                return order
+            raise ValueError("订单已绑定其他支付交易号")
+        try:
+            total_fen = yuan_to_fen(order.total_amount)
+        except ValueError:
+            raise ValueError("订单金额无效") from None
+        external_paid_fen = resolve_external_paid_fen(payment, total_fen)
+        if external_paid_fen <= 0:
+            raise ValueError("订单无需外部支付")
+        refund_status = str(payment.get("refundStatus", "") or "")
+        payment.update(
+            {
+                "status": PAYMENT_STATUS_PAID,
+                "method": str(payment.get("method", "") or PAYMENT_METHOD_WECHAT),
+                "paidAt": paid_at or now_text(),
+                "transactionId": transaction_id,
+            }
+        )
+        if not refund_status:
+            payment.update(
+                {
+                    "refundStatus": "pending",
+                    "refundAmountFen": external_paid_fen,
+                    "refundReason": "late_payment_after_cancellation",
+                }
+            )
+        updated = await self._order_repo.record_cancelled_external_payment(
+            order.id, dumps_payment(payment), payment["paidAt"]
+        )
+        if updated is None:
+            latest = await self._order_repo.get_order(order.id)
+            if latest is None:
+                raise ValueError("订单不存在")
+            latest_payment = loads_payment(latest.payment)
+            if status_value(latest) != OrderStatus.CANCELLED.value:
+                raise ValueError("订单支付状态更新冲突")
+            if (
+                str(latest_payment.get("status", PAYMENT_STATUS_UNPAID))
+                == PAYMENT_STATUS_PAID
+                and str(latest_payment.get("transactionId", "")) == transaction_id
+            ):
+                return latest
+            raise ValueError("订单支付状态更新冲突")
+        transaction_owner = await self._claim_transaction(transaction_id, order.id)
+        if transaction_owner != order.id:
+            raise ValueError("微信交易号已绑定其他订单")
+        await self._record_paid_event(updated, payment["paidAt"])
+        return updated
+
+    async def _validate_refund_transaction_identity(
+        self, order_id: str, transaction_id: str
+    ) -> None:
+        """退款先到时，迟到支付必须命中退款事实中的同一交易号。"""
+        refund_event_repo = WechatRefundEventRepo(self._order_repo._db)
+        transaction_ids = set(await refund_event_repo.list_transaction_ids(order_id))
+        if transaction_ids and (
+            len(transaction_ids) != 1 or transaction_id not in transaction_ids
+        ):
+            raise ValueError("退款交易号与订单不一致")
+
+    async def claim_refund_transaction(self, transaction_id: str, order_id: str) -> str:
+        """退款先到时认领原支付交易号并返回最终归属。"""
+        return await self._claim_transaction(
+            transaction_id,
+            order_id,
+            require_payment_snapshot=False,
+        )
+
+    async def _claim_transaction(
+        self,
+        transaction_id: str,
+        order_id: str,
+        *,
+        require_payment_snapshot: bool = True,
+    ) -> str:
         existing_order_id = await self._order_repo.get_payment_transaction_order_id(
             transaction_id
         )
         if existing_order_id and existing_order_id != order_id:
-            raise ValueError("微信交易号已绑定其他订单")
+            return existing_order_id
         claimed = await self._order_repo.claim_payment_transaction(
             transaction_id, order_id, now_text()
         )
         if claimed:
-            return
-        existing_order_id = await self._order_repo.get_payment_transaction_order_id(
+            return order_id
+        transaction_owner = await self._order_repo.get_payment_transaction_order_id(
             transaction_id
         )
-        if existing_order_id != order_id:
-            raise ValueError("微信交易号已绑定其他订单")
+        if transaction_owner != order_id:
+            return transaction_owner or ""
+        if not require_payment_snapshot:
+            return transaction_owner
         latest = await self._order_repo.get_order(order_id)
         if latest is None:
             raise ValueError("订单不存在")
         latest_payment = loads_payment(latest.payment)
         if str(latest_payment.get("transactionId", "")) == transaction_id:
-            return
+            return transaction_owner
         raise ValueError("微信交易号重复通知状态异常")
 
     async def _record_paid_event(self, order: Order, paid_at: str) -> None:

@@ -8,6 +8,8 @@
 - 通知与查询共用同一应用函数，仅来源标记不同。
 """
 
+from collections.abc import Awaitable, Callable
+
 from app.config import settings
 from app.logger import setup_logger
 from app.models.order import Order
@@ -15,11 +17,12 @@ from app.repository.order_repo import OrderRepo
 from app.repository.points_refund_reconcile_repo import PointsRefundReconcileRepo
 from app.repository.wechat_refund_event_repo import WechatRefundEventRepo
 from app.service.order.payment_state import (
-    compute_remain_fen,
     dumps_payment,
     loads_payment,
     now_text,
+    resolve_external_paid_fen,
 )
+from app.service.order.payment_notification import WechatPaymentNotificationService
 from app.service.order.wechat_normalizers import RefundNotify, RefundQueryResult
 from app.utils import yuan_to_fen
 
@@ -47,10 +50,18 @@ def is_terminal_success_kind(kind: str) -> bool:
 class WechatRefundNotificationService:
     """负责微信退款通知与查询恢复的端到端消费。"""
 
-    def __init__(self, order_repo: OrderRepo) -> None:
+    def __init__(
+        self,
+        order_repo: OrderRepo,
+        claim_transaction: Callable[[str, str], Awaitable[str]] | None = None,
+    ) -> None:
         self._order_repo = order_repo
         self._event_repo = WechatRefundEventRepo(order_repo._db)
         self._reconcile_repo = PointsRefundReconcileRepo(order_repo._db)
+        self._claim_transaction = (
+            claim_transaction
+            or WechatPaymentNotificationService(order_repo).claim_refund_transaction
+        )
 
     async def apply_refund_notify(self, notify: RefundNotify) -> dict:
         """消费退款通知，返回终态，重复直接确认。"""
@@ -122,19 +133,6 @@ class WechatRefundNotificationService:
             order_total_fen = yuan_to_fen(order.total_amount)
         except ValueError:
             raise ValueError("订单金额无效") from None
-        if total_fen != order_total_fen:
-            await self._open_case(
-                order,
-                f"{REFUND_CASE_PREFIX}total_mismatch:{out_refund_no}",
-                payer_refund_fen,
-                f"原支付不一致 notify={total_fen} expected={order_total_fen}",
-            )
-            return {
-                "kind": OUTCOME_REJECTED_RECORDED,
-                "orderId": order.id,
-                "outRefundNo": out_refund_no,
-                "rejected": "原支付金额与订单不一致，已建案",
-            }
         payment = loads_payment(order.payment)
         bound_transaction_id = str(payment.get("transactionId", "") or "")
         if bound_transaction_id and bound_transaction_id != transaction_id:
@@ -150,12 +148,40 @@ class WechatRefundNotificationService:
                 "outRefundNo": out_refund_no,
                 "rejected": "退款交易号与订单不一致，已建案",
             }
-        external_paid_fen = compute_remain_fen(
-            yuan_to_fen(order.total_amount),
-            int(payment.get("couponFen", 0) or 0),
-            int(payment.get("balanceFen", 0) or 0),
-            int(payment.get("pointsFen", 0) or 0),
+        existing_refund_transaction_ids = set(
+            await self._event_repo.list_transaction_ids(order.id)
         )
+        if existing_refund_transaction_ids and (
+            len(existing_refund_transaction_ids) != 1
+            or transaction_id not in existing_refund_transaction_ids
+        ):
+            await self._open_case(
+                order,
+                f"{REFUND_CASE_PREFIX}transaction_mismatch:{out_refund_no}",
+                payer_refund_fen,
+                f"退款交易号归属不一致 notify={transaction_id} "
+                f"recorded={sorted(existing_refund_transaction_ids)}",
+            )
+            return {
+                "kind": OUTCOME_REJECTED_RECORDED,
+                "orderId": order.id,
+                "outRefundNo": out_refund_no,
+                "rejected": "退款交易号与既有退款事实不一致，已建案",
+            }
+        external_paid_fen = resolve_external_paid_fen(payment, order_total_fen)
+        if total_fen != external_paid_fen:
+            await self._open_case(
+                order,
+                f"{REFUND_CASE_PREFIX}total_mismatch:{out_refund_no}",
+                payer_refund_fen,
+                f"原支付不一致 notify={total_fen} expected={external_paid_fen}",
+            )
+            return {
+                "kind": OUTCOME_REJECTED_RECORDED,
+                "orderId": order.id,
+                "outRefundNo": out_refund_no,
+                "rejected": "原支付金额与订单外部支付腿不一致，已建案",
+            }
         if payer_total_fen != external_paid_fen:
             await self._open_case(
                 order,
@@ -168,6 +194,20 @@ class WechatRefundNotificationService:
                 "orderId": order.id,
                 "outRefundNo": out_refund_no,
                 "rejected": "实付金额与订单不一致，已建案",
+            }
+        transaction_owner = await self._claim_transaction(transaction_id, order.id)
+        if transaction_owner != order.id:
+            await self._open_case(
+                order,
+                f"{REFUND_CASE_PREFIX}transaction_bound:{transaction_id}",
+                payer_refund_fen,
+                f"微信交易号已绑定其他订单 bound={transaction_owner}",
+            )
+            return {
+                "kind": OUTCOME_REJECTED_RECORDED,
+                "orderId": order.id,
+                "outRefundNo": out_refund_no,
+                "rejected": "微信交易号已绑定其他订单，已建案",
             }
         created = await self._event_repo.insert_event(
             out_refund_no=out_refund_no,

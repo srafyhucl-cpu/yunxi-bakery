@@ -11,6 +11,10 @@ from app.repository.member_balance_repo import MemberBalanceRepo
 from app.repository.order_repo import OrderRepo
 from app.repository.points_ledger_repo import PointsLedgerRepo
 from app.service.points import PointsService
+from tests.helpers.legacy_order_catalog import (
+    LegacyOrderInventoryRepo,
+    LegacyOrderProductRepo,
+)
 from tests.helpers.storefront_auth import storefront_auth_headers
 
 MOBILE = "13800000004"
@@ -100,8 +104,6 @@ async def test_points_preview_and_apply_paths(
     from app.repository.config_repo import ConfigRepo
     from app.repository.order_event_repo import OrderEventRepo
     from app.repository.session_repo import SessionRepo
-    from app.repository.youzan_inventory_repo import YouzanInventoryRepo
-    from app.repository.youzan_repo import YouzanProductRepo
     from app.service.order import OrderApplicationService
 
     await _seed_member(db, points=100_000)
@@ -109,8 +111,8 @@ async def test_points_preview_and_apply_paths(
         order_repo=OrderRepo(db),
         event_repo=OrderEventRepo(db),
         session_repo=SessionRepo(db),
-        product_repo=YouzanProductRepo(db),
-        inventory_repo=YouzanInventoryRepo(db),
+        product_repo=LegacyOrderProductRepo(db),
+        inventory_repo=LegacyOrderInventoryRepo(db),
         config_repo=ConfigRepo(db),
     )
     created = await order_service.create_order(
@@ -149,6 +151,12 @@ async def test_points_preview_and_apply_paths(
     # B3.4 围栏：应用抵扣写入口关闭，试算（只读）不受影响
     assert applied.status_code == 400
     assert "积分抵扣已临时关闭" in applied.json()["detail"]
+    assert await MemberBalanceRepo(db).get_points(MOBILE) == 100_000
+    order = await OrderRepo(db).get_order(order_id)
+    assert order is not None
+    assert '"status": "unpaid"' in order.payment
+    assert '"pointsFen"' not in order.payment
+    assert await PointsLedgerRepo(db).list_by_mobile(MOBILE) == []
 
 
 @pytest.mark.asyncio

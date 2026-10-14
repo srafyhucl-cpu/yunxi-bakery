@@ -55,10 +55,13 @@ class MemberLoyaltyImportService:
             stats["points_total"] = points_total
             if should_apply:
                 async with self._balance_repo.transaction():
-                    await self._balance_repo.upsert_identity(
+                    # r79（`M-20260926-030`）：导入同样只表达**外部权威总额**，
+                    # 改走锚点口径。此前用 `upsert_identity(points=...)` 绝对覆盖
+                    # 会抹掉小程序订单已发的本地积分净额。
+                    await self._balance_repo.mirror_youzan_points(
                         mobile=mobile,
                         customer_id=customer_id,
-                        points=points_total,
+                        youzan_total=points_total,
                     )
 
             cards = await self._member_api.list_customer_cards(mobile)

@@ -25,6 +25,8 @@
     "devtools:product-buy-now": "node scripts/check-devtools-product-buy-now.mjs",
     "devtools:real-order-open-detail": "node scripts/check-devtools-real-order-open-detail.mjs",
     "devtools:service-smoke": "node scripts/check-devtools-service-smoke.mjs",
+    "devtools:pickup-order-lifecycle": "node scripts/check-devtools-pickup-order-lifecycle.mjs",
+    "devtools:pending-order-recovery": "node scripts/check-devtools-pending-order-recovery.mjs",
     "devtools:verify-all-pages": "node scripts/verify-all-15-pages-devtools.cjs",
     "devtools:commerce-states": "node scripts/verify-devtools-commerce-states.cjs",
     "devtools:product-purchase-path": "node scripts/verify-devtools-product-purchase-path.cjs",
@@ -43,6 +45,8 @@
     "test:checkout-time": "node --test tests/utils/checkout-time.test.ts",
     "test:member-assets": "node --test tests/utils/member-assets.test.ts",
     "test:order-summary": "node --test tests/utils/order-summary.test.ts",
+    "test:order-payment": "node --test tests/utils/order-payment-contract.test.ts",
+    "test:checkout-points-fence": "node --test tests/utils/checkout-points-fence.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

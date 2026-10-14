@@ -5,6 +5,37 @@ from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from zoneinfo import ZoneInfo
 
 
+def normalize_miniapp_openid(user_id: str) -> str:
+    """从前台用户标识中提取微信 openid（全仓唯一的剥离口径）。
+
+    前台登录下发的 user_id 是 "wx_" + openid（见
+    StorefrontAuthService.login），而客户主档的
+    customer_identity_links.identity_value 存的是**裸 openid**。凡是
+    需要拿前台用户标识去匹配身份链接的链路，都必须先经本函数归一，
+    否则 "wx_" 前缀会让匹配恒不命中。
+    """
+    value = str(user_id or "").strip()
+    if value.startswith("wx_"):
+        return value[3:]
+    if value.startswith("openid_"):
+        return value
+    return ""
+
+
+def subject_identity_candidates(user_id: str) -> tuple[str, ...]:
+    """返回主体标识在身份链接表中的全部可能取值。
+
+    身份链接既可能按 user_id 原值登记，也可能只登记裸 openid，因此
+    匹配时两个取值都要试。user_id 原值排在前面，保证与既有查询
+    行为一致。
+    """
+    candidates = [str(user_id or "").strip()]
+    openid = normalize_miniapp_openid(user_id)
+    if openid and openid not in candidates:
+        candidates.append(openid)
+    return tuple(candidates)
+
+
 def yuan_to_fen(amount: object) -> int:
     """把金额（元）换算为分，全仓唯一的元→分合同。
 

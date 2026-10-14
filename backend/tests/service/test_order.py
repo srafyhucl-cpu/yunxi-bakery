@@ -11,7 +11,6 @@ from app.repository.config_repo import ConfigRepo
 from app.repository.order_event_repo import OrderEventRepo
 from app.repository.order_repo import OrderRepo
 from app.repository.session_repo import SessionRepo
-from app.repository.youzan_inventory_repo import YouzanInventoryRepo
 from app.repository.youzan_repo import YouzanProductRepo
 from app.service.integrations import wechat_pay
 from app.service.integrations.wechat_pay import WechatPayPrepayResult
@@ -20,19 +19,48 @@ from app.service.order.payment_runtime import OrderPaymentRuntimeService
 from app.service.order.payment_state import (
     PAYMENT_TIMEOUT_MINUTES,
     build_initial_payment,
+    loads_payment,
 )
+from app.service.order.schedule import OrderScheduleService
 from tests.helpers.catalog_seed import seed_catalog_product
+from tests.helpers.legacy_order_catalog import (
+    LegacyOrderInventoryRepo,
+    LegacyOrderProductRepo,
+)
 
 
 @pytest.fixture
-def service(db: aiosqlite.Connection) -> OrderApplicationService:
+def service(
+    db: aiosqlite.Connection,
+    monkeypatch: pytest.MonkeyPatch,
+) -> OrderApplicationService:
     """使用真实内存库仓储构建订单服务。"""
+    original_build_delivery = OrderScheduleService.build_delivery
+
+    async def build_delivery_with_test_contact(
+        schedule_service: OrderScheduleService,
+        payload: dict,
+    ) -> dict:
+        # 历史单元测试只覆盖商品、支付或预约状态，补齐测试夹具的展示字段。
+        if not str(payload.get("receiverName", "")).strip():
+            payload = {
+                **payload,
+                "receiverName": "测试联系人",
+                "receiverPhone": "18800000000",
+            }
+        return await original_build_delivery(schedule_service, payload)
+
+    monkeypatch.setattr(
+        OrderScheduleService,
+        "build_delivery",
+        build_delivery_with_test_contact,
+    )
     return OrderApplicationService(
         order_repo=OrderRepo(db),
         event_repo=OrderEventRepo(db),
         session_repo=SessionRepo(db),
-        product_repo=YouzanProductRepo(db),
-        inventory_repo=YouzanInventoryRepo(db),
+        product_repo=LegacyOrderProductRepo(db),
+        inventory_repo=LegacyOrderInventoryRepo(db),
         config_repo=ConfigRepo(db),
     )
 
@@ -67,6 +95,8 @@ async def test_admin_order_status_chain_updates_miniapp_reads(
     assert initial["status"] == "pending"
     assert [event["status"] for event in initial["timeline"]] == ["pending"]
 
+    await service.confirm_mock_payment(order_id, user_id=user_id)
+
     with pytest.raises(ValueError, match="当前订单状态不允许切换到目标状态"):
         await service.update_admin_order_status(order_id, "done")
 
@@ -94,6 +124,177 @@ async def test_admin_order_status_chain_updates_miniapp_reads(
         "done",
     ]
     assert final_detail["timeline"][1]["note"] == "后台确认订单"
+
+
+async def test_admin_cannot_start_fulfillment_before_payment(
+    service: OrderApplicationService,
+) -> None:
+    """未支付订单只能确认，不能进入制作履约。"""
+    user_id = "unpaid-fulfillment-guard-user"
+    created = await service.create_order(
+        {
+            "items": [
+                {
+                    "productId": "p_unpaid_fulfillment",
+                    "title": "未支付履约守卫蛋糕",
+                    "priceFen": 19_800,
+                    "quantity": 1,
+                }
+            ],
+            "receiverName": "未支付履约守卫",
+            "receiverPhone": "18800000003",
+            "deliveryType": "pickup",
+            "expectTime": "2026-06-18 19:00",
+        },
+        user_id=user_id,
+    )
+    order_id = created["orderId"]
+
+    confirmed = await service.update_admin_order_status(order_id, "confirmed")
+    assert confirmed["status"] == "confirmed"
+
+    with pytest.raises(ValueError, match="未完成支付"):
+        await service.update_admin_order_status(order_id, "making")
+
+    detail = await service.get_user_order(order_id, user_id=user_id)
+    assert detail["status"] == "confirmed"
+    assert detail["paymentStatus"] == "unpaid"
+    assert [event["status"] for event in detail["timeline"]] == [
+        "pending",
+        "confirmed",
+    ]
+
+
+async def test_admin_cannot_start_fulfillment_after_full_refund(
+    service: OrderApplicationService,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """已支付并全额退款的订单不能重新进入制作履约。"""
+    monkeypatch.setattr(settings, "WECHAT_PAY_MCH_ID", "mch-test")
+    user_id = "refunded-fulfillment-guard-user"
+    created = await service.create_order(
+        {
+            "items": [
+                {
+                    "productId": "p_refunded_fulfillment",
+                    "title": "退款履约守卫蛋糕",
+                    "priceFen": 19_800,
+                    "quantity": 1,
+                }
+            ],
+            "receiverName": "退款履约守卫",
+            "receiverPhone": "18800000004",
+            "deliveryType": "pickup",
+            "expectTime": "2026-06-18 19:00",
+        },
+        user_id=user_id,
+    )
+    order_id = created["orderId"]
+    await service.update_admin_order_status(order_id, "confirmed")
+    await service.confirm_mock_payment(order_id, user_id=user_id)
+    await service.reconcile_refund_from_query(
+        {
+            "mchid": "mch-test",
+            "out_trade_no": order_id,
+            "transaction_id": f"wx-{order_id}",
+            "out_refund_no": f"R-{order_id}",
+            "refund_id": f"refund-{order_id}",
+            "refund_status": "SUCCESS",
+            "success_time": "2026-06-18T12:00:00+08:00",
+            "amount": {
+                "total": 19_800,
+                "refund": 19_800,
+                "payer_total": 19_800,
+                "payer_refund": 19_800,
+            },
+        },
+        payer_total_fen=19_800,
+    )
+
+    with pytest.raises(ValueError, match="已退款，不能进入履约"):
+        await service.update_admin_order_status(order_id, "making")
+
+    detail = await service.get_user_order(order_id, user_id=user_id)
+    assert detail["status"] == "confirmed"
+    assert detail["paymentStatus"] == "paid"
+    assert detail["paymentRefundStatus"] == "full"
+
+    cancelled = await service.update_admin_order_status(order_id, "cancelled")
+    assert cancelled["status"] == "cancelled"
+
+
+async def test_admin_close_refunded_order_releases_inventory_once(
+    db: aiosqlite.Connection,
+    service: OrderApplicationService,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """已支付全额退款订单关单时应释放库存一次，重复关单不得再次释放。"""
+    await seed_catalog_product(
+        db,
+        item_id=81013,
+        title="退款后关单库存蛋糕",
+        price_fen=19800,
+        stock=1,
+    )
+    monkeypatch.setattr(settings, "WECHAT_PAY_MCH_ID", "mch-test")
+    user_id = "refunded-close-stock-user"
+    created = await service.create_order(
+        {
+            "items": [
+                {
+                    "productId": "81013",
+                    "title": "退款后关单库存蛋糕",
+                    "priceFen": 19800,
+                    "quantity": 1,
+                }
+            ],
+            "receiverName": "退款后关单",
+            "receiverPhone": "18800000005",
+            "deliveryType": "pickup",
+            "expectTime": "2026-06-18 19:00",
+        },
+        user_id=user_id,
+    )
+    order_id = created["orderId"]
+    await service.update_admin_order_status(order_id, "confirmed")
+    await service.confirm_mock_payment(order_id, user_id=user_id)
+    await service.reconcile_refund_from_query(
+        {
+            "mchid": "mch-test",
+            "out_trade_no": order_id,
+            "transaction_id": f"wx-{order_id}",
+            "out_refund_no": f"R-{order_id}",
+            "refund_id": f"refund-{order_id}",
+            "refund_status": "SUCCESS",
+            "success_time": "2026-06-18T12:00:00+08:00",
+            "amount": {
+                "total": 19800,
+                "refund": 19800,
+                "payer_total": 19800,
+                "payer_refund": 19800,
+            },
+        },
+        payer_total_fen=19800,
+    )
+
+    before_close = await YouzanProductRepo(db).get_by_id(81013)
+    assert before_close is not None
+    assert before_close["stock"] == 0
+
+    closed = await service.update_admin_order_status(order_id, "cancelled")
+    repeated = await service.update_admin_order_status(order_id, "cancelled")
+    released = await YouzanProductRepo(db).get_by_id(81013)
+    events = await OrderEventRepo(db).list_by_order(order_id)
+
+    assert closed["status"] == "cancelled"
+    assert repeated["status"] == "cancelled"
+    assert released is not None
+    assert released["stock"] == 1
+    assert [event.status for event in events] == [
+        "pending",
+        "confirmed",
+        "cancelled",
+    ]
 
 
 async def test_user_cannot_read_other_users_order(
@@ -158,6 +359,139 @@ async def test_create_order_uses_catalog_price_when_stock_is_enough(
     row = await YouzanProductRepo(db).get_by_id(81001)
     assert row is not None
     assert row["stock"] == 1
+
+
+async def test_create_order_rejects_zero_catalog_price_instead_of_using_client_price(
+    db: aiosqlite.Connection,
+    service: OrderApplicationService,
+) -> None:
+    """目录价格无效时不得按客户端价格创建可支付订单。"""
+    await seed_catalog_product(
+        db,
+        item_id=81015,
+        title="零价目录守卫蛋糕",
+        price_fen=0,
+        stock=1,
+    )
+
+    with pytest.raises(ValueError, match="商品价格无效"):
+        await service.create_order(
+            {
+                "items": [
+                    {
+                        "productId": "81015",
+                        "title": "零价目录守卫蛋糕",
+                        "priceFen": 1,
+                        "quantity": 1,
+                    }
+                ],
+                "receiverName": "零价守卫测试",
+                "receiverPhone": "18800000015",
+                "deliveryType": "pickup",
+                "expectTime": "2026-06-18 18:00",
+            },
+            user_id="zero-price-user",
+        )
+
+    row = await YouzanProductRepo(db).get_by_id(81015)
+    order_rows = await db.execute_fetchall("SELECT id FROM orders")
+    assert row is not None
+    assert row["stock"] == 1
+    assert order_rows == []
+
+
+async def test_create_order_event_failure_rolls_back_reserved_inventory(
+    db: aiosqlite.Connection,
+    service: OrderApplicationService,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """创建订单事件失败时，库存、订单、事件和会话应整体回滚。"""
+    await seed_catalog_product(
+        db,
+        item_id=81014,
+        title="创建事件回滚蛋糕",
+        price_fen=19800,
+        stock=2,
+    )
+    original_record_event = service._timeline_service.record_event
+
+    async def _raise_event_failure(**_kwargs) -> None:
+        raise RuntimeError("注入订单事件失败")
+
+    monkeypatch.setattr(
+        service._timeline_service,
+        "record_event",
+        _raise_event_failure,
+    )
+    payload = {
+        "items": [
+            {
+                "productId": "81014",
+                "title": "创建事件回滚蛋糕",
+                "priceFen": 19800,
+                "quantity": 1,
+            }
+        ],
+        "receiverName": "创建回滚测试",
+        "receiverPhone": "18800000014",
+        "deliveryType": "pickup",
+        "expectTime": "2026-06-18 18:00",
+    }
+
+    with pytest.raises(RuntimeError, match="注入订单事件失败"):
+        await service.create_order(payload, user_id="create-rollback-user")
+
+    row = await YouzanProductRepo(db).get_by_id(81014)
+    order_rows = await db.execute_fetchall("SELECT id FROM orders")
+    event_rows = await db.execute_fetchall("SELECT id FROM order_events")
+    session_rows = await db.execute_fetchall("SELECT id FROM sessions")
+    assert row is not None
+    assert row["stock"] == 2
+    assert order_rows == []
+    assert event_rows == []
+    assert session_rows == []
+
+    monkeypatch.setattr(
+        service._timeline_service,
+        "record_event",
+        original_record_event,
+    )
+    created = await service.create_order(payload, user_id="create-rollback-user")
+
+    row = await YouzanProductRepo(db).get_by_id(81014)
+    order = await OrderRepo(db).get_order(created["orderId"])
+    events = await OrderEventRepo(db).list_by_order(created["orderId"])
+    assert row is not None
+    assert row["stock"] == 1
+    assert order is not None
+    assert order.status == "pending"
+    assert [event.status for event in events] == ["pending"]
+
+
+async def test_create_order_rejects_unknown_catalog_product_instead_of_using_client_price(
+    service: OrderApplicationService,
+) -> None:
+    """未知商品不能绕过商品目录并使用客户端伪造价格创建订单。"""
+    with pytest.raises(ValueError, match="商品不存在"):
+        await service.create_order(
+            {
+                "items": [
+                    {
+                        "productId": "999999999",
+                        "title": "伪造商品",
+                        "priceFen": 1,
+                        "quantity": 1,
+                    }
+                ],
+                "receiverName": "未知商品测试",
+                "receiverPhone": "18800000007",
+                "deliveryType": "pickup",
+                "deliveryAddress": "",
+                "expectTime": "2026-06-18 18:00",
+                "remark": "",
+            },
+            user_id="unknown-product-user",
+        )
 
 
 async def test_create_order_initializes_unpaid_payment_state(
@@ -358,12 +692,15 @@ async def test_wechat_notification_and_cancellation_cannot_overwrite_each_other(
     await service.cancel_user_order(
         cancelled["orderId"], user_id="wechat-cancel-first-user"
     )
-    with pytest.raises(ValueError, match="已取消"):
-        await runtime._mark_wechat_payment_paid(
-            cancelled["orderId"],
-            paid_at="2026-06-18 12:00:00",
-            transaction_id="4200000000202606171234567893",
-        )
+    cancelled_after_payment = await runtime._mark_wechat_payment_paid(
+        cancelled["orderId"],
+        paid_at="2026-06-18 12:00:00",
+        transaction_id="4200000000202606171234567893",
+    )
+    assert cancelled_after_payment.status == "cancelled"
+    cancelled_payment = loads_payment(cancelled_after_payment.payment)
+    assert cancelled_payment["status"] == "paid"
+    assert cancelled_payment["refundStatus"] == "pending"
 
     paid = await service.create_order(
         {
@@ -389,9 +726,94 @@ async def test_wechat_notification_and_cancellation_cannot_overwrite_each_other(
             paid["orderId"], user_id="wechat-paid-first-user"
         )
 
-    events = await OrderEventRepo(db).list_by_order(paid["orderId"])
-    assert len(events) == 2
-    assert {event.status for event in events} == {"pending", "paid"}
+    events = await OrderEventRepo(db).list_by_order(cancelled["orderId"])
+    assert len(events) == 3
+    assert {event.status for event in events} == {"pending", "cancelled", "paid"}
+    paid_events = await OrderEventRepo(db).list_by_order(paid["orderId"])
+    assert len(paid_events) == 2
+    assert {event.status for event in paid_events} == {"pending", "paid"}
+
+
+async def test_late_wechat_payment_after_user_cancellation_keeps_refund_fact(
+    db: aiosqlite.Connection,
+    service: OrderApplicationService,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """用户先取消后微信到账时，记录外部现金事实并保留取消终态。"""
+    monkeypatch.setattr(
+        "app.service.order.payment_runtime.settings.WECHAT_PAY_MCH_ID", "mch-test"
+    )
+    monkeypatch.setattr(
+        "app.service.order.payment_runtime.settings.WECHAT_MINIAPP_APP_ID",
+        "appid-test",
+    )
+    user_id = "late-wechat-cancel-user"
+    created = await service.create_order(
+        {
+            "items": [
+                {
+                    "productId": "p_late_wechat_cancel",
+                    "title": "取消后迟到到账蛋糕",
+                    "priceFen": 19800,
+                    "quantity": 1,
+                }
+            ],
+            "expectTime": "2026-06-18 18:00",
+        },
+        user_id=user_id,
+    )
+    await service.cancel_user_order(created["orderId"], user_id=user_id)
+
+    def unexpected_asset_settlement(*args, **kwargs):
+        raise AssertionError("取消后的迟到支付不得执行资产结算")
+
+    monkeypatch.setattr(
+        "app.service.coupon.CouponService.consume_on_payment",
+        unexpected_asset_settlement,
+    )
+    monkeypatch.setattr(
+        "app.service.points.payment.PointsPaymentService.award_on_payment",
+        unexpected_asset_settlement,
+    )
+    query = {
+        "out_trade_no": created["orderId"],
+        "trade_state": "SUCCESS",
+        "mchid": "mch-test",
+        "appid": "appid-test",
+        "amount": {"total": 19800, "currency": "CNY"},
+        "transaction_id": "4200000000202606171234567895",
+        "success_time": "2026-06-18T12:00:00+08:00",
+    }
+    recovered = await service.reconcile_pay_from_query(query)
+    duplicate = await service.reconcile_pay_from_query(query)
+    assert duplicate["paymentStatus"] == "paid"
+    with pytest.raises(ValueError, match="已绑定其他支付交易号"):
+        await service.reconcile_pay_from_query(
+            {**query, "transaction_id": "4200000000202606171234567896"}
+        )
+
+    order = await OrderRepo(db).get_order(created["orderId"])
+    assert order is not None
+    payment = loads_payment(order.payment)
+    assert order.status == "cancelled"
+    assert payment["status"] == "paid"
+    assert payment["transactionId"] == "4200000000202606171234567895"
+    assert payment["paidAt"] == "2026-06-18 12:00:00"
+    assert payment["refundStatus"] == "pending"
+    assert payment["refundAmountFen"] == 19800
+    assert recovered["status"] == "cancelled"
+    assert recovered["paymentStatus"] == "paid"
+
+    transactions = await db.execute_fetchall(
+        "SELECT order_id FROM payment_transactions WHERE transaction_id = ?",
+        ("4200000000202606171234567895",),
+    )
+    assert len(transactions) == 1
+    assert transactions[0]["order_id"] == created["orderId"]
+
+    events = await OrderEventRepo(db).list_by_order(created["orderId"])
+    assert {event.status for event in events} == {"pending", "cancelled", "paid"}
+    assert len(events) == 3
 
 
 async def test_repeated_cancellation_releases_inventory_once(
@@ -979,10 +1401,10 @@ async def test_user_cancel_confirmed_order_releases_reserved_stock(
     assert row["stock"] == 2
 
 
-async def test_user_cannot_cancel_making_order(
+async def test_user_cannot_cancel_paid_making_order(
     service: OrderApplicationService,
 ) -> None:
-    """进入制作中的订单不能再由用户取消。"""
+    """已支付并进入制作中的订单不能再由用户取消。"""
     user_id = "user-cancel-making"
     created = await service.create_order(
         {
@@ -1001,9 +1423,10 @@ async def test_user_cannot_cancel_making_order(
         user_id=user_id,
     )
     await service.update_admin_order_status(created["orderId"], "confirmed")
+    await service.confirm_mock_payment(created["orderId"], user_id=user_id)
     await service.update_admin_order_status(created["orderId"], "making")
 
-    with pytest.raises(ValueError, match="当前订单状态不允许用户取消"):
+    with pytest.raises(ValueError, match="已支付订单不允许取消"):
         await service.cancel_user_order(created["orderId"], user_id=user_id)
 
 
@@ -1250,6 +1673,7 @@ async def test_create_order_allows_same_day_before_cutoff(
 
 async def test_create_order_rejects_same_day_after_cutoff(
     db: aiosqlite.Connection,
+    service: OrderApplicationService,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """当天截止后，普通小程序订单不能绕过日期选择器。"""
@@ -1264,11 +1688,10 @@ async def test_create_order_rejects_same_day_after_cutoff(
         order_repo=OrderRepo(db),
         event_repo=OrderEventRepo(db),
         session_repo=SessionRepo(db),
-        product_repo=YouzanProductRepo(db),
-        inventory_repo=YouzanInventoryRepo(db),
+        product_repo=LegacyOrderProductRepo(db),
+        inventory_repo=LegacyOrderInventoryRepo(db),
         config_repo=ConfigRepo(db),
     )
-
     with pytest.raises(ValueError, match="当天订单已于 17:00 截止"):
         await service.create_order(
             {

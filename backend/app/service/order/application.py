@@ -189,11 +189,10 @@ class OrderApplicationService:
         headers: dict[str, str],
     ) -> dict:
         """由订单领域接管微信支付通知链路。"""
-        async with self._order_repo.transaction():
-            return await self._payment_service.handle_wechat_payment_notify(
-                raw_body=raw_body,
-                headers=headers,
-            )
+        return await self._payment_service.handle_wechat_payment_notify(
+            raw_body=raw_body,
+            headers=headers,
+        )
 
     async def handle_wechat_refund_notify(
         self,
@@ -202,25 +201,22 @@ class OrderApplicationService:
         headers: dict[str, str],
     ) -> dict:
         """由订单领域接管微信退款通知链路。"""
-        async with self._order_repo.transaction():
-            return await self._payment_service.handle_wechat_refund_notify(
-                raw_body=raw_body,
-                headers=headers,
-            )
+        return await self._payment_service.handle_wechat_refund_notify(
+            raw_body=raw_body,
+            headers=headers,
+        )
 
     async def reconcile_pay_from_query(self, query: dict) -> dict:
         """由订单领域接管支付查询恢复链路。"""
-        async with self._order_repo.transaction():
-            return await self._payment_service.reconcile_pay_from_query(query)
+        return await self._payment_service.reconcile_pay_from_query(query)
 
     async def reconcile_refund_from_query(
         self, query: dict, *, payer_total_fen: int
     ) -> dict:
         """由订单领域接管退款查询恢复链路。"""
-        async with self._order_repo.transaction():
-            return await self._payment_service.reconcile_refund_from_query(
-                query, payer_total_fen=payer_total_fen
-            )
+        return await self._payment_service.reconcile_refund_from_query(
+            query, payer_total_fen=payer_total_fen
+        )
 
     async def expire_unpaid_order(self, order_id: str) -> dict:
         """由订单领域接管后台关闭未支付链路。"""

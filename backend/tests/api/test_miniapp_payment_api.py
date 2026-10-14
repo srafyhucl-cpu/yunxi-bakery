@@ -88,6 +88,8 @@ async def test_miniapp_payment_notify_marks_order_paid(
                     "quantity": 1,
                 }
             ],
+            "receiverName": "微信通知测试",
+            "receiverPhone": "18800000031",
             "expectTime": "2026-06-18 18:00",
         },
         user_id="wx_notify_openid",

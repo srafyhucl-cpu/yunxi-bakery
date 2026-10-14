@@ -405,7 +405,9 @@ Query：
 
 - `pickup` 返回 `status=not_applicable` 与 `deliveryFeeFen=0`，不创建闪送报价。
 - `beijing_delivery` 必须同时提供门店地址、收货人、手机号、收货地址、预约时间、商品金额和商品 ID/数量集合。
-- 商品金额和商品集合用于将报价绑定到下单请求；订单创建时后端以实时商品价格与规范化商品集合重算并复核。
+- `receiverName` 必填，`receiverPhone` 必须是有效的大陆 11 位手机号。
+- `receiverAddress` 不能只有行政区；至少需要包含小区、楼栋、门牌号等可履约细节，不能用“北京市东城区”等行政区-only 地址进入报价链路。
+- 商品金额和商品集合用于将报价绑定到下单请求；订单创建时后端以实时商品价格与规范化商品集合重算并复核。真实目录商品的后端价格无效（小于等于 0 分）时拒绝创建订单，不得回退采用客户端 `priceFen`。
 - `deliveryFeeFen=null` 表示没有可支付配送费，与门店自取的 `0` 不同。
 - 未取得 `status=quoted`、有效 `quoteId` 和非空 `deliveryFeeFen` 时，前端必须禁止北京闪送订单提交。
 - 闪送开放平台尚未配置时，当前实现返回 `provider_unavailable`，不伪造费用，也不代表已经完成真实闪送联调。
@@ -462,6 +464,8 @@ Query：
 - 真实商品下单成功后立即预占库存；后台将订单取消回 `cancelled` 时释放已预占库存。
 - Mock/未入库商品不参与库存预占与释放。
 - `expectTime` 必填，格式固定为 `YYYY-MM-DD HH:mm`。
+- `receiverName` 必填，`receiverPhone` 必须是有效的大陆 11 位手机号；服务端不信任客户端对联系人字段的绕过。
+- `fulfillmentMethod=beijing_delivery` 时，`deliveryAddress` 必填且必须包含小区、楼栋或门牌号等可履约细节；只有行政区信息时返回 `400`。
 - 后端按北京时间校验预约时间：不得早于当前时间，必须落在店铺运营配置 `businessHours` 内；当天订单在 `17:00` 截止，截止后普通小程序订单只能预约明天或更晚时间。非法营业时间配置回退默认营业时间。
 - 前端在 `17:00` 前允许选择今天，但必须提示“当天订单需客服确认制作与履约安排”；当天订单不承诺即时制作或即时配送。
 
@@ -542,6 +546,7 @@ Query：
         "status": "pending",
         "paymentStatus": "unpaid",
         "paymentMethod": "",
+        "balanceFen": 0,
         "paymentPaidAt": "",
         "paymentExpiredAt": "",
         "paymentExpiredReason": "",
@@ -581,6 +586,7 @@ Query：
     "status": "pending",
     "paymentStatus": "unpaid",
     "paymentMethod": "",
+    "balanceFen": 0,
     "paymentPaidAt": "",
     "paymentExpiredAt": "",
     "paymentExpiredReason": "",
@@ -618,6 +624,8 @@ Query：
 ```
 
 `timeline` 按状态事件时间顺序返回。小程序提交订单、后台确认订单、开始制作、配送/待取、完成或取消订单时都会追加事件。小程序订单详情页优先展示真实事件时间；历史订单没有事件记录时客户端可回退为状态推导时间线。
+
+订单列表和订单详情都返回 `balanceFen`，单位为分，表示当前订单支付快照中已经记账的余额腿；未使用余额时为 `0`。组合支付完成余额扣除、外部支付尚未完成时，`paymentStatus` 为 `partial`，客户端必须使用该订单快照中的 `balanceFen` 恢复支付，不得用恢复时的当前账户余额再次抵扣。
 
 `pickupAddress` 是下单时固化的自提门店地址，自提订单用它展示取货地点；北京闪送订单仍以 `deliveryAddress` 为收货地址。
 
@@ -661,6 +669,8 @@ MVP 预留的模拟支付确认接口。仅用于联调和开发阶段，真实�
 
 - `404`：订单不存在或不属于当前用户。
 - `400`：订单已取消或支付已超时。
+- `paymentStatus=partial` 且已产生组合支付余额腿时，接口按订单快照只准备剩余在线支付金额；客户端必须继续调用该接口，不能再次调用 `prepare-combined-payment` 或 `pay-with-balance`。
+- 支付快照已进入 `refundStatus=full/over` 时，支付相关入口不得重入：`prepare-payment`、`mock-pay` 和 `pay-with-balance` 返回 400，且不得重新调用微信预下单、扣减余额、核销优惠券或发放积分；普通未退款的已支付订单重复调用仍按幂等语义返回。
 
 无微信商户配置时响应：
 
@@ -703,6 +713,77 @@ MVP 预留的模拟支付确认接口。仅用于联调和开发阶段，真实�
 
 当前 MVP 后端已预留微信支付 JSAPI 下单和 `wx.requestPayment` 参数签名骨架；真实上线前必须完成商户私钥/证书配置、支付通知验签、回调确认落库和沙箱或测试商户联调。
 
+已支付订单重复调用该接口时返回幂等结果，不重新发起支付：
+
+```json
+{
+  "code": 0,
+  "data": {
+    "mode": "wechat",
+    "orderId": "o_001",
+    "paymentMethod": "wechat",
+    "paymentStatus": "paid",
+    "paymentParams": {}
+  }
+}
+```
+
+客户端收到 `paymentStatus=paid` 后只读取订单详情，不把空 `paymentParams` 交给 `wx.requestPayment`，也不重复调用 `mock-pay`。
+
+组合支付已经扣除余额、但微信/mock 外部支付被用户取消时，订单详情返回 `paymentStatus=partial`。该状态仍属于可支付状态，客户端应重新调用 `prepare-payment`，按 `totalFen - couponFen - balanceFen - pointsFen` 的剩余金额继续支付；不得再次扣减已记账的余额腿。
+
+### POST `/api/v1/miniapp/orders/{orderId}/pay-with-balance`
+
+使用当前用户储值余额全额支付订单。支付成功后返回 `paymentStatus=paid`、`paymentMethod=balance`、本次扣减的 `balanceFen` 和 `paidAt`。
+
+余额不足、订单不属于当前用户、订单已取消或订单已支付状态不允许继续支付时返回 HTTP 400 或 404；重复调用已支付订单不会重复扣款。
+
+### POST `/api/v1/miniapp/orders/{orderId}/prepare-combined-payment`
+
+组合支付先用储值余额支付订单的一部分，再返回剩余金额的微信或 mock 支付会话。请求体：
+
+```json
+{
+  "balanceFen": 5000
+}
+```
+
+`balanceFen` 必须大于 0 且小于扣除优惠券/积分后的订单应付金额。后端先成功构造剩余支付会话，再在同一事务中扣减余额并写入 `partial` 支付快照；余额扣减后返回：
+
+```json
+{
+  "code": 0,
+  "data": {
+    "orderId": "o_001",
+    "payment": {
+      "status": "partial",
+      "method": "combined",
+      "balanceFen": 5000,
+      "remainFen": 14800
+    },
+    "remainderPayment": {
+      "mode": "mock",
+      "orderId": "o_001",
+      "paymentMethod": "mock",
+      "paymentStatus": "unpaid",
+      "paymentParams": {
+        "action": "mock-pay"
+      }
+    }
+  }
+}
+```
+
+后端在微信 JSAPI 预下单前，按原支付快照原子固化本次外部支付金额：`externalPaidFen` 表示微信交易实际金额，`wechatPrepayFen` 表示真实微信预支付已发起并锁定该金额。普通微信支付与组合支付尾款都遵守同一规则；真实微信预下单失败或响应超时时也不自动解除金额锁，用户只能按原金额重试或取消订单，避免不确定的外部交易与本地新金额并存。
+
+微信预支付金额锁定后，订单不得再应用优惠券、发起组合支付、全额余额支付或改用 mock 支付；否则已返回给客户端的旧微信会话可能与订单应付金额不一致。组合支付快照中的 `externalPaidFen` 继续表示本次微信交易的 `remainFen`；仅 mock 尾款不写 `wechatPrepayFen`。取消未完成支付时可以释放优惠券和已扣余额，但不得清除或用释放后的当前金额覆盖已发起的微信交易腿；微信支付成功通知、查询恢复和退款通知都必须按原始 `externalPaidFen` 校验。历史快照没有该字段时，才兼容使用 `totalFen - couponFen - balanceFen - pointsFen` 推导。
+
+客户端必须把外层 `payment` 视为余额已扣、订单仍待付的中间快照，并将 `remainderPayment` 交给统一支付执行器；微信环境使用其 `paymentParams` 调起 `wx.requestPayment`，开发环境按 `remainderPayment.mode` 调用 mock 支付。客户端不得只读取外层 `payment` 就把订单显示为已支付。
+
+### 结算页积分入口状态
+
+当前后端积分抵扣围栏关闭时，结算页可以展示积分余额查询结果，但不得展示可选择的积分抵扣开关，也不得从结算页发起 `apply-points`；所有恢复路径必须保持 `pointsEnabled=false`。围栏恢复前，积分只能作为不可选展示项，不能改变订单应付金额。
+
 ### POST `/api/v1/miniapp/payments/wechat/notify`
 
 微信支付 JSAPI 支付结果通知回调。该接口由微信支付平台调用，不由小程序直接调用。
@@ -713,7 +794,10 @@ MVP 预留的模拟支付确认接口。仅用于联调和开发阶段，真实�
 - 使用 `WECHAT_PAY_API_V3_KEY` 按 API v3 通知规则解密 `resource`。
 - 仅当解密后的 `trade_state=SUCCESS` 时，把对应 `out_trade_no` 小程序订单的 `paymentStatus` 置为 `paid`、`paymentMethod` 置为 `wechat`、写入 `paymentPaidAt` 和微信 `transactionId`。
 - 重复通知必须幂等；已支付订单再次收到成功通知仍返回成功。
-- 订单不存在、签名无效、解密失败、订单已取消或已超时均返回 HTTP 400。
+- 订单不存在、签名无效、解密失败或已超时均返回 HTTP 400。
+- 订单已取消后收到迟到的外部支付成功事实时，履约状态保持 `cancelled`，必须原子记录 `paymentStatus=paid`、微信 `transactionId` 和 `paymentPaidAt`；若此前没有退款事实，再写入 `paymentRefundStatus=pending` 和 `paymentRefundAmountFen`；若此前已有 `partial`、`full` 或 `over` 退款事实，必须保留原退款状态和累计金额，不得被迟到支付改写为 `pending`。该路径不得重新核销优惠券、发放积分、占用库存或自动发起微信退款。同一交易号重复通知必须幂等，不同交易号不得覆盖。
+- 退款事实先于支付事实到达时，支付通知中的微信 `transactionId` 必须与该订单已记录的全部退款事件交易号一致；支付交易号不一致时拒绝写入支付状态并保留退款事实供对账。同一订单在支付事实尚未到达时收到不同微信交易号的退款事件，后续退款事件必须在入库前拒绝并建立对账案件，不得合并累计或触发资产补偿。
+- 支付与退款通知先独立持久化 intake 租约，再在独立业务事务内提交订单事实、资产补偿和 `processed` 标记。业务校验或补偿失败时必须回滚该业务事务，并按认领 token 记录 `failed`；相同事件退避到期后可重新认领，累计达到 5 次后进入 `dead_letter` 等待人工处理，陈旧 worker 不得覆盖新认领状态。
 
 成功响应：
 
@@ -748,7 +832,7 @@ Query：
 - `page` 可选，页码。
 - `keyword` 可选，搜索订单号、用户、商品、配送信息或备注。
 - `status` 可选，订单状态。
-- `boardFilter` 可选，后台订单经营看板筛选口径。取值：`all`、`unpaid`、`pending`、`fulfilling`、`done`、`closed`。`unpaid` 表示待支付且未取消，`fulfilling` 表示已确认/制作中/配送中，`closed` 表示已取消或支付超时。
+- `boardFilter` 可选，后台订单经营看板筛选口径。取值：`all`、`unpaid`、`pending`、`fulfilling`、`done`、`closed`。`unpaid` 表示待支付且未取消，包含 `paymentStatus=unpaid` 和组合支付已记账余额、外部支付未完成的 `paymentStatus=partial`；`fulfilling` 表示已确认/制作中/配送中，`closed` 表示已取消或支付超时。
 
 ```json
 {
@@ -818,6 +902,9 @@ Query：
 ### POST `/api/v1/admin/orders/{orderId}/status`
 
 更新订单履约状态。
+
+后台可将未支付、部分支付订单切换为 `cancelled`；已支付但退款终态
+（`paymentRefundStatus=full` 或 `over`）的订单也允许安全关单。该路径只释放预占库存并记录关单事件，不重复执行已由退款流程完成的余额、积分或优惠券补偿。普通已支付且未退款订单仍禁止取消。
 
 请求：
 

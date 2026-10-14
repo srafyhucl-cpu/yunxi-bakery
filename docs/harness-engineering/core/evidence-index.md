@@ -1,3 +1,195 @@
+## E-20260925-007：MiniApp 退款终态订单支付重入守卫
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r7
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r6
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-refund-terminal-payment-reentry
+- file: `repo:backend/app/service/order/payment_runtime.py`; `repo:backend/tests/service/test_stored_value.py`; `repo:backend/scripts/check_file_sizes.py`; `repo:ERRORS.md`; `repo:LOGBOOK.md`; `repo:PROJECT-STATE.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/test_stored_value.py backend/tests/service/order/test_refund_notification.py backend/tests/service/order/test_review2_pay_combined_refund_20260906.py backend/tests/service/test_order.py backend/tests/service/test_coupon_payment.py backend/tests/service/test_points_payment.py --no-cov -q -p no:cacheprovider`; `python -B -m pytest backend/tests/api/test_miniapp_payment_api.py backend/tests/api/test_miniapp_order_api.py backend/tests/api/test_admin_order_api.py backend/tests/service/test_payment_config_matrix.py --no-cov -q -p no:cacheprovider`; `python -m ruff check backend/app/service/order/payment_runtime.py backend/tests/service/test_stored_value.py backend/scripts/check_file_sizes.py`; `git diff --check`; `python -B backend/scripts/check_project.py --skip-tests`; `python -B backend/scripts/check_project_development_register.py`; `python -B backend/scripts/check_chinese_governance.py --summary`; `python -B backend/scripts/check_evidence_index.py --summary`; `python -B backend/scripts/check_mistake_ledger.py`
+- result: pass
+- sha256: backend/app/service/order/payment_runtime.py=ff23dd0fae2a768f7d0594ff80c3a8617db3acf1c252e9e616ca12fbb7d3c553；backend/tests/service/test_stored_value.py=b0e0663bcab5bccc6743126bf5981aa0e6cc76aba091d291c7c6a343e21d466f；backend/scripts/check_file_sizes.py=edb3550018ab121ff9e7912c70649c0802bb983af93fab0e2516be37473beef9；ERRORS.md=fc3b400308e2db77a69f0b24795f44f2aed3b79dcf31a50df6fc4384a3875f3b；LOGBOOK.md=14fea8e8a040a1d5bf04186cfa677e80bac561b4ee5f25472344e827d166ac77；PROJECT-STATE.md=a852e57f3f88c7d6f20eaf7f04f7ba8dc826ec86a8f11d254e1d55fa47db09d3
+- follow_up_guardrail: 退款终态优先于所有未完成支付重入；`refundStatus=full/over` 且 `status!=paid` 的支付快照不得创建微信会话、不得确认 mock 支付、不得进入资产结算；已支付订单仍保持重复调用幂等。
+- related_logbook: 2026-09-25 - fix(miniapp): 退款终态订单支付重入守卫收口
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成会员/订单、mock 支付、mock 微信预下单、定向测试退出码和源码哈希；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 修复前 4 个 `full/over` 参数化用例均未抛出预期异常；修复后 `prepare-payment` 和 `mock-pay` 拒绝路径均不调用微信预下单、不进入资产结算，订单保持 `status=partial`。未退款组合支付续付、已支付幂等、退款迟到支付查询、支付 API 和储值回归通过；治理状态视图已同步为已完成（completed）。
+- failure_class: recovered_deterministic_business_failure
+- replayable: yes
+- residual_risks: 真实微信支付/退款、真实闪送、真机、生产 API、生产验收和正式上线仍未验证；本条不构成生产发布或真实支付验收。`backend/scripts/check_file_sizes.py` 仍被既有 `app/service/catalog/application.py` 缺少职责评审记录阻断，本轮未扩大修复范围。
+
+## E-20260925-006：MiniApp 退款终态与迟到支付查询一致性守卫
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r6
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r5
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-refund-payment-race
+- file: `repo:backend/app/service/order/payment_notification.py`; `repo:backend/tests/service/order/test_refund_notification.py`; `repo:ERRORS.md`; `repo:LOGBOOK.md`; `repo:PROJECT-STATE.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -m pytest backend/tests/service/order/test_refund_notification.py::test_late_payment_query_cannot_reactivate_fully_refunded_partial_order --no-cov -q`; `python -m pytest backend/tests/service/order/test_refund_notification.py backend/tests/service/order/test_review2_pay_combined_refund_20260906.py backend/tests/service/test_stored_value.py backend/tests/api/test_miniapp_payment_api.py --no-cov -q`; `python -m ruff check backend/app/service/order/payment_notification.py backend/tests/service/order/test_refund_notification.py`; `git diff --check`; `python -B backend/scripts/check_project_development_register.py`; `python -B backend/scripts/check_chinese_governance.py --summary`; `python -B backend/scripts/check_evidence_index.py --summary`; `python -B backend/scripts/check_mistake_ledger.py`
+- result: pass
+- sha256: backend/app/service/order/payment_notification.py=71e3cc2034d71a9c1891412102e227475255370450726b83097a144c5f065456；backend/tests/service/order/test_refund_notification.py=76f13cd08344ade3caeee41071524b8502d9994cc18fac731b93dcc668c317be；ERRORS.md=fc3b400308e2db77a69f0b24795f44f2aed3b79dcf31a50df6fc4384a3875f3b；LOGBOOK.md=14fea8e8a040a1d5bf04186cfa677e80bac561b4ee5f25472344e827d166ac77；PROJECT-STATE.md=a852e57f3f88c7d6f20eaf7f04f7ba8dc826ec86a8f11d254e1d55fa47db09d3
+- follow_up_guardrail: 退款终态优先于支付通知和支付查询；`refundStatus=full/over` 的支付快照不得重新进入 `paid`，不得重复发放积分、核销优惠券或推进履约；乱序组合测试必须覆盖退款先到、支付后到。
+- related_logbook: 2026-09-25 - fix(miniapp): 退款终态与迟到支付查询一致性守卫收口
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单、合成会员、mock 退款/支付查询、定向测试退出码和源码哈希；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 修复前新增最小测试稳定复现：组合支付已扣余额、外部支付未完成的订单先收到全额退款查询，再收到支付成功查询时，迟到支付查询会重新把订单写成已支付，可能继续发积分和核销优惠券。`mark_paid()` 现对全额/超额退款支付快照直接幂等返回，测试修复后保持 `partial/full`；组合支付/退款/储值/支付 API 定向回归 31 项通过，定向 Ruff、开发总表、中文治理、错误账本和 diff 检查通过。
+- failure_class: recovered_deterministic_business_failure
+- replayable: yes
+- residual_risks: 真实微信支付/退款、真实闪送、真机、生产 API、生产验收和正式上线仍未验证；本条不构成生产发布或真实支付验收。E-20260925-004 中 `backend/app/service/order/payment_notification.py` 的历史哈希因 r6 同文件继续修复而按项目惯例刷新，r3 结论不变。
+
+## E-20260925-005：MiniApp partial 恢复、后台看板与履约状态守卫收口
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r5
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r4
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-partial-recovery-and-admin-guard
+- file: `repo:backend/app/service/order/serialization.py`; `repo:backend/app/repository/order_repo.py`; `repo:backend/app/service/order/read_models.py`; `repo:backend/app/service/order/status_flow.py`; `repo:backend/tests/service/test_stored_value.py`; `repo:backend/tests/api/test_admin_order_api.py`; `repo:miniapp/miniprogram/services/orders.ts`; `repo:miniapp/miniprogram/utils/member-assets.ts`; `repo:miniapp/miniprogram/pages/checkout/index.ts`; `repo:miniapp/tests/utils/member-assets.test.ts`; `repo:miniapp/tests/utils/order-payment-contract.test.ts`; `repo:miniapp/docs/api-contract.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -m pytest backend/tests/api/test_admin_order_api.py::test_admin_cannot_confirm_partial_payment_order --no-cov -q`; `python -m pytest backend/tests/api/test_admin_order_api.py --no-cov -q`; `python -m pytest backend/tests/service/test_order.py --no-cov -q`; `python -m pytest backend/tests/service/test_stored_value.py --no-cov -q`; `python -m pytest backend/tests/service/order/test_review2_pay_combined_refund_20260906.py backend/tests/service/order/test_pay_notify_freshness_intake.py backend/tests/service/order/test_p0_final_claim_idempotency_20260906.py --no-cov -q`; `python -m ruff check backend/app/service/order/status_flow.py backend/tests/api/test_admin_order_api.py`; `git diff --check`
+- result: pass
+- sha256: backend/app/service/order/serialization.py=31a503934f74d1473dfef71e5d673412e884e781be3afac007db64569ec86512；backend/app/repository/order_repo.py=ec50cff1169806b919aa5092071bea46f9f30289386ce35afe6261fa725c26fd；backend/app/service/order/read_models.py=d43eaea73a01b812aa27c4a6024a8e49a6f9789ab9d80314398f3d11a09e83b3；backend/app/service/order/status_flow.py=286169ea7162c1db6eac46428e436394ba89c19f7a234401fe8c96c73b2767af；backend/tests/service/test_stored_value.py=de8b7be206ed559834a9b8c98ba080bf339f146d50334047c6b9a85cb15f7042；backend/tests/api/test_admin_order_api.py=fa5b68c89fe1d3aca2b89b80a2dc02047bd9261f35efd7d6871b63778544d3be；miniapp/miniprogram/services/orders.ts=34eff3c6743d95c867ae120d86bf43c4eee751714c3b79860334cd6ab5557044；miniapp/miniprogram/utils/member-assets.ts=a59a02a6fe9aeb08f03a8b7faedc63554012cb70d9dab0fab9397017e8caa5ca；miniapp/miniprogram/pages/checkout/index.ts=039eee558683930312011d82ee7b1fc2586d9aaccb32b72e34c51dd570b52b3d；miniapp/tests/utils/member-assets.test.ts=be5e0786b4b9dce71ff9d6ade43d2a957ce2dbd5832db6d41dfd991106cf01a3；miniapp/tests/utils/order-payment-contract.test.ts=a6babe2a2daac48a3944311650c8157a0243dcc93a124d1d4ce00f38f6e08f8c；miniapp/docs/api-contract.md=e21db8f27cb4da708fe958d0b607bd737a55a07cdd22ce1c081b248f39da960b
+- follow_up_guardrail: `partial` 订单恢复金额必须来自历史支付快照；无优惠券不得伪造 `assetsApplied`；后台待支付列表和汇总必须同时包含 `unpaid` 与 `partial`；`partial` 订单只能续付或取消，不得进入履约状态。
+- related_logbook: 2026-09-25 - fix(miniapp): partial 订单后台履约状态守卫收口
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成商品、合成联系人、直接写入的合成支付快照、定向测试退出码、源码哈希和断言结果；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 本轮先复现并修复 partial 恢复金额错误、无优惠券资产锁定错误和后台待支付看板漏筛；随后稳定复现后台将 partial 订单确认进入履约的 P1。服务层增加非取消状态的 partial 支付守卫，修复后接口返回 400，订单保持 `pending/partial`；普通 unpaid 后台预确认、partial 续付和取消/超时退款路径保持不变。后台订单 6 项、订单服务 35 项、储值 16 项、支付回归 34 项、定向 Ruff 和 diff 检查通过。
+- failure_class: recovered_deterministic_business_failure
+- replayable: yes
+- residual_risks: 真实微信支付/退款、真实闪送、真机、生产 API、生产验收和正式上线仍未验证；本条不构成生产发布或真实支付验收。
+
+## E-20260925-004：MiniApp 组合支付剩余金额恢复与配送报价快照收口
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r3
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r2
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-partial-payment-recovery
+- file: `repo:backend/app/service/order/payment_runtime.py`; `repo:backend/app/service/order/payment_notification.py`; `repo:backend/tests/service/test_stored_value.py`; `repo:miniapp/miniprogram/constants/order.ts`; `repo:miniapp/miniprogram/pages/checkout/index.ts`; `repo:miniapp/tests/utils/order-payment-contract.test.ts`; `repo:miniapp/docs/api-contract.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -m pytest backend/tests/service/test_stored_value.py backend/tests/service/test_order.py --no-cov -q`; `python -m pytest backend/tests/api/test_miniapp_order_api.py backend/tests/api/test_miniapp_payment_api.py --no-cov -q`; `python -m pytest backend/tests/service/order/test_review2_pay_combined_refund_20260906.py backend/tests/service/order/test_pay_notify_freshness_intake.py backend/tests/service/order/test_p0_final_claim_idempotency_20260906.py backend/tests/service/test_coupon_payment.py --no-cov -q`; `cd miniapp && npm run test:order-payment`; `cd miniapp && npm run test:checkout-points-fence`; `cd miniapp && npm run typecheck`; `cd miniapp && npm run check:miniapp`; `python -m ruff check backend/app/service/order/payment_runtime.py backend/app/service/order/payment_notification.py backend/tests/service/test_stored_value.py backend/tests/api/test_miniapp_order_api.py backend/tests/api/test_miniapp_payment_api.py`; `git diff --check`
+- result: pass
+- sha256: backend/app/service/order/payment_runtime.py=70954a980001cbb439bef6b9a12c6700afa1004701fd5af0d4565370f575b8f8；backend/app/service/order/payment_notification.py=913a6332788e7f0e6bb8cd9b2a6951bfec5b27fa4b96e9b3e3867e22ac425afd；backend/tests/service/test_stored_value.py=f7fe1de1787d01fc0721ac695ae2533486c414e49349f8a9a883b849eb4ab4d8；miniapp/miniprogram/constants/order.ts=ceb358e6752767a22e5edbe9025bc84201823f74701b33f09d7fcf4d4a9f93a1；miniapp/miniprogram/pages/checkout/index.ts=43fae5ac313507cac470eea3c5574760059726bc5bc3a01395782d2f37070e63；miniapp/tests/utils/order-payment-contract.test.ts=2366c769fc11e5a68afa2647ab538e88c1e6e084cadf59b9a9221ce23efc9484；miniapp/docs/api-contract.md=40718aba749e9a7677dccb06fdee02f08f27a490376cb40a4d4ac1aa97f3a387
+- follow_up_guardrail: 组合支付外部支付腿必须按 `totalFen - couponFen - balanceFen - pointsFen` 在通知、查询恢复和续付三条路径统一校验；余额腿已记账后禁止再次余额支付；待支付配送订单完整快照匹配时必须保留原 `deliveryQuoteId`，不得自动重新报价覆盖旧订单。
+- related_logbook: 2026-09-25 - fix(miniapp): 组合支付剩余金额恢复与配送报价快照收口
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单、合成会员、mock 支付、定向测试退出码和源码哈希；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 修复前组合支付外部支付取消用例稳定失败于“订单已部分支付”，查询恢复用例稳定失败于“微信支付查询金额异常”，配送待支付恢复用例稳定失败于重新报价覆盖旧快照。修复后组合支付可按快照继续剩余支付，通知与查询恢复共用严格差额校验，余额不重复扣减；前端接受 `partial` 为可支付状态并恢复原报价。28 项储值/订单服务测试、18 项订单/支付 API 测试、10 项支付/取消/claim/退款回归测试、4 项 MiniApp 支付契约、1 项积分围栏、类型检查、15 页/15 路由静态门禁和定向 Ruff 均通过。
+- failure_class: recovered_deterministic_business_failure
+- replayable: yes
+- residual_risks: 真实微信支付/退款、真实闪送、真机、生产 API、生产验收和正式上线仍未验证；本条不构成生产发布或真实支付验收。
+- update_20260925_r6: r6 修复同一支付通知文件中的退款终态守卫，按仓库既有惯例刷新该文件当前哈希；E-20260925-004 的 r3 结论、测试范围和历史记录不变。
+
+## E-20260925-003：MiniApp 核心订单闭环 P1 候选复核与契约收口
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r2
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r1
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-p1-remediation
+- file: `repo:backend/app/api/channels/storefront/delivery.py`; `repo:backend/app/service/customer/address_support.py`; `repo:backend/app/service/order/inventory.py`; `repo:backend/app/service/order/schedule.py`; `repo:backend/tests/api/test_miniapp_delivery_api.py`; `repo:backend/tests/api/test_miniapp_order_api.py`; `repo:backend/tests/api/test_miniapp_payment_api.py`; `repo:backend/tests/api/test_miniapp_points_api.py`; `repo:backend/tests/helpers/legacy_order_catalog.py`; `repo:backend/tests/service/delivery/test_order_quote_binding.py`; `repo:backend/tests/service/test_coupon_payment.py`; `repo:backend/tests/service/test_order.py`; `repo:backend/tests/service/test_points_payment.py`; `repo:backend/tests/service/test_stored_value.py`; `repo:miniapp/docs/api-contract.md`; `repo:miniapp/miniprogram/pages/checkout/index.ts`; `repo:miniapp/miniprogram/pages/checkout/index.wxml`; `repo:miniapp/miniprogram/services/orders.ts`; `repo:miniapp/miniprogram/utils/order-payment.ts`; `repo:miniapp/package.json`; `repo:miniapp/scripts/check-miniapp.mjs`; `repo:miniapp/tests/utils/checkout-points-fence.test.ts`; `repo:miniapp/tests/utils/order-payment-contract.test.ts`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -m pytest backend/tests/service/test_order.py backend/tests/api/test_miniapp_order_api.py backend/tests/api/test_miniapp_delivery_api.py backend/tests/api/test_miniapp_payment_api.py backend/tests/service/delivery/test_order_quote_binding.py --no-cov -q`; `python -m pytest backend/tests/service/test_stored_value.py backend/tests/service/test_coupon_payment.py backend/tests/service/test_points_payment.py --no-cov -q`; `python -m pytest backend/tests/api/test_miniapp_points_api.py --no-cov -q`; `cd miniapp && npm run test:order-payment`; `cd miniapp && npm run test:checkout-points-fence`; `cd miniapp && npm run typecheck`; `cd miniapp && npm run check:miniapp`; `python -m ruff check`（本轮 Python 改动与测试文件）; `python -B backend/scripts/check_project_development_register.py`; `python -B backend/scripts/check_chinese_governance.py --summary`; `python -B backend/scripts/check_evidence_index.py --summary`; `git diff --check`
+- result: pass
+- sha256: backend/app/api/channels/storefront/delivery.py=04c309e645aa1a5b601b4067e1209f670c65071ef23016d567618498869c0608；backend/app/service/customer/address_support.py=f986e0fb0ef0a480992ab1b505cecb6ff4abc13eb17c19d65d906baf0ba22a7d；backend/app/service/order/inventory.py=0c7858f0165b33b397fcad756d36d3599bd8c7bc7ab2510d358d62865aed62e4；backend/app/service/order/schedule.py=68d3e668835d619cc71221f594209966f2ef235a2e3c94078a294a0aa79a1cb9；backend/tests/api/test_miniapp_delivery_api.py=b1ac4cc44d3d3defbffa72507a405a7fcb945101c341dc4c43591f0340ae253d；backend/tests/api/test_miniapp_order_api.py=493127de2c9499217ba51ed9d4f056b5e94f44af805917d364fdff026ff22a99；backend/tests/api/test_miniapp_payment_api.py=9488fb4452a56ad80f0eba40784d133a6371b1235baa29f700fc766870b06623；backend/tests/api/test_miniapp_points_api.py=a3f115e0b33f06e284828154a1fdb311d3b50fac06f69dfda1c07e44cf590a89；backend/tests/helpers/legacy_order_catalog.py=246f95034f5fd8288358dac8640627e5d3a2882618489d601e933d35429fe360；backend/tests/service/delivery/test_order_quote_binding.py=10a6501705b9d47343c5dd0a2f5f3e4b2917805f8b87f3a3edeaa82a05f04945；backend/tests/service/test_coupon_payment.py=407138e80b1105faa5b972cd879295f35ace8379ba8c70a6a252580876163791；backend/tests/service/test_order.py=5e96de5abcf3736eb2244a6d12dffa97d646d2c7003c09eaafee147d617205f0；backend/tests/service/test_points_payment.py=ebbc8cbbc071c4090e5bbacf60fa09fd1e2344aedcc654248ef274143b4556ce；backend/tests/service/test_stored_value.py=858d1c9d88ab30cfe68527df973eeca0fd8ddbe5e54c3e6432a37113ecda9c8c；miniapp/docs/api-contract.md=3d9fa75cbc7dabeb71f81e33ce05f5b946b58704124a9bb81052c9f82ea6d068；miniapp/miniprogram/pages/checkout/index.ts=8845721330463db06ba2a0fac3dcc591599993ce71856d52db1dd80e46e26b00；miniapp/miniprogram/pages/checkout/index.wxml=b01c39fdd04f9caddc0a64c023d8677ea90b31d65c2cb67e455b7447c19d4fb4；miniapp/miniprogram/services/orders.ts=8f99fddd567c149aa17a7c2c7ddaec7a075a45d7710b3bee0401dd25f00508de；miniapp/miniprogram/utils/order-payment.ts=369013c1527e9e7748b40c8463f6f5f25fa0405d76ac7ade113b75ab90025027；miniapp/package.json=190d1108be440dd31db3b0e0703e975817b40780d3fdaf6bd34d60c0eb6d54e4；miniapp/scripts/check-miniapp.mjs=42034fcee55c7d04246ff5eefd9841925eaf670c9940dc89e628639ae38e62f2；miniapp/tests/utils/checkout-points-fence.test.ts=73ba0e8de618bd752d148bc485972e42365f7988bacf5d5ea30008d493ff6d11；miniapp/tests/utils/order-payment-contract.test.ts=555f0cd4922c423b8daee4a058d4d21dcddd752588d6b32e2a9fd26ad9677e73
+- follow_up_guardrail: 真实商品订单创建必须以目录商品为前提；订单创建和北京闪送报价必须由服务端校验联系人、手机号与可履约地址；积分抵扣围栏关闭时客户端不得暴露选择入口；组合支付必须执行 `remainderPayment`，已支付 `prepare-payment` 不得把空参数交给微信支付。
+- related_logbook: 2026-09-25 - fix(miniapp): 核心业务闭环候选问题复核与契约收口
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成联系人、合成商品 ID、mock 支付、测试退出码、源码哈希和断言结果；不保存访问令牌、openid、手机号全文、客户地址、支付凭证或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 复核确认并修复五类确定性核心业务问题：已支付订单恢复支付、未知商品目录兜底、积分抵扣前端围栏、订单联系人/手机号校验和北京闪送地址粒度。支付通知与配送测试夹具按新生产契约补齐，核心回归全部通过；同步 API 契约、PROJECT-STATE 与 LOGBOOK，治理门禁和证据索引复核通过。
+- failure_class: recovered_deterministic_business_failure
+- replayable: yes
+- residual_risks: 真实微信支付/退款、真实闪送、真机、生产 API、生产验收和正式上线仍未验证；本条不构成生产发布或真实支付验收。
+
+## E-20260925-002：MiniApp 待支付订单恢复快照一致性收口
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r1
+- parent_run_id: 20260924-miniapp-pickup-order-lifecycle-r6
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-pending-order-recovery
+- file: repo:miniapp/miniprogram/pages/checkout/index.ts; repo:miniapp/miniprogram/pages/checkout/index.wxml; repo:miniapp/scripts/check-devtools-pending-order-recovery.mjs; repo:miniapp/scripts/check-miniapp.mjs; repo:miniapp/package.json; local:miniapp/reports/button-runtime/pending-order-recovery-20260924-163711.json; local:miniapp/reports/button-runtime/pending-order-recovery-20260924-164701.json; local:miniapp/reports/button-runtime/pickup-order-lifecycle-20260924-164722.json
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `cd miniapp && npm run devtools:pending-order-recovery`; `cd miniapp && npm run devtools:pickup-order-lifecycle`; `python -m pytest --no-cov backend/tests/api/test_miniapp_order_api.py backend/tests/service/test_order.py -q`; `cd miniapp && npm run typecheck`; `npm run check:miniapp`; `node --check scripts/check-devtools-pending-order-recovery.mjs`; `node --check scripts/check-miniapp.mjs`; `python -B backend/scripts/check_project_development_register.py`; `python -B backend/scripts/check_chinese_governance.py --summary`; `git diff --check`
+- result: pass
+- sha256: miniapp/miniprogram/pages/checkout/index.ts=f1e24801f459c77f39f67dc7a9dc3c66b1ed837e02f464472e8c4059d81ea76d；miniapp/miniprogram/pages/checkout/index.wxml=23746c3f02c1bcf69600c6293d33eef5a7a8844b659b5fbda7149feb4fc284f1；miniapp/scripts/check-devtools-pending-order-recovery.mjs=20bdbbb9b4a0b03a87915d0cffde6bfe5198c991db65386e3c8f16fd2f6d6f8b；miniapp/scripts/check-miniapp.mjs=42034fcee55c7d04246ff5eefd9841925eaf670c9940dc89e628639ae38e62f2；miniapp/package.json=d7f42760585ffa4ba7a5fce39986ac93e87be5c5ce621f6f1680d8d7e0a9209d；miniapp/reports/button-runtime/pending-order-recovery-20260924-163711.json=8c4f3ffd0c332caa44bcbd52a0d0b96fbb0875f8abfbb831c8af1064af35f1c9；miniapp/reports/button-runtime/pending-order-recovery-20260924-164701.json=a762667b1d23e114e67ec0b931145feef54433815018f0b4a7ec43e89ce14daa；miniapp/reports/button-runtime/pickup-order-lifecycle-20260924-164722.json=a78a248be10eddea000f6cc6f1521dd67a43bc4abc2f275d23cd7d940b33173e
+- follow_up_guardrail: 待支付订单只能在购物车签名和完整订单表单快照均匹配时复用；联系人、履约方式、预约时间或购物车商品变化必须取消旧待支付订单并创建新订单；提交按钮必须保留 `submitting` 守卫以防重复创建。
+- related_logbook: 2026-09-25 - fix(miniapp): 待支付订单恢复快照一致性收口
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成联系人、合成商品、mock 支付、订单状态短标识、报告哈希、退出码和断言结果；不保存访问令牌、openid、手机号全文、请求头或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 修复前 DevTools 复现报告以 `fail` 确定性确认两项 P1 业务问题：修改联系人/手机号后复用旧 `pendingOrderId` 并支付旧订单快照；更换购物车商品后提交仍支付旧商品。连续两次提交只创建一个订单，原有防重复守卫有效。修复后报告 3/3 断言通过，生命周期回归 6/6 断言通过；实现以购物车签名和订单表单快照共同判定待支付订单可复用性，不匹配时先取消旧单再建新单，并提供创建新订单动作。
+- failure_class: recovered_deterministic_business_failure
+- replayable: yes
+- residual_risks: 真实微信支付/退款、真实闪送、真机、生产 API、生产验收和正式上线仍未验证；本条不构成生产发布或真实支付验收。
+
+## E-20260925-001：MiniApp 自提订单核心闭环本地 mock 支付通过
+
+- trace_id: 20260924-miniapp-pickup-order-lifecycle
+- run_id: 20260924-miniapp-pickup-order-lifecycle-r6
+- parent_run_id: 20260924-miniapp-pickup-order-lifecycle-r2
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-pickup-order-lifecycle
+- file: repo:backend/tests/api/test_miniapp_order_api.py; repo:miniapp/miniprogram/pages/checkout/index.ts; repo:miniapp/scripts/check-miniapp.mjs; repo:miniapp/scripts/check-devtools-pickup-order-lifecycle.mjs; repo:miniapp/package.json; local:miniapp/reports/button-runtime/pickup-order-lifecycle-20260924-161857.json; local:miniapp/reports/button-runtime/pickup-order-lifecycle-latest.json
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `cd backend && python -m pytest --no-cov tests/api/test_miniapp_order_api.py::test_miniapp_pickup_order_lifecycle_creates_prepares_mock_pays_and_reads_detail -q`; `python -m pytest --no-cov tests/api/test_miniapp_order_api.py -q`; `python -m pytest --no-cov tests/service/test_order.py -q`; `cd miniapp && npm run typecheck`; `npm run check:miniapp`; `node --check scripts/check-miniapp.mjs`; `node --check scripts/check-devtools-pickup-order-lifecycle.mjs`; `MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420 npm run devtools:pickup-order-lifecycle`; `git diff --check`
+- result: pass
+- sha256: backend/tests/api/test_miniapp_order_api.py=a2b7a3aa0e1e7d0446465866629a6565b45f39deeab9103bf08e214bd1546d71；miniapp/miniprogram/pages/checkout/index.ts=233650ea7e4abac67a8394fe4e78bd2b9d152841c8f7e68a4c486ca76c9cb436；miniapp/scripts/check-miniapp.mjs=91632a8a2981107f6595adbc51c51e3255b4a10b93a69848af7f5533432d4288；miniapp/scripts/check-devtools-pickup-order-lifecycle.mjs=65db7f3fca9c9d68ee00ac3c59aa1c9d8a3d05f60e03a25f487055e53413f3cc；miniapp/package.json=21da788a43ce4b70f809e2445e2d978cc7fbff6767a1220fecbf6bc90529f640；miniapp/reports/button-runtime/pickup-order-lifecycle-20260924-161857.json=8cf4e8462a2dacc377cbdb7e9db5f63adc042a941124d2ca8c159e32fda0fe19
+- follow_up_guardrail: 用户取消支付并保留待支付订单时，结算页必须立即显示待支付操作栏；生命周期脚本必须用报告清洗后的布尔字段做最终断言，不能读取已丢弃的原始地址字段。
+- related_logbook: 2026-09-25 - fix(miniapp): 自提订单取消支付待支付条回归收口
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成联系人、合成商品、mock 支付、订单状态短标识、退出码和断言结果；不保存访问令牌、openid、手机号全文、请求头或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: r6 在本地 `127.0.0.1:7001`、DevTools Automator `ws://127.0.0.1:9420` 和本地 mock 支付环境下完整通过商品→购物车→自提结算→创建订单→mock 支付→订单详情，以及未支付订单→待支付条→取消→状态回写。后端连续 API 测试、MiniApp 类型/静态门禁和生命周期 DevTools 6 项业务断言均通过。r4 暴露并修复了取消支付后待支付条未显示的真实前端状态缺陷，静态守卫在修复前失败、修复后通过。
+- failure_class: none_after_recovery
+- replayable: yes
+- residual_risks: 真实微信支付/退款、真实闪送、真机、生产 API、生产验收和正式上线仍未验证；本条不构成生产发布或真实支付验收。
+
+## E-20260924-001：MiniApp 自提订单核心闭环测试优先复核
+
+- trace_id: 20260924-miniapp-pickup-order-lifecycle
+- run_id: 20260924-miniapp-pickup-order-lifecycle-r2
+- generated_at: 2026-09-24
+- evidence_type: verification/miniapp-pickup-order-lifecycle
+- file: repo:backend/tests/api/test_miniapp_order_api.py; repo:miniapp/scripts/check-devtools-pickup-order-lifecycle.mjs; repo:miniapp/package.json; local:miniapp/reports/button-runtime/pickup-order-lifecycle-20260924-155222.json; local:miniapp/reports/button-runtime/pickup-order-lifecycle-latest.json
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `cd backend && python -m pytest --no-cov tests/api/test_miniapp_order_api.py::test_miniapp_pickup_order_lifecycle_creates_prepares_mock_pays_and_reads_detail -q`; `python -m pytest --no-cov tests/api/test_miniapp_order_api.py -q`; `python -m pytest --no-cov tests/service/test_order.py -q`; `cd miniapp && npm run typecheck`; `npm run check:miniapp`; `node --check scripts/check-devtools-pickup-order-lifecycle.mjs`; `npm run devtools:pickup-order-lifecycle`
+- result: partial
+- sha256: backend/tests/api/test_miniapp_order_api.py=a2b7a3aa0e1e7d0446465866629a6565b45f39deeab9103bf08e214bd1546d71；miniapp/scripts/check-devtools-pickup-order-lifecycle.mjs=3e4d2a643f0b4ece912236d862cf79bc0a935e43da9bb9171fd4aaa02a34790f；miniapp/package.json=21da788a43ce4b70f809e2445e2d978cc7fbff6767a1220fecbf6bc90529f640；miniapp/reports/button-runtime/pickup-order-lifecycle-20260924-155222.json=9d8ef847a5dfbfcf4af7444fadcb0f810af27637f7660f95dfce0ccae0c244ac
+- follow_up_guardrail: 核心订单生命周期必须同时保留后端连续 API 测试和 MiniApp 页面自身方法测试；本地 API、DevTools、测试商品或登录前置缺失时只能记为 `blocked`，不得写成业务通过或失败。
+- related_logbook: 2026-09-24 - test(miniapp): 自提订单核心闭环测试优先复核
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录测试源码、合成数据结果、命令退出码和本地环境阻塞；报告不保存访问令牌、openid、手机号全文、请求头或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 后端新增自提订单生命周期测试连续验证创建、服务端计价、mock 支付准备、mock 支付和订单详情，专项 1/1、订单 API 文件 15/15 及相邻订单服务测试均通过。MiniApp 新增本地 DevTools 生命周期脚本，静态类型与 15 页/15 路由门禁通过；r2 运行时先完成本地健康检查（HTTP 200），随后 Automator App 侧最小调用 `evaluate`、`callWxMethod("getAccountInfoSync")` 和 `currentPage()` 均独立超时，因此报告以 `blocked`、退出码 2 收口。r1 早期报告曾将 Automator 超时错误归类为业务 `fail`，脚本已修正，r1 报告仅保留为历史脚本证据，不作为业务失败证据。
+- failure_class: tool_environment_blocked
+- replayable: yes
+- residual_risks: MiniApp 页面级 mock 支付、订单详情、取消和本地存储清理尚未在可响应的 DevTools Automator App 侧会话中完成；真实微信支付、真实闪送、真机、生产 API、生产验收与正式上线仍未验证。
+
 ## E-20260909-022：本地后端与微信开发者工具商品购买链路复核
 
 - trace_id: 20260908-miniapp-commerce-ux-redesign
@@ -8134,13 +8326,14 @@ backend/docs/harness-engineering/core/evidence-index.md 仅作为历史镜像。
 - commit_sha: (待提交后回写)
 - command: `npm run typecheck`; `npm run check:miniapp`; `npm run check:page-api-coverage`; `Invoke-RestMethod http://127.0.0.1:7001/health`; `MINIAPP_REAL_API_BASE_URL=http://127.0.0.1:7001 npm run devtools:service-smoke`; `MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420 npm run devtools:product-search`; `MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420 npm run devtools:verify-commerce-flows`; `MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420 npm run devtools:product-purchase-path`; `MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420 npm run devtools:verify-all-pages`; `MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420 npm run scan:button-touch-targets`
 - result: pass
-- sha256: miniapp/miniprogram/pages/products/index.wxml=22347fcb58d8623b713caedc5439e708ba2d32c835d40c8cb1f948c5ee1727ab；miniapp/miniprogram/services/products.ts=74b92dee11590647baf60695c30548d5d1887264c672e8cd7b5af7ba9575cfaa；miniapp/scripts/check-miniapp.mjs=037432c0f65f079d1c7e72b81b885388c4adda1a7b5dd04ee93b84ae6a8b42ce；miniapp/scripts/verify-devtools-product-search.cjs=57095842ca85ec6c808d3d5d1ac13897be2df9d65e0f967569d393f6a0aa9206；miniapp/scripts/verify-miniapp-commerce-flows.cjs=a94af9970f8a057f193274b32375b1a568f70b391970db5389da6d2650cbef56；miniapp/scripts/scan-miniapp-button-touch-targets.mjs=a36b175df44877324d21e97918d3e8926d130147730aa9798477a1036d48b8c0
+- sha256: miniapp/miniprogram/pages/products/index.wxml=22347fcb58d8623b713caedc5439e708ba2d32c835d40c8cb1f948c5ee1727ab；miniapp/miniprogram/services/products.ts=74b92dee11590647baf60695c30548d5d1887264c672e8cd7b5af7ba9575cfaa；miniapp/scripts/check-miniapp.mjs=42034fcee55c7d04246ff5eefd9841925eaf670c9940dc89e628639ae38e62f2；miniapp/scripts/verify-devtools-product-search.cjs=57095842ca85ec6c808d3d5d1ac13897be2df9d65e0f967569d393f6a0aa9206；miniapp/scripts/verify-miniapp-commerce-flows.cjs=a94af9970f8a057f193274b32375b1a568f70b391970db5389da6d2650cbef56；miniapp/scripts/scan-miniapp-button-touch-targets.mjs=a36b175df44877324d21e97918d3e8926d130147730aa9798477a1036d48b8c0
 - update_20260914: r50 在 `check-miniapp.mjs` 增加展示型商品静态守卫、在 `scan-miniapp-button-touch-targets.mjs` 增加商品详情客服/购物车触控选择器，故刷新这两个文件哈希；其余记录不变。
 - follow_up_guardrail: 商品目录不得回退为进页拉全量；搜索、分类与触底加载必须走服务端 `keyword/categoryId/limit/offset`，页码推进取 `meta.offset + meta.limit`，页面不得用本地数组长度推断总数或偏移。
 - related_logbook: 2026-09-14 - refactor(miniapp): 商品目录改为服务端分页搜索
 - update_20260914_r54: 会员中心入口图标守卫与支付方式顾客文案守卫落地后，`check-miniapp.mjs`、`verify-miniapp-commerce-flows.cjs`、`scan-miniapp-button-touch-targets.mjs` 内容再次变化，按仓库惯例刷新三个文件哈希；结论与范围不变。
 - update_20260914_r56: r55/r56 新增空态图标、图标表面与 WXSS data URI 三类静态守卫，并把首页快捷入口 `iconKey` 收紧为 points/recharge/link 白名单（未知 key 回退 link）后，`check-miniapp.mjs` 内容两次变化，按同一惯例刷新该文件哈希；条目结论与验证范围不变。
 - update_20260918_r59: r59 商品目录页头收口后，`miniapp/miniprogram/pages/products/index.wxml` 与 `miniapp/scripts/check-miniapp.mjs` 内容变化，按同一惯例刷新两个文件哈希；条目结论与验证范围不变。
+- update_20260925_r6: 自提订单生命周期复核新增待支付操作条静态守卫后，`miniapp/scripts/check-miniapp.mjs` 内容变化，按同一惯例刷新该文件哈希；本条商品目录证据结论与验证范围不变。
 - related_adr: none
 - contains_sensitive_data: no
 - retention_note: 仅记录接口计数、页面状态、审计结论与执行命令，不含客户、地址、支付或凭证数据。
@@ -8184,7 +8377,7 @@ backend/docs/harness-engineering/core/evidence-index.md 仅作为历史镜像。
 - commit_sha: (待提交后回写)
 - command: `python -B -m pytest -q -o addopts="" tests/service/test_catalog.py tests/service/test_order.py`; `npm run typecheck`; `npm run test:bakery`; `npm run check:miniapp`; `Invoke-RestMethod http://127.0.0.1:7001/health`; `Invoke-RestMethod http://127.0.0.1:7001/api/v1/miniapp/products?limit=100&offset=0..300`; `POST http://127.0.0.1:7001/api/v1/miniapp/orders`（服务端签发会话直连 5 款展示型商品）；`npm run devtools:display-only-products`; `npm run devtools:verify-all-pages`; `npm run devtools:product-purchase-path`; `npm run devtools:product-search`; `npm run devtools:verify-commerce-flows`; `npm run devtools:checkout-delivery-states`; `MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420 npm run scan:button-touch-targets`
 - result: pass
-- sha256: backend/app/service/catalog/purchasability.py=f3956da7f934507c261b9483acf547e308d704eb30dc2eeb5d436dddb6261cae；backend/app/service/catalog/serialization.py=0897d86fe1d3087092683976469c68416e00bf990a91843ddd390ffa77ecf861；backend/app/repository/youzan_repo.py=a844ae916c4a8c8dcb83e6a9cbb8fc7a773bb0c3321c254a5c5eb2317f5e01e2；backend/app/service/order/inventory.py=b40f155a20de2927a450dcc11786f3fb53abb85ceeab519a20f985a2260a53ff；backend/tests/service/test_catalog.py=ae7fb8127cedc730b33e19f0d0f5588ce7c89bd57b5e4387df2e8c6f9e9b58e8；backend/tests/service/test_order.py=4aa399600a20c2793f25c583a031395490cbe6568945b546363fb09aef325417；miniapp/miniprogram/types/catalog.ts=4986fb4b83b67b0e1ccc604996645a49b2b2b364d0cbe3e7a5b8832dd4b413d0；miniapp/miniprogram/utils/bakery.ts=b7cac8eaccc8f1369713b77d573e1155c53ce5f248be5cf7ed47a56e98eccac6；miniapp/miniprogram/pages/product-detail/index.ts=83078bbad1dc28a14d4b440e74b5791b5dbcdf0c4848c22f4ed97dfa8922b37a；miniapp/miniprogram/pages/product-detail/index.wxml=f08ea8baa9ce72e6634cb999b7f036eb5df047b6a0dcfc4b67dc1ad2c3686d17；miniapp/scripts/check-miniapp.mjs=06401c52a218da15a351dc4c0e690ece75b681d2aead72c6c7d6d97cf76178b3；miniapp/scripts/verify-devtools-display-only-products.cjs=1fdb10d59cd953f552cc38f21d8309b1347924beb78abd183cffb913bc208676；miniapp/package.json=8de75e5cf1b4938e076af54961c246b17681ef6a04bb0fa20459cde11e465262
+- sha256: backend/app/service/catalog/purchasability.py=f3956da7f934507c261b9483acf547e308d704eb30dc2eeb5d436dddb6261cae；backend/app/service/catalog/serialization.py=0897d86fe1d3087092683976469c68416e00bf990a91843ddd390ffa77ecf861；backend/app/repository/youzan_repo.py=a844ae916c4a8c8dcb83e6a9cbb8fc7a773bb0c3321c254a5c5eb2317f5e01e2；backend/app/service/order/inventory.py=0c7858f0165b33b397fcad756d36d3599bd8c7bc7ab2510d358d62865aed62e4；backend/tests/service/test_catalog.py=ae7fb8127cedc730b33e19f0d0f5588ce7c89bd57b5e4387df2e8c6f9e9b58e8；backend/tests/service/test_order.py=4aa399600a20c2793f25c583a031395490cbe6568945b546363fb09aef325417；miniapp/miniprogram/types/catalog.ts=4986fb4b83b67b0e1ccc604996645a49b2b2b364d0cbe3e7a5b8832dd4b413d0；miniapp/miniprogram/utils/bakery.ts=b7cac8eaccc8f1369713b77d573e1155c53ce5f248be5cf7ed47a56e98eccac6；miniapp/miniprogram/pages/product-detail/index.ts=83078bbad1dc28a14d4b440e74b5791b5dbcdf0c4848c22f4ed97dfa8922b37a；miniapp/miniprogram/pages/product-detail/index.wxml=f08ea8baa9ce72e6634cb999b7f036eb5df047b6a0dcfc4b67dc1ad2c3686d17；miniapp/scripts/check-miniapp.mjs=06401c52a218da15a351dc4c0e690ece75b681d2aead72c6c7d6d97cf76178b3；miniapp/scripts/verify-devtools-display-only-products.cjs=1fdb10d59cd953f552cc38f21d8309b1347924beb78abd183cffb913bc208676；miniapp/package.json=8de75e5cf1b4938e076af54961c246b17681ef6a04bb0fa20459cde11e465262
 - update_20260914_r58: pre-commit 的 `ruff format` 统一后端 Python 格式后，本条目涉及的后端源码/测试内容变化，按同一惯例刷新对应哈希；条目结论与验证范围不变。
 - update_20260914_r56: r55/r56 扩充图标类静态守卫后 `miniapp/scripts/check-miniapp.mjs` 内容变化，按同一惯例刷新该条目中的脚本哈希；原条目结论与验证范围不变。
 - follow_up_guardrail: 展示型商品必须同时具备读模型标记、页面动作收敛与下单链路拦截三层防线；前端只隐藏按钮不算修复；判定来源变更（如改为有赞分组）时三层断言必须一起复跑。
@@ -8234,7 +8427,7 @@ backend/docs/harness-engineering/core/evidence-index.md 仅作为历史镜像。
 - commit_sha: (待提交后回写)
 - command: `Stop-Process 21892` + `Start-Process python -m uvicorn --app-dir backend app.main:app --host 127.0.0.1 --port 7001`; `POST http://127.0.0.1:7001/api/v1/miniapp/addresses`（`北京市东城区` / 完整地址 / DELETE 清理）; `npm run typecheck`; `npm run check:miniapp`; `npm run test:bakery`; `npm run test:address`; `python -B -m pytest -q -o addopts="" tests/service/test_customer_address.py tests/api/test_miniapp_address_api.py tests/api/test_admin_address_api.py`; `npm run devtools:product-purchase-path`; `npm run devtools:verify-all-pages`; `npm run devtools:commerce-states`; `MINIAPP_AUTOMATOR_WS=ws://127.0.0.1:9420 npm run scan:button-touch-targets`
 - result: pass
-- sha256: miniapp/miniprogram/pages/product-detail/index.wxml=3bf8fc88c5aaf98f998c030774e776de71259afd7c810c34ac7ea6002d12b789；miniapp/miniprogram/pages/product-detail/index.wxss=75354b0c1f0608e015999082037df48115aa88873562ae0192289536e15331b5；miniapp/miniprogram/pages/address/index.ts=e67a5ce26d966cb5afcf3ee2f0a93664c68ffbdc3c621cb9935321006fcac775；miniapp/miniprogram/pages/address/index.wxml=1dc79c12a2bdc0a0b2f3b840e01ad7fda704c429fd195e7bd5a1d2bc70ed18b1；miniapp/miniprogram/pages/address/index.wxss=a86eab926f88a991d5297ede11a33c1596023765141281e8b35070b55b69fec1；miniapp/miniprogram/utils/address.ts=d838cc11479feb70c68c5320f11b3c55a6ae8e2537cd09c715a80dddd69f63d4；miniapp/miniprogram/utils/address-book.ts=04f8d67dafb1847863376984933644df0199e05e6622f10f8912811666f18a94；miniapp/tests/utils/address.test.ts=c017f6f6a9ed055bdbc9adbc5fe4212c040cac301e16707b64710410dba9d34b；miniapp/scripts/check-miniapp.mjs=a82d68f88774b521a14cf9cc7fd5a228bd6caf13e1d399a6b707309b126d5d6e；miniapp/scripts/verify-devtools-product-purchase-path.cjs=9d1919dde7f82d1f22a288565f722defba9ec824517985444fe7662b4ef00138；miniapp/package.json=1b73db112f109ce74f648042a3ed8c660bf3fca39341c1bd487bb8bf007944f5；backend/app/service/customer/address_support.py=426437dce1357b552395e40c3ec6b3ab23441c762b920a8b07a3399c845e206c；backend/tests/service/test_customer_address.py=f5845dff534d6a349c52e2f89e0fc97d70c44c4356c59b8984f5025df38d65b5
+- sha256: miniapp/miniprogram/pages/product-detail/index.wxml=3bf8fc88c5aaf98f998c030774e776de71259afd7c810c34ac7ea6002d12b789；miniapp/miniprogram/pages/product-detail/index.wxss=75354b0c1f0608e015999082037df48115aa88873562ae0192289536e15331b5；miniapp/miniprogram/pages/address/index.ts=e67a5ce26d966cb5afcf3ee2f0a93664c68ffbdc3c621cb9935321006fcac775；miniapp/miniprogram/pages/address/index.wxml=1dc79c12a2bdc0a0b2f3b840e01ad7fda704c429fd195e7bd5a1d2bc70ed18b1；miniapp/miniprogram/pages/address/index.wxss=a86eab926f88a991d5297ede11a33c1596023765141281e8b35070b55b69fec1；miniapp/miniprogram/utils/address.ts=d838cc11479feb70c68c5320f11b3c55a6ae8e2537cd09c715a80dddd69f63d4；miniapp/miniprogram/utils/address-book.ts=04f8d67dafb1847863376984933644df0199e05e6622f10f8912811666f18a94；miniapp/tests/utils/address.test.ts=c017f6f6a9ed055bdbc9adbc5fe4212c040cac301e16707b64710410dba9d34b；miniapp/scripts/check-miniapp.mjs=a82d68f88774b521a14cf9cc7fd5a228bd6caf13e1d399a6b707309b126d5d6e；miniapp/scripts/verify-devtools-product-purchase-path.cjs=9d1919dde7f82d1f22a288565f722defba9ec824517985444fe7662b4ef00138；miniapp/package.json=1b73db112f109ce74f648042a3ed8c660bf3fca39341c1bd487bb8bf007944f5；backend/app/service/customer/address_support.py=f986e0fb0ef0a480992ab1b505cecb6ff4abc13eb17c19d65d906baf0ba22a7d；backend/tests/service/test_customer_address.py=f5845dff534d6a349c52e2f89e0fc97d70c44c4356c59b8984f5025df38d65b5
 - update_20260914_r58: pre-commit 的 `ruff format` 统一后端 Python 格式后，本条目涉及的后端源码/测试内容变化，按同一惯例刷新对应哈希；条目结论与验证范围不变。
 - follow_up_guardrail: 底部服务入口必须用标准图标加可读标签，禁止单汉字缩写充当图标；行政区-only 地址不得保存或进入结账与履约链路，历史不完整地址以可见提示暴露而不静默改写；悬浮导航背景色不得参与 transition。
 - related_logbook: 2026-09-14 - fix(miniapp): 商品详情服务入口图标与收货地址可履约性收口
@@ -8436,3 +8629,1721 @@ backend/docs/harness-engineering/core/evidence-index.md 仅作为历史镜像。
 - failure_class: none
 - replayable: yes
 - residual_risks: 只改个人中心头像展示与审计脚本；真实微信头像昵称获取仍未接入（当前登录态用会员姓名首字），真机、真实支付/退款、真实闪送与生产验收仍未执行；闪送开放平台资料与测试权限、有赞分类-商品接口 IP 白名单仍为外部阻塞。
+## E-20260925-008：已支付已退款订单资产重入守卫
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r8
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r7
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-refunded-paid-asset-reentry
+- file: `repo:backend/app/service/order/payment_runtime.py`; `repo:backend/app/service/stored_value/payment.py`; `repo:backend/tests/service/test_stored_value.py`; `repo:miniapp/docs/api-contract.md`; `repo:ERRORS.md`; `repo:LOGBOOK.md`; `repo:PROJECT-STATE.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/test_stored_value.py -k "refunded_partial_order_balance_entry or refunded_partial_order_combined_prepare or refunded_partial_order_close or refunded_paid_order_rejects_repeat_asset_settlement" --no-cov -q -p no:cacheprovider`; `python -B -m pytest backend/tests/service/test_stored_value.py backend/tests/service/order/test_refund_notification.py backend/tests/service/order/test_review2_pay_combined_refund_20260906.py backend/tests/service/test_order.py backend/tests/service/test_coupon_payment.py backend/tests/service/test_points_payment.py --no-cov -q -p no:cacheprovider`; `python -B -m pytest backend/tests/api/test_miniapp_payment_api.py backend/tests/api/test_miniapp_order_api.py backend/tests/api/test_admin_order_api.py --no-cov -q -p no:cacheprovider`; `python -m ruff check backend/app/service/stored_value/payment.py backend/app/service/order/payment_runtime.py backend/tests/service/test_stored_value.py`; `git diff --check`; `python -B backend/scripts/check_project.py --skip-tests`; `python -B backend/scripts/check_project_development_register.py`; `python -B backend/scripts/check_chinese_governance.py --summary`; `python -B backend/scripts/check_evidence_index.py --summary`; `python -B backend/scripts/check_mistake_ledger.py`; `python backend/scripts/check_file_sizes.py`; `scripts/cleanup-local-artifacts.ps1` 预览授权后执行白名单清理
+- result: pass
+- sha256: backend/app/service/order/payment_runtime.py=ff23dd0fae2a768f7d0594ff80c3a8617db3acf1c252e9e616ca12fbb7d3c553；backend/app/service/stored_value/payment.py=24452f1e4e785f7ed3dfcd06b8160023eb2cfba321cadeacbc82c01d82431f83；backend/tests/service/test_stored_value.py=de8b7be206ed559834a9b8c98ba080bf339f146d50334047c6b9a85cb15f7042；miniapp/docs/api-contract.md=e21db8f27cb4da708fe958d0b607bd737a55a07cdd22ce1c081b248f39da960b；ERRORS.md=d4c808dfc71aa7b80f4cb915fe0969be0bddfe04b625fc95a15ce6ff568f706c；LOGBOOK.md=46615d2ae99c04c07e067db289f331d9c4ec4fba8511fb9a1725c9a3b9d2f863；PROJECT-STATE.md=845e92867fd84db4d2b2d6ace632804c1087d4340c1a0e09654ef9d4ee0a22c9
+- follow_up_guardrail: 已支付订单的支付重入必须先判断 `refundStatus=full/over`，退款终态优先于已支付幂等返回和积分/券资产结算；重复支付回归必须同时断言积分余额与 `pointsAwarded` 快照保持不变。
+- related_logbook: 2026-09-25 - fix(miniapp): 已支付已退款订单资产重入守卫收口
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成会员/订单、mock 支付、mock 微信退款查询、定向测试退出码、源码哈希和候选排除证据；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 修复前 `test_refunded_paid_order_rejects_repeat_asset_settlement` 稳定失败于 `DID NOT RAISE`：已支付订单全额退款后再次进入 mock 支付会重新执行积分结算。修复后 mock 支付和余额支付均在已支付分支先拒绝 `refundStatus=full/over`，积分余额保持为 0，`pointsAwarded` 保持为 0；普通未退款已支付订单仍保持幂等。退款终态 partial 余额/组合支付候选先命中已有部分支付守卫且无余额扣除或微信预下单；取消/超时重复关闭使用唯一余额退款幂等键且无重复入账。储值/退款/订单/积分/券回归 116 项通过，MiniApp 支付/订单/后台订单 API 28 项通过，Ruff 与 diff 检查通过。
+- failure_class: recovered_deterministic_business_failure
+- replayable: yes
+- residual_risks: 真实微信支付/退款、真实闪送、真机、生产 API、生产验收和正式上线仍未验证；本条不构成生产发布或真实支付验收。`check_file_sizes.py` 仍被既有 `app/service/catalog/application.py` 缺少职责评审记录阻断，本轮未扩大修复范围。覆盖率临时产物仅按白名单清理脚本删除，未触碰 `backend/data/`、`backend/reports/`、`miniapp/reports/` 或 `.git/`。
+## E-20260925-009：退款先到时迟到支付事实落库守卫
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r9
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r8
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-refund-before-payment-fact
+- file: `repo:backend/app/service/order/payment_notification.py`; `repo:backend/tests/service/order/test_refund_notification.py`; `repo:backend/tests/service/test_stored_value.py`; `repo:ERRORS.md`; `repo:LOGBOOK.md`; `repo:PROJECT-STATE.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/order/test_refund_notification.py backend/tests/service/order/test_review2_pay_combined_refund_20260906.py backend/tests/service/test_stored_value.py --no-cov -q -p no:cacheprovider`; `python -B -m pytest backend/tests/api/test_miniapp_payment_api.py backend/tests/api/test_miniapp_order_api.py backend/tests/api/test_admin_order_api.py --no-cov -q -p no:cacheprovider`; `python -B -m pytest backend/tests/service/test_order.py backend/tests/service/test_coupon_payment.py backend/tests/service/test_points_payment.py backend/tests/api/test_miniapp_points_api.py --no-cov -q -p no:cacheprovider`; `python -m ruff check backend/app/service/order/payment_notification.py backend/tests/service/order/test_refund_notification.py backend/tests/service/test_stored_value.py`; `git diff --check`; `python -B backend/scripts/check_project_development_register.py`; `python -B backend/scripts/check_chinese_governance.py --summary`; `python -B backend/scripts/check_evidence_index.py --summary`; `python -B backend/scripts/check_mistake_ledger.py`
+- result: pass
+- sha256: backend/app/service/order/payment_notification.py=71e3cc2034d71a9c1891412102e227475255370450726b83097a144c5f065456；backend/tests/service/order/test_refund_notification.py=76f13cd08344ade3caeee41071524b8502d9994cc18fac731b93dcc668c317be；backend/tests/service/test_stored_value.py=b0e0663bcab5bccc6743126bf5981aa0e6cc76aba091d291c7c6a343e21d466f；ERRORS.md=fc3b400308e2db77a69f0b24795f44f2aed3b79dcf31a50df6fc4384a3875f3b；LOGBOOK.md=14fea8e8a040a1d5bf04186cfa677e80bac561b4ee5f25472344e827d166ac77；PROJECT-STATE.md=a852e57f3f88c7d6f20eaf7f04f7ba8dc826ec86a8f11d254e1d55fa47db09d3
+- follow_up_guardrail: 退款先到时，`refundStatus=full/over` 且 `payment.status=unpaid` 的迟到成功支付事实必须补写支付状态、微信交易号和支付事件，但不得重新核销优惠券、发放积分或结算余额；`partial/paid` 退款终态继续保持幂等返回并禁止重新激活。
+- related_logbook: 2026-09-25 - fix(miniapp): 退款先到时迟到支付事实落库收口
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单、合成会员、mock 退款/支付查询、定向测试退出码、源码哈希和候选排除结论；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 修复前 `test_late_payment_query_records_paid_fact_after_full_refund` 稳定复现退款先到、支付查询迟到后订单仍为 `unpaid` 且没有交易号；修复后订单为 `paid/full`、交易号已绑定且 `pointsAwarded=0`，组合支付 `partial/full` 回归保持幂等。候选 B 的已支付已退款订单再次 `prepare-payment` 排除为非 P1：仅返回空支付参数且微信预下单调用次数为 0，无资金或资产副作用。定向退款/储值/组合支付 42 项、支付/订单/后台订单 API 28 项、订单/券/积分及积分 API 80 项通过。
+- failure_class: recovered_deterministic_business_failure
+- replayable: yes
+- residual_risks: 真实微信支付/退款、真实闪送、真机、生产 API、生产验收和正式上线仍未验证；本条不构成生产发布或真实支付验收。`check_file_sizes.py` 仍被既有 `app/service/catalog/application.py` 缺少职责评审记录阻断，本轮未扩大修复范围。
+
+## E-20260925-010：组合支付取消后外部支付腿金额固化守卫
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r10
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r9
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-combined-external-payment-leg-snapshot
+- file: `repo:backend/app/service/order/payment_state.py`; `repo:backend/app/service/order/payment_runtime.py`; `repo:backend/app/service/order/payment_notification.py`; `repo:backend/app/service/order/refund_notification.py`; `repo:backend/app/service/stored_value/payment.py`; `repo:backend/tests/service/test_stored_value.py`; `repo:miniapp/docs/api-contract.md`; `repo:ERRORS.md`; `repo:LOGBOOK.md`; `repo:PROJECT-STATE.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/test_stored_value.py::test_cancelled_coupon_combined_payment_late_notify_uses_original_external_leg backend/tests/service/test_stored_value.py::test_late_wechat_payment_after_combined_cancel_keeps_external_refund_fact backend/tests/service/test_stored_value.py::test_late_wechat_refund_after_combined_cancel_refunds_external_leg_once backend/tests/service/test_stored_value.py::test_combined_payment_wechat_notify_uses_remainder_amount backend/tests/service/test_stored_value.py::test_combined_payment_query_recovery_uses_remainder_and_settles_once -q --no-cov`; `python -B -m pytest backend/tests/service/order/test_pay_notify_freshness_intake.py backend/tests/service/order/test_refund_notification.py -q --no-cov`; `python -B -m pytest backend/tests/service/test_order.py backend/tests/service/test_stored_value.py backend/tests/service/test_coupon_payment.py backend/tests/service/test_points_payment.py backend/tests/api/test_miniapp_payment_api.py backend/tests/api/test_miniapp_order_api.py backend/tests/api/test_admin_order_api.py -q --no-cov`; `python -B -m ruff check backend/app/service/order/payment_state.py backend/app/service/stored_value/payment.py backend/app/service/order/payment_runtime.py backend/app/service/order/payment_notification.py backend/app/service/order/refund_notification.py backend/tests/service/test_stored_value.py`; `git diff --check`; `python -B backend/scripts/check_project_development_register.py`; `python -B backend/scripts/check_chinese_governance.py --summary`; `python -B backend/scripts/check_mistake_ledger.py`
+- result: pass
+- sha256: backend/app/service/order/payment_state.py=55b78ac89e544f56c09b820176eb0c7e31047cee0dcc16a511417de95ddd0077；backend/app/service/order/payment_runtime.py=5daaecaa2d68b59ed22f9b96a2f1358800ef71e00b4c113810adb0b3a3893f88；backend/app/service/order/payment_notification.py=88b46c9b5a185912ebda2c8c95e2a0f40b7709dad1437fe44b29269fccad5821；backend/app/service/order/refund_notification.py=322e1f24d438c50d0cd390b08133c8a14e4f9c06cdad37b4f9388e93f2f11694；backend/app/service/stored_value/payment.py=207e83e44ea64b92c1db5ba382e5923242ecf62f5f17231217d9bf64354b9a2a；backend/tests/service/test_stored_value.py=048007ca099179a173c01c0fd969baccccd47cdd96fadd259822e205bcacb9c7；miniapp/docs/api-contract.md=c221772c80ab0c03796ad0ea9b263dbf6b735aaaee46598991403d9f3f544a54；ERRORS.md=226a3f8304530aa622d46bf475e45ecdce0b46e91a4c4b02c650dcbd2d22c1a1；LOGBOOK.md=5c3f993fd18157ecfc0ae01d805ad8c7e4657eebc725fd6f9336258c96b2874b；PROJECT-STATE.md=62e620103c462bb7e9f0f81fd4e6e69704ea6eb03c9d0ccd92af449c2948384b
+- follow_up_guardrail: 组合支付快照必须固化 `externalPaidFen`；支付预下单、支付通知、支付查询、取消后迟到支付和退款通知统一使用该不可变外部腿金额，取消释放优惠券或其他可重算资产后不得重新推导已发起的微信交易金额。
+- related_logbook: 2026-09-25 - fix(miniapp): 取消后迟到支付外部腿金额固化与退款校验收口
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成会员/订单、合成优惠券、mock 微信支付/退款通知、定向测试退出码和源码哈希；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 修复前新增测试稳定复现组合支付取消并释放优惠券后，真实微信 2500 分迟到支付通知被按 3000 分错误拒绝；修复后组合支付快照固化 `externalPaidFen=2500`，支付通知、支付查询、取消后迟到支付和退款通知均按原始外部腿校验，订单保持 `cancelled`、退款累计 2500 分、余额只退回一次，重复退款通知幂等，积分余额保持 0。订单/储值/优惠券/积分及 MiniApp/后台支付 API 定向回归退出码 0。
+- failure_class: recovered_deterministic_business_failure
+- replayable: yes
+- residual_risks: 真实微信支付/退款、真实闪送、真机、生产 API、生产验收和正式上线仍未验证；本条不构成生产发布或真实支付验收。`check_file_sizes.py` 仍被既有 `app/service/catalog/application.py` 缺少职责评审记录阻断，本轮未扩大修复范围；`ruff format --check` 受工作区既有混合换行/格式差异影响未作为本轮门禁。
+## E-20260925-011：MiniApp 已支付退款终态订单后台关单与库存释放
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r11
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r10
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-refunded-order-admin-close
+- file: `repo:backend/app/repository/order_repo.py`; `repo:backend/app/service/order/status_flow.py`; `repo:backend/tests/service/test_order.py`; `repo:backend/tests/service/test_stored_value.py`; `repo:miniapp/docs/api-contract.md`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`; `repo:ERRORS.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/test_order.py backend/tests/service/test_stored_value.py -q --no-cov -p no:cacheprovider`; `python -B -m pytest backend/tests/service/test_coupon_payment.py backend/tests/service/test_points_payment.py backend/tests/service/order/test_refund_notification.py backend/tests/api/test_admin_order_api.py -q --no-cov -p no:cacheprovider`; `python -B -m pytest backend/tests/api/test_miniapp_order_api.py backend/tests/api/test_miniapp_payment_api.py -q --no-cov -p no:cacheprovider`; `python -B -m ruff check backend/app/repository/order_repo.py backend/app/service/order/status_flow.py backend/tests/service/test_order.py backend/tests/service/test_stored_value.py`; `git diff --check`; `python -B backend/scripts/check_project_development_register.py`; `python -B backend/scripts/check_chinese_governance.py --summary`; `python -B backend/scripts/check_evidence_index.py --summary`; `python -B backend/scripts/check_mistake_ledger.py`
+- result: partial-pass
+- sha256: backend/app/repository/order_repo.py=dbf63bbc9027b99abf1c6d850ba09cdce2dd9fcf064afdc32e2bcc16943c093e；backend/app/service/order/status_flow.py=bf45173265b046521d3eeb8b1bdb13b6e182e8671f371f5eba4be58244f67983；backend/tests/service/test_order.py=67be128826f2915849be86424607e7b50c9492b358e90766385572130bb11204；backend/tests/service/test_stored_value.py=1f91a8a2cf10beaf57beb66f174b6fd0b4eaa522086a1f80c04558dc0d4c01d4；miniapp/docs/api-contract.md=db312930d3881a108625546a5ecf61892b6829c65b182084bfcfe4ff0c3330ea；PROJECT-STATE.md=6911b16fca7beae2d5d7d84e3ec95a69b6a21decb2907302fe877a7b7e73c086；LOGBOOK.md=95dd5f8a43131ffa34e32f4c5124e1dd87a210f2672aaf3c96de4c20ec037f63；ERRORS.md=5dde61ee674763700f483a8c1252c057123f15103f42f1742fb3df96073a8801
+- follow_up_guardrail: 后台关单必须以原子支付快照条件区分未支付/部分支付与已支付退款终态；退款终态关单只释放库存并记录事件，不重复执行余额、积分或优惠券补偿；普通已支付未退款订单继续拒绝取消。
+- related_logbook: 2026-09-25 - fix(miniapp): 退款终态订单后台安全关单与库存释放收口
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单、合成会员、真实内存商品库存、mock 支付/退款通知、定向测试退出码和源码哈希；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 修复前全额退款订单的关单断言稳定失败于“已支付订单不允许取消”，真实数字商品库存保持为 0；修复后未支付/部分支付或已支付 `refundStatus=full/over` 的订单可原子进入 `cancelled`，已支付退款终态跳过重复资产补偿，库存只释放一次，组合支付余额流水不重复入账；普通已支付未退款取消回归仍通过。治理状态和 API 契约已同步。E-20260925-011 自身 8 个登记工件的哈希已补齐并匹配当前工作区；全量证据索引仍被 r3-r10 的 13 条旧条目共享文件哈希漂移阻断，历史条目未改写。
+- failure_class: recovered_deterministic_business_failure
+- replayable: yes
+- residual_risks: 真实微信支付/退款、真实闪送、真机、生产 API、生产验收和正式上线仍未验证；本条不构成生产发布或真实支付验收。`backend/scripts/check_file_sizes.py` 仍被既有 `app/service/catalog/application.py` 职责评审缺口影响，本轮未扩大修复范围。全量 `check_evidence_index.py` 仍为失败：r3-r10 的 13 条旧条目记录了后续修复前的共享文件哈希，本轮按历史证据纪律未改写这些条目。
+## E-20260925-012：取消后迟到支付不得覆盖已有退款事实
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r12
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r11
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-cancelled-late-payment-refund-fact
+- file: `repo:backend/app/service/order/payment_notification.py`; `repo:backend/tests/service/order/test_core_loop_candidate_r12.py`; `repo:backend/tests/service/order/test_refund_notification.py`; `repo:miniapp/docs/api-contract.md`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`; `repo:ERRORS.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest -o addopts='' backend/tests/service/order/test_core_loop_candidate_r12.py backend/tests/service/order/test_refund_notification.py -q -p no:cacheprovider`; `python -B -m pytest -o addopts='' backend/tests/service/order/test_pay_notify_freshness_intake.py backend/tests/service/order/test_review2_pay_combined_refund_20260906.py -q -p no:cacheprovider`; `python -B -m pytest -o addopts='' backend/tests/service/test_stored_value.py backend/tests/service/test_order.py -q -p no:cacheprovider`; `python -B -m pytest -o addopts='' backend/tests/service/test_coupon_payment.py backend/tests/service/test_points_payment.py -q -p no:cacheprovider`; `python -B -m pytest -o addopts='' backend/tests/api/test_admin_order_api.py backend/tests/api/test_miniapp_order_api.py backend/tests/api/test_miniapp_payment_api.py -q -p no:cacheprovider`; `python -B -m ruff check backend/app/service/order/payment_notification.py backend/tests/service/order/test_core_loop_candidate_r12.py backend/tests/service/order/test_refund_notification.py`; `git diff --check`; `python -B backend/scripts/check_project_development_register.py`; `python -B backend/scripts/check_chinese_governance.py --summary`; `python -B backend/scripts/check_evidence_index.py --summary`; `python -B backend/scripts/check_mistake_ledger.py`
+- result: pass
+- sha256: backend/app/service/order/payment_notification.py=d5357d8890fe8bd98d6c9eb8b3fe2b273cebdfe317e6e55edf7cf5d9365a710e；backend/tests/service/order/test_core_loop_candidate_r12.py=97b8a0e404a8d7568f3dbdc9ca9a55baad5b782dc6912ae6b0f4e02b3c67fe15；backend/tests/service/order/test_refund_notification.py=a997d418432ad31f6c0b654d77b2994f06ce1e4494899715cbbf7b827a47f8c2；miniapp/docs/api-contract.md=5b392951e8883761f78e8a6f37fdeaa75a6ce239ef941bf4585518c31de16c86；PROJECT-STATE.md=85fb9ad6a7874353f7598166f0d4e16ec70c5d2ff5f4f13f201bf885f8ad1324；LOGBOOK.md=d1156620d8b18731b259a07c048e17bd393d908b9caec450a0d2753668c009fb；ERRORS.md=028ea5e1a8921488dd4baf03376a4d2dfac1a51a882cb4a8711afc064e929a7d
+- follow_up_guardrail: 取消订单的迟到外部支付可以补写支付事实，但不得覆盖任何已有退款事实；必须同时覆盖 `partial/full/over` 和无退款事实的 `pending` 分支。
+- related_logbook: 2026-09-25 - fix(miniapp): 取消后迟到支付不得覆盖已有退款事实
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单、真实内存 SQLite、定向测试退出码、源码哈希和退款状态断言；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 修复前两个新增测试分别稳定复现取消订单已有 `full` 和 `partial` 退款事实后，迟到支付查询会把 `refundStatus` 改成 `pending`；修复后只补写支付状态、微信交易号和支付事件，已有退款状态、累计金额和原因保持不变；无退款事实的取消迟到支付仍创建 `pending` 和退款金额。核心候选/退款通知 13/13、支付/组合退款 22/22、订单/储值 71/71、优惠券/积分 41/41、后台订单/MiniApp 订单/支付 API 28/28 通过。
+- failure_class: recovered_deterministic_business_failure
+- replayable: yes
+- residual_risks: 未访问生产 API、真实客户数据、真实微信支付/退款、真实闪送、真机、生产验收或正式上线；本条不构成生产发布或真实支付验收。既有 `backend/scripts/check_file_sizes.py` 职责评审缺口和历史证据哈希漂移未改写。
+
+## E-20260925-013：退款先到时支付与退款交易号一致性守卫
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r13
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r12
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-payment-refund-transaction-identity
+- file: `repo:backend/app/repository/wechat_refund_event_repo.py`; `repo:backend/app/service/order/payment_notification.py`; `repo:backend/app/service/order/refund_notification.py`; `repo:backend/tests/service/order/test_core_loop_candidate_r12.py`; `repo:backend/tests/service/order/test_refund_notification.py`; `repo:miniapp/docs/api-contract.md`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`; `repo:ERRORS.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest -q --no-cov backend/tests/service/order/test_core_loop_candidate_r12.py backend/tests/service/order/test_refund_notification.py backend/tests/service/order/test_pay_notify_freshness_intake.py backend/tests/service/test_stored_value.py backend/tests/service/test_coupon_payment.py backend/tests/service/test_points_payment.py backend/tests/api/test_admin_order_api.py backend/tests/api/test_miniapp_order_api.py backend/tests/api/test_miniapp_payment_api.py backend/tests/api/test_miniapp_points_api.py`; `python -B -m ruff check backend/app/repository/wechat_refund_event_repo.py backend/app/service/order/payment_notification.py backend/app/service/order/refund_notification.py backend/tests/service/order/test_core_loop_candidate_r12.py backend/tests/service/order/test_refund_notification.py`; `git diff --check`
+- result: pass
+- sha256: backend/app/repository/wechat_refund_event_repo.py=d2bdebec9515fcf518d04ce5423634603e4d173be1a13954b52fc7260feafbc6；backend/app/service/order/payment_notification.py=8fe167b456795e22507ba6c453aa36f9d87cf74d3bb0ba01ec787f452eb454e8；backend/app/service/order/refund_notification.py=989c913fa407d7bbcae054e4a1d669e6bd062705ce569ff14a043a39d9dccd83；backend/tests/service/order/test_core_loop_candidate_r12.py=e61e8dd5706367d8bedf77cf4bad735211940edf414bd73d11e759946689d2bf；backend/tests/service/order/test_refund_notification.py=a120b21a14ace5f1471c3252052121c09f99829b48290e054d1be16600c92f24；miniapp/docs/api-contract.md=c325bb44e867289a32effce49182c91825d046e4481c5b2ea4853f51d90b3329；PROJECT-STATE.md=97b8c255e0c8248998d41af01ee07d657a77d5f5132a544fb38ac18d4b06a861；LOGBOOK.md=e1520e83364ceaa03a521c6a325dc5478d8570df68cbcac2c02a8ef52dfc9d87；ERRORS.md=757b7517f65bcea664286d85700ed004a228618bcc8ba34179c80bb010dc4947
+- follow_up_guardrail: 同一订单的支付事实和全部退款事实必须绑定同一微信交易号；退款先到时，支付认领前必须校验退款事件交易号；支付事实未到时，不同交易号退款必须在事件入库前拒绝并建立对账案件，不得合并累计或触发资产补偿。
+- related_logbook: 2026-09-25 - fix(miniapp): 退款先到时支付与退款交易号一致性守卫
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单、合成会员、真实内存 SQLite、定向测试退出码、源码哈希和交易号断言；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 修复前支付查询在退款先到且交易号不一致时直接写入已支付，支付事实未到时不同交易号退款也会合并累计并进入全额补偿；修复后支付认领和退款事件入库均执行交易号一致性校验，错误事实停止入账并进入对账。核心候选/退款通知、支付通知/组合退款、储值/券/积分及 MiniApp/后台 API 定向回归通过，Ruff 与 `git diff --check` 通过。
+- failure_class: recovered_deterministic_business_failure
+- replayable: yes
+- residual_risks: 未访问生产 API、真实客户数据、真实微信支付/退款、真实闪送、真机、生产验收或正式上线；本条不构成生产发布或真实支付验收。历史证据索引旧哈希漂移和既有 `backend/scripts/check_file_sizes.py` 职责评审缺口未改写，正式上线继续为 No-Go。
+
+## E-20260925-014：支付服务构造期数据库上下文回归守卫
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r14
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r13
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-service-construction-context
+- file: `repo:backend/app/service/order/payment_notification.py`; `repo:backend/tests/service/order/test_core_loop_candidate_r12.py`; `repo:backend/app/lifespan_services.py`; `repo:backend/app/repository/base.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`; `repo:ERRORS.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest -q --no-cov backend/tests/service/order/test_core_loop_candidate_r12.py backend/tests/service/order/test_refund_notification.py backend/tests/service/order/test_pay_notify_freshness_intake.py backend/tests/service/test_stored_value.py backend/tests/service/test_coupon_payment.py backend/tests/service/test_points_payment.py backend/tests/api/test_admin_order_api.py backend/tests/api/test_miniapp_order_api.py backend/tests/api/test_miniapp_payment_api.py backend/tests/api/test_miniapp_points_api.py`; `python -B -m ruff check backend/app/repository/wechat_refund_event_repo.py backend/app/service/order/payment_notification.py backend/app/service/order/refund_notification.py backend/tests/service/order/test_core_loop_candidate_r12.py backend/tests/service/order/test_refund_notification.py`; `git diff --check`; `python -B backend/scripts/check_project_development_register.py`; `python -B backend/scripts/check_mistake_ledger.py`
+- result: pass
+- sha256: backend/app/service/order/payment_notification.py=fdff722c311e07dfb6e6487135ec6756cf95aa9795b3aa417e1b44a7cd23d21e；backend/tests/service/order/test_core_loop_candidate_r12.py=625ecc2ae7eeef992ba40e95988db9ae830880a4c369b24e88d40ba033efd5da；backend/app/lifespan_services.py=8149b19fbfde9e3a0afa38bc639f254bfc5252872e583e1875c92c13f6301a8f；backend/app/repository/base.py=69d3558b02e2681ad3007129a9505c54183443f63214ed9c19a5e0af0cc8f07f；PROJECT-STATE.md=7971a7e556d1233c38c1a1c43653b6a4f216fd26c29bdc788a7f103ee8e2aaea；LOGBOOK.md=b22bba2e0c1747ae58d5387afad8a21ebfb1bc326a2c236f61b19af2eee3f35d；ERRORS.md=910566fcb0ed2e0392e332db4782132e98a5ca9dc68f9b7cb24555fc117d5249
+- follow_up_guardrail: 应用 lifespan 构造服务时不得提前访问请求级 `db_conn_var`；使用 `OrderRepo(None)` 的构造路径必须由脱离请求上下文的测试覆盖。
+- related_logbook: 2026-09-25 - fix(miniapp): 支付服务构造期数据库上下文回归收口
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地服务构造测试、定向测试退出码、源码哈希和生命周期根因；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 修复前脱离请求上下文构造 `OrderPaymentRuntimeService(OrderRepo(None))` 稳定抛数据库上下文 RuntimeError，证明 r13 新增退款事件仓储若在构造器初始化会阻断生产 lifespan；修复后数据库句柄延迟到支付执行阶段解析，交易号一致性守卫和完整核心定向回归均通过。
+- failure_class: recovered_deterministic_business_failure
+- replayable: yes
+- residual_risks: 未访问生产 API、真实客户数据、真实微信支付/退款、真实闪送、真机、生产验收或正式上线；本条不构成生产发布或真实支付验收。历史证据索引旧哈希漂移和既有 `backend/scripts/check_file_sizes.py` 职责评审缺口未改写，正式上线继续为 No-Go。
+
+## E-20260925-015：订单状态 CAS 与支付退款 intake 失败重试守卫
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r15
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r14
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-order-cas-intake-retry
+- file: `repo:backend/app/repository/order_repo.py`; `repo:backend/app/service/order/application.py`; `repo:backend/app/service/order/notify_intake.py`; `repo:backend/app/service/order/payment_runtime.py`; `repo:backend/app/service/order/status_flow.py`; `repo:backend/app/service/order/payment_notification.py`; `repo:backend/tests/service/order/test_core_loop_candidate_r12.py`; `repo:backend/tests/service/order/test_pay_notify_freshness_intake.py`; `repo:backend/tests/service/order/test_refund_notification.py`; `repo:miniapp/docs/api-contract.md`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`; `repo:ERRORS.md`; `repo:backend/scripts/check_file_sizes.py`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest -q --no-cov backend/tests/service/order/test_core_loop_candidate_r12.py backend/tests/service/order/test_pay_notify_freshness_intake.py backend/tests/service/order/test_refund_notification.py backend/tests/service/test_stored_value.py backend/tests/service/test_coupon_payment.py backend/tests/service/test_points_payment.py backend/tests/api/test_admin_order_api.py backend/tests/api/test_miniapp_order_api.py backend/tests/api/test_miniapp_payment_api.py backend/tests/api/test_miniapp_points_api.py`; `python -m ruff check backend/app/repository/order_repo.py backend/app/service/order/application.py backend/app/service/order/notify_intake.py backend/app/service/order/payment_runtime.py backend/app/service/order/status_flow.py backend/tests/service/order/test_core_loop_candidate_r12.py backend/tests/service/order/test_pay_notify_freshness_intake.py backend/tests/service/order/test_refund_notification.py backend/scripts/check_file_sizes.py`; `git diff --check`; `python -B backend/scripts/check_project_development_register.py`; `python -B backend/scripts/check_chinese_governance.py --summary`; `python -B backend/scripts/check_mistake_ledger.py`; `python -B backend/scripts/check_file_sizes.py`; `python -B backend/scripts/check_evidence_index.py --summary`
+- result: partial-pass
+- sha256: backend/app/repository/order_repo.py=98fe12697f572be3ab173377c6c5624f90f1e4b80e9eaf30653129c248cf645e；backend/app/service/order/application.py=f285ad276597a99ff9d443416296571da4bc6c0fe57025e3c910e1262cf1ee32；backend/app/service/order/notify_intake.py=f7e76fadf05793a8871ade3289075ca26deba216f3088d12a669f8b1ff9bd0b9；backend/app/service/order/payment_runtime.py=cc883318fca91b61ff440a5bf12ad96ae59203edce4567ac63bbef32a58b81fe；backend/app/service/order/status_flow.py=eed4843bdbdb44d9019bc37dd46d94e1a562f1956a5c1f32bdebe3c45dd11de9；backend/app/service/order/payment_notification.py=fdff722c311e07dfb6e6487135ec6756cf95aa9795b3aa417e1b44a7cd23d21e；backend/tests/service/order/test_core_loop_candidate_r12.py=5cdc56161847fd2366af8b2777e7608808b58b33546bc9f8b974159e191e5692；backend/tests/service/order/test_pay_notify_freshness_intake.py=25c78aaf8b7a017fa3ed4fbd565353206c3e92d82a506cb120b4c51a7b7e0ebe；backend/tests/service/order/test_refund_notification.py=3e91a5cb56e2d061245e60b2fc1345ef54d7ed73ef8abc27e6f5c2504e47da8c；miniapp/docs/api-contract.md=9c6ecee1b9334cd920c068f0d7b89da2a47063dde06f5e82a46518f7c91758f8；PROJECT-STATE.md=9c553365973dcde2e5e51f1d379843d3218beea93a4ed9d484b5d369269547bb；LOGBOOK.md=2382215bce72896b84f1f10d6b45ca2a42b73e8da99de9512404a5dc7d04a875；ERRORS.md=7c0cb767baaffca6c8f97f42f00246901370539643e7236d1ed2e6e5511edaef；backend/scripts/check_file_sizes.py=090eac5ca446aea8b1f23933e87f8c6d685168ac842b322f98e0507292ac1fbd
+- follow_up_guardrail: 后台订单状态推进必须使用期望当前状态 CAS；支付/退款 intake 必须先提交租约，再以业务事务原子提交事实、资产补偿和 `processed`，失败按 claim token 写入 `failed`，达到 `MAX_INBOX_ATTEMPTS=5` 进入 `dead_letter`。
+- related_logbook: 2026-09-25 - fix(miniapp): 订单状态 CAS 与通知 intake 失败重试收口
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员、真实内存 SQLite、mock 微信支付/退款通知、定向测试退出码和源码哈希；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 修复前 `test_admin_status_update_does_not_overwrite_concurrent_timeout_close` 稳定复现后台读取待支付后被超时取消覆盖为已确认；修复后订单状态 CAS 冲突拒绝写履约事件。修复前 `test_pay_notify_amount_mismatch_eventually_enters_dead_letter` 稳定复现首次失败后 intake 无记录、次数归零；修复后五次失败依次保留 `failed` 并进入 `dead_letter`；`test_refund_compensation_failure_rolls_back_business_and_persists_retry` 证明业务事实和资产补偿回滚、失败状态单独保留，第二次重试只成功补偿一次。r15 定向合并回归 192 项通过（39.08 秒，1 warning），Ruff、开发总表、中文治理和错误账本通过。
+- failure_class: recovered_deterministic_business_failure
+- replayable: yes
+- residual_risks: `check_file_sizes.py` 仍被既有 `app/service/catalog/application.py` 缺少职责评审记录阻断；全量 `check_evidence_index.py` 仍为 `total=487/hash_mismatch=15`，其中历史基线 14 条，另有 E-20260925-012 登记的共享测试文件因 r15 更新产生 1 条旧哈希漂移，本轮未改写历史证据，E-20260925-015 自身哈希全部匹配。未访问生产 API、真实客户数据、真实微信支付/退款、真实闪送、真机、生产验收或正式上线，正式上线继续为 No-Go。
+
+## E-20260925-016：已支付已退款订单准备支付终态守卫
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r16
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r15
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-refunded-paid-prepare-payment
+- file: `repo:backend/app/service/order/payment_runtime.py`; `repo:backend/tests/service/test_stored_value.py`; `repo:miniapp/docs/api-contract.md`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`; `repo:ERRORS.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -m pytest backend/tests/service/test_stored_value.py -q --no-cov -p no:cacheprovider`; `python -m pytest backend/tests/api/test_miniapp_payment_api.py backend/tests/api/test_miniapp_order_api.py -q --no-cov -p no:cacheprovider`; `python -m ruff check backend/app/service/order/payment_runtime.py backend/tests/service/test_stored_value.py`; `git diff --check`; `python -B backend/scripts/check_project_development_register.py`; `python -B backend/scripts/check_chinese_governance.py --summary`; `python -B backend/scripts/check_mistake_ledger.py`
+- result: partial-pass
+- sha256: backend/app/service/order/payment_runtime.py=c569b82c3e4de1152b7067af7ae4cf7326375717a42ec3b33d2012ab8cafda05；backend/tests/service/test_stored_value.py=21c4a9349b28bb47cad6c8f2671f03a46290edf31edb71176d822e1b36802ed5；miniapp/docs/api-contract.md=9c6ecee1b9334cd920c068f0d7b89da2a47063dde06f5e82a46518f7c91758f8；PROJECT-STATE.md=56f2b714729f6b22b9bbce0c241c7b9a10e62485f0c39e700ac48914ef00e95f；LOGBOOK.md=de087d69cfa7d472ec8aae2ca2c802421daa24606f44e902d697ebe3a5caa285；ERRORS.md=c92258846922ae2030df7fbaa0a3f91a4bc28355aba0b288c86cc69b79a5a1e8
+- follow_up_guardrail: 支付准备、mock 确认和余额支付入口必须先核对 `refundStatus=full/over`；已支付幂等只适用于未退款终态订单，参数化测试必须覆盖全额和超额退款且断言不调用预下单。
+- related_logbook: 2026-09-25 - fix(miniapp): 已支付已退款订单准备支付终态守卫收口
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员、真实内存 SQLite、mock 支付退款路径、定向测试退出码和源码哈希；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 修复前将旧幂等成功断言改为契约要求的拒绝断言后，参数化 `refundStatus=full/over` 测试稳定复现 `prepare-payment` 返回 `paid` 会话；修复后退款终态守卫先于已支付幂等和微信预下单执行，储值/支付服务 32 项和 MiniApp 支付与订单 API 22 项通过，定向 Ruff、`git diff --check`、开发总表、中文治理和错误账本通过。
+- failure_class: recovered_deterministic_business_failure
+- replayable: yes
+- residual_risks: `check_file_sizes.py` 仍被既有 `app/service/catalog/application.py` 缺少职责评审记录阻断；证据索引仍有既有历史哈希漂移，本轮未改写历史证据。未访问生产 API、真实客户数据、真实微信支付/退款、真实闪送、真机、生产验收或正式上线，正式上线继续为 No-Go。
+
+## E-20260925-017：零价目录商品与订单补偿事务复核
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r17
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r16
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-catalog-price-order-atomicity
+- file: `repo:backend/app/service/order/inventory.py`; `repo:backend/tests/service/test_order.py`; `repo:backend/tests/service/test_stored_value.py`; `repo:miniapp/docs/api-contract.md`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`; `repo:ERRORS.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/test_order.py::test_create_order_rejects_zero_catalog_price_instead_of_using_client_price -q --no-cov -p no:cacheprovider`（修复前）; `python -B -m pytest backend/tests/service/test_order.py backend/tests/service/test_stored_value.py -q --no-cov -p no:cacheprovider`; `python -B -m pytest backend/tests/api/test_miniapp_order_api.py -q --no-cov -p no:cacheprovider`; `python -B -m pytest backend/tests/service/test_points_payment.py::test_dual_connection_concurrent_settle_single_winner backend/tests/service/test_points_payment.py::test_refund_points_returns_used_and_claws_back_award backend/tests/service/order/test_refund_notification.py::test_refund_compensation_failure_rolls_back_business_and_persists_retry -q --no-cov -p no:cacheprovider`; `python -B -m pytest backend/tests/service/test_order.py::test_create_order_uses_catalog_price_when_stock_is_enough backend/tests/service/test_order.py::test_create_order_rejects_zero_catalog_price_instead_of_using_client_price backend/tests/service/test_order.py::test_create_order_event_failure_rolls_back_reserved_inventory backend/tests/service/test_order.py::test_create_order_rejects_unknown_catalog_product_instead_of_using_client_price backend/tests/service/test_order.py::test_duplicate_items_are_aggregated_before_stock_reservation backend/tests/service/test_order.py::test_create_order_rejects_insufficient_stock backend/tests/service/test_order.py::test_create_order_rejects_display_only_product_with_stock -q --no-cov -p no:cacheprovider`; `python -B -m ruff check backend/app/service/order/inventory.py backend/tests/service/test_order.py backend/tests/service/test_stored_value.py`; `git diff --check`; `python -B backend/scripts/check_project_development_register.py`; `python -B backend/scripts/check_chinese_governance.py --summary`; `python -B backend/scripts/check_mistake_ledger.py`; `python -B backend/scripts/check_file_sizes.py`; `python -B backend/scripts/check_evidence_index.py --summary`
+- result: partial-pass
+- sha256: backend/app/service/order/inventory.py=ab9765c851f7dbf7c0de0630e9d93e3b60c3dbf1d9486caef48554fec650d971；backend/tests/service/test_order.py=3c3d0f0011110759de2d23416287776eb4a74f5b7503a392d5b81fa5e88c7f78；backend/tests/service/test_stored_value.py=7a78f83c8dca14ecded0e179a9b3cc3cab4a3272179369ec4669300f7e4cabba；miniapp/docs/api-contract.md=6c397aacfd7ef9f5902889989d47ec622ae050ed2e4d704286c70741b0ca03b0；PROJECT-STATE.md=5ffa3fd06fc6493a05ddd0f70e844262ec494ff170cfbb3f37496e130a1d192c；LOGBOOK.md=fa614501f880cf6cdf95867d6c7342691f6b9d921e37c5717f404e74c854d3c9；ERRORS.md=de433acd45186df69e7849b34a70f0ce1742cf1e9afa027f5b6b196cbac17072
+- follow_up_guardrail: 真实目录记录存在时，服务端目录价格必须大于 0 才允许创建订单；无效目录价格不得回退客户端金额。创建订单的库存、订单、事件和会话以及关单的状态、余额、积分、券和库存必须处于同一事务边界，失败后允许幂等重试。
+- related_logbook: 2026-09-25 - fix(miniapp): 零价目录商品与订单补偿事务复核收口
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员、真实内存 SQLite、mock 支付、定向测试退出码和源码哈希；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 修复前零价目录商品测试稳定复现客户端 1 分价格被错误接受；修复后真实目录 `price_fen<=0` 直接拒绝，库存不扣减且不生成订单。创建事件失败时库存、订单、事件和会话整体回滚；取消、超时和后台关单发生积分补偿异常时状态、快照、余额和流水整体回滚，恢复后可重试且余额只退一次。订单/储值完整服务测试、MiniApp 订单 API 20 项、双连接结算与资产回滚 3 项、价格相关 7 项定向测试、Ruff 和 diff 检查通过。
+- failure_class: recovered_deterministic_business_failure
+- replayable: yes
+- residual_risks: `check_file_sizes.py` 仍只被既有 `app/service/catalog/application.py` 缺少职责评审记录阻断；全量证据索引为 `total=489/hash_mismatch=16`，16 条均属于 E-20260925-003/005/006/007/008/012 的历史共享文件漂移，E-20260925-017 自身 7 个工件全部匹配，本轮未改写旧证据。未访问生产 API、真实客户数据、真实微信支付/退款、真实闪送、真机、生产验收或正式上线，正式上线继续为 No-Go。
+
+## E-20260925-018：部分退款事实下已支付订单重入资产结算候选排除
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r18
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r17
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-partial-refund-asset-reentry
+- file: `repo:backend/tests/service/test_stored_value.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest -o addopts='' backend/tests/service/test_stored_value.py -q --no-cov -p no:cacheprovider --basetemp D:\Temp\pytest-yunxi-r18-count-stored`; `python -B -m pytest -o addopts='' backend/tests/service/order/test_refund_notification.py backend/tests/service/test_points_payment.py backend/tests/service/test_coupon_payment.py -q --no-cov -p no:cacheprovider --basetemp D:\Temp\pytest-yunxi-r18-count-assets`; `ruff check backend/tests/service/test_stored_value.py`; `git diff --check`
+- result: pass
+- sha256: backend/tests/service/test_stored_value.py=d93eb07fa9792efe82d3513ad63603a87e917100687cd559da142b1cd57cd675；PROJECT-STATE.md=9c237610f12c9286daade1880a8f5c55a5e091b6c76c5898e3c9b2c4bf317389；LOGBOOK.md=13c7763f8256c0f84e6b6fa50b21e4d494b8d797950b58c187ea43f6b998a11f
+- follow_up_guardrail: 部分退款事实下已支付订单重入支付入口必须保持幂等，不得新增余额、积分、优惠券、订单事件或支付交易副作用；测试夹具必须注入与生产服务一致的请求数据库依赖。
+- related_logbook: 2026-09-25 - review(miniapp): 部分退款事实下已支付订单重入资产结算候选排除
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员/券、真实内存 SQLite、mock 退款查询、定向测试退出码和源码哈希；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 新测试先补齐 `CustomerMasterRepo` 夹具后通过；部分退款事实 `refundStatus=partial/refundFen` 下重入已支付 mock 支付和余额支付，余额、积分流水、券状态、订单事件和支付交易计数均无变化。储值服务 37 项、退款通知/积分/券相邻回归 51 项、Ruff 和 `git diff --check` 通过。本轮没有确认 P0/P1，未修改生产代码或错误账本。
+- failure_class: excluded_candidate
+- replayable: yes
+- residual_risks: 本轮只使用本地合成数据和 mock 退款查询；未访问生产 API、真实客户数据、真实微信支付/退款、真实闪送、真机、生产验收或正式上线，正式上线继续为 No-Go。证据索引总数为 490，16 条仍为既有历史共享文件哈希漂移，E-20260925-018 自身未新增失败；`check_file_sizes.py` 仍只被既有 `app/service/catalog/application.py` 缺少职责评审记录阻断。并行回归首次因共享临时目录创建竞争在 setup 阶段失败，改为独立 D 盘临时目录后通过；这些治理与临时环境问题不属于本轮业务 P0/P1。
+
+## E-20260925-019：充值取消与支付并发竞态候选排除
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r19
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r18
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-recharge-cancel-payment-race
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r19.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest -q -p no:cacheprovider --no-cov backend/tests/service/order/test_core_loop_candidate_r19.py --basetemp D:\Temp\pytest-yunxi-r19\nocov-run-01..05`（连续 5 次，退出码 0,0,0,0,0）；`python -B -m pytest -q -p no:cacheprovider --no-cov backend/tests/service/test_stored_value.py backend/tests/service/test_asset_atomic_idempotent.py --basetemp D:\Temp\pytest-yunxi-r19-adjacent\pytest`；`python -B -m pytest -q -p no:cacheprovider --no-cov backend/tests/api/test_miniapp_balance_api.py --basetemp D:\Temp\pytest-yunxi-r19-api\pytest`；`python -B -m ruff check backend/tests/service/order/test_core_loop_candidate_r19.py`；`git diff --check`；`python -B backend/scripts/check_project_development_register.py`；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/check_mistake_ledger.py`；`python -B backend/scripts/check_evidence_index.py --summary`；`python -B backend/scripts/check_file_sizes.py`
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r19.py=bd92c52c3c6066098d8c11e1bf5ad7b521eff1a4212f900e1c717e9949ed7689；PROJECT-STATE.md=d61d2c582c9b5ee4b82b022314713d744183d309ae7d69374ed759834f0864ea；LOGBOOK.md=256659a23dc1ab3b30558ebf4b5af188c5628c7856a1ed4db37926ecb000738c
+- follow_up_guardrail: 同一未支付充值单的取消与支付并发时，只允许一个带期望状态的状态转换胜者；支付胜出后余额与唯一充值流水各增加一次，取消胜出时不得产生资产入账。
+- related_logbook: 2026-09-25 - review(miniapp): 充值取消与支付并发竞态候选排除
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成会员、真实文件 SQLite、mock 支付、定向测试退出码和源码哈希；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 两个真实 SQLite 文件连接和两个独立请求事务在取消与 mock 支付首次读取未支付状态时同步后，并发测试连续 5 次均只有一个状态胜者。支付胜出时余额增加 5000 分且唯一充值流水一条，取消胜出时余额和流水均无变化；相邻储值与资产原子幂等回归 46 项、MiniApp 储值 API 3 项、Ruff、diff、开发总表、中文治理和错误账本门禁通过。本轮没有确认 P0/P1，未修改生产代码或错误账本。
+- failure_class: excluded_candidate
+- replayable: yes
+- residual_risks: 竞争败者可能返回状态冲突或 SQLite `database is locked`，但测试证明该分支不会形成双状态或重复资产入账，按项目严格 P0/P1 门槛不属于阻断缺陷。证据索引总数为 491，16 条仍为既有历史共享文件哈希漂移；`check_file_sizes.py` 仍只被既有 `app/service/catalog/application.py` 缺少职责评审记录阻断。本轮只使用本地合成会员、真实文件 SQLite 和 mock 支付；未访问生产 API、真实客户数据、真实微信支付/退款、真实闪送、真机、生产验收或正式上线，正式上线继续为 No-Go。
+
+## E-20260925-020：订单关单与余额支付并发资产一致性候选排除
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r20
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r19
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-order-close-balance-payment-race
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r20.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest -q -p no:cacheprovider --no-cov backend/tests/service/order/test_core_loop_candidate_r20.py --basetemp D:\Temp\pytest-yunxi-r20-repeat\run-01..05`（连续 5 轮，退出码 0,0,0,0,0）；`python -B -m pytest -q -p no:cacheprovider --no-cov backend/tests/service/order/test_core_loop_candidate_r20.py backend/tests/service/test_stored_value.py backend/tests/service/test_asset_atomic_idempotent.py backend/tests/service/test_order.py backend/tests/service/order/test_core_loop_candidate_r12.py backend/tests/api/test_miniapp_order_api.py backend/tests/api/test_miniapp_payment_api.py --basetemp D:\Temp\pytest-yunxi-r20-regression\pytest`；`python -B -m ruff check backend/tests/service/order/test_core_loop_candidate_r20.py`；`git diff --check`；`python -B backend/scripts/check_project_development_register.py`；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/check_mistake_ledger.py`；`python -B backend/scripts/check_file_sizes.py`
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r20.py=698a503a55da093351348e3037133d63ec5f8de681b0ada104bd764cf7d52b97；PROJECT-STATE.md=e7d40be26cad2555aa02822b0f6e22b48491857404e9df09dfcfd9f8efc2b3e1；LOGBOOK.md=1220048f6b4f1105345b19727ad8efcacb18b6a753c93c59851749f597e73cb4
+- follow_up_guardrail: 未支付订单的用户取消/超时关闭与全额余额支付并发时，关单和支付只能依据最新未支付中态原子竞争；关单胜出后迟到扣款必须整体回滚，支付胜出后迟到关单不得覆盖已支付事实或写取消事件。
+- related_logbook: 2026-09-25 - review(miniapp): 订单关单与余额支付并发资产一致性候选排除
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员、真实文件 SQLite、余额账本、事件账本、定向测试退出码和源码哈希；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 四种确定性时序（用户取消/超时关闭各自先提交或后提交）连续 5 轮通过。支付先提交时订单保持待支付、余额扣款 5000 分且仅一笔支付流水、无取消事件；关单先提交时订单取消、余额恢复且无支付流水。储值、资产幂等、订单服务、核心候选和 MiniApp 订单/支付 API 相邻回归 121 项通过。本轮没有确认 P0/P1，未修改生产代码、API 契约或错误账本。
+- failure_class: excluded_candidate
+- replayable: yes
+- residual_risks: 证据索引为 `total=493/hash_mismatch=16`，16 条仍为既有历史共享文件哈希漂移；文件体量门禁仍存在 `app/service/catalog/application.py` 职责评审缺口，本轮没有新增对应失败。本轮只使用本地合成订单/会员、真实文件 SQLite 和本地余额支付；未访问生产 API、真实客户数据、真实微信支付/退款、真实闪送、真机、生产验收或正式上线，正式上线继续为 No-Go。
+
+## E-20260925-022：组合支付并发份额一致性候选排除
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r22
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r21
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-concurrent-combined-payment
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r22.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest -q -p no:cacheprovider --no-cov backend/tests/service/order/test_core_loop_candidate_r22.py --basetemp D:\Temp\pytest-yunxi-r22-repeat\run-01..05`（连续 5 轮，退出码 0,0,0,0,0）；`python -B -m pytest -q -p no:cacheprovider --no-cov backend/tests/service/order/test_core_loop_candidate_r22.py backend/tests/service/test_stored_value.py backend/tests/service/test_asset_atomic_idempotent.py backend/tests/service/test_review3_combined_snapshot_20260906.py backend/tests/service/test_coupon_payment.py backend/tests/api/test_miniapp_payment_api.py --basetemp D:\Temp\pytest-yunxi-r22-regression\pytest-retry`；`python -B -m ruff check backend/tests/service/order/test_core_loop_candidate_r22.py`；`git diff --check`；`python -B backend/scripts/check_project_development_register.py`；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/check_mistake_ledger.py`；`python -B backend/scripts/check_evidence_index.py --summary`；`python -B backend/scripts/check_file_sizes.py`
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r22.py=95ab77f4ad82406c49f4606a4b2642f7b742fa87ae6b915f3fb2a53b08455e40；PROJECT-STATE.md=05c529a2ae42ca107a153508e0920a3b9bd64f2b8792a284e6fc50cc498aec54；LOGBOOK.md=5afc336259e5fa318d0413da30fca8287711124cfc0ae6a5f9e8729778c82524
+- follow_up_guardrail: 同一订单并发组合支付必须共享 `combined_pay:{orderId}` 幂等键；余额扣减、占位流水和 partial 状态 CAS 必须在同一事务中，partial 的 `balanceFen`、`remainFen`、`externalPaidFen` 必须与唯一余额流水一致。
+- related_logbook: 2026-09-25 - review(miniapp): 组合支付并发份额一致性候选排除
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员、真实文件 SQLite、mock 差额支付会话、余额账本、定向测试退出码和源码哈希；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 两个真实 SQLite 文件连接和两个独立组合支付事务在事务内第二次订单读取处同步后，同额 2000 分和异额 2000/3000 分并发均连续 5 轮只产生一个成功请求；partial 快照、会员余额和唯一 `combined_pay` 流水金额一致。相邻回归 70 项通过。本轮没有确认 P0/P1，未修改生产代码、API 契约或错误账本。
+- failure_class: excluded_candidate
+- replayable: yes
+- residual_risks: 证据索引为 `total=494/hash_mismatch=16`，16 条仍为既有历史共享文件哈希漂移；文件体量门禁仍存在 `app/service/catalog/application.py` 职责评审缺口，本轮没有新增对应失败。相邻回归首次命令路径错误在收集前失败，改正路径后 70 项通过，该命令错误不属于生产 P0/P1。本轮只使用本地合成订单/会员、真实文件 SQLite、mock 差额支付会话和本地余额支付；未访问生产 API、真实客户数据、真实微信支付/退款、真实闪送、真机、生产验收或正式上线，正式上线继续为 No-Go。
+
+## E-20260925-021：重复余额支付并发扣款候选排除
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r21
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r20
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-duplicate-balance-payment-race
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r21.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest -q -p no:cacheprovider --no-cov backend/tests/service/order/test_core_loop_candidate_r21.py --basetemp D:\Temp\pytest-yunxi-r21-repeat\run-01..05`（连续 5 轮，退出码 0,0,0,0,0）；`python -B -m pytest -q -p no:cacheprovider --no-cov backend/tests/service/order/test_core_loop_candidate_r21.py backend/tests/service/test_stored_value.py backend/tests/service/test_asset_atomic_idempotent.py backend/tests/api/test_miniapp_payment_api.py --basetemp D:\Temp\pytest-yunxi-r21-regression\pytest`；`python -B -m ruff check backend/tests/service/order/test_core_loop_candidate_r21.py`；`git diff --check`；`python -B backend/scripts/check_project_development_register.py`；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/check_mistake_ledger.py`；`python -B backend/scripts/check_evidence_index.py --summary`；`python -B backend/scripts/check_file_sizes.py`
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r21.py=0c94b18cfb9a20ad0c1c63520d77cbcbd7d9b1feb984ce7e69e8aa30968fd903；PROJECT-STATE.md=de03d31aaafca7e797fd54c8f14e33a46af61ddcd770f33ce219c1c1e1d6b47f；LOGBOOK.md=30cbdca67acafdb8dce5134a93575a808a1beb5dddf1d4eb7c14e18d7dfbb228
+- follow_up_guardrail: 同一订单并发全额余额支付必须共享 `order_pay:{orderId}` 幂等键；扣余额、占位流水和支付状态 CAS 必须在同一事务中，最多一条扣款流水，败者只能幂等返回或拒绝。
+- related_logbook: 2026-09-25 - review(miniapp): 重复余额支付并发扣款候选排除
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员、真实文件 SQLite、余额账本、定向测试退出码和源码哈希；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 两个真实 SQLite 文件连接和两个独立支付事务同时读取未支付订单后，连续 5 轮均只有一笔 5000 分扣款和一条 `order_pay` 流水；最终支付快照为已支付余额。储值、资产原子幂等和 MiniApp 支付 API 相邻回归 49 项通过。本轮没有确认 P0/P1，未修改生产代码、API 契约或错误账本。
+- failure_class: excluded_candidate
+- replayable: yes
+- residual_risks: 证据索引为 `total=492/hash_mismatch=16`，16 条仍为既有历史共享文件哈希漂移；文件体量门禁仍存在 `app/service/catalog/application.py` 职责评审缺口，本轮没有新增对应失败。本轮只使用本地合成订单/会员、真实文件 SQLite 和本地余额支付；未访问生产 API、真实客户数据、真实微信支付/退款、真实闪送、真机、生产验收或正式上线，正式上线继续为 No-Go。
+
+## E-20260925-023：组合支付与订单关单并发资产一致性候选排除
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r23
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r22
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-combined-payment-order-close-race
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r23.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest -q -p no:cacheprovider --no-cov backend/tests/service/order/test_core_loop_candidate_r23.py --basetemp D:\Temp\YunxiBakery-miniapp-r23-20260925\pytest-repeat-$round`（连续 5 轮，退出码 0,0,0,0,0）；`python -B -m pytest --no-cov -p no:cacheprovider --basetemp D:\Temp\YunxiBakery-miniapp-r23-20260925\pytest-adjacent tests/service/test_stored_value.py tests/service/test_order.py tests/service/order/test_core_loop_candidate_r19.py tests/service/order/test_core_loop_candidate_r20.py tests/service/order/test_core_loop_candidate_r21.py tests/service/order/test_core_loop_candidate_r22.py tests/service/order/test_core_loop_candidate_r23.py tests/api/test_miniapp_order_api.py tests/api/test_miniapp_payment_api.py -q --tb=short`（112 项，退出码 0，耗时 57.71 秒）；`python -m pytest --no-cov -p no:cacheprovider --collect-only -q ...`（112 项，退出码 0）；`python -m ruff check tests/service/order/test_core_loop_candidate_r23.py`；`git diff --check`；`python -B backend/scripts/check_project_development_register.py`；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/check_mistake_ledger.py`；`python -B backend/scripts/check_evidence_index.py --summary`；`python -B backend/scripts/check_file_sizes.py`
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r23.py=3f59832411f7845d2f280ae45e44824529442d711955fcee3c16dfefab343fb1；PROJECT-STATE.md=33260f9c53b4db3bb4c47bf5e60081dc5bac0f817d6249d488f7f14d39f2c4d0；LOGBOOK.md=2098557aeabbf2a7aea316fdfd5c62e87d35f1c78aedcc60484cb29df9e7d8d4
+- follow_up_guardrail: 同一订单并发组合支付与取消/超时关闭时，组合支付余额扣减、partial 快照和占位流水必须保持同一事务；关单先提交不得产生迟到扣款，组合支付先提交后关单最多产生一笔余额退款，瞬时 SQLite 锁必须允许重试恢复。
+- related_logbook: 2026-09-25 - review(miniapp): 组合支付与订单关单并发资产一致性候选排除
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员、真实文件 SQLite、mock 差额支付会话、余额账本、定向测试退出码和源码哈希；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 四个确定性时序覆盖取消/超时与关单先提交/组合支付先提交，连续 5 轮均保持资产一致：关单先提交时余额无流水；组合支付先提交时关单重试后恰好一笔扣款和一笔退款，余额恢复初始值。相邻回归 112 项通过。本轮没有确认 P0/P1，未修改生产代码、API 契约或错误账本。
+- failure_class: excluded_candidate
+- replayable: yes
+- residual_risks: 证据索引和文件体量门禁仍需在本条哈希回填后复跑；本轮只使用本地合成订单/会员、真实文件 SQLite、mock 差额支付会话和本地余额支付；未访问生产 API、真实客户数据、真实微信支付/退款、真实闪送、真机、生产验收或正式上线，正式上线继续为 No-Go。
+
+## E-20260925-024：组合支付尾款确认与订单关单并发候选排除
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r24
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r23
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-combined-remainder-payment-order-close-race
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r24.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest -q -p no:cacheprovider --no-cov backend/tests/service/order/test_core_loop_candidate_r24.py --basetemp D:\Temp\.tmp-yunxi-miniapp-r24-20260925\pytest-repeat-$round`（连续 5 轮，退出码 0,0,0,0,0）；`python -B -m pytest --no-cov -p no:cacheprovider --basetemp D:\Temp\.tmp-yunxi-miniapp-r24-20260925\pytest-adjacent tests/service/test_stored_value.py tests/service/test_order.py tests/service/order/test_core_loop_candidate_r19.py tests/service/order/test_core_loop_candidate_r20.py tests/service/order/test_core_loop_candidate_r21.py tests/service/order/test_core_loop_candidate_r22.py tests/service/order/test_core_loop_candidate_r23.py tests/service/order/test_core_loop_candidate_r24.py tests/api/test_miniapp_order_api.py tests/api/test_miniapp_payment_api.py -q --tb=short`（116 项，退出码 0，耗时 43.64 秒）；`python -m ruff check tests/service/order/test_core_loop_candidate_r24.py`；`git diff --check`；`python -B backend/scripts/check_project_development_register.py`；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/check_mistake_ledger.py`；`python -B backend/scripts/check_evidence_index.py --summary`；`python -B backend/scripts/check_file_sizes.py`
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r24.py=2024cb63a016e5e27eed2524ac1854bae10e5a1b583f1682466ebba508afd1e1；PROJECT-STATE.md=763613a2bae13fb32258a77307c9da46b806a8072e883d3bd8d9145aa6a37ba6；LOGBOOK.md=8c8bbadc27ce5bd11861c048271b007fbbbaab3cce76f3126a5d1fce0460cdf4
+- follow_up_guardrail: 组合支付进入 `partial` 后，外部尾款确认与取消/超时关闭并发时，订单终态、组合支付快照、余额扣款、退款和取消事件必须保持单赢家且幂等；已支付订单的迟到关闭不得退款或覆盖支付事实，未支付关闭后的迟到确认不得新增扣款或事件。
+- related_logbook: 2026-09-25 - review(miniapp): 组合支付尾款确认与订单关单并发候选排除
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员、真实文件 SQLite、组合支付 `partial` 快照、余额账本、事件账本、定向测试退出码和源码哈希；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 四个确定性时序覆盖取消/超时与关单先提交/尾款先提交，连续 5 轮均保持资产一致：关单先提交时仅一笔余额退款和一个取消事件；尾款先提交时订单保持待支付、支付快照为已支付、余额只扣一次且迟到关闭不退款。相邻回归 116 项通过。本轮没有确认 P0/P1，未修改生产代码、API 契约或错误账本。
+- failure_class: excluded_candidate
+- replayable: yes
+- residual_risks: 证据索引为 `total=496/hash_mismatch=16`，16 条仍为既有历史共享文件哈希漂移；文件体量门禁仍存在 `app/service/catalog/application.py` 职责评审缺口，本轮没有新增对应失败。本轮只使用本地合成订单/会员、真实文件 SQLite 和 mock 外部尾款确认；未访问真实微信支付/退款、真实闪送、真机、生产 API、生产验收或正式上线，正式上线继续为 No-Go。
+
+## E-20260925-025：最后一件库存并发下单候选排除
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r25
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r24
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-last-stock-concurrent-order
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r25.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest -q -p no:cacheprovider --no-cov backend/tests/service/order/test_core_loop_candidate_r25.py --basetemp D:\Temp\.tmp-yunxi-miniapp-r25-20260925\pytest-repeat-$round`（连续 5 轮，退出码 0,0,0,0,0）；`python -B -m pytest --no-cov -p no:cacheprovider --basetemp D:\Temp\.tmp-yunxi-miniapp-r25-20260925\pytest-adjacent tests/service/test_stored_value.py tests/service/test_order.py tests/service/order/test_core_loop_candidate_r19.py tests/service/order/test_core_loop_candidate_r20.py tests/service/order/test_core_loop_candidate_r21.py tests/service/order/test_core_loop_candidate_r22.py tests/service/order/test_core_loop_candidate_r23.py tests/service/order/test_core_loop_candidate_r24.py tests/service/order/test_core_loop_candidate_r25.py tests/api/test_miniapp_order_api.py tests/api/test_miniapp_payment_api.py -q --tb=short`（117 项，退出码 0，耗时 46.69 秒）；`python -B -m pytest --no-cov -p no:cacheprovider --collect-only ...`（117 项，退出码 0）；`python -m ruff check tests/service/order/test_core_loop_candidate_r25.py`；`git diff --check`；`python -B backend/scripts/check_project_development_register.py`；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/check_mistake_ledger.py`；`python -B backend/scripts/check_evidence_index.py --summary`；`python -B backend/scripts/check_file_sizes.py`
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r25.py=c0e8ffb9c84f2a464519d7c8c7075f4fcd9627bbcc6881cb070b2848e8afa5f8；PROJECT-STATE.md=5f7f9d1b28a34ad66505fa57472b455d6eef2334700bc25497de603e61c05be4；LOGBOOK.md=9519520453f0fa43df378c402e49b20d04a774658a5676e5fb876c374eeced15
+- follow_up_guardrail: 同一目录商品被多个用户并发下单时，库存预占必须使用带库存下限的原子更新；库存、订单、创建事件和会话必须处于同一事务，败者只能返回冲突或可重试锁冲突，不得形成双卖、库存泄漏或孤儿事实。
+- related_logbook: 2026-09-25 - review(miniapp): 最后一件库存并发下单候选排除
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成目录商品、真实文件 SQLite、订单/事件/会话账本、定向测试退出码、清理统计和源码哈希；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 两个真实 SQLite 文件连接和两个独立订单应用服务在都读到库存 1 后并发创建订单，连续 5 轮均只有一个成功请求；最终库存为 0，仅有一笔订单、一个待支付事件和一个会话。相邻回归 117 项通过。本轮没有确认 P0/P1，未修改生产代码、API 契约或错误账本。
+- failure_class: excluded_candidate
+- replayable: yes
+- residual_risks: 证据索引为 `total=497/hash_mismatch=16`，16 条仍为既有历史共享文件哈希漂移；文件体量门禁仍存在 `app/service/catalog/application.py` 职责评审缺口，本轮没有新增对应失败。本轮只使用本地合成目录商品、真实文件 SQLite 和自提订单；未访问真实微信支付/退款、真实闪送、真机、生产 API、生产验收或正式上线，正式上线继续为 No-Go。
+
+## E-20260925-026：用户取消与微信支付通知并发候选排除
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r26
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r25
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-cancel-wechat-payment-notify-race
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r26.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest -q -p no:cacheprovider --no-cov backend/tests/service/order/test_core_loop_candidate_r26.py --basetemp D:\Temp\.tmp-yunxi-miniapp-r26-20260925\pytest-repeat-$round`（连续 5 轮，退出码 0,0,0,0,0）；`python -B -m pytest --no-cov -p no:cacheprovider --basetemp D:\Temp\.tmp-yunxi-miniapp-r26-20260925\pytest-adjacent tests/service/test_stored_value.py tests/service/test_order.py tests/service/order/test_pay_notify_freshness_intake.py tests/service/order/test_core_loop_candidate_r19.py tests/service/order/test_core_loop_candidate_r20.py tests/service/order/test_core_loop_candidate_r21.py tests/service/order/test_core_loop_candidate_r22.py tests/service/order/test_core_loop_candidate_r23.py tests/service/order/test_core_loop_candidate_r24.py tests/service/order/test_core_loop_candidate_r25.py tests/service/order/test_core_loop_candidate_r26.py tests/api/test_miniapp_order_api.py tests/api/test_miniapp_payment_api.py -q --tb=short`（143 项，退出码 0，耗时 50.67 秒）；`python -B -m pytest --no-cov -p no:cacheprovider --collect-only ...`（143 项，退出码 0）；`python -m ruff check tests/service/order/test_core_loop_candidate_r26.py`；`git diff --check`；`python -B backend/scripts/check_project_development_register.py`；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/check_mistake_ledger.py`；`python -B backend/scripts/check_evidence_index.py --summary`；`python -B backend/scripts/check_file_sizes.py`；`scripts/cleanup-local-artifacts.ps1 -OnlyTemporaryPath -TemporaryPath D:\Temp\.tmp-yunxi-miniapp-r26-20260925`（预览后携带令牌执行）
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r26.py=ecd178231a42ac6f184f3f287c6c35b7130ba0a135b687c274ef602ddb0d0260；PROJECT-STATE.md=3cc96ad3aba481b56ea073e2677b6f89b93137aafdd3767d1c3840b4f2c6bfff；LOGBOOK.md=cf1813e272c93213031572f9044614055f1ffe40353a3be1905ab697612049ea
+- follow_up_guardrail: 用户取消与微信支付通知并发时，通知业务事务因瞬时锁失败必须把 inbox 持久化为可重试失败；重投同一事件后，已取消订单必须保留微信到账事实、唯一交易号认领和待退款事实，不得覆盖取消终态或重复生成支付/退款事件。
+- related_logbook: 2026-09-25 - review(miniapp): 用户取消与微信支付通知并发候选排除
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单、真实文件 SQLite、mock 验签/解密、inbox 重试、订单/事件/交易账本、定向测试退出码、清理统计和源码哈希；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 支付通知先读取旧订单快照，取消事务随后提交，首次支付入账确定性遇到 SQLite 锁并持久化 `failed`；同一事件重投后订单保持 `cancelled`，支付快照为 `paid`、退款为 `pending`，仅有一个取消事件、一个微信到账事件和一个交易号认领，inbox 最终 `processed`、尝试次数为 2。连续 5 轮及相邻回归 143 项通过。本轮没有确认 P0/P1，未修改生产代码、API 契约或错误账本。
+- failure_class: excluded_candidate
+- replayable: yes
+- residual_risks: 证据索引为 `total=498/hash_mismatch=16`，16 条仍为既有历史共享文件哈希漂移；文件体量门禁仍存在 `app/service/catalog/application.py` 职责评审缺口，本轮没有新增对应失败。本轮只使用本地合成订单、真实文件 SQLite 和 mock 微信通知；未访问真实微信支付/退款、真实闪送、真机、生产 API、生产验收或正式上线，正式上线继续为 No-Go。
+
+## E-20260925-027：超时关单与微信支付通知并发候选排除
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r27
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r26
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-timeout-close-wechat-payment-notify-race
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r27.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest -q -p no:cacheprovider --no-cov backend/tests/service/order/test_core_loop_candidate_r27.py --basetemp D:\Temp\.tmp-yunxi-miniapp-r27-20260925\pytest-repeat-$round`（连续 5 轮，退出码 0,0,0,0,0）；`python -B -m pytest --no-cov -p no:cacheprovider --basetemp D:\Temp\.tmp-yunxi-miniapp-r27-20260925\pytest-adjacent tests/service/test_stored_value.py tests/service/test_order.py tests/service/order/test_pay_notify_freshness_intake.py tests/service/order/test_core_loop_candidate_r12.py tests/service/order/test_core_loop_candidate_r19.py tests/service/order/test_core_loop_candidate_r20.py tests/service/order/test_core_loop_candidate_r21.py tests/service/order/test_core_loop_candidate_r22.py tests/service/order/test_core_loop_candidate_r23.py tests/service/order/test_core_loop_candidate_r24.py tests/service/order/test_core_loop_candidate_r25.py tests/service/order/test_core_loop_candidate_r26.py tests/service/order/test_core_loop_candidate_r27.py tests/api/test_miniapp_order_api.py tests/api/test_miniapp_payment_api.py -q --tb=short`（144 项，退出码 0，耗时约 51.82 秒）；`python -B -m pytest --no-cov -p no:cacheprovider --collect-only -q ...`（144 项，退出码 0）；`python -m ruff check tests/service/order/test_core_loop_candidate_r27.py`；`git diff --check`；`python -B backend/scripts/check_project_development_register.py`；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/check_mistake_ledger.py`；`python -B backend/scripts/check_evidence_index.py --summary`；`python -B backend/scripts/check_file_sizes.py`；`scripts/cleanup-local-artifacts.ps1 -OnlyTemporaryPath -TemporaryPath D:\Temp\.tmp-yunxi-miniapp-r27-20260925`（预览后携带令牌执行）
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r27.py=2bb2461ffea7267eedd021c2671e3b202f520e95f4e7706d9fdb973bf3cf8055；PROJECT-STATE.md=160ccb2dbaf571b058f16f1283d91c150eb45a7b95d30d1506c3bc9f92b706db；LOGBOOK.md=95e7357815f6135fc057ea89f28c2b4a3f644eebdd8a60e7c7e0b17c42cec384
+- follow_up_guardrail: 未支付订单超时关单与微信支付通知并发时，通知业务事务因瞬时锁失败必须把 inbox 持久化为可重试失败；重投同一事件后，已取消订单必须保留微信到账事实、超时原因、唯一交易号认领和待退款事实，不得覆盖取消终态或重复生成支付/退款事件。
+- related_logbook: 2026-09-25 - review(miniapp): 超时关单与微信支付通知并发候选排除
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单、真实文件 SQLite、mock 验签/解密、inbox 重试、订单/事件/交易账本、定向测试退出码、清理统计和源码哈希；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 支付通知先读取旧订单快照，超时关单随后提交，首次支付入账确定性遇到 SQLite 锁并持久化 `failed`；同一事件重投后订单保持 `cancelled` 和 `payment_timeout`，支付快照为 `paid`、退款为待退款（`pending`），仅有一个超时取消事件、一个微信到账事件和一个交易号认领，inbox 最终 `processed`、尝试次数为 2。连续 5 轮及相邻回归 144 项通过。本轮没有确认 P0/P1，未修改生产代码、API 契约或错误账本。
+- failure_class: excluded_candidate
+- replayable: yes
+- residual_risks: 证据索引为 `total=499/hash_mismatch=16`，16 条仍为既有历史共享文件哈希漂移；文件体量门禁仍存在 `app/service/catalog/application.py` 职责评审缺口，本轮没有新增对应失败。本轮只使用本地合成订单、真实文件 SQLite 和 mock 微信通知；未访问真实微信支付/退款、真实闪送、真机、生产 API、生产验收或正式上线，正式上线继续为 No-Go。
+
+## E-20260925-028：后台取消与微信支付通知并发候选排除
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r28
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r27
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-admin-cancel-wechat-payment-notify-race
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r28.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest -q -p no:cacheprovider --no-cov backend/tests/service/order/test_core_loop_candidate_r28.py --basetemp D:\Temp\.tmp-yunxi-miniapp-r28-20260925\pytest-repeat-$round`（连续 5 轮，退出码 0,0,0,0,0）；`python -B -m pytest --no-cov -p no:cacheprovider --basetemp D:\Temp\.tmp-yunxi-miniapp-r28-20260925\pytest-adjacent tests/service/test_stored_value.py tests/service/test_order.py tests/service/order/test_pay_notify_freshness_intake.py tests/service/order/test_core_loop_candidate_r12.py tests/service/order/test_core_loop_candidate_r19.py tests/service/order/test_core_loop_candidate_r20.py tests/service/order/test_core_loop_candidate_r21.py tests/service/order/test_core_loop_candidate_r22.py tests/service/order/test_core_loop_candidate_r23.py tests/service/order/test_core_loop_candidate_r24.py tests/service/order/test_core_loop_candidate_r25.py tests/service/order/test_core_loop_candidate_r26.py tests/service/order/test_core_loop_candidate_r27.py tests/service/order/test_core_loop_candidate_r28.py tests/api/test_miniapp_order_api.py tests/api/test_miniapp_payment_api.py -q --tb=short`（145 项，退出码 0，耗时约 54.78 秒）；`python -B -m pytest --no-cov -p no:cacheprovider --collect-only -q ...`（145 项，退出码 0）；`python -m ruff check tests/service/order/test_core_loop_candidate_r28.py`；`git diff --check`；`python -B backend/scripts/check_project_development_register.py`；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/check_mistake_ledger.py`；`python -B backend/scripts/check_evidence_index.py --summary`；`python -B backend/scripts/check_file_sizes.py`；`scripts/cleanup-local-artifacts.ps1 -OnlyTemporaryPath -TemporaryPath D:\Temp\.tmp-yunxi-miniapp-r28-20260925`（预览后携带令牌执行）
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r28.py=77a5c92aaf2b1a4ae34ee09cd82a6399b2f94d37f577c58c83b75efa4c3378f8；PROJECT-STATE.md=99e6b8c6b46d93d49b8db0338e95a3992da0f54819e7e40c848c607485049198；LOGBOOK.md=bc5c3c9cad6b6b29933172fc13471728d2e3ea39e2f273a6246acbdfa6c42fb3
+- follow_up_guardrail: 后台管理员取消与微信支付通知并发时，通知业务事务因瞬时锁失败必须把 inbox 持久化为可重试失败；重投同一事件后，已取消订单必须保留微信到账事实、唯一交易号认领和待退款事实，不得覆盖取消终态或重复生成支付/退款事件。
+- related_logbook: 2026-09-25 - review(miniapp): 后台取消与微信支付通知并发候选排除
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单、真实文件 SQLite、mock 验签/解密、inbox 重试、订单/事件/交易账本、定向测试退出码、清理统计和源码哈希；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 支付通知先读取旧订单快照，后台管理员取消随后提交，首次支付入账确定性遇到 SQLite 锁并持久化 `failed`；同一事件重投后订单保持 `cancelled`，支付快照为 `paid`、退款为待退款（`pending`），仅有一个后台取消事件、一个微信到账事件和一个交易号认领，inbox 最终 `processed`、尝试次数为 2。连续 5 轮及相邻回归 145 项通过。本轮没有确认 P0/P1，未修改生产代码、API 契约或错误账本。
+- failure_class: excluded_candidate
+- replayable: yes
+- residual_risks: 证据索引为 `total=500/hash_mismatch=16`，16 条仍为既有历史共享文件哈希漂移；文件体量门禁仍存在 `app/service/catalog/application.py` 职责评审缺口，本轮没有新增对应失败。本轮只使用本地合成订单、真实文件 SQLite 和 mock 微信通知；未访问真实微信支付/退款、真实闪送、真机、生产 API、生产验收或正式上线，正式上线继续为 No-Go。
+
+## E-20260925-029：微信支付与退款通知并发候选排除
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r29
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r28
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-payment-refund-notify-race
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r29.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest -q -p no:cacheprovider --no-cov backend/tests/service/order/test_core_loop_candidate_r29.py --basetemp D:\Temp\.tmp-yunxi-miniapp-r29-20260925\pytest-final-repeat-$round`（最终版本连续 5 轮，退出码 0,0,0,0,0）；`python -B -m pytest --no-cov -p no:cacheprovider --basetemp D:\Temp\.tmp-yunxi-miniapp-r29-20260925\pytest-adjacent-final tests/service/order/test_refund_notification.py tests/service/order/test_review2_pay_combined_refund_20260906.py tests/service/order/test_pay_notify_freshness_intake.py tests/service/test_stored_value.py tests/service/test_order.py tests/service/order/test_core_loop_candidate_r12.py tests/service/order/test_core_loop_candidate_r19.py tests/service/order/test_core_loop_candidate_r20.py tests/service/order/test_core_loop_candidate_r21.py tests/service/order/test_core_loop_candidate_r22.py tests/service/order/test_core_loop_candidate_r23.py tests/service/order/test_core_loop_candidate_r24.py tests/service/order/test_core_loop_candidate_r25.py tests/service/order/test_core_loop_candidate_r26.py tests/service/order/test_core_loop_candidate_r27.py tests/service/order/test_core_loop_candidate_r28.py tests/service/order/test_core_loop_candidate_r29.py tests/api/test_miniapp_order_api.py tests/api/test_miniapp_payment_api.py -q --tb=short`（最终复跑 163 项，退出码 0，耗时 45.38 秒）；`python -B -m pytest --no-cov -p no:cacheprovider --collect-only -q ...`（163 项，退出码 0）；`python -m ruff check backend/tests/service/order/test_core_loop_candidate_r29.py`；`git diff --check`；`python -B backend/scripts/check_project_development_register.py`；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/check_mistake_ledger.py`；`python -B backend/scripts/check_evidence_index.py --summary`；`python -B backend/scripts/check_file_sizes.py`；`scripts/cleanup-local-artifacts.ps1 -OnlyTemporaryPath -TemporaryPath D:\Temp\.tmp-yunxi-miniapp-r29-20260925`（预览后携带令牌执行）
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r29.py=df12e0b42a61910a69672784fd9afc21017fe1b17e92b05719ff5d5b441a8ec1；PROJECT-STATE.md=bd25de2220c7645f8423357902fff0c676872975bd48fa174d02463b1ddf6e7b；LOGBOOK.md=50494eb242213424f4cb244fbedc2ad2398e9eb79cf32beafaf6475f9a8f0d98
+- follow_up_guardrail: 同一微信交易的支付成功通知与全额退款成功通知并发时，一个业务事务因瞬时锁失败必须把 inbox 持久化为可重试失败；重投后订单必须同时保留 `paid` 与 `refundStatus=full`，支付交易号只认领一次、退款事件只追加一次、两个 inbox 均终结为 `processed`，且积分、余额和券补偿不得重复或残留异常案件。
+- related_logbook: 2026-09-25 - review(miniapp): 微信支付与退款通知并发候选排除
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员、真实文件 SQLite、mock 微信验签/解密、inbox 重试、订单/退款/交易/积分账本、定向测试退出码、清理统计和源码哈希；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 支付与退款通知都读到未支付且未退款的旧快照后并发进入真实业务事务，连续 5 轮均只有一条通知先提交，另一条持久化 SQLite `locked` 失败并可重投；最终支付为 `paid`、退款为 `full` 且金额精确，交易号、退款事件和资产补偿无重复。相邻回归最终复跑 163 项通过。本轮没有确认 P0/P1，未修改生产代码、API 契约或错误账本。
+- failure_class: excluded_candidate
+- replayable: yes
+- residual_risks: 证据索引为 `total=501/hash_mismatch=16`，16 条仍为既有历史共享文件哈希漂移；文件体量门禁仍存在 `app/service/catalog/application.py` 职责评审缺口，本轮没有新增对应失败。本轮只使用本地合成订单/会员、真实文件 SQLite 和 mock 微信通知；未访问真实微信支付/退款、真实闪送、真机、生产 API、生产验收或正式上线，正式上线继续为 No-Go。
+
+## E-20260925-030：并发应用不同优惠券的快照覆盖修复
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r30
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r29
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-coupon-snapshot-race-fix
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r30.py`; `repo:backend/app/service/coupon/payment.py`; `repo:backend/app/repository/order_repo.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`; `repo:ERRORS.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest tests/service/order/test_core_loop_candidate_r30.py -q --tb=short -p no:cacheprovider --no-cov --basetemp D:\Temp\.tmp-yunxi-miniapp-r30-20260925\pytest-green-atomic`（修复后首轮通过）；`python -B -m pytest tests/service/order/test_core_loop_candidate_r30.py -q --tb=short -p no:cacheprovider --no-cov --basetemp D:\Temp\.tmp-yunxi-miniapp-r30-20260925\pytest-final-repeat-$round`（最终版本连续 5 轮，退出码 0,0,0,0,0）；`python -B -m pytest tests/service/test_coupon_payment.py tests/api/test_miniapp_coupons_api.py tests/service/test_stored_value.py tests/service/test_points_payment.py tests/service/test_review3_combined_snapshot_20260906.py tests/service/test_order.py tests/service/order/test_core_loop_candidate_r12.py tests/service/order/test_core_loop_candidate_r22.py tests/service/order/test_core_loop_candidate_r30.py -q --tb=short -p no:cacheprovider --no-cov --basetemp D:\Temp\.tmp-yunxi-miniapp-r30-20260925\pytest-adjacent-final`（139 项，退出码 0，耗时 35.34 秒）；`python -B -m pytest ... --collect-only -q ...`（139 项，退出码 0）；`python -B -m ruff check tests/service/order/test_core_loop_candidate_r30.py app/service/coupon/payment.py app/repository/order_repo.py`；`git diff --check`；`python -B backend/scripts/check_project_development_register.py`；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/check_mistake_ledger.py`；`python -B backend/scripts/check_evidence_index.py --summary`；`python -B backend/scripts/check_file_sizes.py`；`scripts/cleanup-local-artifacts.ps1 -OnlyTemporaryPath -TemporaryPath D:\Temp\.tmp-yunxi-miniapp-r30-20260925`（预览后携带令牌执行）
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r30.py=382664c9c3da67725162bcba7aca1478aae16d8b7eb47a8cdcd017228b30e7a7；backend/app/service/coupon/payment.py=7f741a29d038a23a378a40c6db3ae6d837a3f19928a1bae27789eb122ac9605f；backend/app/repository/order_repo.py=f1a29faea0b386558ab3eef35f37adb76027d1d68b4e56c19b934c59266e2564；PROJECT-STATE.md=29d135275bd2b94b9526bfac3827307ca7faa5e2bcc161d5913fb30d1d44b3d5；LOGBOOK.md=fdaafdbcba49e235f305f6c583b8026c0083d306618bb9908ccaf7ac03b94559；ERRORS.md=954216f99222e7f9b4da4a66a5e7337341e6a505c1e39ae99b62d54eb3ad1308
+- follow_up_guardrail: 同一订单并发应用不同优惠券时，订单仓储必须以服务读取的原始 `payment` 全等、订单未取消和支付状态可写作为原子 CAS；失败请求只能返回冲突，不能覆盖胜者的 `couponId/couponFen/remainFen`。
+- related_logbook: 2026-09-25 - fix(miniapp): 并发应用不同优惠券时只允许一个快照胜出
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员/优惠券、真实文件 SQLite、定向测试退出码、清理统计和源码哈希；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 修复前两个真实 SQLite 请求都读到同一 `unpaid` 快照时，500 分和 1000 分券均返回成功，订单只保留一张券；订单仓储新增原始支付快照 CAS 后，恰好一个请求成功、另一个返回支付状态冲突，成功响应的券和金额与订单最终快照一致。相邻回归 139 项通过，正式上线仍为 No-Go。
+- failure_class: recovered_deterministic_business_failure
+- replayable: yes
+- residual_risks: 证据索引为 `total=502/hash_mismatch=16`，16 条仍为既有历史漂移；文件体量门禁仍存在 `app/service/catalog/application.py` 职责评审缺口，本轮没有新增对应失败。本轮只使用本地合成数据和真实文件 SQLite，未访问真实微信支付/退款、真实闪送、真机、生产 API、生产验收或正式上线。
+
+## E-20260925-031：优惠券应用与余额支付并发候选排除
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r31
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r30
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-coupon-balance-payment-race
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r31.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest tests/service/order/test_core_loop_candidate_r31.py -q --tb=short -p no:cacheprovider --no-cov --basetemp D:\Temp\.tmp-yunxi-miniapp-r31-20260925\pytest-fourth`（修正测试夹具后通过）；`python -B -m pytest tests/service/order/test_core_loop_candidate_r31.py ... --basetemp D:\Temp\.tmp-yunxi-miniapp-r31-20260925\repeat-$round`（最终版本连续 5 轮，退出码 0,0,0,0,0）；`python -B -m pytest tests/service/test_coupon_payment.py tests/api/test_miniapp_coupons_api.py tests/service/test_stored_value.py tests/service/order/test_core_loop_candidate_r21.py tests/service/order/test_core_loop_candidate_r22.py tests/service/order/test_core_loop_candidate_r23.py tests/service/order/test_core_loop_candidate_r24.py tests/service/order/test_core_loop_candidate_r30.py tests/service/order/test_core_loop_candidate_r31.py tests/service/order/test_pay_notify_freshness_intake.py tests/api/test_miniapp_payment_api.py -q --tb=short -p no:cacheprovider --no-cov --basetemp D:\Temp\.tmp-yunxi-miniapp-r31-20260925\adjacent`（91 项，退出码 0，耗时 28.31 秒）；`python -B -m ruff check tests/service/order/test_core_loop_candidate_r31.py`；`git diff --check`；`python -B backend/scripts/check_project_development_register.py`；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/check_mistake_ledger.py`；`python -B backend/scripts/check_evidence_index.py --summary`；`python -B backend/scripts/check_file_sizes.py`；`scripts/cleanup-local-artifacts.ps1 -OnlyTemporaryPath -TemporaryPath D:\Temp\.tmp-yunxi-miniapp-r31-20260925`（预览后携带令牌执行）
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r31.py=e013690d0346eba65da9647be18cfd559cc1b6485bd6e070ad2d0756a5abea24；PROJECT-STATE.md=29d135275bd2b94b9526bfac3827307ca7faa5e2bcc161d5913fb30d1d44b3d5；LOGBOOK.md=fdaafdbcba49e235f305f6c583b8026c0083d306618bb9908ccaf7ac03b94559
+- follow_up_guardrail: 优惠券请求先提交后，持有旧支付快照的全额余额支付或组合支付只能冲突或因 SQLite 快照升级失败整体回滚；不得扣减余额、追加余额流水、支付订单或清除已提交券快照。
+- related_logbook: 2026-09-25 - review(miniapp): 优惠券与余额支付并发候选排除
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员/优惠券、真实文件 SQLite、定向测试退出码、清理统计和源码哈希；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 修复前无需修复：两个真实 SQLite 请求都读到 `unpaid` 旧快照后，强制 500 分券先提交；全额余额支付与组合支付均不能继续产生扣款或支付事实，订单只保留券 partial 快照，余额、流水与券核销状态不变。连续 5 轮及相邻回归 91 项通过，本轮没有确认 P0/P1。
+- failure_class: excluded_candidate
+- replayable: yes
+- residual_risks: 证据索引为 `total=503/hash_mismatch=16`，16 条仍为既有历史漂移；文件体量门禁仍存在 `app/service/catalog/application.py` 职责评审缺口，本轮没有新增对应失败。本轮只使用本地合成数据和真实文件 SQLite，未访问真实微信支付/退款、真实闪送、真机、生产 API、生产验收或正式上线。
+
+## E-20260925-032：微信预支付外部实付金额锁定与第二支付路径阻断
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r32
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r31
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-wechat-prepay-amount-lock-fix
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r32.py`; `repo:backend/app/repository/order_repo.py`; `repo:backend/app/service/order/payment_runtime.py`; `repo:backend/app/service/coupon/__init__.py`; `repo:backend/app/service/coupon/payment.py`; `repo:backend/app/service/stored_value/payment.py`; `repo:miniapp/docs/api-contract.md`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`; `repo:ERRORS.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest tests/service/order/test_core_loop_candidate_r32.py -q --no-cov -p no:cacheprovider --basetemp D:\Temp\.tmp-yunxi-miniapp-r32-20260925\pytest-r32-full`（8 项，退出码 0，耗时 4.30 秒）；`python -B -m pytest tests/service/order/test_core_loop_candidate_r32.py ... --basetemp D:\Temp\.tmp-yunxi-miniapp-r32-20260925\pytest-stability-$round`（最终版本连续 5 轮，退出码 0,0,0,0,0，耗时 57.47 秒）；相邻储值/券/积分/订单/通知/退款、r21-r32 与 MiniApp 订单/支付 API 回归（精确收集并通过 195 项，退出码 0，耗时 56.01 秒）；`python -B -m ruff check ...`；`python -B -m ruff format --check ...`；`git diff --check`；`python -B backend/scripts/check_project_development_register.py`；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/check_mistake_ledger.py`；`python -B backend/scripts/check_evidence_index.py --summary`；`python -B backend/scripts/check_file_sizes.py`；`scripts/cleanup-local-artifacts.ps1 -OnlyTemporaryPath -TemporaryPath D:\Temp\.tmp-yunxi-miniapp-r32-20260925`（预览后携带令牌执行）
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r32.py=e40f4ec94dab347fef6fc27bf9eecc4bb7790378a6347488917597aa891c987b；backend/app/repository/order_repo.py=2fb16acc3d3385c44b1c679ea576e08d5315c59414294cb150bbd51545c49672；backend/app/service/order/payment_runtime.py=b141ee7956b64e34d73930404dd5499741f88cc6c139ae226da936572868c7cd；backend/app/service/coupon/__init__.py=41cb9e451fbe3f523679278c9e32ee75b5b4fe051f7b49d7b8f9661c54a8eb04；backend/app/service/coupon/payment.py=b8fa6a955e764a604bb3848de1f45100a49b9354d0bdd2b7f000d4a2b1999cc2；backend/app/service/stored_value/payment.py=392e291618b7fb9b7b4226fdf8b308b06fc3733a37898ac48a419030385aff86；miniapp/docs/api-contract.md=06628f3f2f5e16a877c74d6d1b46b171f85ea6f75cb5606f843512654b395e7c；PROJECT-STATE.md=6f36e6ea1011751ee89adafc1b5275950e33a55b78f62fb06acd94292cd554f9；LOGBOOK.md=082c40613d063e51c29d1e4319d4ba51509eed72c193437d532ae401a991794e；ERRORS.md=2076e55553e10bc5af828f609d930835fa8521a300e80cd66b0a55c63e6d9e5e
+- follow_up_guardrail: 真实微信预支付会话返回前必须用原支付快照 CAS 固化 `externalPaidFen/wechatPrepayFen`；锁后优惠券、全额余额、组合支付、mock 替换和 mock 兜底均不得创建第二条支付腿，失败/超时只能同金额重试或取消，通知/查询/退款始终按原外部交易金额校验。
+- related_logbook: 2026-09-25 - fix(miniapp): 微信预支付会话返回后锁定外部实付金额
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员/优惠券、内存 SQLite、本地假微信集成、定向测试退出码、清理统计和源码哈希；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 修复前 100 元微信预支付会话返回后仍可应用 5 元券，旧 100 元成功通知因当前快照变为 95 元而失败且无支付交易；全额余额、组合和 mock 路径还可在真实微信尝试后形成第二支付腿。修复后普通与组合微信支付固化外部金额和真实微信尝试锁，锁后所有改道入口拒绝；取消后的迟到组合支付只按 8000 分微信尾款记录待退款，2000 分余额只退一次。r32 8 项连续 5 轮及 195 项相邻回归通过。
+- failure_class: recovered_deterministic_business_failure
+- replayable: yes
+- residual_risks: 证据索引整体仍有 17 条旧条目引用后来修改的共享源码/状态文件产生的历史哈希漂移，本轮未改写历史证据；文件体量门禁仍只被既有 `app/service/catalog/application.py` 职责评审缺口阻断。本轮只使用本地合成数据和本地假微信集成，未访问真实微信支付/退款、真实闪送、真机、生产 API、生产验收或正式上线，正式上线继续为 No-Go。
+
+## E-20260925-033：微信预支付后积分改价候选排除与测试夹具修复
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r33
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r32
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-wechat-prepay-points-fence
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r33.py`; `repo:backend/tests/service/test_points_service.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`; `repo:ERRORS.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r33.py -q --no-cov -p no:cacheprovider --basetemp D:\Temp\.tmp-yunxi-miniapp-r33-20260925\pytest-repeat-$round`（最终版本连续 5 轮，退出码 0,0,0,0,0）；`python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r33.py backend/tests/service/test_points_payment.py backend/tests/service/test_points_service.py backend/tests/api/test_miniapp_points_api.py backend/tests/service/test_coupon_payment.py backend/tests/service/order/test_core_loop_candidate_r32.py backend/tests/service/order/test_pay_notify_freshness_intake.py backend/tests/service/order/test_review2_pay_combined_refund_20260906.py backend/tests/api/test_miniapp_payment_api.py -q --no-cov -p no:cacheprovider`（83 项，退出码 0，耗时 16.45 秒）；`npm run test:checkout-points-fence`（1/1，退出码 0）；`npm run check:miniapp`（15 页/15 路由，退出码 0）；`python -B -m ruff check ...`；`python -B -m ruff format --check ...`；`git diff --check`；`python -B backend/scripts/check_project_development_register.py`；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/check_mistake_ledger.py`；`python -B backend/scripts/check_file_sizes.py`；`scripts/cleanup-local-artifacts.ps1 -OnlyTemporaryPath -TemporaryPath D:\Temp\.tmp-yunxi-miniapp-r33-20260925`（预览后携带令牌执行，移除 4 个文件、3,833,856 字节）
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r33.py=ecbe97272ba119db67a8a7b9547e8b9041a4f8e6c0a31cca4a2cad6709edec9f；backend/tests/service/test_points_service.py=68605b189ce69f222c4e9117befa8bd1213455969878e7fd154f93d7e5bff256；PROJECT-STATE.md=d6f6a2c9f64e9b94200eb9a5ef788e117d2576f6d2c6ac9182c91fadd5efe310；LOGBOOK.md=471fab1a6794af23f050b12b7f05aad367497727b82a97e5c883d948456c09f0；ERRORS.md=3aa50cd0fe8f51f82160b0d52feb968bfd59de32365fd08ca0f0179c987fda8d
+- follow_up_guardrail: `POINTS_DEDUCTION_FENCE=True` 期间，微信预支付后的积分 preview 只能只读展示，生产 `apply_points()` 必须在任何快照写入前拒绝；订单继续保持 `externalPaidFen/wechatPrepayFen`、原状态和积分资产不变，原外部金额通知仍可入账。D1 重新开放积分抵扣前必须新增微信锁守卫和原支付快照 CAS。
+- related_logbook: 2026-09-25 - review(miniapp): 微信预支付后积分改价候选排除
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员/积分账户、内存 SQLite、本地假微信集成、定向测试退出码和源码哈希；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 微信预支付锁定 100 元后，积分 preview 只读计算 50 元抵扣且不改订单，真实积分应用被现行 B3.4 围栏拒绝，积分余额和流水不变，原 100 元微信成功通知仍按唯一交易号入账。最小测试连续 5 轮及相邻回归 83 项通过；相邻回归同时发现并修复两个积分 preview 用例仍依赖已失效商品兜底夹具的问题。
+- failure_class: excluded_candidate
+- replayable: yes
+- residual_risks: 证据索引整体仍有 17 条旧条目引用后来修改的共享文件产生的历史哈希漂移，本轮未新增漂移；`npm run typecheck` 因当前工作区没有本地 `tsc` 未执行成功，本轮按规则未下载依赖；文件体量门禁仍只被既有 `app/service/catalog/application.py` 职责评审缺口阻断。围栏关闭后的未来积分抵扣路径当前不可达，但 D1 重新开放前必须补微信锁守卫和原快照 CAS。本轮只使用本地合成数据和本地假微信集成，未访问真实微信支付/退款、真实闪送、真机、生产 API、生产验收或正式上线，正式上线继续为 No-Go。
+
+## E-20260925-034：普通微信预支付后真实取消与迟到到账候选排除
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r34
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r33
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-wechat-cancel-late-notify
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r34.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r34.py -q --tb=short --no-cov -p no:cacheprovider --basetemp D:\Temp\.tmp-yunxi-miniapp-r34-20260925\pytest-repeat-final-$round`（最终版本连续 5 轮，退出码 0,0,0,0,0）；`python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r12.py backend/tests/service/order/test_core_loop_candidate_r26.py backend/tests/service/order/test_core_loop_candidate_r27.py backend/tests/service/order/test_core_loop_candidate_r28.py backend/tests/service/order/test_core_loop_candidate_r32.py backend/tests/service/order/test_core_loop_candidate_r33.py backend/tests/service/order/test_core_loop_candidate_r34.py backend/tests/service/order/test_pay_notify_freshness_intake.py backend/tests/service/test_order.py backend/tests/service/test_stored_value.py -q --tb=short --no-cov -p no:cacheprovider --basetemp D:\Temp\.tmp-yunxi-miniapp-r34-20260925\pytest-adjacent-final`（116 项，退出码 0，耗时 22.85 秒）；`python -m ruff check tests/service/order/test_core_loop_candidate_r34.py`；`python -m ruff format --check tests/service/order/test_core_loop_candidate_r34.py`；`git diff --check`；`python -B backend/scripts/check_project_development_register.py`；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/check_mistake_ledger.py`；`python -B backend/scripts/check_file_sizes.py`；`scripts/cleanup-local-artifacts.ps1 -OnlyTemporaryPath -TemporaryPath D:\Temp\.tmp-yunxi-miniapp-r34-20260925`（预览后携带令牌执行，移除 6 个文件、5,750,784 字节）
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r34.py=c65dcca721c91a266a7af1708fb694e7e75ac0ab5276cea1305b4089ca1a8a94；PROJECT-STATE.md=27d59a62cb27f13146a2d6de755f47052c6e268050cb428c809df0b7f9f42f4b；LOGBOOK.md=8ce4b8ff9bf38bea0e07cba4197e1f37c9a25d243855629e6d2762e15c98bc11
+- follow_up_guardrail: 普通微信订单完成预支付后，用户取消必须保留 `externalPaidFen/wechatPrepayFen`，不得把未发生的余额、积分或券支付误退；迟到成功通知保持取消终态并记录待退款。相同通知 ID 由 intake 去重，不同通知 ID 携带同一交易号时由支付业务幂等确认，均只能保留一个到账事件和一个交易号认领。
+- related_logbook: 2026-09-25 - review(miniapp): 普通微信预支付后真实取消与迟到到账候选排除
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员、内存 SQLite、本地假微信集成、定向测试退出码和源码哈希；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 普通微信订单完成 100 元预支付后经真实用户取消服务关单，外部支付金额锁保持不变且无资产补偿；迟到成功通知保持 `cancelled`，记录已支付、待退款、一个交易号和一个到账事件。相同事件 ID 与不同事件 ID/同一交易号两类重试均不重复写事件、认领或资产流水。最小测试连续 5 轮及相邻回归 116 项通过。
+- failure_class: excluded_candidate
+- replayable: yes
+- residual_risks: 证据索引整体仍有 17 条旧条目引用后来修改的共享文件产生的历史哈希漂移，本轮未新增漂移；文件体量门禁仍只被既有 `app/service/catalog/application.py` 职责评审缺口阻断。本轮是开发期候选复核且没有生产代码变更，因此未重复运行全量测试；只使用本地合成数据和本地假微信集成，未访问真实微信支付/退款、真实闪送、真机、生产 API、生产验收或正式上线，正式上线继续为 No-Go。
+
+## E-20260925-035：组合支付预下单期间快照变化或取消的旧会话候选排除
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r35
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r34
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-combined-prepay-snapshot-change
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r35.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r35.py -q --tb=short --no-cov -p no:cacheprovider --basetemp D:\Temp\.tmp-yunxi-miniapp-r35-20260925\pytest-final-repeat-$round`（最终版本连续 5 轮，退出码 0,0,0,0,0）；`python -B -m pytest backend/tests/service/test_stored_value.py backend/tests/service/test_order.py backend/tests/service/test_coupon_payment.py backend/tests/service/order/test_core_loop_candidate_r23.py backend/tests/service/order/test_core_loop_candidate_r31.py backend/tests/service/order/test_core_loop_candidate_r32.py backend/tests/service/order/test_core_loop_candidate_r33.py backend/tests/service/order/test_core_loop_candidate_r34.py backend/tests/service/order/test_core_loop_candidate_r35.py -q --tb=short --no-cov -p no:cacheprovider --basetemp D:\Temp\.tmp-yunxi-miniapp-r35-20260925\pytest-adjacent-formatted`（112 项，退出码 0，耗时 29.49 秒）；`python -m ruff check --no-cache backend/tests/service/order/test_core_loop_candidate_r35.py`；`python -m ruff format --check backend/tests/service/order/test_core_loop_candidate_r35.py`；`git diff --check`；`python -B backend/scripts/check_project_development_register.py`；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/check_mistake_ledger.py`；`python -B backend/scripts/check_file_sizes.py`（仅既有目录应用缺口失败）；`scripts/cleanup-local-artifacts.ps1 -OnlyTemporaryPath -TemporaryPath D:\Temp\.tmp-yunxi-miniapp-r35-20260925`（预览后携带令牌执行，移除 43 个文件、38,338,742 字节）
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r35.py=3b9fd8f2ce5806642bed56a58d1f525dbe9f335a3bea4f8bb869e70f024fa79e；PROJECT-STATE.md=0ca1d501fb5372d38adbe4c5fd3fbedf87445a930b7f2857b6fe9bad08ff23d5；LOGBOOK.md=7926d3e5003971a5eb17c06e942f9771f8d72fe90b7b27bf4bb44a78990c6252
+- follow_up_guardrail: 组合支付在外部微信预下单返回后必须重读订单状态和支付快照；券快照提交或用户取消后，旧请求只能被拒绝，不能扣余额、写余额流水或返回旧会话。同一商户订单号已存在时只能原金额重试或取消；按新金额重试的本地假微信拒绝不构成账务破坏证据。
+- related_logbook: 2026-09-25 - review(miniapp): 组合支付预下单期间快照变化或取消的旧会话候选排除
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员/优惠券、文件 SQLite、本地假微信集成、定向测试退出码、清理统计和源码哈希；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 组合支付首次微信预下单等待期间，券快照先提交会使旧请求命中“支付快照发生变化”，用户取消先提交会使旧请求命中“订单已取消”；两种场景均不返回旧会话、不扣余额、不写余额流水。券场景按新金额重试仅被本地假微信边界拒绝，用户可取消后重建，未形成现行 P0/P1。r35 连续 5 轮及相邻回归 112 项通过。
+- failure_class: excluded_candidate
+- replayable: yes
+- residual_risks: 本地假微信不是实际微信 API，真实预下单和支付回调仍未验证；文件体量门禁仍只被既有 `app/service/catalog/application.py` 职责评审缺口阻断。本轮只使用本地合成数据和本地假微信集成，未访问生产 API、真实客户数据、真实微信支付/退款、真实闪送、真机、生产验收或正式上线，正式上线继续为 No-Go。
+
+## E-20260925-036：全额退款先完成与后台旧快照推进履约候选排除
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r36
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r35
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-refund-terminal-admin-fulfillment-race
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r36.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -m pytest --no-cov backend/tests/service/order/test_core_loop_candidate_r36.py -q --basetemp D:\Temp\pytest-yunxi-core-loop-r36`（最终版本连续 5 轮，退出码 0,0,0,0,0）；`python -m pytest --no-cov backend/tests/service/order/test_core_loop_candidate_r12.py backend/tests/service/order/test_core_loop_candidate_r28.py backend/tests/service/order/test_core_loop_candidate_r29.py backend/tests/service/order/test_core_loop_candidate_r30.py backend/tests/service/order/test_core_loop_candidate_r31.py backend/tests/service/order/test_core_loop_candidate_r32.py backend/tests/service/order/test_core_loop_candidate_r33.py backend/tests/service/order/test_core_loop_candidate_r34.py backend/tests/service/order/test_core_loop_candidate_r35.py backend/tests/service/order/test_core_loop_candidate_r36.py backend/tests/service/order/test_refund_notification.py backend/tests/service/test_order.py -q --basetemp D:\Temp\pytest-yunxi-core-loop-r36-regression`（77 项，退出码 0）；`python -m ruff check backend/tests/service/order/test_core_loop_candidate_r36.py`；`python -m ruff format --check backend/tests/service/order/test_core_loop_candidate_r36.py`；`git diff --check -- backend/tests/service/order/test_core_loop_candidate_r36.py`；`python -B backend/scripts/check_project_development_register.py`；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/check_mistake_ledger.py`；`python -B backend/scripts/check_evidence_index.py --summary`；`python -B backend/scripts/check_file_sizes.py`（仅既有目录应用缺口失败）；`scripts/cleanup-local-artifacts.ps1 -OnlyTemporaryPath -TemporaryPath D:\Temp\pytest-yunxi-core-loop-r36,D:\Temp\pytest-yunxi-core-loop-r36-regression`（预览后携带令牌执行，移除 9 个文件、8,626,176 字节，失败项 0，清理后目录不存在）
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r36.py=be44196c3c31fab8c5e9986d00263c9d9f778db1b4f054042a36b4ec3d3421a4；PROJECT-STATE.md=e4e89e00d3c970827c501d5a9249cba047034891445526b662bf7d3ac6ad2c77；LOGBOOK.md=95a3b155bcbc6cc3bef4bbaa722c4cc896182477f08d1d6c812391fdcb2e9c9c
+- follow_up_guardrail: 全额退款终态写入后，后台旧支付快照不得推进履约状态；`confirmed` 订单必须保持 `confirmed`，退款快照必须保持 `full`，不得出现 `making` 或资产账本副作用。
+- related_logbook: 2026-09-25 - review(miniapp): 全额退款先完成与后台旧快照推进履约候选排除
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单、两个文件 SQLite 连接、真实退款通知服务和后台状态服务、定向测试退出码、清理统计和源码哈希；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 全额退款先提交后，后台使用旧支付快照推进 `confirmed -> making` 命中 SQLite `database is locked`；最终订单保持 `confirmed`，支付快照保持 `paid`，退款快照为 `full`，没有进入制作中，也没有资产账本变化。r36 连续 5 轮及相邻回归 77 项通过，未确认现行 P0/P1。
+- failure_class: excluded_candidate
+- replayable: yes
+- residual_risks: 本轮使用本地文件 SQLite 和合成订单，不等同于生产数据库或真实微信环境；文件体量门禁仍只被既有 `app/service/catalog/application.py` 职责评审缺口阻断。真实微信支付/退款、真实闪送、真机、生产 API、生产验收和正式上线仍未验证，正式上线继续为 No-Go。
+
+## E-20260925-037：后台取消与组合支付并发资产一致性候选排除
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r37
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r36
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-admin-cancel-combined-payment-race
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r37.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest --no-cov tests/service/order/test_core_loop_candidate_r37.py -q --basetemp D:\Temp\pytest-yunxi-core-loop-r37-stability`（最终版本连续 5 轮，退出码 0,0,0,0,0）；`python -B -m pytest --no-cov tests/service/order/test_core_loop_candidate_r23.py tests/service/order/test_core_loop_candidate_r24.py tests/service/order/test_core_loop_candidate_r28.py tests/service/order/test_core_loop_candidate_r35.py tests/service/order/test_core_loop_candidate_r36.py tests/service/order/test_core_loop_candidate_r37.py tests/service/test_stored_value.py tests/service/test_order.py -q --basetemp D:\Temp\pytest-yunxi-core-loop-r37-regression`（93 项，退出码 0）；`python -B -m ruff check tests/service/order/test_core_loop_candidate_r37.py`；`python -B -m ruff format --check tests/service/order/test_core_loop_candidate_r37.py`；`git diff --check -- tests/service/order/test_core_loop_candidate_r37.py`；`python -B backend/scripts/check_project_development_register.py`；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/check_mistake_ledger.py`；`python -B backend/scripts/check_evidence_index.py --summary`（17 条既有历史哈希漂移）；`python -B backend/scripts/check_file_sizes.py`（仅既有目录应用缺口失败）；`scripts/cleanup-local-artifacts.ps1 -OnlyTemporaryPath -TemporaryPath D:\Temp\pytest-yunxi-core-loop-r37-smoke,D:\Temp\pytest-yunxi-core-loop-r37-smoke-2,D:\Temp\pytest-yunxi-core-loop-r37-stability,D:\Temp\pytest-yunxi-core-loop-r37-regression`（预览后携带令牌执行，移除 24 个文件、23,003,136 字节，失败项 0，清理后目录均不存在）
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r37.py=a8d00cba4abe1ecf94024b97ea22d45eada56bcaa83b13da5f448de485c2b567；PROJECT-STATE.md=4cf4236c145c24ccecbba39eac24bae4ae024ba6936090fd6ed779f54c494e8e；LOGBOOK.md=fce3fbf41219a9c58e19f4f196250f604022589032e53b5e16530d3bd907f92f
+- follow_up_guardrail: 后台取消与组合支付并发时，后台先提交必须阻止余额扣减；组合支付先提交时，后台取消重试只能保留一笔扣款和一笔原路退款，并保留唯一后台取消事件。微信预下单期间取消后不得返回旧组合支付会话或留下本地余额流水。
+- related_logbook: 2026-09-25 - review(miniapp): 后台取消与组合支付并发资产一致性候选排除
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员、两个文件 SQLite 连接、真实后台与组合支付服务、本地假微信屏障、定向测试退出码、清理统计和源码哈希；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 后台取消先提交时，迟到组合支付命中已取消订单且余额、流水无变化；组合支付先提交时，后台取消在 SQLite 锁冲突重试后只退款一次；预下单期间取消时旧会话被拒绝且无本地资产副作用。r37 连续 5 轮及相邻回归 93 项通过，未确认现行 P0/P1。
+- failure_class: excluded_candidate
+- replayable: yes
+- residual_risks: 本轮使用本地文件 SQLite、合成订单和本地假微信边界，不等同于生产数据库或真实微信环境；文件体量门禁仍被既有 `app/service/catalog/application.py` 职责评审缺口阻断。真实微信支付/退款、真实闪送、真机、生产 API、生产验收和正式上线仍未验证，正式上线继续为 No-Go。
+
+## E-20260925-038：后台取消与优惠券应用并发一致性候选排除
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r38
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r37
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-admin-cancel-coupon-application-race
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r38.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest --no-cov tests/service/order/test_core_loop_candidate_r38.py -q --basetemp D:\Temp\pytest-yunxi-core-loop-r38-stability`（最终版本连续 5 轮，退出码 0,0,0,0,0）；`python -B -m pytest --no-cov tests/service/test_coupon_payment.py tests/service/order/test_core_loop_candidate_r30.py tests/service/order/test_core_loop_candidate_r31.py tests/service/order/test_core_loop_candidate_r35.py tests/service/order/test_core_loop_candidate_r37.py tests/service/order/test_core_loop_candidate_r38.py tests/service/test_order.py tests/service/test_stored_value.py tests/service/order/test_refund_notification.py -q --basetemp D:\Temp\pytest-yunxi-core-loop-r38-regression`（114 项，退出码 0）；`python -B -m ruff check --no-cache tests/service/order/test_core_loop_candidate_r38.py`；`python -B -m ruff format --check tests/service/order/test_core_loop_candidate_r38.py`；`git diff --check -- tests/service/order/test_core_loop_candidate_r38.py`；`python -B backend/scripts/check_project_development_register.py`；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/check_mistake_ledger.py`；`python -B backend/scripts/check_evidence_index.py --summary`（17 条既有历史哈希漂移）；`python -B backend/scripts/check_file_sizes.py`（仅既有目录应用缺口失败）；`scripts/cleanup-local-artifacts.ps1 -OnlyTemporaryPath -TemporaryPath D:\Temp\pytest-yunxi-core-loop-r38-smoke,D:\Temp\pytest-yunxi-core-loop-r38-stability,D:\Temp\pytest-yunxi-core-loop-r38-regression`（预览后携带令牌执行，移除 14 个文件、13,418,496 字节，失败项 0，清理后目录均不存在）
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r38.py=6c42a609519aa553764e395f487b6e05cfe6d21dd180aaf0ada0e5ba60113d65；PROJECT-STATE.md=ff30c1b220759f933195e7e019677ef40d9f5460e805b07f7dc4fa06ba9eb12c；LOGBOOK.md=384eeebf737845f1b8e74301c18fa033ef84ae9d9f9538e7a6c860cb16004edd
+- follow_up_guardrail: 后台取消与优惠券应用并发时，取消先提交必须阻止旧券快照写入；券快照先提交时，取消事务必须清空 partial 券字段并保持唯一 `TAKE` 生命周期行，不得产生错误 `CONSUME/BACK` 或重复取消事件。
+- related_logbook: 2026-09-25 - review(miniapp): 后台取消与优惠券应用并发一致性候选排除
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员/优惠券、两个文件 SQLite 连接、真实后台与优惠券服务、定向测试退出码、清理统计和源码哈希；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证、真实券码或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 后台取消先提交时，迟到券应用被支付快照 CAS 或 SQLite 锁拒绝；券先提交时，后台取消在同一事务清空 partial 券快照。最终订单为 `cancelled/unpaid`，券保持唯一 `TAKE` 行，只有一个后台取消事件。r38 连续 5 轮及相邻回归 114 项通过，未确认现行 P0/P1。
+- failure_class: excluded_candidate
+- replayable: yes
+- residual_risks: 本轮使用本地文件 SQLite、合成订单和本地券数据，不等同于生产数据库或外部券平台；文件体量门禁仍被既有 `app/service/catalog/application.py` 职责评审缺口阻断。真实微信支付/退款、真实闪送、真机、生产 API、生产验收和正式上线仍未验证，正式上线继续为 No-Go。
+
+## E-20260925-039：已应用券订单的后台取消与余额支付竞态候选排除
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r39
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r38
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-admin-cancel-coupon-balance-race
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r39.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest --no-cov tests/service/order/test_core_loop_candidate_r39.py -q --basetemp D:\Temp\pytest-yunxi-core-loop-r39-stability`（最终版本连续 5 轮，退出码 0,0,0,0,0）；`python -B -m pytest --no-cov tests/service/test_coupon_payment.py tests/service/test_stored_value.py tests/service/test_order.py tests/service/order/test_core_loop_candidate_r31.py tests/service/order/test_core_loop_candidate_r37.py tests/service/order/test_core_loop_candidate_r38.py tests/service/order/test_core_loop_candidate_r39.py -q --basetemp D:\Temp\pytest-yunxi-core-loop-r39-regression`（103 项，退出码 0）；`python -B -m ruff check --no-cache tests/service/order/test_core_loop_candidate_r39.py`；`python -B -m ruff format --check tests/service/order/test_core_loop_candidate_r39.py`；`git diff --check -- tests/service/order/test_core_loop_candidate_r39.py`；`python -B backend/scripts/check_project_development_register.py`；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/check_mistake_ledger.py`；`python -B backend/scripts/check_evidence_index.py --summary`（17 条既有历史哈希漂移）；`python -B backend/scripts/check_file_sizes.py`（仅既有目录应用缺口失败）；`scripts/cleanup-local-artifacts.ps1 -OnlyTemporaryPath -TemporaryPath D:\Temp\pytest-yunxi-core-loop-r39-smoke,D:\Temp\pytest-yunxi-core-loop-r39-stability,D:\Temp\pytest-yunxi-core-loop-r39-regression`（重新预览后携带令牌执行，移除 13 个文件、12,460,032 字节，失败项 0，清理后目录均不存在）
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r39.py=dfa02bbd227456cdd99c549f9fa43f6f9229da4cc46897b356786137cc252787；PROJECT-STATE.md=a09fd1bba703f4347bf169d10ba2c19a13b1a5dc3314522ffb1f5cfaa6b444cd；LOGBOOK.md=e6ac05a8c7e46651bcc5b53ca39836b2c4b240088ef9b138d6883ee391b7315e
+- follow_up_guardrail: 已应用优惠券的 partial 订单上，后台取消先提交必须让余额支付整体回滚且不核销券；余额支付先提交时只允许一笔剩余金额扣款和一次券核销，后台取消不得生成取消事件。
+- related_logbook: 2026-09-25 - review(miniapp): 已应用券订单的后台取消与余额支付竞态候选排除
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员/优惠券、两个文件 SQLite 连接、真实后台/余额支付/优惠券服务、定向测试退出码、清理统计和源码哈希；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证、真实券码或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 已应用券 partial 订单上，后台先取消时余额支付被 CAS/锁拒绝并回滚，余额、流水和券无变化；支付先提交时只扣 9,500 分、生成一笔 `order_pay` 流水和一条 `CONSUME` 券记录，后台取消被拒绝且不生成取消事件。r39 连续 5 轮及相邻回归 103 项通过，未确认现行 P0/P1。
+- failure_class: excluded_candidate
+- replayable: yes
+- residual_risks: 本轮使用本地文件 SQLite、合成订单/会员/优惠券，不等同于生产数据库或外部资产平台；文件体量门禁仍被既有 `app/service/catalog/application.py` 职责评审缺口阻断。真实微信支付/退款、真实闪送、真机、生产 API、生产验收和正式上线仍未验证，正式上线继续为 No-Go。
+
+## E-20260925-040：普通微信预支付与后台取消竞态候选排除
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r40
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r39
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-admin-cancel-wechat-prepay-race
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r40.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r40.py -q --no-cov -p no:cacheprovider`（2 项通过）；同一命令连续 5 轮，退出码 `0,0,0,0,0`；`python -B -m pytest backend/tests/service/test_coupon_payment.py backend/tests/service/test_stored_value.py backend/tests/service/test_order.py backend/tests/service/order/test_core_loop_candidate_r31.py backend/tests/service/order/test_core_loop_candidate_r37.py backend/tests/service/order/test_core_loop_candidate_r38.py backend/tests/service/order/test_core_loop_candidate_r39.py backend/tests/service/order/test_core_loop_candidate_r40.py -q --no-cov -p no:cacheprovider`（105 项通过，退出码 0）；`python -B -m pytest --collect-only -q --no-cov -p no:cacheprovider`（精确收集 105 项）；`python -B -m ruff check backend/tests/service/order/test_core_loop_candidate_r40.py`；`python -B -m ruff format --check backend/tests/service/order/test_core_loop_candidate_r40.py`；`git diff --check -- backend/tests/service/order/test_core_loop_candidate_r40.py`；`python -B backend/scripts/check_project_development_register.py`；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/check_mistake_ledger.py`；`python -B backend/scripts/check_evidence_index.py --summary`（17 条既有历史哈希漂移）；`python -B backend/scripts/check_file_sizes.py`（仅既有目录应用缺口失败）；`scripts/cleanup-local-artifacts.ps1 -OnlyTemporaryPath -TemporaryPath D:\Temp\pytest-of-srafy\pytest-5,D:\Temp\pytest-of-srafy\pytest-6,D:\Temp\pytest-of-srafy\pytest-7,D:\Temp\pytest-of-srafy\pytest-current`（预览后携带令牌执行，移除 15 个文件、14,376,960 字节，失败项 0，清理后目录均不存在）
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r40.py=068fbd9affdce0e3f81b1b829003d0dff9158ddcfdbcd34b298ecdd94009eb92；PROJECT-STATE.md=31c6a7ce6a92ed75952855d6cd8237dddf0b21009004b71381340b234bc773ae；LOGBOOK.md=5415b8fd73cc8dcfbc97c312361d1535c01ff1eba3ff9cea4816b348c94e491e
+- follow_up_guardrail: 普通微信预支付金额锁定后或外部预下单阻塞期间发生后台取消时，必须在返回支付会话前再次检查订单取消事实；取消后不得返回旧会话或产生本地资产副作用，迟到成功通知只能进入一次性待退款事实。
+- related_logbook: 2026-09-25 - review(miniapp): 普通微信预支付与后台取消竞态候选排除
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员、两个文件 SQLite 连接、真实支付运行时/后台状态服务、本地假微信预支付屏障、定向测试退出码、清理统计和源码哈希；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 两个预支付窗口均拒绝返回已取消订单会话，订单保持 `cancelled/unpaid`，余额、积分和流水不变；迟到成功通知只记录一次 `paid + refundStatus=pending`，重复通知幂等。r40 连续 5 轮及相邻回归 105 项通过，未确认现行 P0/P1。
+- failure_class: excluded_candidate
+- replayable: yes
+- residual_risks: 本轮使用本地文件 SQLite、合成订单/会员和本地假微信预支付集成，不等同于生产数据库、真实微信商户或生产回调；文件体量门禁仍被既有 `app/service/catalog/application.py` 职责评审缺口阻断。真实微信支付/退款、真实闪送、真机、生产 API、生产验收和正式上线仍未验证，正式上线继续为 No-Go。
+
+## E-20260925-041：用户取消与微信全额退款通知竞态候选排除
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r41
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r40
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-cancel-refund-notify-race
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r41.py`; `repo:backend/tests/service/order/test_core_loop_candidate_r34.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r41.py -q --no-cov --basetemp D:\Project\YunxiBakery\.pytest-tmp-r41`（2 项通过）；同一命令连续 5 轮，退出码 `0,0,0,0,0`；`python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r23.py backend/tests/service/order/test_core_loop_candidate_r24.py backend/tests/service/order/test_core_loop_candidate_r26.py backend/tests/service/order/test_core_loop_candidate_r27.py backend/tests/service/order/test_core_loop_candidate_r28.py backend/tests/service/order/test_core_loop_candidate_r29.py backend/tests/service/order/test_core_loop_candidate_r34.py backend/tests/service/order/test_core_loop_candidate_r36.py backend/tests/service/order/test_core_loop_candidate_r37.py backend/tests/service/order/test_core_loop_candidate_r38.py backend/tests/service/order/test_core_loop_candidate_r39.py backend/tests/service/order/test_core_loop_candidate_r40.py backend/tests/service/order/test_core_loop_candidate_r41.py backend/tests/service/test_stored_value.py backend/tests/service/order/test_refund_notification.py backend/tests/service/test_coupon_payment.py backend/tests/service/test_points_payment.py -q --no-cov --basetemp D:\Project\YunxiBakery\.pytest-tmp-r41-regression2`（107 项通过，退出码 0）；`python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r34.py -q --no-cov`（1 项通过）；`python -B -m ruff check backend/tests/service/order/test_core_loop_candidate_r34.py backend/tests/service/order/test_core_loop_candidate_r41.py`；`python -B -m ruff format --check backend/tests/service/order/test_core_loop_candidate_r34.py backend/tests/service/order/test_core_loop_candidate_r41.py`；`git diff --check`
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r41.py=3f430fcc4f0cbf66852ff2278b3ccef28f16b3b0fad4b7689a394cf8a10d9b3f；backend/tests/service/order/test_core_loop_candidate_r34.py=7584d1a2f1e76ce97f530057711f1fb2c38acc996334653edbe60fca81744c68；PROJECT-STATE.md=d42209cd539862a26fcb1f9329bd5e08527113612466bf66a5a3aa4f218f50d；LOGBOOK.md=9394d910a346a37ad9c483f2ca59844141c804a14af0bebf3aa752336a891a06
+- follow_up_guardrail: 组合支付 partial 订单与全额微信退款通知并发时，取消和退款只能通过订单快照、余额/券幂等键及 inbox 重投收敛；不得重复余额退款、错误释放未核销优惠券、覆盖退款事实或生成重复取消事件。
+- related_logbook: 2026-09-25 - review(miniapp): 用户取消与微信全额退款通知竞态候选排除
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员/优惠券、两个文件 SQLite 连接、真实取消/组合支付/退款通知/资产服务、锁冲突重投、定向测试退出码和源码哈希；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证、真实券码或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 取消先提交或退款先提交两种竞态均最终只产生一笔余额退款、一条退款事实、一次取消事件和一张保持可用的券；r41 连续 5 轮及相邻回归 107 项通过，未确认现行 P0/P1。r34 测试夹具改用当前支付成功时间，消除固定历史时间造成的非业务排序误报。
+- failure_class: excluded_candidate
+- replayable: yes
+- residual_risks: 本轮使用本地文件 SQLite、合成订单/会员/优惠券和本地假微信通知，不等同于生产数据库、真实微信商户或生产回调；文件体量门禁仍被既有 `app/service/catalog/application.py` 职责评审缺口阻断。真实微信支付/退款、真实闪送、真机、生产 API、生产验收和正式上线仍未验证，正式上线继续为 No-Go。
+
+## E-20260925-042：退款通知与查询恢复并发候选排除
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r42
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r41
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-refund-notify-query-race
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r42.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r42.py -q --no-cov --basetemp D:\Temp\pytest-yunxi-core-loop-r42-recheck`（1 项通过）；同一命令连续 5 轮，退出码 `0,0,0,0,0`；相邻 r23-r42、储值、退款通知、优惠券和积分回归退出码 0，耗时 49.43 秒；`python -B -m ruff check backend/tests/service/order/test_core_loop_candidate_r42.py`；`python -B -m ruff format --check backend/tests/service/order/test_core_loop_candidate_r42.py`；`git diff --check -- backend/tests/service/order/test_core_loop_candidate_r42.py`
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r42.py=fd55952cd93937ba7a56776b21313b62518410250aa947ccf751164f847acad3；PROJECT-STATE.md=00dc1c7bb9b4ec2e23768bdc0b46cd7a6d5ecca85ad2a5055fb7968ba1ef8a94；LOGBOOK.md=5b136ad0ca6333219fe4021fad3ab55505a01a1c55a9757c40658798fb876647
+- follow_up_guardrail: 同一微信全额退款同时由通知和查询恢复入口到达时，必须通过 `out_refund_no` 退款事实唯一键、余额补偿幂等键和 inbox 重投收敛；不得重复退款事件、重复余额补偿、覆盖退款累计或永久丢失任一入口事实。
+- related_logbook: 2026-09-25 - review(miniapp): 退款通知与查询恢复并发候选排除
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员、两个文件 SQLite 连接、真实通知/查询恢复入口、可重试锁冲突、定向测试退出码、源码哈希和清理范围；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 通知和查询入口并发时，首轮锁冲突可按 inbox 路径重投；最终只形成一条退款事实、一次余额补偿和一个 full 退款快照，r42 连续 5 轮及相邻回归通过，未确认现行 P0/P1。
+- failure_class: excluded_candidate
+- replayable: yes
+- residual_risks: 本轮使用本地文件 SQLite、合成订单/会员和本地假微信通知/查询，不等同于生产数据库、真实微信商户或生产回调；真实微信支付/退款、真实闪送、真机、生产 API、生产验收和正式上线仍未验证，正式上线继续为 No-Go。
+
+## E-20260925-043：支付通知与查询恢复并发候选排除
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r43
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r42
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-payment-notify-query-race
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r43.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r43.py -q --no-cov --basetemp D:\Temp\pytest-yunxi-core-loop-r43-first`（夹具身份映射修正后进入完整链路）；同一测试连续 5 轮，退出码 `0,0,0,0,0`，格式化后再跑 1 项通过；相邻 r12、r19-r43、支付通知、退款通知、储值、优惠券、积分和 MiniApp 支付 API 回归 165 项通过，退出码 0，耗时 64.43 秒；`python -B -m ruff check backend/tests/service/order/test_core_loop_candidate_r43.py`；`python -B -m ruff format --check backend/tests/service/order/test_core_loop_candidate_r43.py`；`git diff --check -- PROJECT-STATE.md LOGBOOK.md backend/tests/service/order/test_core_loop_candidate_r43.py`；`python -B backend/scripts/check_project_development_register.py`；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/check_mistake_ledger.py`；`scripts/cleanup-local-artifacts.ps1 -OnlyTemporaryPath`（先预览，再使用授权令牌执行）
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r43.py=59552bcf54456eaf18121c0e78c40293f24799fed5535d94961070ce602c36f9；PROJECT-STATE.md=a0f0439bbbbb1ef38a565e362f19b205a3da4da5390952d7d6c5a21e3976e67f；LOGBOOK.md=78cb19ca8c5b046ebda994f18dd982b32a90ee747fbf4c86ad7a1d37b4ff1631
+- follow_up_guardrail: 同一微信支付成功事实同时由通知和查询恢复入口到达时，必须通过订单支付状态 CAS、交易号唯一认领、到账事件写入、券核销/积分发放幂等键和 inbox 重投收敛；不得重复支付状态、交易认领、到账事件或资产结算，也不得永久丢失任一入口事实。
+- related_logbook: 2026-09-25 - review(miniapp): 支付通知与查询恢复并发候选排除
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员/优惠券、两个文件 SQLite 连接、真实组合支付/通知/查询恢复/资产服务、可重试锁冲突、定向测试退出码、源码哈希和清理范围；D 盘共清理 9 个本轮 pytest 临时目录、49 个文件、46,964,736 字节，失败项 0、剩余目录 0；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证、真实券码或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 通知和查询入口并发时，首轮锁冲突可按 inbox 路径重投；最终只形成一个已支付组合快照、一个微信交易号、一个到账事件、一次余额腿扣款、一次券核销和一次积分发放，r43 连续 5 轮及相邻回归通过，未确认现行 P0/P1。
+- failure_class: excluded_candidate
+- replayable: yes
+- residual_risks: 本轮使用本地文件 SQLite、合成订单/会员/优惠券和本地假微信预下单/通知/查询，不等同于生产数据库、真实微信商户或生产回调；文件体量门禁仍被既有 `app/service/catalog/application.py` 职责评审缺口阻断。真实微信支付/退款、真实闪送、真机、生产 API、生产验收和正式上线仍未验证，正式上线继续为 No-Go。
+
+## E-20260925-054：部分退款与支付结算交错候选排除
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r54
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r53
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-partial-refund-payment-settlement-race
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r54.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r54.py -q --no-cov`（2 项通过，连续 5 轮退出码 `0,0,0,0,0`）；相邻 r12-r54 候选回归 82 项通过，退出码 0，耗时 87.14 秒；`python -B -m ruff check backend/tests/service/order/test_core_loop_candidate_r54.py`；`python -B -m ruff format --check backend/tests/service/order/test_core_loop_candidate_r54.py`；`git diff --check -- PROJECT-STATE.md LOGBOOK.md backend/tests/service/order/test_core_loop_candidate_r54.py`；`python -B backend/scripts/check_project_development_register.py`；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/check_mistake_ledger.py`；`python -B backend/scripts/check_evidence_index.py --summary`
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r54.py=ce0eb19949c1ee812a05bdc9c2e58c8940fef38d6ada3ee7ebacfeadb08456d2；PROJECT-STATE.md=6a04509152eb2b18f8675afc17717bb35cef31fe408291d6f5db58d0bc03a2d1；LOGBOOK.md=b6266a4ebbddefc17c63151a7efd2b65e4d0fcf03dbe98f75fb065d9ef7decb5
+- follow_up_guardrail: 同一组合支付订单的部分退款事实与支付成功查询恢复并发时，必须先通过订单交易号认领、支付/退款快照条件写和 inbox 重投收敛；首轮败者只能进入可重试失败，重投后不得覆盖 `refundStatus/refundFen`、重复认领交易、重复发放积分或产生余额/券补偿副作用。
+- related_logbook: 2026-09-25 - review(miniapp): 部分退款与支付结算交错候选排除
+- related_adr: 0008-accounting-core-consistency
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员/余额、两个文件 SQLite 连接、真实组合支付/查询恢复/退款通知/交易认领/积分服务、可重试锁冲突、定向测试退出码和源码哈希；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证、真实券码或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: r54 将支付拦截点放在 `mark_paid` 的实际快照读取，固定支付先提交和退款先提交两种顺序；首轮败者均通过真实 SQLite 锁冲突进入可重试失败，重投后最终订单为 `pending`、`paid/combined`，退款快照为 `partial/2000`，交易只认领一次，积分只发放 80，余额只保留一笔 2,000 分扣款，退款事实只写一次，两个 inbox 均 `processed`，重复退款通知幂等；r54 连续 5 轮及 82 项相邻回归通过，未确认新的 P0/P1。
+- failure_class: excluded_candidate
+- replayable: yes
+- residual_risks: 本轮使用本地合成订单/会员/余额、两个文件 SQLite 连接和本地不触网微信支付查询/验签/解密，不等同于生产数据库、真实微信商户或生产回调；文件体量门禁仍可能被既有 `app/service/catalog/application.py` 职责评审缺口阻断。真实微信支付/退款、真实闪送、真机、生产 API、生产验收和正式上线仍未验证，正式上线继续为 No-Go。
+
+## E-20260925-055：用户取消与超时关闭交错候选排除
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r55
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r54
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-user-timeout-close-race
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r55.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r55.py -q --no-cov --basetemp D:\Temp\YunxiBakery-r55-20260925-final`（2 项通过，连续 5 轮退出码 `0,0,0,0,0`）；相邻 r12-r55 候选回归 38 个文件、82 项通过，退出码 0，耗时 96.79 秒；`python -B -m ruff check backend/tests/service/order/test_core_loop_candidate_r55.py`；`python -B -m ruff format --check backend/tests/service/order/test_core_loop_candidate_r55.py`；`git diff --check -- PROJECT-STATE.md LOGBOOK.md backend/tests/service/order/test_core_loop_candidate_r55.py`；`python -B backend/scripts/check_project_development_register.py`；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/check_mistake_ledger.py`；`python -B backend/scripts/check_evidence_index.py --summary`
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r55.py=7d17142125ac506943134625eb2bad38d2ef9291169c89ece7ead92571e25485；PROJECT-STATE.md=10eaf2ffb44dadf0b59d3b3ffa924bcf0df6d1902f0cac4d6a75d6ed938f1f29；LOGBOOK.md=6ee0c8166cdef1797ba6ff1466a71c98cbeeca82fec85e7c25e30adaf5fb5697
+- follow_up_guardrail: 同一组合支付订单被用户取消与后台手动超时关闭并发触发时，必须通过订单状态/支付快照条件更新、余额幂等键、库存释放幂等事实和关单事件去重收敛；不得重复释放库存、重复退回余额或重复写入取消事件。
+- related_logbook: 2026-09-25 - review(miniapp): 用户取消与超时关闭并发候选排除
+- related_adr: 0008-accounting-core-consistency
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员/余额、两个文件 SQLite 连接、真实用户取消/手动超时关闭/余额补偿/库存释放、参数化首胜顺序、测试退出码和源码哈希；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证、真实券码或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: r55 固定用户取消先提交和超时关闭先提交两种顺序；两种顺序均只有一个关单入口胜出，订单最终为 `cancelled`，支付快照分别为 `partial` 或 `expired`，库存只恢复一次，余额只退回一次，只有一条 `cancelled` 事件；r55 最终连续 5 轮及 82 项相邻回归通过，未确认新的 P0/P1。
+- failure_class: excluded_candidate
+- replayable: yes
+- residual_risks: 本轮使用本地合成订单/会员/余额、两个文件 SQLite 连接和本地不触网的真实订单服务，不等同于生产数据库或真实外部支付；文件体量门禁仍可能被既有 `app/service/catalog/application.py` 职责评审缺口阻断。真实微信支付/退款、真实闪送、真机、生产 API、生产验收和正式上线仍未验证，正式上线继续为 No-Go。
+
+## E-20260925-056：超时关闭与组合支付微信通知交错候选排除
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r56
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r55
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-timeout-combined-payment-notify-race
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r56.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r56.py -q --no-cov --basetemp D:\Temp\YunxiBakery-r56\pytest-r56-round-5`（2 项通过，连续 5 轮退出码 `0,0,0,0,0`，总耗时 31.09 秒）；相邻 r12-r56 候选回归 39 个文件、84 项通过，退出码 0；`python -B -m ruff check backend/tests/service/order/test_core_loop_candidate_r56.py`；`python -B -m ruff format --check backend/tests/service/order/test_core_loop_candidate_r56.py`；`git diff --check`；`python -B backend/scripts/check_project_development_register.py`；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/check_mistake_ledger.py`；`python -B backend/scripts/check_evidence_index.py --summary`（仍为 20 条既有历史哈希漂移）；`python -B backend/scripts/check_file_sizes.py`（仍仅被既有 `app/service/catalog/application.py` 职责评审缺口阻断）；`scripts/cleanup-local-artifacts.ps1 -OnlyTemporaryPath`（先预览，再携带授权令牌执行，移除 9 个目录、84 个文件、80,510,976 字节，失败项 0）
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r56.py=d3217d653993620a1b0a3b2e99262b2ed79a1b7df74857589fde2330505ee0e5；PROJECT-STATE.md=5b1e1b1020127dd0413aa5f84ede7e9501778adc6ba7f52359cee0f3f07cf0b9；LOGBOOK.md=580592276ab6134dddeb54b3fc19a022b67fb4e24ee568858779524d4ea11234
+- follow_up_guardrail: 已应用优惠券、已扣余额并锁定微信尾款的组合支付订单，与后台超时关闭和微信支付通知并发时，必须通过支付快照条件更新、交易号唯一认领、余额/积分/券幂等事实和通知重投收敛；超时先到只能释放一次库存并退回一次余额，迟到支付只能记录待退款事实；支付先到时超时关闭不得覆盖已支付快照或重复补偿资产。
+- related_logbook: 2026-09-25 - review(miniapp): 超时关闭与组合支付微信通知并发候选排除
+- related_adr: 0008-accounting-core-consistency
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员/余额/优惠券、两个文件 SQLite 连接、真实本地微信预下单/通知解析、真实超时关闭/资产服务、参数化首胜顺序、测试退出码和源码哈希；D 盘 r56 临时目录经白名单脚本预览并携带授权令牌清理，共移除 9 个目录、84 个文件、80,510,976 字节，失败项 0，清理后目标目录不存在；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证、真实券码或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: r56 固定后台超时关闭先提交和微信支付通知先提交两种顺序；两种顺序均只形成一个微信交易认领、一次余额扣减/一次余额补偿、一次券状态收敛、一次库存释放或保留、一次积分发放或跳过、一次到账事件和一条通知处理事实；超时先到时订单为 `cancelled/paid` 且退款状态为 `pending/7000`，支付先到时订单为 `pending/paid` 且券核销和积分发放各一次，重复通知幂等；r56 连续 5 轮及 84 项相邻回归通过，未确认新的 P0/P1。
+- failure_class: excluded_candidate
+- replayable: yes
+- residual_risks: 本轮使用本地合成订单/会员/余额/优惠券、两个文件 SQLite 连接和本地不触网的真实订单/支付服务，不等同于生产数据库、真实微信商户或生产回调；文件体量门禁仍可能被既有 `app/service/catalog/application.py` 职责评审缺口阻断。真实微信支付/退款、真实闪送、真机、生产 API、生产验收和正式上线仍未验证，正式上线继续为 No-Go。
+
+## E-20260925-057：后台确认与微信支付通知并发候选排除
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r57
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r56
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-admin-confirm-payment-notify-race
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r57.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r57.py -q --no-cov --basetemp D:\Temp\YunxiBakery-r57\round-1` 至 `round-5`（2 项/轮通过，连续 5 轮退出码 `0,0,0,0,0`，总耗时 29.43 秒）；相邻 r12-r57 候选回归 40 个文件通过，退出码 0，耗时 59.4 秒；`python -B -m ruff check backend/tests/service/order/test_core_loop_candidate_r57.py`；`python -B -m ruff format --check backend/tests/service/order/test_core_loop_candidate_r57.py`；`git diff --check`；`python -B backend/scripts/check_project_development_register.py`；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/check_mistake_ledger.py`；`python -B backend/scripts/check_evidence_index.py --summary`（仍为既有历史哈希漂移）；`python -B backend/scripts/check_file_sizes.py`（仍仅被既有 `app/service/catalog/application.py` 职责评审缺口阻断）
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r57.py=3ee9697ed7ea57610dfea43eee00e27dde9dc4c3e3b88e97413e27635e82ae4a；PROJECT-STATE.md=7804f1ba0edfcc70e598245f3157bba1eed9cb64a0417ec9737b39d1f57ee6fc；LOGBOOK.md=da3e973c62090fa4e87bdb82a33d3560e0262a8c2ea99bad131a0d21386812e2
+- follow_up_guardrail: 后台确认订单与微信支付成功通知并发时，必须通过订单状态条件更新、支付快照条件更新、微信交易号唯一认领、积分幂等事实和 inbox 重投收敛；任一顺序最终都必须保留一次支付事实、一次确认事实和一次到账事实，不得丢失支付状态、重复发放积分或留下未处理 inbox。
+- related_logbook: 2026-09-25 - review(miniapp): 后台确认与微信支付通知并发候选排除
+- related_adr: 0008-accounting-core-consistency
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员、两个文件 SQLite 连接、真实后台确认/微信通知服务、真实本地 `prepare_payment` 金额锁定、参数化首胜顺序、测试退出码和源码哈希；D 盘临时目录按白名单预览并使用授权令牌清理，移除 80 个文件、76,677,120 字节，失败项 0，清理后目录不存在；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: r57 固定后台确认先提交和微信支付通知先提交两种顺序；两种顺序最终均只形成一个微信交易认领、一次支付快照、一次积分发放、一个到账事件和一条确认事件；订单最终为 `confirmed/paid`，微信外部支付金额保持 10,000 分，重复通知幂等，inbox 最终为 `processed`；r57 连续 5 轮及 40 个相邻候选文件回归通过，未确认新的 P0/P1。
+- failure_class: excluded_candidate
+- replayable: yes
+- residual_risks: 本轮使用本地合成订单/会员、两个文件 SQLite 连接和本地不触网的真实订单/支付服务，不等同于生产数据库、真实微信商户或生产回调；文件体量门禁仍可能被既有 `app/service/catalog/application.py` 职责评审缺口阻断。真实微信支付/退款、真实闪送、真机、生产 API、生产验收和正式上线仍未验证，正式上线继续为 No-Go。
+
+## E-20260925-059：微信退款通知与后台确认并发候选排除
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r59
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r58
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-refund-notify-admin-confirm-race
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r59.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r59.py backend/tests/service/order/test_core_loop_candidate_r60.py backend/tests/service/order/test_core_loop_candidate_r61.py -q --no-cov --basetemp D:\Temp\pytest-yunxi-core-loop-r59\official-<N>` 至 `official-5`（6 项/轮通过，连续 5 轮退出码 `0,0,0,0,0`，总耗时 38.52 秒）；相邻 r12-r61 候选回归 44 个文件、96 项通过，退出码 0，耗时 111 秒；`python -B -m ruff check`（r59/r60/r61）；`python -B -m ruff format --check`（r59/r60/r61）；`git diff --check -- PROJECT-STATE.md LOGBOOK.md` 与三个测试文件；`python -B backend/scripts/check_project_development_register.py`（tasks=41）；`python -B backend/scripts/check_chinese_governance.py --summary`（files=16 failed=0）；`python -B backend/scripts/check_mistake_ledger.py`（entries=236）；`python -B backend/scripts/check_evidence_index.py --summary`（既有历史哈希漂移 hash_mismatch=20）；`python -B backend/scripts/check_file_sizes.py`（仍仅被既有 `app/service/catalog/application.py` 职责评审缺口阻断）；`scripts/cleanup-local-artifacts.ps1 -OnlyTemporaryPath -TemporaryPath D:\Temp\pytest-yunxi-core-loop-r59`（先预览，再使用授权令牌执行）
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r59.py=8d72579d487a4c7e49744a28af39ca9bb2825f09060287af77b654f0493701fe；PROJECT-STATE.md=9f8264b98eb25c5808d6cde74e2e0becd712a6f003ca03584cc020ae3420500a；LOGBOOK.md=ee1d716d0b4ccadd097ca7f62ef8ae7067ab978356b8efc71005131d85253cb2
+- follow_up_guardrail: 已支付待确认订单与全额退款通知并发时，必须通过退款快照条件更新、订单状态条件更新、微信交易号唯一认领、退款单号唯一事实和 inbox 重投收敛；退款先到后不得进入履约，后台先到后只能保留一条确认事实，重复退款通知必须保持幂等。
+- related_logbook: 2026-09-25 - review(miniapp): 微信退款通知与后台确认并发候选排除
+- related_adr: 0008-accounting-core-consistency
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员/优惠券、文件 SQLite 连接、真实后台确认/制作/取消/通知服务、真实签名绕过与通知解密、真实通知 inbox 认领、真实订单/退款/交易/券/积分仓储、参数化首胜顺序、测试退出码、源码哈希和清理范围；本轮两个 D 盘临时目录均按白名单预览并使用授权令牌清理，合计移除 415 个文件、397,762,560 字节，失败项 0，清理后目录均不存在；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: r59 固定退款通知先提交和后台确认先提交两种顺序；退款先到时后台在合法 SQLite 锁冲突后重读并拒绝进入履约，订单保持 `pending/paid/full` 且不生成确认事件，后台先到时保留一条 `confirmed` 事件、订单为 `confirmed/paid/full`；两种顺序最终均只形成一个微信交易认领、一条全额退款事实、一个已处理退款通知 inbox，重复退款通知幂等；r59/r60/r61 连续 5 轮及 44 个相邻候选文件回归通过，未确认新的 P0/P1。
+- failure_class: excluded_candidate
+- replayable: yes
+- residual_risks: 本轮使用本地合成订单/会员/优惠券、两个或三个文件 SQLite 连接和本地不触网的真实订单/支付/优惠券/积分服务，不等同于生产数据库、真实微信商户或生产回调；文件体量门禁仍可能被既有 `app/service/catalog/application.py` 职责评审缺口阻断，证据索引仍有既有历史哈希漂移。真实微信支付/退款、真实闪送、真机、生产 API、生产验收和正式上线仍未验证，正式上线继续为 No-Go。
+## E-20260925-060：微信退款通知与后台制作状态并发候选排除
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r60
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r59
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-refund-notify-admin-making-race
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r60.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r59.py backend/tests/service/order/test_core_loop_candidate_r60.py backend/tests/service/order/test_core_loop_candidate_r61.py -q --no-cov --basetemp D:\Temp\pytest-yunxi-core-loop-r59\official-<N>` 至 `official-5`（6 项/轮通过，连续 5 轮退出码 `0,0,0,0,0`，总耗时 38.52 秒）；相邻 r12-r61 候选回归 44 个文件、96 项通过，退出码 0，耗时 111 秒；`python -B -m ruff check`（r59/r60/r61）；`python -B -m ruff format --check`（r59/r60/r61）；`git diff --check -- PROJECT-STATE.md LOGBOOK.md` 与三个测试文件；`python -B backend/scripts/check_project_development_register.py`（tasks=41）；`python -B backend/scripts/check_chinese_governance.py --summary`（files=16 failed=0）；`python -B backend/scripts/check_mistake_ledger.py`（entries=236）；`python -B backend/scripts/check_evidence_index.py --summary`（既有历史哈希漂移 hash_mismatch=20）；`python -B backend/scripts/check_file_sizes.py`（仍仅被既有 `app/service/catalog/application.py` 职责评审缺口阻断）；`scripts/cleanup-local-artifacts.ps1 -OnlyTemporaryPath -TemporaryPath D:\Temp\pytest-yunxi-core-loop-r59`（先预览，再使用授权令牌执行）
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r60.py=d2bb4d7723f7c9ccba48c18a60d397d14deadc465ec32c22d5fadb6a0a1855cc；PROJECT-STATE.md=9f8264b98eb25c5808d6cde74e2e0becd712a6f003ca03584cc020ae3420500a；LOGBOOK.md=ee1d716d0b4ccadd097ca7f62ef8ae7067ab978356b8efc71005131d85253cb2
+- follow_up_guardrail: 已支付且已确认订单与全额退款通知并发时，后台旧快照必须先命中退款终态守卫再允许进入制作；退款先到后不得进入制作，后台先到后只能保留一条制作事实，重复退款通知必须保持幂等且不得二次占用退款事实。
+- related_logbook: 2026-09-25 - review(miniapp): 微信退款通知与后台制作状态并发候选排除
+- related_adr: 0008-accounting-core-consistency
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员/优惠券、文件 SQLite 连接、真实后台确认/制作/取消/通知服务、真实签名绕过与通知解密、真实通知 inbox 认领、真实订单/退款/交易/券/积分仓储、参数化首胜顺序、测试退出码、源码哈希和清理范围；本轮两个 D 盘临时目录均按白名单预览并使用授权令牌清理，合计移除 415 个文件、397,762,560 字节，失败项 0，清理后目录均不存在；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: r60 固定退款通知先提交和后台制作先提交两种顺序；退款先到时后台在合法 SQLite 锁冲突后重读并以“订单已退款，不能进入履约”拒绝，订单保持 `confirmed/paid/full` 且不生成制作事件，后台先到时保留一条 `making` 事件、订单为 `making/paid/full`；两种顺序最终均只形成一个微信交易认领、一条全额退款事实、一个已处理退款通知 inbox，重复退款通知幂等；r59/r60/r61 连续 5 轮及 44 个相邻候选文件回归通过，未确认新的 P0/P1。
+- failure_class: excluded_candidate
+- replayable: yes
+- residual_risks: 本轮使用本地合成订单/会员/优惠券、两个或三个文件 SQLite 连接和本地不触网的真实订单/支付/优惠券/积分服务，不等同于生产数据库、真实微信商户或生产回调；文件体量门禁仍可能被既有 `app/service/catalog/application.py` 职责评审缺口阻断，证据索引仍有既有历史哈希漂移。真实微信支付/退款、真实闪送、真机、生产 API、生产验收和正式上线仍未验证，正式上线继续为 No-Go。
+## E-20260926-071：to_int 折叠资金危害面、储值充值活跃度与微信超额退款留痕三项排除取证
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260926-miniapp-core-loop-candidate-review-r71
+- parent_run_id: 20260926-miniapp-core-loop-candidate-review-r70
+- generated_at: 2026-09-26
+- evidence_type: verification/miniapp-core-loop-three-candidate-exclusions
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r71.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r71.py --no-cov -p no:cacheprovider --tb=short --basetemp D:\Temp\pytest-yunxi-core-loop-r71\final-4 -q --no-header -p no:randomly`（3 passed，退出码 0）；相邻 r12-r71 候选回归 54 个文件（`Get-ChildItem backend/tests/service/order/test_core_loop_candidate_r*.py` 按轮次序号排序后一次性传入，116 项中 114 项通过，唯一 2 项失败即 r67 与 r68 两个故意保留的复现测试）；`python -B -m ruff format backend/tests/service/order/test_core_loop_candidate_r71.py`（1 file reformatted）；`python -B -m ruff check backend/tests/service/order/test_core_loop_candidate_r71.py`（All checks passed）；`git diff --check -- backend/tests/service/order/test_core_loop_candidate_r71.py`（退出码 0）；`python -B backend/scripts/check_mistake_ledger.py`（entries=243）；`python -B backend/scripts/check_project_development_register.py`（tasks=41）；`python -B backend/scripts/check_chinese_governance.py --summary`（files=16 / coverage=1.0 / failed=0）；`python -B backend/scripts/check_file_sizes.py`（仍仅被既有 `app/service/catalog/application.py` 352 行/线 320 阻断）；`scripts/cleanup-local-artifacts.ps1 -OnlyTemporaryPath -TemporaryPath D:\Temp\pytest-yunxi-core-loop-r71`（先预览，再使用授权令牌执行）
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r71.py=c66afaa647c42592e7fd4515378421f922716bc82a0ca2e1d7f05e94c1eac11a；PROJECT-STATE.md=996933f971405cffe3d0656fafd067a40d44fc23dc8f462c128b930e6c74ebba；LOGBOOK.md=29c920da99e77c9efcf88ec976300af0a9b4cc95e08818866b8d464819517dd0
+- follow_up_guardrail: 排除一个候选的标准是**同时**给出「危害必须出现的条件」与「该条件在当前实现下不可达或危害方向安全」两侧证据，只写后半句等于没排除。本轮三项排除各自补齐了可执行的前半句锁定：`test_folded_coupon_money_must_not_create_over_generous_discount` 必须同时保留折叠用例与健康面额对照组——只留折叠用例，测试就能靠「折叠即恒不可用」蒙混过关，一旦券规则重构时移除 `value_fen<=0 且 discount_bp<=0` 检查，优惠就会凭空变大而没有任何测试报警；`test_recharge_has_no_live_payment_path_and_credits_at_most_once` 必须同时断言「生产配置下入口拒绝」与「放开 mock 后不重复入账」，前者界定了影响面、后者锁住了将来接入真实支付时要依赖的幂等防线；`test_over_refund_must_record_provider_fact_without_compensating` 必须先真实核销一张券再发两笔退款，否则「券不退回」这条断言在券从未核销时恒真、毫无判别力。另需注意本轮的一次真实反例：排除项三最初的测试设计是「单笔 15,000 分退款打 10,000 分实付订单」，这个场景在协议层根本构造不出来——`RefundNotifyNormalizer` 的 `refund<=total` 与 `_apply_event` 的 `total==外部支付腿` 叠加后单笔累计恒不超过实付。**写复现/取证测试时，「我期望代码走这条分支」不等于「这条分支可达」**，必须先读归一化层与业务层的双重校验再构造报文，否则会把测试设计错误误报成生产缺陷或反过来漏掉真实分支。
+- related_logbook: 2026-09-26 - exclude(miniapp): to_int 折叠资金危害面、储值充值活跃度与微信超额退款留痕三项排除
+- related_adr: 0008-accounting-core-consistency
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成会员/订单/券、文件 SQLite 连接、真实订单/支付/退款/储值/券服务与规则纯函数、测试退出码、源码哈希和清理范围；D 盘临时目录按白名单预览并使用授权令牌清理，移除 493 个文件、471,564,784 字节，失败项 0，清理后目录不存在；不保存访问令牌、openid、手机号全文、微信交易凭证、有赞真实会员标识或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: r71 是排除轮，未修改任何生产代码，收口 r70 遗留的开放问题并对另外两个候选取证，三项全部排除。排除项一回答 r70 的 `residual_risks` 遗留问题：「`to_int`/`to_fen` 的『失败返回 0』折叠语义是否在别处被当作权威值写入并造成资金危害」——全仓调用点逐一核查后确认，除 r70 的积分 `total` 外全部落在券面额/门槛/折扣，折叠成 0 的后果是 `is_coupon_available` 因 `value_fen<=0 且 discount_bp<=0` 判定不可用、`calc_discount` 对 `discount_bp<=0` 返回 0，方向是「更严」而非「优惠变大」，无资金危害；`member_loyalty.py` 与 `template_sync.py` 的金额走 `yuan_to_fen`（对非法输入抛错而非归零），或只写券 `value_fen`（折叠后落安全方向）。排除项二界定储值充值的影响面：`RechargeService` 只有 `confirm_mock_recharge_payment`，路由层 `api/channels/storefront/recharges.py` 也只有 `/mock-pay`，既无真实微信预支付端点也无充值专属的微信支付通知处理，且该方法首行即校验 `ALLOW_MOCK_PAYMENT`（生产配置 `False`）直接拒绝，故真实资金无法进入储值账户，充值侧不存在可造成真实资金损失的活动路径；mock 路径自身也经 `mark_paid_if_unpaid` 原子 CAS 与 `credit` 的 `unique_id=recharge:{id}` 指纹幂等双重保护，重复确认只入账一次、储值流水只有一条。排除项三确认微信超额退款有据可查且不错误补偿：`refund_notification.py` 在金额一致性校验通过后先写 `wechat_refund_events`，`accumulated > external_paid_fen` 时开 `refund:over_refund:*` 对账案件并把 `refundStatus` 置 `over`，不执行三腿补偿，因此已退出商户账户的资金本地可查、不会把券/积分/余额退给一个未获得该笔退款权益的订单状态。本轮另固化一条此前未被显式记录的协议事实：`RefundNotifyNormalizer._require_refund_amount_contract` 要求 `refund<=total` 与 `payer_refund<=payer_total`，而 `_apply_event` 要求 `total==外部支付腿`，三者叠加使**单笔退款通知在数学上不可能构成超额**，`accumulated > external_paid_fen` 只能由多笔部分退款的累计触发；测试因此改为对 9,000 分实付订单先发 6,000 分部分退款（转人工案件）再发 6,000 分（累计 12,000 触发超额），并同时断言两笔 provider 事实均落库、累计如实记为 12,000 而非被截断到实付、订单 `refundStatus=over`、两笔均建案件、券保持 `CONSUME` 未退回、储值余额不增加。过程中修正了三处测试自身硬错误（错误模块名与类名、`RechargeStatus` 当成枚举使用、超额场景协议层不可构造），均由断言当场证伪，属测试设计问题而非生产缺陷。
+- failure_class: excluded_no_defect
+- replayable: yes
+- residual_risks: 排除项一的结论建立在「折叠方向安全」这一当前实现上，不是结构性保证——`is_coupon_available`/`calc_discount` 之所以对 0 面额 fail-closed，是因为它们显式检查了 `value_fen<=0 且 discount_bp<=0`；若后续券规则重构时移除该检查，折叠就会重新变成真实优惠，故该测试的健康对照组必须与折叠用例同文件共存。排除项二界定了充值侧当前没有活动资金路径，但这是配置与路由的现状而非设计承诺：一旦未来接入真实微信预支付与充值专属支付通知，充值入账立刻成为真实资金路径，届时 `ALLOW_MOCK_PAYMENT` 守卫与 `unique_id` 幂等是唯一防线，需要重新评审。排除项三额外说明：若上游或人工在微信侧真的退超过实付，本地会正确留痕并置 `over`、不补偿资产，但商户侧已多付出的资金仍需人工在微信商户平台追回，本项目无自动追回能力；部分退款转人工案件（`refund:partial:*`）同样只留痕不补偿，属既定设计。本轮使用本地合成会员/订单/券、文件 SQLite 连接和本地不触网的真实订单/支付/退款/储值/券服务与规则函数，不等同于生产数据库、真实微信商户或真实有赞回调；小程序 2027-05-31 前不对真实用户开放。证据索引仍有既有历史哈希漂移，文件体量门禁仍可能被既有 `app/service/catalog/application.py` 职责评审缺口阻断。真实微信支付/退款、真实有赞券与积分、真实闪送、真机、生产 API、生产验收和正式上线仍未验证，正式上线继续为 No-Go。
+## E-20260926-070：有赞积分事件缺失 total 时把会员积分余额清零的缺陷修复与红绿验证
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260926-miniapp-core-loop-candidate-review-r70
+- parent_run_id: 20260926-miniapp-core-loop-candidate-review-r69
+- generated_at: 2026-09-26
+- evidence_type: verification/miniapp-core-loop-youzan-points-total-guard
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r70.py`; `repo:backend/app/service/youzan/event_member.py`; `repo:backend/app/service/youzan/member_helpers.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r70.py --no-cov -p no:cacheprovider --tb=line --basetemp D:\Temp\pytest-yunxi-core-loop-r70\final-1 -q`（修复前 4 项稳定失败 `assert 0 == 500`，对照组通过）；`git stash push -- backend/app/service/youzan/event_member.py backend/app/service/youzan/member_helpers.py` 后同命令 `--basetemp ...\red-1 -q`（红态可复现，4 项 FAILED）；`git stash pop` 后 `python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r70.py --no-cov -p no:cacheprovider --tb=line --basetemp D:\Temp\pytest-yunxi-core-loop-r70\final-2 -q`（`5 passed`，退出码 0）；广义回归 `python -B -m pytest backend/tests/service/test_member_accounting.py backend/tests/service/test_points_payment.py backend/tests/service/test_points_repo.py backend/tests/service/test_points_rules.py backend/tests/service/test_points_service.py backend/tests/service/youzan/test_event_handler_edge.py backend/tests/service/youzan/test_webhook_dispatcher.py backend/tests/service/youzan/test_webhook_retry.py backend/tests/service/youzan/test_webhook_uow_atomicity.py backend/tests/api/test_miniapp_points_api.py backend/tests/repository/test_youzan_webhook_event_repo.py --no-cov -p no:cacheprovider --tb=line --basetemp D:\Temp\pytest-yunxi-core-loop-r70\broad-1 -q`（68 passed，退出码 0）；相邻 r12-r70 候选回归 53 个文件（唯一 2 项失败即 r67 与 r68 两个故意保留的复现测试）；`python -B -m ruff check backend/app/service/youzan/event_member.py backend/app/service/youzan/member_helpers.py backend/tests/service/order/test_core_loop_candidate_r70.py`（All checks passed）；`python -B -m ruff format --check` 同三文件（already formatted）；`git diff --check -- <上述文件>`（退出码 0）；`python -B backend/scripts/check_mistake_ledger.py`（entries=243）；`python -B backend/scripts/check_project_development_register.py`（tasks=41）；`python -B backend/scripts/check_chinese_governance.py --summary`（failed=0）；`python -B backend/scripts/check_evidence_index.py --summary`（malformed=0）；`python -B backend/scripts/check_file_sizes.py`（仍仅被既有 `app/service/catalog/application.py` 352 行/线 320 阻断）；`scripts/cleanup-local-artifacts.ps1 -OnlyTemporaryPath -TemporaryPath D:\Temp\pytest-yunxi-core-loop-r70`（先预览，再使用授权令牌执行）
+- result: pass
+- sha256: backend/app/service/youzan/event_member.py=957a0279e3b729a18691570a9b5b72b8ea9bbf3588b6c79ac8251f078c170e1a；backend/app/service/youzan/member_helpers.py=9e700f2e3dc3cb29075901f9aebc5bfbbf6f27a073d520749e51a06db4fd85f1；backend/tests/service/order/test_core_loop_candidate_r70.py=5938020d64e59cebca74bcafe3f5f37762f650a0e1e8a2c5f5fe0b8f92bf6a61；PROJECT-STATE.md=ee556f762f4c202a8d4fcf4223a05e9d50e5d6286b1e1d511d80fe6a39550a66；LOGBOOK.md=8641aa9f007aab02e39278866d03abb3fabd2bfe60eab67d96d99399bc9f8fd0
+- follow_up_guardrail: 「容忍转换返回默认值」的助手（`to_int` / `to_fen` 这类失败返回 0 的函数）绝不能直接喂给权威写入路径。判别信号有两个：目标列是不是覆盖式写入（`CASE WHEN ? IS NOT NULL THEN ?`，此时 `0` 与 `None` 语义相同但来源完全不同），以及该值是否来自外部系统——外部 payload 的字段可能缺失、为空或变体，而默认值会把「上游没说」变成「余额确实为零」。做这类修复时必须同时写**合法输入的对照组**（本轮 `test_valid_youzan_points_event_still_overwrites_balance`），否则最省事的修法就是「干脆不覆盖」，那会把整个权威镜像悄悄关掉且没有任何测试会发现。本轮 `test_malformed_youzan_points_event_must_not_zero_out_balance` 参数化锁定 `total` 缺失 / 空串 / null / 非数值四类输入。与 `M-20260926-030` 合看：合法 `total` 覆盖本地发分是**已登记的权威切换债务**，畸形 `total` 清零是**输入校验遗漏**，两者根因不同、处置不同，不要用前者的「须等切换」掩盖后者。
+- related_logbook: 2026-09-26 - fix(miniapp): 有赞积分事件缺失 total 时把会员积分余额清零
+- related_adr: 0008-accounting-core-consistency
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成会员、文件 SQLite 连接、真实有赞会员域 webhook 处理器、真实积分账本与会员余额权威投影、测试退出码、`git stash` 红绿验证过程、源码哈希和清理范围；D 盘临时目录按白名单预览并使用授权令牌清理，移除 121 个文件、115,974,144 字节，失败项 0，清理后目录不存在；不保存访问令牌、openid、手机号全文、微信交易凭证、有赞真实会员标识或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: r70 沿 r69 暴露的权威覆盖模式继续筛查，确认有赞积分事件 `total` 不可用时把会员积分余额清零的 P1 并已修复。夹具为有赞镜像存量 500 分的会员，使用真实 `handle_member_event` 分别投递 `total` 字段缺失 / 空串 / null / 非数值四种畸形 `POINTS` 事件：修复前 4 项全部 `assert 0 == 500`，即单条畸形 payload 即可把会员全部积分清零；合法 `total` 的对照组通过，证明覆盖语义本身无缺陷、缺的正是输入校验。根因是「容忍转换」语义被用在权威写入路径上：`member_helpers.to_int` 的合同是「失败返回 0」，这对可选字段合理，但 `_handle_points_event` 把有赞 `total` 直接作为权威值写进 `member_balance.points`，其 SQL 为 `points = CASE WHEN ? IS NOT NULL THEN ? ELSE points END`，`0 is not None` 成立，于是「输入不可用」被折叠成的 `0` 照样落库，把「未知」伪装成「确实为零」；流水侧同时写入 `total=0`，看起来是合法的「有赞权威余额为 0」声明，按流水对账无法识别。该函数只对 `unique_id` 做了缺失校验，对 `total` 完全没有校验，而同文件 `_handle_coupon_event` 对 `coupon_id`/`status` 是有校验的，说明是遗漏而非有意设计。修复：`member_helpers` 新增 `is_usable_int` 显式区分「输入为真 0」与「输入不可用」（`None` / 纯空白串 / 无法 `float()` 解析）；`_handle_points_event` 在写流水与覆盖投影之前校验 `total`，不可用则记 `logger.warning` 并直接返回（不写流水、不覆盖投影），与 `_handle_coupon_event` 既有处理形状一致；`total` 只解析一次并复用于流水与投影，消除重复 `to_int` 的口径漂移。`git stash` 验证红态可复现后恢复，5 项全通过；因 `member_helpers.py` 为整个有赞会员事件路径共用，额外跑广义回归 11 个文件 68 项全部通过；相邻 r12-r70 回归 53 个文件，唯一 2 项失败即 r67 与 r68 两个故意保留的复现测试。本修复不需要切换权威即可成立，与 r69 性质不同。
+- failure_class: fixed_p1
+- replayable: yes
+- residual_risks: 修复只堵住「`total` 不可用」这一类输入，未改变 r69 的权威覆盖根因——合法 `total` 仍会覆盖本地已发积分（`M-20260926-030`，须等第二阶段积分权威切换与防双花方案定稿）。畸形事件当前被静默跳过（`logger.warning`），webhook 审计仍会标 `member_processed`（与既有 `unique_id` 缺失守卫同一形状），因此「上游持续发送缺少 `total` 的 POINTS 事件」不会在审计面上显形，后续若有权威切换工作包应把这类跳过纳入可观测计数。同族残留面：`to_int` 的「失败返回 0」语义在其他会被当作权威值写入的字段上是否仍存在同类折叠，本轮只核查了 `_handle_points_event` 的 `total` 与 `amount`（`amount` 仅写流水、不写余额投影，风险低），未穷尽全仓 `to_int` 调用点。本轮使用本地合成会员、文件 SQLite 连接和本地不触网的真实有赞 webhook 处理器与账务仓储，不等同于生产数据库或有赞真实回调；小程序 2027-05-31 前不对真实用户开放。相邻回归 53 个文件唯一 2 项失败为 r67 与 r68 两个故意保留的复现测试。文件体量门禁仍可能被既有 `app/service/catalog/application.py` 职责评审缺口阻断。真实微信支付/退款、真实有赞券与积分、真实闪送、真机、生产 API、生产验收和正式上线仍未验证，正式上线继续为 No-Go。
+## E-20260926-069：有赞积分权威镜像抹掉本地发分并在退款收回后形成流水自洽客户净损失的缺陷确认与根因取证
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260926-miniapp-core-loop-candidate-review-r69
+- parent_run_id: 20260926-miniapp-core-loop-candidate-review-r68
+- generated_at: 2026-09-26
+- evidence_type: verification/miniapp-core-loop-points-authority-override
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r69.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r69.py --no-cov -p no:cacheprovider --tb=short --basetemp D:\Temp\pytest-yunxi-core-loop-r69\final-2`（2 passed，退出码 0；绿色钉桩测试，固化已登记的第一阶段权威语义）；相邻 r12-r69 候选回归 52 个文件、108 项中 106 项通过、2 项失败（r67 与 r68 两个故意保留的复现测试），`--tb=line -q` 输出 `2 failed, 106 passed`；`python -B -m ruff check backend/tests/service/order/test_core_loop_candidate_r69.py`（All checks passed）；`python -B -m ruff format --check backend/tests/service/order/test_core_loop_candidate_r69.py`（1 file already formatted）；`git diff --check -- PROJECT-STATE.md LOGBOOK.md ERRORS.md backend/tests/service/order/test_core_loop_candidate_r69.py`（退出码 0）；`python -B backend/scripts/check_mistake_ledger.py`（entries=242）；`python -B backend/scripts/check_project_development_register.py`（tasks=41）；`python -B backend/scripts/check_chinese_governance.py --summary`（failed=0）；`python -B backend/scripts/check_file_sizes.py`（仍仅被既有 `app/service/catalog/application.py` 352 行/线 320 阻断）；`scripts/cleanup-local-artifacts.ps1 -OnlyTemporaryPath -TemporaryPath D:\Temp\pytest-yunxi-core-loop-r69`（先预览，再使用授权令牌执行）
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r69.py=89225189f14c2a16420c7421a0dabd34c4f2e164e38e4dee307a09e729890592；PROJECT-STATE.md=7c64571e6bf034ad1f22e7ef50fbda72eab30ec116e9e4994a78cc9713cc4169；LOGBOOK.md=0ed6fe885e725067eb6efa34f5c3e91107810f4679fff0f7fb413db58872530c
+- follow_up_guardrail: 「权威侧覆盖」与「本地累加」写同一张投影表时，差值必然被抹掉且没有任何对账信号——因为流水记录意图、投影记录余额，两者永不互相校验。看到 `CASE WHEN ? IS NOT NULL THEN ? ELSE col END` 这种覆盖式 upsert，必须问：本地是否也写这张表？外部权威能否回写本地写入的值（有没有对应写接口）？若不能，本地写入就是临时值，覆盖后不可恢复。另外凡是「按原流水收回」的补偿逻辑，都要检查原流水对应的资产是否可能已被别的权威源覆盖——收回一件从未真正到账的东西等于凭空扣客户的钱，且流水层面完全自洽（`points:award:{order_id}` +100 与 `points:refund:{order_id}:clawback` -100 同 `biz_id`），按流水对账无法发现。本轮 `test_local_points_authority_mirror_must_not_touch_local_balance` 钉桩 `local` 权威下覆盖行为必须消失，可直接作为第二阶段权威切换工作包的验收起点断言。两项测试为**绿色钉桩**而非红测：根因已由 `docs/specs/2026-08-12-member-loyalty-asset-matrix-design.md` 登记并由上线红线持有，新增无主红测只会制造无责任人债务；钉桩把文档声明变成可执行契约，语义被改动时强制暴露。
+- related_logbook: 2026-09-26 - confirm(miniapp): 有赞积分权威镜像抹掉本地发分并被退款收回，形成流水自洽的客户净损失
+- related_adr: 0008-accounting-core-consistency
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员、文件 SQLite 连接、真实微信支付与退款通知入口、真实积分发分与按原流水收回、真实有赞会员域 webhook 处理器、测试退出码、源码哈希和清理范围；D 盘临时目录按白名单预览并使用授权令牌清理，移除 94 个文件、90,095,616 字节，失败项 0，清理后目录不存在；不保存访问令牌、openid、手机号全文、微信交易凭证、有赞真实会员标识或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: r69 复核 `POINTS_AUTHORITY=youzan`（默认值）下本地订单发分与有赞 `POINTS` webhook 余额镜像的相互作用。夹具为有赞镜像存量 500 分的会员对 10,000 分订单全额微信支付：`award_points` 按 1 元 = 1 分发放 100 分，余额 500→600，`points:award:{order_id}` 写入 +100；随后投递有赞 `POINTS` 事件（`total=550`），`member_balance.points` 被直接覆盖回 550，本地发放的 100 分凭空消失而 award 流水仍在；再由覆盖外部腿的全额退款通知触发 `refund_settled_points` 按原流水 `deduct` 收回 100 分，余额落到 450。客户净损失 100 分，且这 100 分从未真正到账。根因是同一张投影表被两种不兼容语义写入：`_handle_points_event` 走 `upsert_identity` 的 `points = CASE WHEN ? IS NOT NULL THEN ? ELSE points END`（覆盖），本地发分走 `credit_points` 的 `points = points + ?`（累加），而 `app/service/youzan/member_api.py` 仅有四个查询方法、无积分写接口，本地积分在架构上永远无法计入有赞 `total`，故每次有赞积分事件都必然抹掉它。该净损失**按流水对账无法发现**：`points:award`(+100) 与 `points:refund:{order_id}:clawback`(-100) 金额与归属完全自洽，退款事实本身也完整落账（`refundStatus=full`、`refundFen=10000`），无任何异常信号指向缺失的 100 分。根因已由 `docs/specs/2026-08-12-member-loyalty-asset-matrix-design.md` 登记为「新旧入口并存会产生积分双花与延迟事件覆盖，正式开放前必须定稿防双花方案」并由上线红线持有，故本轮未修改生产代码，改以绿色钉桩测试固化已登记语义；本轮新增规格未枚举的后果（退款按原流水收回会把被覆盖抹掉的积分再扣一次）应补入权威切换工作包验收标准。
+- failure_class: confirmed_p1_fix_deferred
+- replayable: yes
+- residual_risks: 根因已登记并由上线红线持有，本轮不修；修复路径为第二阶段积分权威切换（`POINTS_AUTHORITY=local`）+ 防双花方案定稿，属独立工作包。本轮新增待补入该工作包验收标准的后果：退款按原流水收回已发积分时会把已被有赞镜像覆盖抹掉的本地积分再扣一次，形成流水自洽但客户净损失的资产损失，按流水对账无法发现；`test_local_points_authority_mirror_must_not_touch_local_balance` 已钉桩切换后覆盖行为必须消失，可直接作为切换验收起点。本轮使用本地合成订单/会员、文件 SQLite 连接和本地不触网的真实订单/支付/积分服务与有赞 webhook 处理器，不等同于生产数据库、真实微信商户或真实有赞积分回调；小程序 2027-05-31 前不对真实用户开放，该风险当前无线上资产暴露。相邻回归 52 个文件 108 项中 106 项通过，2 项失败为 r67 与 r68 两个故意保留的复现测试。证据索引仍有既有历史哈希漂移，文件体量门禁仍可能被既有 `app/service/catalog/application.py` 职责评审缺口阻断。真实微信支付/退款、真实有赞券与积分、真实闪送、真机、生产 API、生产验收和正式上线仍未验证，正式上线继续为 No-Go。
+## E-20260926-068：有赞权威侧券核销与小程序支付竞争把已到账收款回滚成永远不落单的缺陷确认与根因取证
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260926-miniapp-core-loop-candidate-review-r68
+- parent_run_id: 20260926-miniapp-core-loop-candidate-review-r67
+- generated_at: 2026-09-26
+- evidence_type: verification/miniapp-core-loop-coupon-youzan-consume-race
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r68.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r68.py --no-cov -p no:cacheprovider --tb=line --basetemp D:\Temp\pytest-yunxi-core-loop-r68\final-2`（复现测试稳定失败于 `AssertionError: assert 'partial' == 'paid'`，`test_core_loop_candidate_r68.py:298`，损害事实断言全部先行通过；按 AGENTS.md 规范故意保持红色）；相邻 r12-r68 候选回归 51 个文件、82 项中 80 项通过、2 项失败（r67 与 r68 两个故意保留的复现测试），`--tb=line -q` 输出 `2 failed, 80 passed`；`python -B -m ruff check backend/tests/service/order/test_core_loop_candidate_r68.py`（All checks passed）；`python -B -m ruff format --check backend/tests/service/order/test_core_loop_candidate_r68.py`（1 file already formatted）；`git diff --check -- PROJECT-STATE.md LOGBOOK.md ERRORS.md backend/tests/service/order/test_core_loop_candidate_r68.py`（退出码 0）；`python -B backend/scripts/check_mistake_ledger.py`（entries=241）；`python -B backend/scripts/check_project_development_register.py`（tasks=41）；`python -B backend/scripts/check_chinese_governance.py --summary`（failed=0）；`python -B backend/scripts/check_file_sizes.py`（仍仅被既有 `app/service/catalog/application.py` 352 行/线 320 阻断）；`scripts/cleanup-local-artifacts.ps1 -OnlyTemporaryPath -TemporaryPath D:\Temp\pytest-yunxi-core-loop-r68`（先预览，再使用授权令牌执行）
+- result: fail
+- sha256: backend/tests/service/order/test_core_loop_candidate_r68.py=35fc2f38157854d256e0b541d01480d2273c922e428092475dff24da25caa8a7；PROJECT-STATE.md=0452dc96d24a60314de556155141ec7652c00fa22aab818a476c70119d5b221f；LOGBOOK.md=9402257557db3ce14f4568df9245ff2affdd1be25b8a9ade67f5e02afd4d92ac
+- follow_up_guardrail: 「权威侧状态」不等于「本地当前态」。默认 `COUPON_AUTHORITY=youzan` 时 `get_latest_state` 只按 `src_rank` 降权排序而**不按 `source` 过滤**，因此任何 `webhook`/`import` 行都能参与本地核销判定；看到这类读函数要逐个确认被降权但未被过滤的来源会不会在某个时刻压过本地行。凡位于支付事务内、失败会回滚已确认收款事实的守卫，都必须能表达「资产归属在第三方、我方无权抢占」这一第三语义——只区分「同单/跨单」的守卫会把外部事实当成本地可挽回的错误。本轮 `test_youzan_consume_race_has_no_automatic_convergence_exit` 锁定「无自动收敛出口」（`dead_letter` + `attempt_count == MAX_INBOX_ATTEMPTS` + `reconcile_pay_from_query` 无生产调用方 + `PAYMENT_TIMEOUT_MINUTES=30` 远大于 75 秒重试窗口），防止误以为重投能自愈；`test_arrived_payment_must_not_strand_on_youzan_coupon_consume_race` 为缺陷复现凭证，修复后应转绿，按规范不得改写为 `skip`/`xfail`。配套信号：本缺陷与 `M-20260926-028`（券 `BACK` 成终态）是同一笔 ADR 0008 D1-B 债务的两半——外部观察分离与本地多周期缺一半就会从另一侧漏出。
+- related_logbook: 2026-09-26 - confirm(miniapp): 有赞权威侧券核销与小程序支付竞争，把已到账收款回滚成永远不落单
+- related_adr: 0008-accounting-core-consistency
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员/优惠券、文件 SQLite 连接、真实微信支付通知入口、真实有赞会员域 webhook 处理器、真实券服务、测试退出码、源码哈希和清理范围；D 盘临时目录按白名单预览并使用授权令牌清理，移除 94 个文件、90,095,616 字节，失败项 0，清理后目录不存在；不保存访问令牌、openid、手机号全文、微信交易凭证、有赞真实券码或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: r68 复核有赞权威侧券核销与小程序支付竞争的搁浅风险。夹具为一张 1,000 分满减券应用到 10,000 分订单（外部支付腿 9,000 分）：小程序 `apply_coupon` 只写 partial 快照、券库存仍为 `TAKE`；随后用真实 `handle_member_event` 投递有赞 `COUPON_CUSTOMER_PROMOTION`(status=CONSUME, order_no=E20260926123456789)，`get_latest_state(authority="youzan")` 随即返回该 webhook 行；最后让 9,000 分支付成功通知到达。复现测试稳定失败于 `backend/app/service/coupon/inventory.py` 的 `consume_once` 抛 `ValueError: 优惠券已被其他订单核销`，异常经 `payment_notification.py:171` → `coupon/__init__.py:192` → `coupon/payment.py:141` 位于支付事务内，把已到账收款整体回滚：订单停留 `partial`、`payment_transactions` 无认领行、inbox 置 `failed` 且 `last_error` 为该异常。根因是外部观察被当成本地权威当前态：`COUPON_AUTHORITY` 默认 `youzan`（`config.py:127`），`CouponInventoryRepo.get_latest_state` 在 `authority != "local"` 时不按 `source` 过滤，只按 `src_rank`（`order`/`local`=2，其余=1）排序，使 `webhook` 来源的 `CONSUME` 行成为本地核销守卫的判定依据；而 `consume_once` 只区分「同单幂等」与「跨单拒绝」，缺「资产归属在第三方」这第三语义。规格侧 `docs/specs/2026-08-12-member-loyalty-followup-local-authority.md:63` 与 ADR 0008 D1-B 均规定外部观察只追加 `coupon_observation` 事实与 `coupon_reconcile_case` 案件、绝不直接改投影/当前态，故属实现偏离规格。无自动收敛出口经第二个测试取证：通知按 `MAX_INBOX_ATTEMPTS=5` 重试后进入 `dead_letter` 且 `claim_notify_key` 对其返回 `DECISION_DEAD` 不再自动认领，`reconcile_pay_from_query` 在 `backend/app/` 内无任何生产调用方，而超时扫描的 `PAYMENT_TIMEOUT_MINUTES=30` 远大于 5 次重试的 75 秒窗口。本轮未修改生产代码。
+- failure_class: confirmed_p1_fix_deferred
+- replayable: yes
+- residual_risks: 缺陷已确认但本轮未修复，修复路径为 ADR 0008 D1-B 的外部观察/对账案件模型（`coupon_observation` + `coupon_reconcile_case` + 本地裁决命令才改 `coupon_current_state`），与 r67 的 `coupon_events` + `coupon_current_state` 投影迁移属同一工作包的两半，不能分开做；在该迁移完成前，「小程序已应用券快照、支付未到账期间同一张券在有赞侧被核销」的客户会已付款但订单永远不落单。本轮使用本地合成订单/会员/优惠券、文件 SQLite 连接和本地不触网的真实订单/支付/券服务与有赞 webhook 处理器，不等同于生产数据库、真实微信商户或真实有赞券回调；小程序 2027-05-31 前不对真实用户开放，该缺陷当前无线上资产暴露。相邻回归 51 个文件 82 项中 80 项通过，2 项失败为 r67 与 r68 两个故意保留的复现测试。证据索引仍有既有历史哈希漂移，文件体量门禁仍可能被既有 `app/service/catalog/application.py` 职责评审缺口阻断。真实微信支付/退款、真实有赞券、真实闪送、真机、生产 API、生产验收和正式上线仍未验证，正式上线继续为 No-Go。
+## E-20260926-067：全额退款退回的优惠券被永久作废的缺陷确认与根因取证
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260926-miniapp-core-loop-candidate-review-r67
+- parent_run_id: 20260926-miniapp-core-loop-candidate-review-r66
+- generated_at: 2026-09-26
+- evidence_type: verification/miniapp-core-loop-coupon-refund-reusability
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r67.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r67.py -q --no-cov -p no:cacheprovider --basetemp D:\Temp\pytest-yunxi-core-loop-r67\final-6`（复现测试稳定失败于 `ValueError: 优惠券不可用`，`backend/app/service/coupon/payment.py:65`；按 AGENTS.md 规范故意保持红色）；`python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r67.py::test_second_consume_row_is_blocked_by_dedup_index --no-cov -p no:cacheprovider --basetemp D:\Temp\pytest-yunxi-core-loop-r67\final-5 -v`（根因取证 1 项通过，退出码 0）；相邻 r12-r67 候选回归 50 个文件、104 项中 103 项通过、1 项失败（即本轮复现测试），`--tb=line` 输出 `1 failed, 103 passed in 68.40s`；`python -B -m ruff check backend/tests/service/order/test_core_loop_candidate_r67.py`（All checks passed）；`python -B -m ruff format --check backend/tests/service/order/test_core_loop_candidate_r67.py`（already formatted）；`git diff --check -- PROJECT-STATE.md LOGBOOK.md ERRORS.md backend/tests/service/order/test_core_loop_candidate_r67.py`（退出码 0）；`python -B backend/scripts/check_mistake_ledger.py`（entries=240）；`python -B backend/scripts/check_project_development_register.py`（tasks=41）；`python -B backend/scripts/check_chinese_governance.py --summary`（failed=0，coverage=1.0，dimensions=1.0）；`python -B backend/scripts/check_file_sizes.py`（仍仅被既有 `app/service/catalog/application.py` 352 行/线 320 阻断）；`scripts/cleanup-local-artifacts.ps1 -OnlyTemporaryPath -TemporaryPath D:\Temp\pytest-yunxi-core-loop-r67`（先预览，再使用授权令牌执行）
+- result: fail
+- sha256: backend/tests/service/order/test_core_loop_candidate_r67.py=1fd5656def502750a7f4446b8f831f71b8074d7e6febc89f099baec8ee36d2f5；PROJECT-STATE.md=13d895f4cbe11e10f7c2c34453ad74608b7f556c8c6565e840234cf136ad0bd5；LOGBOOK.md=ddf73f0ae380f0e5035905a87769a479343dde169b3210c68e2793449e25a3a0
+- follow_up_guardrail: 事实表上的 `UNIQUE(业务键 + 状态)` 索引会把「第二次进入同一状态」变成并发冲突而非幂等命中，因此任何多周期状态机（`TAKE → CONSUME → BACK → TAKE → CONSUME`）都不能靠唯一索引承载，必须改用事件表 + 投影 CAS 加 `cycle_no` 分配周期。配套信号：看到 `BACK`/`RETURN`/`REVERSED` 这类反向状态时，先确认它有没有回到可用态的迁移路径——若消费侧只接受初态，该状态就是事实上的终态，规格里写的「可再用」必然与实现脱节。本轮 `test_second_consume_row_is_blocked_by_dedup_index` 锁定唯一索引这一根因，防止有人误以为放宽 `consume` 的 `TAKE` 守卫即可修复；`test_refunded_coupon_can_be_reused_on_new_order` 为缺陷复现凭证，修复后应转绿，按规范不得改写为 `skip`/`xfail`。
+- related_logbook: 2026-09-26 - confirm(miniapp): 全额退款退回的优惠券被永久作废的缺陷确认与根因取证
+- related_adr: 0008-accounting-core-consistency
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员/优惠券、文件 SQLite 连接、真实微信支付与退款通知入口、真实券服务、测试退出码、源码哈希和清理范围；D 盘临时目录按白名单预览并使用授权令牌清理，移除 432 个文件、414,056,448 字节，失败项 0，清理后目录不存在；不保存访问令牌、openid、手机号全文、微信交易凭证或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: r67 复核券退款后的可复用性。夹具为一张 1,000 分满减券应用到 10,000 分订单（外部支付腿 9,000 分）：订单 A 经真实支付成功通知核销为 `CONSUME`，覆盖外部腿的全额退款通知到达后券退回 `BACK`，随后把同一张券应用到新订单 B，复现测试稳定失败于 `backend/app/service/coupon/payment.py:65` 抛「优惠券不可用」。三处入口一致地把 `BACK` 当终态：`apply_coupon_snapshot`（`coupon/payment.py:65`）与 `CouponInventoryRepo.consume`（`coupon_inventory_repo.py:134`）都要求最新态为 `TAKE`，`get_my_coupons` 可用列表（`coupon/__init__.py:124`）过滤掉非 `TAKE`，而小程序 `classifyCouponStatus` 仍把 `BACK` 归入「已退回」独立 tab，暗示券已回到账户。根因经第二个测试取证为结构性限制而非守卫写错：`v024_coupon_module.sql` 的 `CREATE UNIQUE INDEX idx_coupon_inventory_dedup ON coupon_inventory(coupon_id, status, mobile)` 使同一张券只能存在一条 `CONSUME` 行，第二次核销必然抛 `IntegrityError`。恢复路径亦被排除：全仓唯一写 `TAKE` 的入口 `coupon/admin.py:104` 是后台发券并生成新 `coupon_id`；有赞 webhook 侧 `event_member.py` 的 `get_by_dedup_key(coupon_id, status, mobile)` 跳过重复状态，且 `get_latest_state` 按 `src_rank DESC` 排序，本地 `order` 行（权重 2）永久压制 `webhook`/`import` 行（权重 1）。该缺陷已由 ADR 0008:24 登记为 FP-2/FP-3，同文件 :194 状态迁移表明确 `CONSUME → BACK → TAKE` 为「券退回可再用」，故属实现偏离规格而非产品语义歧义。本轮未修改生产代码。
+- failure_class: confirmed_p1_fix_deferred
+- replayable: yes
+- residual_risks: 缺陷已确认但本轮未修复，修复路径为 ADR 0008 D1-B 的 `coupon_events` + `coupon_current_state` 投影迁移（含 `cycle_no` 多周期、旧表只读兼容、水位线切换、对账案件与存量券迁移），属独立工作包而非单点改动；在该迁移完成前，「用券支付后全额退款」的客户会永久损失券面价值。本轮使用本地合成订单/会员/优惠券、文件 SQLite 连接和本地不触网的真实订单/支付/券服务，不等同于生产数据库、真实微信商户或真实有赞券回调；小程序 2027-05-31 前不对真实用户开放，该缺陷当前无线上资产暴露。相邻回归 50 个文件 104 项中 103 项通过，唯一失败为本轮故意保留的复现测试。证据索引仍有既有历史哈希漂移，文件体量门禁仍可能被既有 `app/service/catalog/application.py` 职责评审缺口阻断。真实微信支付/退款、真实闪送、真机、生产 API、生产验收和正式上线仍未验证，正式上线继续为 No-Go。## E-20260926-066：退款三腿补偿中储值腿重解析手机号的资金搁浅候选排除
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260926-miniapp-core-loop-candidate-review-r66
+- parent_run_id: 20260926-miniapp-core-loop-candidate-review-r65
+- generated_at: 2026-09-26
+- evidence_type: verification/miniapp-core-loop-refund-balance-leg-account-resolution
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r66.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r66.py -q --no-cov -p no:cacheprovider --basetemp D:\Temp\pytest-yunxi-core-loop-r66\final-1`（首轮因 BACK 行 `deducted_fen` 期望写错失败，修正断言后 `final-3`/`final-4` 1 项通过，退出码 0）；相邻 r12-r66 候选回归 49 个文件、102 项通过，退出码 0；`python -B -m ruff check`（r66 测试）；`python -B -m ruff format --check`（r66 测试）；`git diff --check -- PROJECT-STATE.md LOGBOOK.md docs/harness-engineering/core/evidence-index.md backend/tests/service/order/test_core_loop_candidate_r66.py`；`python -B backend/scripts/check_mistake_ledger.py`（entries=239）；`python -B backend/scripts/check_project_development_register.py`（tasks=41）；`python -B backend/scripts/check_chinese_governance.py --summary`（failed=0，coverage=1.0）；`python -B backend/scripts/check_evidence_index.py --summary`（既有历史哈希漂移）；`python -B backend/scripts/check_file_sizes.py`（仍仅被既有 `app/service/catalog/application.py` 352 行阻断）；`scripts/cleanup-local-artifacts.ps1 -OnlyTemporaryPath -TemporaryPath D:\Temp\pytest-yunxi-core-loop-r66`（先预览，再使用授权令牌执行）
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r66.py=0d302311be5db2e4c7a9f4dac6f6ab7d9629029138170c775fa7a776de6befc3；PROJECT-STATE.md=e00ce7411f9cebd6403cab8e26249a2183929e75d8363bf2328d4cadbfb0e0e2；LOGBOOK.md=9f5534eba4bc33471faa18cc232ca0692a7fc8ce9d50f0100afcbb1c4d62907c
+- follow_up_guardrail: 位于退款事务内、失败会回滚已确认退款事实的补偿腿，其失败前提必须与「退款事实成立」自洽。储值退款腿之所以可以用 `resolve_mobile` 重新解析当前手机号而不必像积分腿那样读原流水账户，成立条件是三条同时为真：储值腿的存在性由扣款保证（`balanceFen > 0` 只能由扣款路径写入，而扣款前同一 `resolve_mobile` 已成功）；身份解析无漂移（`customer_identity_links` 的 `UNIQUE(tenant_id, identity_type, identity_value)` + `primary_phone` 无更新路径）；唯一会破坏身份链的写入方与订单删除同事务（订单先消失，失败点前移到「订单不存在」）。任一条件被放宽（例如开放会员改号，或把隐私注销与订单删除拆成两个事务）都必须先把储值腿改为读 `combined_pay:{order_id}`/`order_pay:{order_id}` 流水的 `mobile`，与积分腿的「退款按原流水账户入账」保持一致。
+- related_logbook: 2026-09-26 - review(miniapp): 退款三腿补偿中储值腿重解析手机号的资金搁浅候选排除
+- related_adr: 0008-accounting-core-consistency
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员/优惠券、文件 SQLite 连接、真实微信支付与退款通知入口、真实券与积分与储值服务、测试退出码、源码哈希和清理范围；D 盘临时目录按白名单预览并使用授权令牌清理，移除 88 个文件、84,344,832 字节，失败项 0，清理后目录不存在；不保存访问令牌、openid、手机号全文、微信交易凭证或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: r66 复核 r65 登记的候选：微信退款通知先写退款事实再执行三腿补偿，补偿抛错会把已到账的微信退款事实连同交易认领一起回滚。夹具为 10,000 分订单（1,000 分券 + 1,000 抵扣积分 + 2,000 分储值，外部腿 6,000 分），先用真实支付成功通知入口完成结算（券 `CONSUME`、积分结算并发 60 分、储值扣 2,000），再让覆盖外部腿的全额退款通知到达。测试以调用计数探针证明储值腿真实执行，断言退款流水与扣款流水同 `mobile`、券回到 `BACK`、积分退回与收回各一条、储值与积分回到初始值、退款事实与订单 `refundStatus=full` 同时落账、两个 inbox 均 `processed`，并验证重放幂等。排除依据：储值腿存在性由扣款保证且扣款前同一 `resolve_mobile` 已成功；`UNIQUE(tenant_id, identity_type, identity_value)` 与 `primary_phone` 无更新路径排除账户漂移；唯一破坏身份链的 `PrivacyRepo._delete_customer_records` 与 `DELETE FROM orders` 同事务且订单先消失，`_apply_event` 更早即失败。既有补偿失败回滚并持久化可重试 `failed` 的语义已被 `test_refund_compensation_failure_rolls_back_business_and_persists_retry` 与 `test_p03_refund_three_legs_single_uow` 锁定，本轮未发现会导致永久失败的补偿分支。本轮同时补齐了真实三腿补偿的覆盖缺口：既有 `test_full_refund_end_to_end_with_balance_leg` 只带储值腿，`test_p03_refund_three_legs_single_uow` 用假腿替身。未修改生产代码、API 契约或错误账本。
+- failure_class: excluded
+- replayable: yes
+- residual_risks: 本轮使用本地合成订单/会员/优惠券、文件 SQLite 连接和本地不触网的真实订单/支付/退款/券/积分/储值服务，不等同于生产数据库、真实微信商户或生产回调；储值退款腿按当前手机号解析入账而积分腿按原流水账户入账，当前等价仅因 `primary_phone` 不可变，未来若开放会员改号需同步改造；隐私注销与在途退款叠加（用户对已退款订单调用删除接口后微信退款通知才到达）会使订单已删除、通知在「订单不存在」处失败并最终 `dead_letter`，本地不留退款凭据且三腿不补偿，该组合需「数据主体主动删除 + 商户随后退款」双动作叠加且删除本身以抹除订单为合规目标，本轮按 P0/P1 门槛判定不升级，列为待观察项；证据索引仍有既有历史哈希漂移，文件体量门禁仍可能被既有 `app/service/catalog/application.py` 职责评审缺口阻断。真实微信支付/退款、真实闪送、真机、生产 API、生产验收和正式上线仍未验证，正式上线继续为 No-Go。
+## E-20260926-065：会员缺少积分账户行时发分守卫把已到账支付回滚成永远不落单修复
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260926-miniapp-core-loop-candidate-review-r65
+- parent_run_id: 20260926-miniapp-core-loop-candidate-review-r64
+- generated_at: 2026-09-26
+- evidence_type: verification/miniapp-core-loop-missing-points-account-strand-payment
+- file: `repo:backend/app/service/points/payment.py`; `repo:backend/tests/service/order/test_core_loop_candidate_r65.py`; `repo:ERRORS.md`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r65.py -q --no-cov -p no:cacheprovider --basetemp D:\Temp\pytest-yunxi-core-loop-r65\fix-1`（1 项通过，退出码 0）；修复前对照（`git stash push -- backend/app/service/points/payment.py`）同一用例稳定失败；`python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r63.py backend/tests/service/order/test_core_loop_candidate_r64.py backend/tests/service/order/test_core_loop_candidate_r65.py -q --no-cov` 至 `final-5`（4 项/轮通过，连续 5 轮退出码 `0,0,0,0,0`）；相邻 r12-r65 候选回归 48 个文件、101 项通过，退出码 0；本轮修改生产代码，额外跑积分仓储/积分支付/积分规则/积分服务/积分 API 回归退出码 0；覆盖 r63-r65 全部改动面的广义回归 359 项通过，退出码 0；`python -B -m ruff check`（points/payment.py、r65 测试）；`python -B -m ruff format --check`（同两文件）；`git diff --check -- PROJECT-STATE.md LOGBOOK.md ERRORS.md docs/harness-engineering/core/evidence-index.md backend/app/service/points/payment.py backend/tests/service/order/test_core_loop_candidate_r65.py`；`python -B backend/scripts/check_mistake_ledger.py`；`python -B backend/scripts/check_project_development_register.py`；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/check_evidence_index.py --summary`（既有历史哈希漂移）；`python -B backend/scripts/check_file_sizes.py`（仍仅被既有 `app/service/catalog/application.py` 阻断，`app/service/points/payment.py` 在职责评审豁免区未阻断）；`scripts/cleanup-local-artifacts.ps1 -OnlyTemporaryPath -TemporaryPath D:\Temp\pytest-yunxi-core-loop-r65`（先预览，再使用授权令牌执行）
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r65.py=89a6343be426b425b8c0a1a641f454354459c5ea9a622a34f50a83b3e405e65b；backend/app/service/points/payment.py=48036eb3fdf5c4624d8eea80a13458a07e59e3120258917cfd468081b0731593；ERRORS.md=32df823196e429ae3e19c0384b4b5913d0b922ca43408b1326b9126431d16aa8；PROJECT-STATE.md=f73200faf14cbcde915711e6badf63552fda1c4a6ac862a2781cd46958dae35c；LOGBOOK.md=26bea2080027487e0303636b477c19aa5f79027ed649999e9fe22ae6d7b44ccf
+- follow_up_guardrail: 位于支付事务内、失败会回滚已确认收款事实的守卫，必须按「是否存在需要保护的资产归属」分类失败原因：账户/记录尚未建档不构成资产风险（下游懒创建可补齐），只有存在积分抵扣却无法核验抵扣归属时才允许阻断收款。会员主档与身份链齐备但缺 `member_balance` 行是新会员的合法状态，不得因此拒绝其已到账的支付。
+- related_logbook: 2026-09-26 - fix(miniapp): 会员缺少积分账户行时发分守卫把已到账支付回滚成永远不落单
+- related_adr: 0008-accounting-core-consistency
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员、文件 SQLite 连接、真实微信支付成功通知入口、真实发分与积分账本、会员主档与身份链夹具、测试退出码、源码哈希和清理范围；D 盘临时目录按白名单预览并使用授权令牌清理，移除 191 个文件、183,066,624 字节，失败项 0，清理后目录不存在；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: r65 覆盖新注册小程序会员（会员主档与 openid 身份链已建、无 `member_balance` 行）对 10,000 分订单发起全额微信支付的时序。修复前 `award_on_payment` 在 `get_by_mobile` 返回空时无条件抛「积分账户不存在，订单 X 不得视为已支付」，`_run_claimed_notify` 事务边界把整笔已到账支付回滚，订单停留 `unpaid`、交易号未认领、积分未发放，通知无限重试且每次同样失败，客户已付款但订单永远不落单且订单侧无任何支付痕迹可供人工对账。根因是守卫把「账户行尚未建档」与「有积分抵扣却查不到抵扣归属」合并处理，且与下游 `credit_points` 自带的懒创建行为自相矛盾。修复后按是否存在需要保护的积分抵扣拆分：`points_used > 0` 且账户缺失或漂移维持抛错，`points_used == 0` 且账户缺失不再阻断、`member_balance_id` 置空由发分链路懒创建并正常入账记账。修复前该用例稳定失败，修复后 r63+r64+r65 连续 5 轮及 48 个相邻候选文件回归通过，积分专项与广义回归均通过。
+- failure_class: fixed_p1
+- replayable: yes
+- residual_risks: 本轮使用本地合成订单/会员、文件 SQLite 连接和本地不触网的真实订单/支付/积分服务，不等同于生产数据库、真实微信商户或生产回调；「无抵扣时账户缺失不阻断」意味着这类会员的发分依赖下游 `credit_points` 懒创建，若该懒创建路径未来被移除会重新暴露同类搁浅；退款侧 `apply_refund_notify` 先写退款事实再补偿，若补偿抛错同样会回滚退款事实并无限重试，该形态本轮未穷尽，列为 r66 候选；证据索引仍有既有历史哈希漂移，文件体量门禁仍可能被既有 `app/service/catalog/application.py` 职责评审缺口阻断。真实微信支付/退款、真实闪送、真机、生产 API、生产验收和正式上线仍未验证，正式上线继续为 No-Go。
+## E-20260926-064：核销守卫收紧后把已到账支付回滚成永远不落单修复
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260926-miniapp-core-loop-candidate-review-r64
+- parent_run_id: 20260926-miniapp-core-loop-candidate-review-r63
+- generated_at: 2026-09-26
+- evidence_type: verification/miniapp-core-loop-coupon-expire-strand-arrived-payment
+- file: `repo:backend/app/repository/coupon_inventory_repo.py`; `repo:backend/tests/service/order/test_core_loop_candidate_r64.py`; `repo:backend/tests/service/test_coupon_inventory.py`; `repo:ERRORS.md`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r64.py -q --no-cov -p no:cacheprovider --basetemp D:\Temp\pytest-yunxi-core-loop-r64\fix-2`（1 项通过，退出码 0）；修复前对照（`git stash push -- backend/app/repository/coupon_inventory_repo.py`）同一用例稳定失败；`python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r63.py backend/tests/service/order/test_core_loop_candidate_r64.py -q --no-cov` 至 `final-5`（3 项/轮通过，连续 5 轮退出码 `0,0,0,0,0`）；相邻 r12-r64 候选回归 47 个文件、100 项通过，退出码 0；本轮修改生产代码并修正既有测试契约，额外跑券仓储/券支付/券模型/券规则/券模板同步/券 API/订单/积分/储值/支付 API/订单目录广义回归 341 项通过，退出码 0；`python -B -m ruff check`（coupon_inventory_repo.py、coupon/inventory.py、r64 测试、test_coupon_inventory.py）；`python -B -m ruff format --check`（同四个文件）；`git diff --check -- PROJECT-STATE.md LOGBOOK.md ERRORS.md docs/harness-engineering/core/evidence-index.md backend/app/repository/coupon_inventory_repo.py backend/tests/service/order/test_core_loop_candidate_r64.py backend/tests/service/test_coupon_inventory.py`；`python -B backend/scripts/check_mistake_ledger.py`；`python -B backend/scripts/check_project_development_register.py`；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/check_evidence_index.py --summary`（既有历史哈希漂移）；`python -B backend/scripts/check_file_sizes.py`（仍仅被既有 `app/service/catalog/application.py` 职责评审缺口阻断）；`scripts/cleanup-local-artifacts.ps1 -OnlyTemporaryPath -TemporaryPath D:\Temp\pytest-yunxi-core-loop-r64`（先预览，再使用授权令牌执行）
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r64.py=51a5091f3665b8553b13683475e9e9d09ddf57b1e8a7bb8be24f95f04810b2a2；backend/app/repository/coupon_inventory_repo.py=3b864ef31a1e9b905b5efa6dd5e4558627f964aa2326cd7f496b26d29809e942；backend/tests/service/test_coupon_inventory.py=8d1018209f3fe3c482f1068cbd927e6d4cd850a57dfe75bbde6b089b1c56e62f；ERRORS.md=eacf1021697194b5e0a19fc076aa01e9278b4c4d6995fdb7e726b8d02969b739；PROJECT-STATE.md=51cebe9e1677744c9b4b87a7993235d168d06c2116ffc67891914ea81aa17820；LOGBOOK.md=a981aaceaa2b3ef468356990292f0745c254e66b1a3b4a6545842e633f585a18
+- follow_up_guardrail: 位于支付事务内、失败会回滚已确认收款事实的守卫，必须区分「资产已被他人占用」（阻断并回滚）与「我方已锁定条件与当前时钟不一致」（按锁定快照兑现）两类失败原因；已应用到订单并锁定了抵扣金额的券，核销阶段不得因跨过有效期而拒绝，否则形成已付款但永远不落单且重投无法自愈的资金搁浅。有效期与抵扣金额的权威关口在券应用阶段。
+- related_logbook: 2026-09-26 - fix(miniapp): 核销守卫收紧后把已到账支付回滚成永远不落单
+- related_adr: 0008-accounting-core-consistency
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员/优惠券、文件 SQLite 连接、真实微信支付成功通知入口、真实券应用与核销仓储、券账本与交易认领事实、测试退出码、源码哈希和清理范围；D 盘临时目录按白名单预览并使用授权令牌清理，移除 184 个文件、176,357,376 字节，失败项 0，清理后目录不存在；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证、真实券码或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: r64 覆盖一张 1,000 分优惠券在有效期内应用到 10,000 分订单（外部腿 9,000 分）后、支付前跨过有效期，9,000 分微信支付成功通知到达的时序。修复前 `consume()` 因有效期复查返回空结果，r63 新增守卫抛「优惠券核销未落账，请对账处理」，`_run_claimed_notify` 事务边界把整笔已到账支付回滚，订单停留 `partial` 未支付、交易号未认领、券仍 `TAKE`，通知无限重试且每次同样失败，形成客户已付款但永远不落单且比修复前更不可对账的资金搁浅。根因是 `consume()` 用同一个空结果表达「券被其他订单占用」与「本单已锁定条件与当前时钟不一致」两种语义。修复后移除核销阶段的有效期复查，按应用时锁定的快照兑现并把券记为已消耗，`consume_once()` 保留跨订单阻断语义；修复前该用例稳定失败，修复后 r63+r64 连续 5 轮及 47 个相邻候选文件回归通过，广义回归 341 项通过。
+- failure_class: fixed_p1
+- replayable: yes
+- residual_risks: 本轮使用本地合成订单/会员/优惠券、文件 SQLite 连接和本地不触网的真实订单/支付/券服务，不等同于生产数据库、真实微信商户或生产回调；「券应用后过期仍兑现锁定抵扣」是本次明确的业务取舍，若产品要求过期即作废，需要在预下单或支付前置校验阶段拦截并设计差额处理，而不是在核销阶段拒绝导致资金搁浅；r63 的回归范围曾漏掉 `test_coupon_inventory.py`，本轮已补入并修正其中与新契约矛盾的断言；证据索引仍有既有历史哈希漂移，文件体量门禁仍可能被既有 `app/service/catalog/application.py` 职责评审缺口阻断。真实微信支付/退款、真实闪送、真机、生产 API、生产验收和正式上线仍未验证，正式上线继续为 No-Go。
+## E-20260926-063：券核销未落行被静默当作已核销导致一张券抵扣两单修复
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260926-miniapp-core-loop-candidate-review-r63
+- parent_run_id: 20260926-miniapp-core-loop-candidate-review-r62
+- generated_at: 2026-09-26
+- evidence_type: verification/miniapp-core-loop-coupon-consume-silent-none-cross-order
+- file: `repo:backend/app/service/coupon/inventory.py`; `repo:backend/tests/service/order/test_core_loop_candidate_r63.py`; `repo:ERRORS.md`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r63.py -q --no-cov -p no:cacheprovider --basetemp D:\Temp\pytest-yunxi-core-loop-r63\final-<N>` 至 `final-5`（2 项/轮通过，连续 5 轮退出码 `0,0,0,0,0`）；相邻 r12-r63 候选回归 46 个文件、99 项通过，退出码 0，耗时 68 秒；本轮修改生产代码，额外跑 `python -B -m pytest backend/tests/service/test_coupon_payment.py backend/tests/service/test_order.py backend/tests/service/test_points_payment.py backend/tests/service/test_stored_value.py backend/tests/service/order/ -q --no-cov`（退出码 0，耗时 91 秒）；修复前对照（`git stash push -- backend/app/service/coupon/inventory.py`）第二个用例稳定失败；`python -B -m ruff check`（inventory.py、r63 测试）；`python -B -m ruff format --check`（inventory.py、r63 测试）；`git diff --check -- PROJECT-STATE.md LOGBOOK.md ERRORS.md docs/harness-engineering/core/evidence-index.md backend/app/service/coupon/inventory.py backend/tests/service/order/test_core_loop_candidate_r63.py`；`python -B backend/scripts/check_mistake_ledger.py`（entries=237）；`python -B backend/scripts/check_project_development_register.py`（tasks=41）；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/check_evidence_index.py --summary`（既有历史哈希漂移）；`python -B backend/scripts/check_file_sizes.py`（仍仅被既有 `app/service/catalog/application.py` 职责评审缺口阻断）；`scripts/cleanup-local-artifacts.ps1 -OnlyTemporaryPath -TemporaryPath D:\Temp\pytest-yunxi-core-loop-r63`（先预览，再使用授权令牌执行）
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r63.py=e9adbe35f59029d19270d06e25a5fe41a2fa35524a0fc1973304368dcd230597；backend/app/service/coupon/inventory.py=aefc569ca8c43f5c44f087088cad35b24f42abf2e89b51ad917ac950a43030ae；ERRORS.md=9f43e0cd015d35f52103088f979179b9f9795e5fc8530642f7fb09e0ab07dcbc；PROJECT-STATE.md=7a3c5aec9c981eecc979e525c98b955b9fa2d1dda1bdd7c90c6d34d19e47db3d；LOGBOOK.md=a7645f7927ee55efc2fdd28f5dc818bfbb286a87cd7d4cdac56872baa082a4a8
+- follow_up_guardrail: 券核销在支付事务内必须确认核销行真实落库且归属本单；当仓储因目标行无法写入（券已退回、已过期或状态缺失）而返回空结果时，守卫必须按失败阻断支付落账与交易认领，不得把「未核销」当作「已核销」放行；同一张券不得让两个订单各自完成券面抵扣。
+- related_logbook: 2026-09-26 - fix(miniapp): 券核销未落行被静默当作已核销导致一张券抵扣两单
+- related_adr: 0008-accounting-core-consistency
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员/优惠券、文件 SQLite 连接、真实微信支付与退款通知入口、真实券服务与支付快照、券账本与交易认领事实、测试退出码、源码哈希和清理范围；D 盘临时目录按白名单预览并使用授权令牌清理，移除 272 个文件、259,743,906 字节，失败项 0，清理后目录不存在；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证、真实券码或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: r63 覆盖同一张 1,000 分优惠券先后被两个订单应用快照、订单 A 支付核销后全额退款使券写回 `BACK`、订单 B 支付通知到达的时序。修复前订单 B 以 `paid`、`couponFen=1000`、`remainFen=9000` 完成并发放 90 积分，而券账本只有 `TAKE`/`CONSUME(A)`/`BACK(A)`，即一张券抵扣两单且券退回用户手里；根因是 `consume()` 在最新态非 `TAKE` 时返回 `None`，被 `consume_once()` 透传且 `consume_on_payment()` 不检查返回值。修复后 `consume_once()` 重读最新态，只有本单 `CONSUME` 才幂等返回，否则抛错并在支付事务内回滚；修复前第二个用例稳定失败，修复后 r63 连续 5 轮及 46 个相邻候选文件回归通过，券/订单/积分/储值回归退出码 0。
+- failure_class: fixed_p1
+- replayable: yes
+- residual_risks: 本轮使用本地合成订单/会员/优惠券、文件 SQLite 连接和本地不触网的真实订单/支付/退款/券服务，不等同于生产数据库、真实微信商户或生产回调；券退回后不可被其他订单再次核销属于现行唯一索引与最新态守卫的既有约束，若产品后续要求退款后同券可再次使用，需单独设计状态机而非放宽本守卫；证据索引仍有既有历史哈希漂移，文件体量门禁仍可能被既有 `app/service/catalog/application.py` 职责评审缺口阻断。真实微信支付/退款、真实闪送、真机、生产 API、生产验收和正式上线仍未验证，正式上线继续为 No-Go。
+## E-20260926-062：已退款组合支付订单被后台取消时的储值重复补偿候选排除
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260926-miniapp-core-loop-candidate-review-r62
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r61
+- generated_at: 2026-09-26
+- evidence_type: verification/miniapp-core-loop-refunded-combined-admin-cancel-balance
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r62.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r62.py -q --no-cov --basetemp D:\Temp\pytest-yunxi-core-loop-r62\round-<N>` 至 `round-5`（1 项/轮通过，连续 5 轮退出码 `0,0,0,0,0`）；相邻 r12-r62 候选回归 45 个文件、97 项通过，退出码 0，耗时 67 秒；`python -B -m ruff check backend/tests/service/order/test_core_loop_candidate_r62.py`；`python -B -m ruff format --check backend/tests/service/order/test_core_loop_candidate_r62.py`；`git diff --check -- PROJECT-STATE.md LOGBOOK.md backend/tests/service/order/test_core_loop_candidate_r62.py`；`python -B backend/scripts/check_project_development_register.py`（tasks=41）；`python -B backend/scripts/check_chinese_governance.py --summary`（files=16 failed=0）；`python -B backend/scripts/check_mistake_ledger.py`（entries=236）；`python -B backend/scripts/check_evidence_index.py --summary`（既有历史哈希漂移 hash_mismatch=20）；`python -B backend/scripts/check_file_sizes.py`（仍仅被既有 `app/service/catalog/application.py` 职责评审缺口阻断）；`scripts/cleanup-local-artifacts.ps1 -OnlyTemporaryPath -TemporaryPath D:\Temp\pytest-yunxi-core-loop-r62`（先预览，再使用授权令牌执行）
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r62.py=13338493c8da996ec88025ed293f91068fd69ccc90010af045d9723f2a62aade；PROJECT-STATE.md=3453ff43fb6d3dc8bfba6778465cab407d728c93531c91495edb2c214d76f900；LOGBOOK.md=61da6b817855f53d25abda0a5fea79538ba21a013effaa6b446662a20d31e0b4
+- follow_up_guardrail: 退款先到的组合支付订单停在 `partial` 且退款终态后再被后台取消时，必须由订单状态条件更新、退款事实唯一占用、交易号唯一认领和 `order_refund:{order_id}` 储值/券/积分补偿幂等键共同收敛；取消路径不得凭空退回从未核销的优惠券，不得二次计入储值余额、退款累计或交易认领，也不得覆盖已写入的退款事实。
+- related_logbook: 2026-09-26 - review(miniapp): 已退款组合支付订单被后台取消时的储值重复补偿候选排除
+- related_adr: 0008-accounting-core-consistency
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员/优惠券、文件 SQLite 连接、真实微信退款通知三腿补偿、真实后台取消服务、真实储值补偿与券快照清理、真实订单/退款/交易/储值/券仓储、补偿调用计数探针、测试退出码、源码哈希和清理范围；D 盘临时目录按白名单预览并使用授权令牌清理，移除 87 个文件、83,386,368 字节，失败项 0，清理后目录不存在；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: r62 用真实 `WechatRefundNotificationService` 全额退款三腿补偿与真实 `OrderAdminStatusService.update_admin_order_status` 后台取消覆盖组合支付 `partial` 中间态订单（已应用 1,000 分券、已扣 2,000 分储值、已锁 7,000 分微信尾款）先退款后取消的时序；调用计数探针证明储值补偿确实执行两次，排除断言空转，但余额只退回一次，因两条路径共用 `order_refund:{order_id}` 幂等键；券从未核销，`refund_once` 因最新态非 `CONSUME` 返回、不写 `BACK` 行，后台取消只清快照，券保持可用；退款事实、累计 `refundFen`、交易认领和取消事件均唯一且未被清快照写覆盖，重复取消与重复退款通知幂等；r62 连续 5 轮及 45 个相邻候选文件回归通过，未确认新的 P0/P1。
+- failure_class: excluded_candidate
+- replayable: yes
+- residual_risks: 本轮使用本地合成订单/会员/优惠券、文件 SQLite 连接和本地不触网的真实订单/退款/储值/券服务，不等同于生产数据库、真实微信商户或生产回调；文件体量门禁仍可能被既有 `app/service/catalog/application.py` 职责评审缺口阻断，证据索引仍有既有历史哈希漂移。真实微信支付/退款、真实闪送、真机、生产 API、生产验收和正式上线仍未验证，正式上线继续为 No-Go。
+## E-20260925-061：用户取消、微信支付通知与后台制作三方并发候选排除
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r61
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r60
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-cancel-payment-admin-making-race
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r61.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r59.py backend/tests/service/order/test_core_loop_candidate_r60.py backend/tests/service/order/test_core_loop_candidate_r61.py -q --no-cov --basetemp D:\Temp\pytest-yunxi-core-loop-r59\official-<N>` 至 `official-5`（6 项/轮通过，连续 5 轮退出码 `0,0,0,0,0`，总耗时 38.52 秒）；相邻 r12-r61 候选回归 44 个文件、96 项通过，退出码 0，耗时 111 秒；`python -B -m ruff check`（r59/r60/r61）；`python -B -m ruff format --check`（r59/r60/r61）；`git diff --check -- PROJECT-STATE.md LOGBOOK.md` 与三个测试文件；`python -B backend/scripts/check_project_development_register.py`（tasks=41）；`python -B backend/scripts/check_chinese_governance.py --summary`（files=16 failed=0）；`python -B backend/scripts/check_mistake_ledger.py`（entries=236）；`python -B backend/scripts/check_evidence_index.py --summary`（既有历史哈希漂移 hash_mismatch=20）；`python -B backend/scripts/check_file_sizes.py`（仍仅被既有 `app/service/catalog/application.py` 职责评审缺口阻断）；`scripts/cleanup-local-artifacts.ps1 -OnlyTemporaryPath -TemporaryPath D:\Temp\pytest-yunxi-core-loop-r59`（先预览，再使用授权令牌执行）
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r61.py=9142518cf17fb33cae04687256f3dd03da25e851db087728020d9cf6544bf823；PROJECT-STATE.md=9f8264b98eb25c5808d6cde74e2e0becd712a6f003ca03584cc020ae3420500a；LOGBOOK.md=ee1d716d0b4ccadd097ca7f62ef8ae7067ab978356b8efc71005131d85253cb2
+- follow_up_guardrail: 已确认未支付订单上三方并发时，必须由支付完成守卫、退款终态守卫、订单状态条件更新、微信交易号唯一认领、券核销幂等键、积分发放幂等键和 inbox 重投共同收敛；已取消订单不得进入任何履约状态，取消后到达的外部到账只能补记为待退款事实且不得核销券或发放积分。
+- related_logbook: 2026-09-25 - review(miniapp): 用户取消、微信支付通知与后台制作三方并发候选排除
+- related_adr: 0008-accounting-core-consistency
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员/优惠券、文件 SQLite 连接、真实后台确认/制作/取消/通知服务、真实签名绕过与通知解密、真实通知 inbox 认领、真实订单/退款/交易/券/积分仓储、参数化首胜顺序、测试退出码、源码哈希和清理范围；本轮两个 D 盘临时目录均按白名单预览并使用授权令牌清理，合计移除 415 个文件、397,762,560 字节，失败项 0，清理后目录均不存在；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: r61 先按真实可达性确认 `confirmed` 只有 `unpaid`/`paid` 两种支付态，再用三个真实 SQLite 文件连接固定用户取消、微信支付成功通知与后台制作读取同一 `confirmed/unpaid` 快照后的两种提交顺序；后台旧快照在两种顺序下都被“订单未完成支付，不能进入履约”拒绝；取消先到时订单为 `cancelled`，支付通知经 inbox 重投补记迟到到账（`paid` + `refundStatus=pending`），券回到 `TAKE`、不发放积分，后台重试被状态机拒绝，已取消订单永不进入制作；支付先到时订单为 `making/paid`，券只写一条 `CONSUME`、积分只发放一次，用户取消被拒；两种顺序均只形成一个交易认领和一个已处理 inbox，重复通知幂等；r59/r60/r61 连续 5 轮及 44 个相邻候选文件回归通过，未确认新的 P0/P1。
+- failure_class: excluded_candidate
+- replayable: yes
+- residual_risks: 本轮使用本地合成订单/会员/优惠券、两个或三个文件 SQLite 连接和本地不触网的真实订单/支付/优惠券/积分服务，不等同于生产数据库、真实微信商户或生产回调；文件体量门禁仍可能被既有 `app/service/catalog/application.py` 职责评审缺口阻断，证据索引仍有既有历史哈希漂移。真实微信支付/退款、真实闪送、真机、生产 API、生产验收和正式上线仍未验证，正式上线继续为 No-Go。
+## E-20260925-058：退款查询与后台确认并发候选排除
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r58
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r57
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-refund-query-admin-confirm-race
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r58.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r58.py -q --no-cov --basetemp D:\Temp\pytest-yunxi-core-loop-r58\round-1` 至 `round-5`（2 项/轮通过，连续 5 轮退出码 `0,0,0,0,0`，总耗时 21.74 秒）；相邻 r12-r58 候选回归 41 个文件通过，退出码 0，耗时 61.14 秒；`python -B -m ruff check backend/tests/service/order/test_core_loop_candidate_r58.py`；`python -B -m ruff format --check backend/tests/service/order/test_core_loop_candidate_r58.py`；`git diff --check -- PROJECT-STATE.md LOGBOOK.md backend/tests/service/order/test_core_loop_candidate_r58.py`；`python -B backend/scripts/check_project_development_register.py`；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/check_mistake_ledger.py`；`python -B backend/scripts/check_evidence_index.py --summary`（既有历史哈希漂移）；`python -B backend/scripts/check_file_sizes.py`（仍仅被既有 `app/service/catalog/application.py` 职责评审缺口阻断）；`scripts/cleanup-local-artifacts.ps1 -OnlyTemporaryPath`（先预览，再使用授权令牌执行）
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r58.py=247bb241c1bcfb97dd08c374e3ac67ccf0a599694c6da62718c1c0ebc917a7e6；PROJECT-STATE.md=9e0c9e86fac39e5732a2aac616bc942f08011dd1d0780ae58e3e9fd4544217e3；LOGBOOK.md=65fc558727378db4862df61e849bd1b84bea41c4fffcdbfecbbadadecab4ed35
+- follow_up_guardrail: 已全额退款订单与后台确认并发时，必须通过退款快照条件更新、订单状态条件更新、微信交易号唯一认领、退款单号唯一事实和 inbox 重投收敛；退款先到后不得进入履约，后台先到后只能保留一条确认事实，重复退款查询必须保持幂等。
+- related_logbook: 2026-09-25 - review(miniapp): 退款查询与后台确认并发候选排除
+- related_adr: 0008-accounting-core-consistency
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员、两个文件 SQLite 连接、真实后台确认/退款查询恢复服务、真实退款事件仓储、真实本地不触网退款查询、参数化首胜顺序、测试退出码、源码哈希和清理范围；D 盘临时目录按白名单预览并使用授权令牌清理，移除 88 个文件、84,344,832 字节，失败项 0，清理后目录不存在；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: r58 固定退款查询先提交和后台确认先提交两种顺序；退款先到时后台在合法 SQLite 锁冲突后重读并拒绝进入履约，后台先到时保留一条 `confirmed` 事件；两种顺序最终均只形成一个微信交易认领、一条全额退款事实、一个已处理退款查询 inbox，订单支付快照为 `paid/full`，重复退款查询幂等；r58 连续 5 轮及 41 个相邻候选文件回归通过，未确认新的 P0/P1。
+- failure_class: excluded_candidate
+- replayable: yes
+- residual_risks: 本轮使用本地文件 SQLite、合成订单/会员和本地不触网退款查询恢复，不等同于生产数据库、真实微信商户或生产回调；文件体量门禁仍可能被既有 `app/service/catalog/application.py` 职责评审缺口阻断，证据索引仍有既有历史哈希漂移。真实微信支付/退款、真实闪送、真机、生产 API、生产验收和正式上线仍未验证，正式上线继续为 No-Go。
+
+## E-20260925-045：支付查询恢复与退款查询恢复并发候选排除
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r45
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r44
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-payment-query-refund-query-race
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r45.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r45.py -q --no-cov --basetemp D:\Temp\pytest-yunxi-core-loop-r45-second`（2 项通过）；同一测试连续 5 轮，退出码 `0,0,0,0,0`；相邻 r12、r19-r45、支付/退款查询、储值、优惠券、积分和 MiniApp 支付 API 回归 173 项通过，退出码 0；`python -B -m ruff check backend/tests/service/order/test_core_loop_candidate_r45.py`；`python -B -m ruff format --check backend/tests/service/order/test_core_loop_candidate_r45.py`；`git diff --check -- PROJECT-STATE.md LOGBOOK.md backend/tests/service/order/test_core_loop_candidate_r45.py`；`python -B backend/scripts/check_project_development_register.py`；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/check_mistake_ledger.py`；`python -B backend/scripts/check_file_sizes.py`（仍只被既有目录应用职责评审缺口阻断）；`python -B backend/scripts/check_evidence_index.py --summary`（仍为 18 条既有历史哈希漂移）；`scripts/cleanup-local-artifacts.ps1 -OnlyTemporaryPath`（先预览，再使用授权令牌执行）
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r45.py=b1a4df26f5463588790e0d988e100654468042059506adb51314570a3eed5357；PROJECT-STATE.md=67d0ebbaff975690ea8ca1f54fc21099bb097a28fecbde485303919e3f0c8309；LOGBOOK.md=0756bf81e59b72a762ee2d1cff202c35ddefa79603a59bd8384cc56a36d6faf5
+- follow_up_guardrail: 同一微信交易的支付成功查询恢复与全额退款查询恢复并发时，必须通过订单支付/退款快照 CAS、交易号与退款单号唯一事实、余额/券/积分幂等键和 inbox 重投收敛；不得重复支付、退款或资产补偿，也不得在退款先到后迟到核销券或发放积分。
+- related_logbook: 2026-09-25 - review(miniapp): 支付查询恢复与退款查询恢复并发候选排除
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员/优惠券、两个文件 SQLite 连接、真实组合支付/查询恢复/资产服务、可重试锁冲突、定向测试退出码、源码哈希和清理范围；D 盘共清理 8 个本轮 pytest 临时目录、59 个文件、56,549,376 字节，失败项 0、剩余目录 0；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证、真实券码或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 支付查询与退款查询并发时，首轮败者的 SQLite 旧快照锁冲突可按 inbox 路径重投；两种提交顺序最终都只形成一个已支付组合快照、一个微信交易号、一个到账事件、一条退款事实和一次余额退款，支付先到时券与积分完整结算后各退回一次，退款先到时不再核销券或发分；r45 连续 5 轮及 173 项相邻回归通过，未确认现行 P0/P1。
+- failure_class: excluded_candidate
+- replayable: yes
+- residual_risks: 本轮使用本地文件 SQLite、合成订单/会员/优惠券和本地假微信查询，不等同于生产数据库、真实微信商户或生产回调；文件体量门禁仍被既有 `app/service/catalog/application.py` 职责评审缺口阻断。真实微信支付/退款、真实闪送、真机、生产 API、生产验收和正式上线仍未验证，正式上线继续为 No-Go。
+
+## E-20260925-046：支付通知与退款查询恢复并发候选排除
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r46
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r45
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-payment-notify-refund-query-race
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r46.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r46.py -q --no-cov --basetemp D:\Temp\pytest-yunxi-core-loop-r46-first`（2 项通过）；同一测试连续 5 轮，退出码 `0,0,0,0,0`；相邻 r12、r19-r46、支付/退款通知与查询、储值、优惠券、积分和 MiniApp 支付 API 回归 175 项通过，退出码 0；`python -B -m ruff check backend/tests/service/order/test_core_loop_candidate_r46.py`；`python -B -m ruff format --check backend/tests/service/order/test_core_loop_candidate_r46.py`；`git diff --check -- PROJECT-STATE.md LOGBOOK.md backend/tests/service/order/test_core_loop_candidate_r46.py`；`python -B backend/scripts/check_project_development_register.py`；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/check_mistake_ledger.py`；`python -B backend/scripts/check_evidence_index.py --summary`（仍为 18 条既有历史哈希漂移）；`scripts/cleanup-local-artifacts.ps1 -OnlyTemporaryPath`（先预览，再使用授权令牌执行）
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r46.py=c30922dd68a654843411f8f738d9e3240b63cc0c27116ce700d315c45816307a；PROJECT-STATE.md=1c41aa97240c258a58f0dd008abd1b08131ee7760413042bf3ccfd6fb3d17a24；LOGBOOK.md=2b50a5ef9112f1a8efc20bdb89514604bef8c2659864bae6803a43d682be84c2
+- follow_up_guardrail: 同一微信交易的支付成功通知与全额退款查询恢复并发时，必须通过订单支付/退款快照 CAS、交易号与退款单号唯一事实、余额/券/积分幂等键和 inbox 重投收敛；不得重复支付、退款或资产补偿，也不得在退款先到后迟到核销券或发放积分。
+- related_logbook: 2026-09-25 - review(miniapp): 支付通知与退款查询恢复并发候选排除
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员/优惠券、两个文件 SQLite 连接、真实组合支付/通知/退款查询/资产服务、可重试锁冲突、定向测试退出码、源码哈希和清理范围；D 盘共清理 7 个本轮 pytest 临时目录、59 个文件、56,549,376 字节，失败项 0、剩余目录 0；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证、真实券码或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 支付通知与退款查询并发时，首轮败者的 SQLite 旧快照锁冲突可按 inbox 路径重投；两种提交顺序最终都只形成一个已支付组合快照、一个微信交易号、一个到账事件、一条退款事实和一次余额退款，支付先到时券与积分完整结算后各退回一次，退款先到时不再核销券或发分；r46 连续 5 轮及 175 项相邻回归通过，未确认现行 P0/P1。
+- failure_class: excluded_candidate
+- replayable: yes
+- residual_risks: 本轮使用本地文件 SQLite、合成订单/会员/优惠券和本地假微信通知/查询，不等同于生产数据库、真实微信商户或生产回调；文件体量门禁仍被既有 `app/service/catalog/application.py` 职责评审缺口阻断。真实微信支付/退款、真实闪送、真机、生产 API、生产验收和正式上线仍未验证，正式上线继续为 No-Go。
+
+## E-20260925-047：用户取消与支付/退款查询恢复并发候选排除
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r47
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r46
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-cancel-query-recovery-race
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r47.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r47.py -q --no-cov --basetemp D:\Temp\pytest-yunxi-core-loop-r47-first2`（4 项通过）；最终版同一测试连续 5 轮，退出码 `0,0,0,0,0`；最终版相邻 r12、r19-r47、支付/退款通知与查询、储值、优惠券、积分和 MiniApp 支付 API 回归 179 项通过，退出码 0；`python -B -m ruff check backend/tests/service/order/test_core_loop_candidate_r47.py`；`python -B -m ruff format --check backend/tests/service/order/test_core_loop_candidate_r47.py`；`git diff --check`；`python -B backend/scripts/check_project_development_register.py`；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/check_mistake_ledger.py`；`python -B backend/scripts/check_file_sizes.py`（仍只被既有目录应用职责评审缺口阻断）；`python -B backend/scripts/check_evidence_index.py --summary`（仍为 18 条既有历史哈希漂移）；`scripts/cleanup-local-artifacts.ps1 -OnlyTemporaryPath`（分两批先预览，再使用授权令牌执行）
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r47.py=c4a2d523c44b6e45d557a483bce4b55bc1d6fbcb841aefba9778deb62497828a；PROJECT-STATE.md=bfd4376c80a68dd55d93d5f17ed757061d30946e599e1347a4eb7c30aabccbcd；LOGBOOK.md=b773f2d3293781ee002b09d6f37f0085eb17d9cfa71830cfcf218d88111c0f8c
+- follow_up_guardrail: 用户取消与支付/退款查询恢复并发时，必须让取消与恢复事务读取同一业务快照并通过订单状态/支付快照 CAS、交易号与退款单号唯一事实、余额/券/积分幂等键和 inbox 重投收敛；取消先到时不得核销券或发分，支付恢复先到时取消必须拒绝已支付订单，退款恢复先到时允许安全关单但不得重复余额退款。
+- related_logbook: 2026-09-25 - review(miniapp): 用户取消与支付/退款查询恢复并发候选排除
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员/优惠券、两个文件 SQLite 连接、真实用户取消/支付查询/退款查询/资产服务、可重试锁冲突、定向测试退出码、源码哈希和清理范围；D 盘分两批共清理 14 个本轮 pytest 临时目录、150 个文件、143,769,600 字节，失败项 0、剩余目录 0；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证、真实券码或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 用户取消与支付/退款查询恢复从同一 partial 快照竞争时，四种参数化时序连续 5 轮通过；取消先到时迟到支付只记录一次待退款支付事实且不结算券/积分，退款恢复先到时迟到取消可安全关单且余额幂等退款不重复；最终 179 项相邻回归通过，未确认现行 P0/P1。
+- failure_class: excluded_candidate
+- replayable: yes
+- residual_risks: 本轮使用本地文件 SQLite、合成订单/会员/优惠券和本地不触网查询恢复，不等同于生产数据库、真实微信商户或生产回调；文件体量门禁仍被既有 `app/service/catalog/application.py` 职责评审缺口阻断，证据索引仍有 18 条既有历史哈希漂移。真实微信支付/退款、真实闪送、真机、生产 API、生产验收和正式上线仍未验证，正式上线继续为 No-Go。
+
+## E-20260925-048：用户取消与组合支付微信通知并发候选排除
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r48
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r47
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-cancel-combined-payment-notify-race
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r48.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r48.py -q --tb=short --no-cov -p no:cacheprovider`（2 项通过）；最终版同一测试连续 5 轮，退出码 `0,0,0,0,0`；最终版相邻 r12、r19-r48、支付/退款通知与查询、储值、优惠券、积分和 MiniApp 支付 API 回归 181 项通过，退出码 0，耗时 78.88 秒；`python -m ruff check backend/tests/service/order/test_core_loop_candidate_r48.py`；`python -m ruff format --check backend/tests/service/order/test_core_loop_candidate_r48.py`；`git diff --check -- PROJECT-STATE.md LOGBOOK.md backend/tests/service/order/test_core_loop_candidate_r48.py`；`python -B backend/scripts/check_project_development_register.py`；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/check_mistake_ledger.py`；`python -B backend/scripts/check_file_sizes.py`（仍只被既有目录应用职责评审缺口阻断）；`python -B backend/scripts/check_evidence_index.py --summary`（仍为 18 条既有历史哈希漂移）；`scripts/cleanup-local-artifacts.ps1 -OnlyTemporaryPath`（分两批先预览，再使用授权令牌执行）
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r48.py=eaf3e50c58546fc525089160192f51e50684c2549aa461e3a11e67d1619e200d；PROJECT-STATE.md=c1635d529bf8ecebaab2ea35c79bf9455626b87ff17ddae502c94b332ebd09c4；LOGBOOK.md=6d61c4a05937cfe48ceacc3b7ed53e203b03b744f18cedc9d18bb6ae6580d1d4
+- follow_up_guardrail: 用户取消与组合支付微信成功通知并发时，必须让两个事务读取同一业务快照并通过订单状态/支付快照 CAS、交易号唯一事实、余额/券/积分幂等键和 inbox 重投收敛；取消先到时不得核销券或发分，通知先到时取消必须拒绝已支付订单，两种顺序均不得丢失到账事实或重复结算资产。
+- related_logbook: 2026-09-25 - review(miniapp): 用户取消与组合支付微信通知并发候选排除
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员/优惠券、两个文件 SQLite 连接、真实用户取消/微信通知/组合支付/资产服务、可重试锁冲突、定向测试退出码、源码哈希和清理范围；D 盘分两批共清理 5 个本轮临时目录、63 个文件、60,383,232 字节，失败项 0、剩余目录 0；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证、真实券码或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 用户取消与组合支付微信通知从同一 partial 快照竞争时，两种参数化时序连续 5 轮通过；取消先到时迟到通知只记录一次待退款支付事实且不结算券/积分，通知先到时只结算一次余额、券和积分且迟到取消被拒绝；最终 181 项相邻回归通过，未确认现行 P0/P1。
+- failure_class: excluded_candidate
+- replayable: yes
+- residual_risks: 本轮使用本地文件 SQLite、合成订单/会员/优惠券和本地不触网微信验签/解密，不等同于生产数据库、真实微信商户或生产回调；文件体量门禁仍被既有 `app/service/catalog/application.py` 职责评审缺口阻断，证据索引仍有 18 条既有历史哈希漂移。真实微信支付/退款、真实闪送、真机、生产 API、生产验收和正式上线仍未验证，正式上线继续为 No-Go。
+
+## E-20260925-049：同一微信交易号并发绑定两个订单候选排除
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r49
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r48
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-transaction-cross-order-binding-race
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r49.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r49.py -q --no-cov`（2 项通过）；最终版同一测试连续 5 轮，退出码 `0,0,0,0,0`，耗时 25.92 秒；相邻 r12、r19-r49、支付/退款通知与查询、储值、优惠券、积分和 MiniApp 支付 API 回归 183 项通过，退出码 0，耗时 81.28 秒，收集核对 183 项；`python -B -m ruff check backend/tests/service/order/test_core_loop_candidate_r49.py`；`python -B -m ruff format --check backend/tests/service/order/test_core_loop_candidate_r49.py`；`git diff --check`；`python -B backend/scripts/check_project_development_register.py`；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/check_mistake_ledger.py`；`python -B backend/scripts/check_file_sizes.py`（仍只被既有 `app/service/catalog/application.py` 职责评审缺口阻断）；`python -B backend/scripts/check_evidence_index.py --summary`（`status=failed`、`total=521`、`failed=18`、`missing_repo_file=0`、`malformed=0`，其余为 18 条既有历史哈希漂移）；`scripts/cleanup-local-artifacts.ps1 -OnlyTemporaryPath`（先预览，再使用授权令牌执行，清理 78 个文件、74,768,384 字节，失败项 0、剩余目录 0）
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r49.py=382f54cdd64159e364219add04c19ded23c552c646859cc5db1e30c6b8e0d72c；PROJECT-STATE.md=d532373f378ca02ad6ef2c9c6e60f21d1958da0288d802d95b929c0452162ff7；LOGBOOK.md=91fad12c48448a1ef92a9569d338a580543e238fc58f92db3a13ad9940bd65f6
+- follow_up_guardrail: 同一微信交易号并发到达两个不同订单时，必须由交易号唯一事实和订单支付快照收敛；只能有一个订单进入 `paid`、形成一个交易认领和一个到账事件，败者必须被稳定拒绝或按 inbox 重投，不得形成第二套余额/券/积分结算或覆盖胜者事实。
+- related_logbook: 2026-09-25 - review(miniapp): 同一微信交易号并发绑定两个订单候选排除
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员/优惠券、两个文件 SQLite 连接、两个支付通知事件、同一微信交易号、交易号唯一约束、inbox 重投、定向测试退出码、源码哈希和清理范围；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证、真实券码或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 同一微信交易号并发绑定两个不同订单时，参数化首胜顺序连续 5 轮通过；首胜者只形成一个 `paid` 订单、一个交易认领、一个到账事件和一次余额/券/积分结算，败者重投后稳定返回“微信交易号已绑定其他订单”，保持 `partial` 且不新增资产事实；相邻 183 项回归通过，未确认现行 P0/P1。
+- failure_class: excluded_candidate
+- replayable: yes
+- residual_risks: 本轮使用本地合成订单/会员/优惠券、两个文件 SQLite 连接和本地不触网微信验签/解密，不等同于生产数据库、真实微信商户或生产回调；文件体量门禁仍被既有 `app/service/catalog/application.py` 职责评审缺口阻断，证据索引仍有 18 条既有历史哈希漂移。真实微信支付/退款、真实闪送、真机、生产 API、生产验收和正式上线仍未验证，正式上线继续为 No-Go。
+
+## E-20260925-053：超额退款与后台关单交错候选排除
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r53
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r52
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-over-refund-admin-cancel-race
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r53.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r53.py -q --tb=short --no-cov -p no:cacheprovider --basetemp D:\Temp\pytest-yunxi-r53-round-N`（最终版连续 5 轮，退出码 `0,0,0,0,0`）；相邻 r12、r19-r53、支付/退款通知、储值、优惠券、积分和订单 API 回归 45 个文件、217 个测试项，退出码 0，耗时 117.28 秒；`python -B -m ruff check backend/tests/service/order/test_core_loop_candidate_r53.py`；`python -B -m ruff format --check backend/tests/service/order/test_core_loop_candidate_r53.py`；`git diff --check -- PROJECT-STATE.md LOGBOOK.md docs/harness-engineering/core/evidence-index.md`；`python -B backend/scripts/check_project_development_register.py`；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/check_mistake_ledger.py`；`python -B backend/scripts/check_file_sizes.py`；`python -B backend/scripts/check_evidence_index.py --summary`；`scripts/cleanup-local-artifacts.ps1 -OnlyTemporaryPath -TemporaryPath <14 个本轮 r53 pytest 目录>`（先预览，再使用授权令牌执行）
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r53.py=2e257fb6b60cf723c25abbe3b6a16ed986cba587e2f5f2cda852875f92f074e7；PROJECT-STATE.md=f05b63081654cfa33403fbaa2963af6d0ec908b0431af612bd556a18b8d30a66；LOGBOOK.md=34394081fe72159999c364f1bdea29b7383b5451833cc81aebfee13edcee2a89
+- follow_up_guardrail: 已支付组合订单进入 `partial` 退款后再收到使累计超过外部实付的退款时，必须与后台关单按订单状态和退款快照收敛；后台只允许对 `full/over` 终态安全关单，库存只能释放一次，余额、积分和优惠券不得因关单重复补偿，退款通知重复投递必须幂等。
+- related_logbook: 2026-09-25 - review(miniapp): 超额退款与后台关单交错候选排除
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员/余额、两个文件 SQLite 连接、真实支付/退款/资产/库存/后台状态服务、定向测试退出码和源码哈希；D 盘按白名单清理本轮 14 个临时目录、89 个文件、85,303,296 字节，失败项 0、剩余目录 0；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证、真实券码或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 已有 5,000 分 `partial` 退款事实后，第二笔 5,000 分退款与后台取消按两种顺序交错时均通过；最终订单为 `cancelled` 且退款快照为 `over/10000`，库存只恢复一次，余额只保留一笔 2,000 分扣款，积分只发放 80 且不收回，只有一个后台取消事件，重复退款通知幂等；相邻 217 项回归通过，未确认现行 P0/P1。
+- failure_class: excluded_candidate
+- replayable: yes
+- residual_risks: 本轮使用本地文件 SQLite、合成订单/会员/余额和本地不触网微信支付查询/验签/解密，不等同于生产数据库、真实微信商户或生产回调；后台首胜分支按可观测业务冲突后再推进退款，未模拟两个 SQLite 旧读快照同时阻塞的极端调度。文件体量门禁仍被既有 `app/service/catalog/application.py` 职责评审缺口阻断，证据索引仍有 20 条既有历史哈希漂移。真实微信支付/退款、真实闪送、真机、生产 API、生产验收和正式上线仍未验证，正式上线继续为 No-Go。
+
+## E-20260925-052：同一订单两笔部分退款并发累计候选排除
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r52
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r51
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-concurrent-partial-refund-accumulation
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r52.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r52.py -q --tb=short --no-cov -p no:cacheprovider --basetemp D:\Temp\pytest-yunxi-r52-stability-N`（最终版连续 5 轮，退出码 `0,0,0,0,0`，总耗时 24.81 秒）；相邻 r12、r19-r52、支付/退款通知与查询、储值、优惠券、积分和 MiniApp 支付/订单/积分 API 回归 44 个文件、215 个测试项，退出码 0，耗时 92.00 秒；`python -B -m ruff check backend/tests/service/order/test_core_loop_candidate_r52.py`；`python -B -m ruff format --check backend/tests/service/order/test_core_loop_candidate_r52.py`；`git diff --check -- backend/tests/service/order/test_core_loop_candidate_r52.py`；`python -B backend/scripts/check_project_development_register.py`；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/check_mistake_ledger.py`；`python -B backend/scripts/check_file_sizes.py`；`python -B backend/scripts/check_evidence_index.py --summary`
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r52.py=0992c79e81e2dd85c95b078fc4b3bdb38d7cdc41b1b23578f06102f7d35034b0；PROJECT-STATE.md=27874bf6632764002957bcbbc85f3c7ff1297bd7d5a0adb9d11ca0d6858bfaf8；LOGBOOK.md=bcfca71eb4384db8adfc4353facd49582f9309ee5927456c915a50c0558d0f76
+- follow_up_guardrail: 同一已支付订单收到多个不同部分退款单时，必须按原支付交易号、退款单号和订单退款快照 CAS 收敛；并发败者只允许瞬时锁失败并按 inbox 重投，最终累计超过外部实付时必须保留全部退款事实、记录 `over` 快照和 `over_refund` 案件，且不得执行余额、积分或优惠券补偿。
+- related_logbook: 2026-09-25 - review(miniapp): 同一订单两笔部分退款并发累计候选排除
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员/余额、两个文件 SQLite 连接、真实支付/退款/资产服务、两个合成退款单、定向测试退出码和源码哈希；D 盘按白名单清理本轮 10 个临时目录、77 个文件、73,801,728 字节，失败项 0、剩余目录 0；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证、真实券码或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 同一订单两个不同 6,000 分退款单并发时，两种首胜顺序连续 5 轮通过；SQLite 写事务使败者瞬时锁失败并按 inbox 重投，最终订单为 `over/12000`，形成一个 `partial` 和一个 `over_refund` 案件，余额只扣 2,000 分、积分只发放一次且没有退款补偿；相邻 215 项回归通过，未确认现行 P0/P1。
+- failure_class: excluded_candidate
+- replayable: yes
+- residual_risks: 本轮使用本地文件 SQLite、合成订单/会员/余额和本地不触网微信支付查询/验签/解密，不等同于生产数据库、真实微信商户或生产回调；文件体量门禁仍被既有 `app/service/catalog/application.py` 职责评审缺口阻断。真实微信支付/退款、真实闪送、真机、生产 API、生产验收和正式上线仍未验证，正式上线继续为 No-Go。
+
+## E-20260925-051：用户取消与后台取消并发候选排除
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r51
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r50
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-user-admin-cancel-race
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r51.py`; `repo:backend/tests/service/order/test_core_loop_candidate_r43.py`; `repo:ERRORS.md`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest tests/service/order/test_core_loop_candidate_r51.py -q --no-cov`（2 项通过；最终版连续 5 轮，退出码 `0,0,0,0,0`）；`python -B -m pytest tests/service/order/test_core_loop_candidate_r43.py -q --no-cov`（修正后连续 5 轮，退出码 `0,0,0,0,0`，耗时 22.57 秒）；相邻 r12、r19-r51、支付/退款通知与查询、储值、优惠券、积分和 MiniApp 订单/支付 API 回归 43 个文件、213 个测试项，退出码 0，耗时 104.17 秒；`python -B -m ruff check backend/tests/service/order/test_core_loop_candidate_r43.py backend/tests/service/order/test_core_loop_candidate_r51.py`；`python -B -m ruff format --check backend/tests/service/order/test_core_loop_candidate_r43.py backend/tests/service/order/test_core_loop_candidate_r51.py`；`git diff --check`；`python -B backend/scripts/check_project_development_register.py`；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/check_mistake_ledger.py`；`python -B backend/scripts/check_evidence_index.py --summary`
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r51.py=f830023254b2f17850a9534a4a9fac4449ba2a538366a3fef99b13908d231795；backend/tests/service/order/test_core_loop_candidate_r43.py=1da7f0700d32240894a087dd7dc5c4b0953dbabd7238997a5985eca900e2464e；ERRORS.md=faae829f15070e279e8073b3dfb677bf13375318eacb59e48e0406754884decb；PROJECT-STATE.md=1728e7be8df9f9033518c4c632a3690954d1816c53f9b5590e905d0f1dbde764；LOGBOOK.md=b312f56278d7f307db675e334601a306b7e402528e42eb60609437c9dd87fbe0
+- follow_up_guardrail: 同一组合支付订单的用户取消与后台取消并发时，必须只有一个状态胜者、一个取消事件、一次库存释放和一次余额补偿；并发测试应断言最终业务事实与重试上限，不固定 SQLite 锁的胜出顺序。
+- related_logbook: 2026-09-25 - review(miniapp): 用户取消与后台取消并发候选排除
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员/余额、两个文件 SQLite 连接、真实库存/取消/储值服务、定向测试退出码、源码哈希和清理范围；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证、真实券码或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 用户取消与后台取消并发时，两个参数化首胜顺序连续 5 轮通过；最终库存只释放一次，余额只产生一笔扣款和一笔退款，只有一个取消事件。r43 同时确认两个 inbox 的合法 SQLite 锁重试次数可为 `[1, 2]`、`[2, 1]` 或 `[2, 2]`，但最终事实始终唯一；未确认新的 P0/P1。
+- failure_class: excluded_candidate
+- replayable: yes
+- residual_risks: 本轮使用本地合成订单/会员/余额、两个文件 SQLite 连接和真实取消/资产/库存服务，不等同于生产数据库或真实外部支付；收集核对阶段误生成的覆盖率文件已清理。真实微信支付/退款、真实闪送、真机、生产 API、生产验收和正式上线仍未验证，正式上线继续为 No-Go。
+
+## E-20260925-050：退款先到时同一微信交易号跨订单双补偿已修复
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r50
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r49
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-cross-order-refund-compensation
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r50.py`; `repo:ERRORS.md`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r50.py -q --no-cov`（2 项通过）；最终版同一测试连续 5 轮，退出码 `0,0,0,0,0`，耗时 24.15 秒；架构整改后的核心定向 18 项通过，D1-0 与文件体量守卫 17 项通过；最终相邻核心候选、支付/退款通知与查询、储值、优惠券、积分、架构守卫、文件体量守卫和 MiniApp 支付 API 回归 186 项通过，退出码 0，耗时 82.10 秒；`python -B -m ruff check backend/app/service/order/payment_notification.py backend/app/service/order/payment_runtime.py backend/app/service/order/refund_notification.py backend/tests/service/order/test_core_loop_candidate_r47.py backend/tests/service/order/test_core_loop_candidate_r50.py backend/scripts/check_file_sizes.py`；`python -B -m ruff format --check backend/app/service/order/payment_notification.py backend/app/service/order/payment_runtime.py backend/app/service/order/refund_notification.py backend/tests/service/order/test_core_loop_candidate_r47.py backend/tests/service/order/test_core_loop_candidate_r50.py backend/scripts/check_file_sizes.py`；`git diff --check`；`python -B backend/scripts/check_project.py --skip-tests`；`python -B backend/scripts/check_project_development_register.py`；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/check_mistake_ledger.py`；`python -B backend/scripts/check_file_sizes.py`（最终仅被既有 `app/service/catalog/application.py` 职责评审缺口阻断）；`python -B backend/scripts/check_evidence_index.py --summary`（`status=failed`、`total=522`、`failed=19`、`missing_repo_file=0`、`malformed=0`，18 条为既有历史漂移，1 条为 E-20260925-047 的 r47 测试后续修正；旧证据哈希未改写）；`scripts/cleanup-local-artifacts.ps1 -OnlyTemporaryPath`（先预览，再使用授权令牌执行，清理 10 个目录、229 个文件、209,903,616 字节，失败项 0、剩余目录 0）
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r50.py=77e1d5c495744868ca7d741882fa8f384913b38d4249f72f1ab1fe5e6e1e408a；ERRORS.md=25ce94249534692116925279bcfdd7b63194081435a5c1122106c1dff4cee209；PROJECT-STATE.md=086e6f157fc3ce3279415cfadb52351cf7726d9bf9c916fd0c228460d93bcbf0；LOGBOOK.md=5a27c0caf9e0efc77a1b78f5ced9ef36f77baa88946d4ab17d567fdecc749a53
+- follow_up_guardrail: 退款通知或退款查询恢复在写退款事实、更新订单退款快照和执行余额/积分/优惠券补偿前，必须通过统一支付交易认领能力确认原支付交易号的唯一订单归属；同一交易号跨订单只能有一个首胜退款事实，败者必须返回 `rejected_recorded` 并建立对账案件，不得产生资产副作用。
+- related_logbook: 2026-09-25 - review(miniapp): 退款先到时同一微信交易号跨订单双补偿已修复
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员/余额、两个文件 SQLite 连接、两个退款事件、同一微信交易号、inbox 重投、定向回归退出码、源码哈希和清理范围；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证、真实券码或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 修复前两个参数化首胜顺序均稳定复现同一微信交易号被两个订单分别确认退款并重复补偿 2,000 分余额；修复后退款事实和资产补偿前先认领交易号，首胜订单只形成一条交易认领、一条退款事实和一次余额退款，败者建案且无退款事实、快照或资产副作用。r50 连续 5 轮及最终 186 项相邻回归通过。
+- failure_class: recovered_deterministic_business_failure
+- replayable: yes
+- residual_risks: 本轮使用本地合成订单/会员/余额、两个文件 SQLite 连接和本地不触网微信验签/解密，不等同于生产数据库、真实微信商户或生产回调；文件体量门禁仍被既有 `app/service/catalog/application.py` 职责评审缺口阻断，证据索引仍有 19 条历史/后续修正哈希漂移。真实微信支付/退款、真实闪送、真机、生产 API、生产验收和正式上线仍未验证，正式上线继续为 No-Go。
+
+## E-20260925-044：支付查询恢复与退款通知并发候选排除
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260925-miniapp-core-loop-candidate-review-r44
+- parent_run_id: 20260925-miniapp-core-loop-candidate-review-r43
+- generated_at: 2026-09-25
+- evidence_type: verification/miniapp-core-loop-payment-query-refund-notify-race
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r44.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r44.py -q --no-cov --basetemp D:\Temp\pytest-yunxi-core-loop-r44-third`（2 项通过）；同一测试连续 5 轮，退出码 `0,0,0,0,0`；相邻 r12、r19-r44、支付通知、退款通知、储值、优惠券、积分和 MiniApp 支付 API 回归 171 项通过，退出码 0；`python -B -m ruff check backend/tests/service/order/test_core_loop_candidate_r44.py`；`python -B -m ruff format --check backend/tests/service/order/test_core_loop_candidate_r44.py`；`git diff --check -- PROJECT-STATE.md LOGBOOK.md backend/tests/service/order/test_core_loop_candidate_r44.py`；`python -B backend/scripts/check_project_development_register.py`；`python -B backend/scripts/check_chinese_governance.py --summary`；`python -B backend/scripts/check_mistake_ledger.py`；`python -B backend/scripts/check_file_sizes.py`（仍只被既有目录应用职责评审缺口阻断）；`python -B backend/scripts/check_evidence_index.py --summary`（仍为 18 条既有历史哈希漂移）；`scripts/cleanup-local-artifacts.ps1 -OnlyTemporaryPath`（先预览，再使用授权令牌执行）
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r44.py=0d2d051bfdab0cad3e059a795318f15f0c671383e246359ae478a3ec6db666fb；PROJECT-STATE.md=241d2b72e564850cd7f3c4326ff3e452dd23cd9983fa36db4112da5cbb3b7c1e；LOGBOOK.md=9a37fb0ff62c193395383eb7ba7fc780cb47b3e67c0ff7bd7f0b3491029ba25f
+- follow_up_guardrail: 同一微信交易的支付成功查询恢复与全额退款通知并发时，必须通过订单支付/退款快照 CAS、交易号与退款单号唯一事实、余额/券/积分幂等键和 inbox 重投收敛；不得重复支付、退款或资产补偿，也不得在退款先到后迟到核销券或发放积分。
+- related_logbook: 2026-09-25 - review(miniapp): 支付查询恢复与退款通知并发候选排除
+- related_adr: none
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员/优惠券、两个文件 SQLite 连接、真实组合支付/查询恢复/退款通知/资产服务、可重试锁冲突、定向测试退出码、源码哈希和清理范围；D 盘共清理 9 个本轮 pytest 临时目录、59 个文件、56,549,376 字节，失败项 0、剩余目录 0；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证、真实券码或生产订单数据。
+- storage_scope: repository
+- repository_origin: monorepo
+- summary: 支付查询与退款通知并发时，首轮败者的 SQLite 旧快照锁冲突可按 inbox 路径重投；两种提交顺序最终都只形成一个已支付组合快照、一个微信交易号、一个到账事件、一条退款事实和一次余额退款，支付先到时券与积分完整结算后各退回一次，退款先到时不再核销券或发分；r44 连续 5 轮及 171 项相邻回归通过，未确认现行 P0/P1。
+- failure_class: excluded_candidate
+- replayable: yes
+- residual_risks: 本轮使用本地文件 SQLite、合成订单/会员/优惠券和本地假微信预下单/通知/查询，不等同于生产数据库、真实微信商户或生产回调；文件体量门禁仍被既有 `app/service/catalog/application.py` 职责评审缺口阻断。真实微信支付/退款、真实闪送、真机、生产 API、生产验收和正式上线仍未验证，正式上线继续为 No-Go。
+## E-20260926-072：储值双扣、退款先于支付与全额储值错配退款三项排除取证
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260926-miniapp-core-loop-candidate-review-r72
+- parent_run_id: 20260926-miniapp-core-loop-candidate-review-r71
+- generated_at: 2026-09-26
+- evidence_type: verification/miniapp-core-loop-three-candidate-exclusions
+- file: `repo:backend/tests/service/order/test_core_loop_candidate_r72.py`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r72.py -q --no-cov -p no:logging`（3 passed，连续 5 轮退出码 `0,0,0,0,0`）；变异探针三轮（临时改写 `StoredValueOrderPaymentService.pay_order_with_balance` 的 `partial && balanceFen>0` 守卫为 `if False`、`CouponInventoryRepo.refund` 的 `latest["status"] != CONSUME` 守卫为 `if latest is None`、`WechatRefundNotificationService._apply_event` 的 `total != external_paid_fen` 为 `if False`，每轮确认对应测试稳定转红后原样还原）；相邻回归 `backend/tests/service/order/` 全目录加 `test_stored_value.py`、`test_coupon_inventory.py`、`test_coupon_payment.py`、`test_points_payment.py`、`test_points_service.py`（255 项，253 项通过，2 项失败即 r67/r68 故意保留的红色复现测试）；`python -B -m ruff check` 与 `ruff format`（All checks passed / 1 file reformatted）；`git diff --check`（退出码 0）；`python -B backend/scripts/check_mistake_ledger.py`（entries=243）；`python -B backend/scripts/check_project_development_register.py`（tasks=41）；`python -B backend/scripts/check_chinese_governance.py --summary`（files=16 / coverage=1.0 / failed=0）；`python -B backend/scripts/check_file_sizes.py`（仍仅被既有 `app/service/catalog/application.py` 352 行/线 320 阻断）
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r72.py=3c185716fa6106483cc9f555d8caac994429dff689a3c4d1e834248259e2d82a
+- follow_up_guardrail: 排除一个候选的标准是**同时**给出「危害必须出现的条件」与「该条件在当前实现下不可达或危害方向安全」两侧证据。本轮把这条标准再推进一步：仅断言「守卫存在」仍可能蒙混过关——一个恒真的守卫同样能让测试变绿。因此三项排除各自补齐了**变异探针**，把守卫临时改写为恒假或放宽条件，确认夹具确实转红后再原样还原，还原后复核守卫代码与 `git diff` 无残留。具体锁定：候选一必须同时覆盖两个方向（组合支付后余额支付、余额支付后组合支付），只测一个方向会漏掉「已支付订单仍可组合支付」这一半；且探针证实该守卫是承重墙——改写后同一夹具出现第二条 `order_pay:` 扣减，10,000 分订单被扣 13,000 分，即「不同幂等键即可双扣」的直觉本身成立，安全性完全来自支付状态守卫而非幂等键设计。候选二必须先真实构造「券已应用但从未核销」的前置态，否则 `refund_once` 返回 `None` 这条断言在券从未核销时会因别的原因恒真；探针证实去掉 `CONSUME` 前置后券表会凭空多出 `BACK` 行，即该非对称性是刻意的承重设计。候选三的判别力依赖 `resolve_external_paid_fen` 对无 `externalPaidFen` 快照解析为 0，若夹具误用组合支付订单（有真实外部腿）则金额校验会通过、断言失去意义——这类「夹具选错导致断言恒真」的失败模式与断言写错同样常见，写取证测试时须先确认夹具确实落在目标分支。另需注意：本轮修正了 r72 文件自身的四处硬错误（未定义的 `DatabaseHandleShim`、指向已删除的 `_build_cancellation_service` 的死代码、`remainFen` 上恒真为 0 的无效断言、`refundStatus` 上恒为真的 `int(x == "")` 断言）——**取证测试自身出错时，失败原因指向夹具而非生产代码**，须先修测试再下生产结论。
+- failure_class: excluded_candidate
+- replayable: yes
+- storage_scope: repository
+- repository_origin: monorepo
+- related_logbook: 2026-09-26 - test(miniapp): 储值双扣、退款先于支付与全额储值错配退款三项排除取证
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员/优惠券/储值余额、三个本地文件 SQLite 连接、真实余额支付与组合支付、真实券应用/核销/退回、真实微信支付与退款通知入口、通知 inbox 认领、变异探针的改写与还原范围、定向回归退出码和源码哈希；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证、真实券码或生产订单数据。变异探针只临时改写工作区三处守卫并已原样还原，还原后经守卫代码复核与 `git diff` 比对确认无残留；本轮临时产物（junit XML、插入用临时文件）已随用随清。
+- summary: 余额支付与组合支付使用不同幂等键（`order_pay:{id}` 与 `combined_pay:{id}`），但支付状态守卫使二者互斥，双向均被拒且储值流水恒为一条，探针改写守卫后同一夹具出现第二条扣减（10,000 分订单被扣 13,000 分）证明该守卫承重；退款先于支付时 `refund_once` 对未核销券静默返回且不写 `BACK`，客户仍持有该券，迟到支付因 `refundStatus=full` 既不核销券也不发分，探针去掉 `CONSUME` 前置后券表凭空多出 `BACK` 行证明该非对称为刻意设计；全额储值订单外部腿解析为 0，错配退款通知只开 `refund:total_mismatch:*` 对账案件，不插 provider 事实、不补偿任何腿。三项均未确认现行 P0/P1。
+- residual_risks: 本轮为纯排除轮次，未修改任何生产代码，故不新增错误账本条目（沿用 r71 口径）。变异探针只覆盖本轮夹具构造出的单一路径，未穷举其它入口；探针改写与还原均发生在工作区，若中途异常中断存在残留风险，已通过守卫代码复核与 `git diff` 比对确认无残留。夹具使用本地文件 SQLite、合成订单/会员/券与本地假微信通知，不等同于生产数据库、真实微信商户或生产回调。r67（券退款后永久不可复用，`M-20260926-028`）与 r68（有赞核销竞态导致资金搁浅，`M-20260926-029`）两个红色复现测试仍为 open，本轮未触及。文件体量门禁仍被既有 `app/service/catalog/application.py` 职责评审缺口阻断。真实微信支付/退款、真实有赞券与积分、真实闪送、真机、生产 API、生产验收和正式上线仍未验证，正式上线继续为 No-Go。
+
+## E-20260926-073：主体删除使已扣未结储值失去退款凭据的复现、修复与两项排除
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260926-miniapp-core-loop-candidate-review-r73
+- parent_run_id: 20260926-miniapp-core-loop-candidate-review-r72
+- generated_at: 2026-09-26
+- evidence_type: verification/miniapp-core-loop-confirmed-p1-and-exclusions
+- file: `repo:backend/app/repository/privacy_repo.py`; `repo:backend/app/service/privacy_lifecycle.py`; `repo:backend/tests/service/order/test_core_loop_candidate_r73.py`; `repo:ERRORS.md`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r73.py -q --no-cov -p no:logging`（修复前 1 failed / 3 passed，修复后 4 passed，连续 5 轮退出码 `0,0,0,0,0`）；变异探针四轮（临时撤销 `PrivacyLifecycleService._settle_holding_stored_value` 调用、收窄 `list_orders_holding_stored_value` 状态过滤为仅 `unpaid`、放开该过滤为含 `paid`、去掉 `balanceFen > 0` 过滤，每轮确认对应测试转红或如实记录未转红后原样还原，还原后逐个校验字节完全一致）；相邻回归 `backend/tests/service/order/` 全目录加 `test_stored_value.py`、`test_coupon_inventory.py`、`test_coupon_payment.py`、`test_points_payment.py`、`test_points_service.py`、`tests/repository/test_privacy_lifecycle.py`（261 项，259 项通过，2 项失败即 r67/r68 故意保留的红色复现测试）；`python -m ruff check` 与 `python -m ruff format --check`（All checks passed / 3 files already formatted）；`git diff --check`（退出码 0）；`python -B backend/scripts/check_mistake_ledger.py`（entries=243）；`python -B backend/scripts/check_project_development_register.py`（tasks=41）；`python -B backend/scripts/check_chinese_governance.py --summary`（files=16 / coverage=1.0 / failed=0）；`python -B backend/scripts/check_file_sizes.py`（仍仅被既有 `app/service/catalog/application.py` 352 行/线 320 阻断）
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r73.py=b23f0a44a90d47256d433ab79fac692399f74b0d785ccdd5c6963c4daa3e5973；backend/app/repository/privacy_repo.py=31305c3eea8d7316d906884dbf1f4942e787afdecb229445a241010a7d6f1bc6；backend/app/service/privacy_lifecycle.py=6964f5deeef6ddc23dcf958129f7078c25cb856d40e9457e68b5e860b6324a02
+- follow_up_guardrail: 本轮把方法论推进到「探针不转红也是结论」。前三轮探针（撤销结清调用、收窄状态过滤丢掉 `partial`、放开过滤含 `paid`）如期把夹具打红，证明结清调用与 `unpaid`/`partial` 边界都是承重墙；第四轮去掉 `balanceFen > 0` 过滤却**没有**转红，因为 `refund_order_balance` 自身已有 `balance_fen <= 0` 早返回，该子句属纵深防御而非独立承重——如实记录、不计入战果。另一条更重要的教训来自修复方向的被迫改道：最初打算「保留未结清储值的订单」以保住退款凭据，探针直接报 `FOREIGN KEY constraint failed`，暴露出 `orders.session_id REFERENCES sessions(id)` 与同函数末尾 `DELETE FROM sessions` 构成死锁式约束——**保留凭据这条路被数据库封死，修复只能转向「提前结清」**。这类约束只有真去试一次才会暴露，纯读代码极易漏判。删除类链路的通用检查项因此固定为两条：(1) 被删实体是否唯一承载待结清义务的定位信息（本例退款入口入参是 `Order`，订单一删入口即消失）；(2) 资产账本对被删表有无外键——`balance_ledger` 按 `biz_id` 软引用订单、无外键，正常路径是优点，删除路径下正是孤儿来源。此外，本轮为修复自身补了**过度退款护栏**（已支付订单储值不得被当占用额退回），因为“把所有带储值的订单都退一遍”是最省事也最危险的退化修法，会凭空增发储值。
+- failure_class: confirmed_p1_data_loss
+- replayable: yes
+- storage_scope: repository
+- repository_origin: monorepo
+- related_logbook: 2026-09-26 - fix(miniapp): 主体删除连带销毁订单，使已扣未结的储值永久失去退款凭据
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员/储值余额、三个本地文件 SQLite 连接、真实组合支付与余额支付、真实主体删除、变异探针的改写与还原范围、定向回归退出码和源码哈希；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。变异探针只临时改写工作区三处守卫并已原样还原，还原后经字节比对确认无残留；本轮临时探针脚本 `backend/probe_r73.py` 已随用随清。
+- summary: 候选一确认为真实 P1：组合支付已扣 3,000 分储值后调用主体删除，订单被物理删除而余额停在 27,000、账本留存 −3,000 扣减、对账案件为零，退款入口 `Order` 对象消失，3,000 分成为只能人工翻账本才能发现的静默损失；因 `orders.session_id` 外键使「保留订单」被数据库拒绝，修复改为删除前在同一事务内结清仍被占用的储值腿（`unpaid`/`partial` 且 `balanceFen > 0`），结清失败即回滚删除。候选二排除：取消后迟到支付只写 `refundStatus=pending` 不建案，是 `api-contract.md:798` 显式规定的设计（明文「不得自动发起微信退款」），测试按契约逐条钉桩。候选三排除：`primary_phone` 全仓仅建档插入与隐私删除置空两处写入，而删除链路身份链匹配用裸 openid、传入 `wx_` 前缀 `user_id`，`_customer_ids` 恒不命中，置空分支不可达，且无任何改号路径，故误退与活锁均不成立。候选四为修复自带的过度退款护栏。
+- residual_risks: 修复采用失败关闭语义：若某主体储值账户确实无法解析，主体删除会显式失败而非静默丢钱，需人工介入完成该删除请求。`refund_order_balance` 仍在退款时重新解析账户而非复用扣款流水账户，本轮已证当前代码库无改号路径故不构成缺陷，但若将来引入客户改号能力，该处需同步改为复用扣款流水账户。变异探针只覆盖本轮夹具构造出的单一路径，未穷举其它入口；夹具使用本地文件 SQLite、合成订单/会员与本地假微信通知，不等同于生产数据库、真实微信商户或生产回调。r67（`M-20260926-028`）与 r68（`M-20260926-029`）两个红色复现测试仍为 open，本轮未触及。文件体量门禁仍被既有 `app/service/catalog/application.py` 职责评审缺口阻断；证据索引仍存既有 `E-20260925-*` 哈希失配，均非本轮引入。真实微信支付/退款、真实有赞券与积分、真实闪送、真机、生产 API、生产验收和正式上线仍未验证，正式上线继续为 No-Go。
+
+## E-20260926-074：主体删除销毁在途微信预支付订单使真实到账资金失去凭据的复现、修复与三项排除
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260926-miniapp-core-loop-candidate-review-r74
+- parent_run_id: 20260926-miniapp-core-loop-candidate-review-r73
+- generated_at: 2026-09-26
+- evidence_type: verification/miniapp-core-loop-confirmed-p1-and-exclusions
+- file: `repo:backend/app/repository/privacy_repo.py`; `repo:backend/app/service/privacy_lifecycle.py`; `repo:backend/tests/service/order/test_core_loop_candidate_r74.py`; `repo:backend/scripts/check_file_sizes.py`; `repo:ERRORS.md`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r74.py -q --no-cov -p no:logging`（修复前 1 failed / 5 passed，修复后 6 passed，连续 5 轮退出码 `0,0,0,0,0`）；变异探针四轮（临时撤销 `PrivacyLifecycleService._reject_live_wechat_prepay` 调用、给 `list_orders_with_live_wechat_prepay` 加 `status != 'cancelled'` 收窄、去掉 `!= 'paid'` 放行、去掉 `wechatPrepayFen > 0` 过滤，每轮确认对应测试转红后原样还原，还原后逐个校验字节完全一致）；相邻回归 `backend/tests/service/order/` 全目录加 `test_stored_value.py`、`test_coupon_inventory.py`、`test_coupon_payment.py`、`test_points_payment.py`、`test_points_service.py`、`tests/repository/test_privacy_lifecycle.py`（267 项，265 项通过，2 项失败即 r67/r68 故意保留的红色复现测试）；`python -m ruff check` 与 `python -m ruff format --check`（All checks passed / 3 files already formatted）；`git diff --check`（退出码 0）；`python -B backend/scripts/check_mistake_ledger.py`（entries=245）；`python -B backend/scripts/check_project_development_register.py`（tasks=41）；`python -B backend/scripts/check_chinese_governance.py --summary`（files=16 / coverage=1.0 / failed=0）；`python -B backend/scripts/check_file_sizes.py`（仍仅被既有 `app/service/catalog/application.py` 352 行/线 320 阻断）
+- result: pass
+- sha256: backend/tests/service/order/test_core_loop_candidate_r74.py=7d57d225ce21c7597fb7d28f0c91b8a9e5261d08933df664f3798510b23b1d89；backend/app/repository/privacy_repo.py=4a0944ce32c34dec5c1128b90bb4a216d9e8e9a71cf896b50484ebaa7dfb1706；backend/app/service/privacy_lifecycle.py=f540cca211597a1cd56c3bfca12a5470b4b879ca3334aff7df92d4571e7be9c6；backend/scripts/check_file_sizes.py=71ee17ba7c616c4f01f0de3cb2dff2a4c05338354a8c1b85344fe66634ade121
+- follow_up_guardrail: 本轮把元教训补全为「**探针不转红有两种成因，必须先区分再下结论**」。r73 的第四轮探针不转红，成因是守卫属纵深防御（`refund_order_balance` 自身已有 `balance_fen <= 0` 早返回）；本轮第四轮探针（去掉 `wechatPrepayFen > 0` 过滤）首次尝试同样**未**转红，成因却完全不同——是我的夹具里根本没有任何「既无预支付也未支付」的订单，分支从未被执行。**前者是守卫的现状，后者是我自己的覆盖缺口**，两者都不构成战果，但补救动作相反：前者补文档说明，后者必须补测试。补 `test_plain_unpaid_order_without_prepay_does_not_block_erasure` 后重跑该探针如期转红，`wechatPrepayFen > 0` 这一子句才被证明是独立承重。另有一条更根本的教训：**修复自身必须复核覆盖面**。r73 写完 `_settle_holding_stored_value` 后「删除前要处理储值」这个心智模型就定型了，本轮 P1 恰恰出在没人问过「还有没有别的腿」——因此新增这类守卫时要回头把「该实体上可能挂着哪些资产/外部事实」列全，而不是只覆盖当前这一条。这条缺陷的分类判据也随之确定：判别问题不是「这条腿有没有本地扣减事实」，而是「**在外部系统那边已经生效的不可逆动作，本地有没有对应的撤销或查询通道**」——储值腿义务量全由本地快照决定故可结清，微信预支付一旦预下单成功外部状态就不可回退故只剩拒绝。另外，两个防过度阻塞的绿测同样是修复的必需品：已支付订单的预支付标记必须放行（否则退化成「有预支付记录的用户永远删不掉」），`cancelled` 但预支付在途的订单必须拦住（迟到支付要走 `_record_cancelled_external_payment`，该路径依赖订单行存在），二者合起来才把查询的 `!= 'paid'` 与「不限定履约状态」两个边界钉死。
+- failure_class: confirmed_p1_data_loss
+- replayable: yes
+- storage_scope: repository
+- repository_origin: monorepo
+- related_logbook: 2026-09-26 - fix(miniapp): 主体删除销毁仍有在途微信预支付的订单，使真实到账资金失去全部本地凭据
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员/余额、三个本地文件 SQLite 连接、真实组合支付与微信预下单加锁、真实主体删除与失败拒绝、真实支付成功通知入口、通知 inbox 认领、变异探针的改写与还原范围、定向回归退出码和源码哈希；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。变异探针只临时改写工作区两处守卫并已原样还原，还原后经字节比对确认无残留；本轮临时产物（探针脚本 `backend/probe_r74.py`、状态回写脚本 `backend/_tmp_r74_state.py`、本证据片段临时文件）已随用随清。
+- summary: 候选一确认为真实 P1，且是 r73 修复的覆盖缺口：组合支付已发起微信预支付（`wechatPrepayFen` 锁定 10,000 分）后调用主体删除，订单被物理删除；预下单会话在微信侧已生效而 `create_jsapi_prepay` 未发 `time_expire`、我方无撤销通道，用户随后完成付款时 `mark_paid` 抛「订单不存在」，通知重投至 `dead_letter`，修复前复现为 `微信已到账 10000 分但本地无凭据：订单存在=False，交易认领=[]，对账案件=[]`。该腿无法如储值腿般结清（钱未到账不能退、微信侧不可撤销），故改为删除前显式拒绝并指引稍后重试，`paid` 订单不阻塞。候选二排除：`expire_timeout_unpaid_orders` 只扫 `status='pending'` 属实，但 `cancel_unpaid_order` 接受 `pending`/`confirmed`，被后台确认的未支付订单仍可人工取消，属可恢复而非不可恢复活锁。候选三排除：`clear_coupon_snapshot` 确实把 `payment.status` 改回 `unpaid`，但订单仍为 `cancelled`，被后台 `closed` 看板与 `cancel_unpaid_order` 双重拦住，且该函数仅在存在券快照时运行，不产生资金或券状态后果。候选四（自证）排除：曾担心「预支付已过微信侧有效期但本地尚未取消」的窗口会永久搁浅订单，代码复核发现 `close_unpaid_order` 置 `payment.status='expired'` 的同时必定置 `status='cancelled'`，且全仓只有 `expiration.py:97` 写 expired 且总是伴随取消，该窗口不可达。
+- residual_risks: 修复采用失败关闭语义：存在在途微信预支付的用户行使主体删除时会收到显式拒绝并被指引「先完成支付或等支付超时关闭后重试」，需在客户侧沟通该口径。微信预支付会话的真实有效期由微信侧默认值决定（本仓未发 `time_expire`），本地无法提前收窄，因此「订单取消后预支付仍在途」的窗口长度不受本仓控制，本轮只保证该窗口内主体删除不会销毁订单。变异探针只覆盖本轮夹具构造出的单一路径，未穷举其它入口；夹具使用本地文件 SQLite、合成订单/会员与本地假微信预下单/通知，不等同于生产数据库、真实微信商户或生产回调。证据索引除既有 `E-20260925-*` 失配外新增 2 项 `E-20260926-073` 失配：因 `repo:` 前缀按语义绑定当前工作树，r74 改动了 r73 记录的同两个生产文件，属前缀语义的必然结果而非本轮引入的证据缺失，本条目以最新哈希承接。r67（`M-20260926-028`）与 r68（`M-20260926-029`）两个红色复现测试仍为 open，本轮未触及。文件体量门禁仍被既有 `app/service/catalog/application.py` 职责评审缺口阻断。真实微信支付/退款、真实有赞券与积分、真实闪送、真机、生产 API、生产验收和正式上线仍未验证，正式上线继续为 No-Go。
+
+## E-20260926-080：商品关键词检索 count 查询缺 youzan_products join 且占位符与参数不齐，小程序与后台商品搜索整页 500；全量测试耗时 1168.7s 超阈值
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260926-miniapp-core-loop-candidate-review-r80
+- parent_run_id: 20260926-miniapp-core-loop-candidate-review-r79
+- generated_at: 2026-09-26
+- evidence_type: verification/miniapp-core-loop-confirmed-p1-catalog-keyword-search-500
+- file: `repo:backend/app/repository/knowledge_product_repo.py`；`repo:backend/tests/service/test_catalog_youzan_keyword_search.py`；`repo:backend/tests/service/test_catalog.py`；`repo:backend/tests/api/test_miniapp_catalog_api.py`；`repo:ERRORS.md`；`repo:PROJECT-STATE.md`；`repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -m pytest backend/tests/ -q`（本 trace 首次上线候选收口全量，耗时 **1168.7s**，基线 738s / +58.3% / 超 10 分钟阈值，退出码 1，覆盖率 83.82% 达标）。三项失败：`test_miniapp_products_api_returns_keyword_pagination_meta`、`test_list_products_page_supports_keyword_search_and_offset`、`test_harness_eval_regression.py::test_regression_evaluation_passes`。**前两项同根、确认为真实 P1 并修复**（`M-20260926-036`）：先用临时直调把两个缺陷**拆开分别证实**——`count_products(search=...)` 抛 `sqlite3.OperationalError: no such column: yp.title`；绕过 count 直调带 join 的 `get_all_products(search=...)` 抛 `sqlite3.ProgrammingError: Incorrect number of bindings supplied. The current statement uses 6, and there are 5 supplied.`；空 search 对照组正常，证明触发条件精确是「search 非空」。修复为两处最小改动：`count_products` 补上与 `get_all_products` 完全相同的 `LEFT JOIN youzan_products yp ON kb.youzan_item_id = CAST(yp.item_id AS TEXT)`（`youzan_products.item_id` 是 INTEGER PRIMARY KEY、`knowledge_base.youzan_item_id` 有唯一索引，故 1:1 不扇出），`params.extend` 由 3 个 keyword 补齐为 4 个与占位符逐项对齐；并把「任何使用本构造器的查询都必须自己 JOIN yp」这一隐式契约写进 docstring。修复后新增 4 项契约测试全绿、两条原本失败的全量用例转绿。**五轮变异探针全部承重并已全部还原**（还原后逐文件 sha256 与探针前一致、裸 LF 计数 0、备份文件已删）：探针 1 参数退回 3 个 → 转红；探针 2 count 去掉 join → 转红；探针 3/4/5 分别单独抽掉 `yp.tags` / `yp.item_no` / `yp.title` 并**同步对齐参数数**（避免红因退化成绑定数错误那种无效红）→ 均转红，证明新测试对每个新增检索字段都非空转。**如实记录本轮无「未转红探针」。** `ruff check`（All checks passed）与 `ruff format --check` 通过；`check_project.py --skip-tests` 质量门禁通过（另核实该文件三条函数体量 WARN 均为既有超线：剔除本轮新增行后 57/59/60 行，评审线 50 行）；`check_mistake_ledger.py`（entries=248）；`check_chinese_governance.py --summary`（files=16 / coverage=1.0 / failed=0）。**第三项失败非本轮引入**：`HE-004 evidence_index_integrity` 因 `repo:` 工件记录值与当前工作树不符而失败，共 35 项失配，其中 **31 项对应文件本轮从未被触碰**（`order_repo.py`、`privacy_repo.py`、`payment_runtime.py`、`coupon/payment.py` 等r1-r78 改动文件），故该失败早于本轮存在。已明确**拒绝**把记录值改写成当前值（那是伪造审计证据），正确修法是把证据条目改为 `git:<commit>:<path>` 形态按提交内容校验。
+- result: pass
+- sha256: backend/app/repository/knowledge_product_repo.py=c1a629b5341bc96e4cae7f81f3ac7563b0bdb745a3af9025f631d67621678595；backend/tests/service/test_catalog_youzan_keyword_search.py=9b72fb4c676e377ba839af288efc7c81237a558382f2c8289251f5ec611b9456；backend/tests/service/test_catalog.py=ae7fb8127cedc730b33e19f0d0f5588ce7c89bd57b5e4387df2e8c6f9e9b58e8；backend/tests/api/test_miniapp_catalog_api.py=7d10bda8456bb7b6a2f1613e66780a0f9b25a83d9514032377c27aaaf92249cf；ERRORS.md=088e26d4328c122c6d79b3223cb0d93329562dbd47c50d4c0354a81f9fbbdd92；PROJECT-STATE.md=ef46cae8a882d203e339384d8b72c73af5e9986185b05804516fb6187c842cd9；LOGBOOK.md=3a06fc784cc8d0eb32f497ee177a318cc667d5581ee3c82d4549f964a09475b9
+- follow_up_guardrail: 本轮的核心教训是**「共享的条件构造器」会把「调用方各自需要的环境」隐式化，而隐式的东西一定会在第二个调用方身上失效**。其一，`_build_product_where` 只负责产出子句文本，不负责让子句里的 `yp.*` 别名存在；把 `search` 从单表扩成跨表时，改动者只需看第一个调用方就会以为「已经 join 好了」，而第二个调用方（`count_products`）在自己的 FROM 子句里没有这个别名——**判据是机械的：子句里出现 `x.y`，就去每个调用方的 FROM/JOIN 里找 `x`，找不到就是 500**。其二，**占位符与参数个数是两份需要手工对齐的清单**，而它们会互相掩盖：4 个 `?` 配 3 个参数本该报 `Incorrect number of bindings`，却被同一段代码里更早的 `no such column` 完全盖住，直到绕过前一个错误才暴露。**所以定位这类问题必须「先修 A 再看 B 会不会浮出来」，修好一个就收工会把第二个缺陷留到下一次崩溃才被发现。** 其三，**新增检索维度必须自带一条只靠该维度才能通过的用例**：本条之所以潜伏到全量测试才暴露，正是因为引入它的跨表检索是一个完全没有测试覆盖的新意图——已有的 `test_list_products_page_supports_keyword_search_and_offset` 只断言「知识库侧字段能命中」，新增的「有赞侧字段能命中」从未被断言，于是**整段跨表检索代码可以被整段删掉而测试依然全绿**。新测试用「把 knowledge_base 侧改成与关键词完全无关、只改有赞侧一个字段」的手法保证这一点，并用 `total == len(rows)` 同时锁住「分页 meta 的总页数不能与实际返回条数脱节」。其四，**验证广度决定潜伏缺陷的暴露时机，与缺陷年龄无关**：本条不是 r79 引入的，是工作区里早就存在的未提交改动，只因 r1-r79 一直只跑定向与相邻回归、从未执行过全量，才在上线候选收口时第一次被跑到。但这条**不能反过来推论「以后该多跑全量」**（测试节奏约束是明确的），正确结论是「**改动要出现在验证范围内**」——跨表检索这类改动应当在当轮就补上覆盖它的用例。其五，**为省事把证据哈希改写成当前值是伪造证据**：35 项 `repo:` 漂移的诚实修法是把证据条目换成按提交内容校验的 `git:<commit>:<path>` 形态，而不是让记录值去迎合工作树——后者会让证据索引永久失去「证明某 commit 下代码内容」的能力。
+- failure_class: confirmed_p1_catalog_keyword_search_shared_where_builder_missing_join_and_param_mismatch
+- replayable: yes
+- storage_scope: repository
+- repository_origin: monorepo
+- related_logbook: 2026-09-26 - fix(miniapp): 商品关键词检索的 count 查询缺 join 且占位符与参数不齐，小程序商品搜索整页 500
+- contains_sensitive_data: no
+- retention_note: 仅记录本地内存 SQLite 连接、合成商品/知识库/有赞商品行、真实目录仓储与目录应用服务的调用链、变异探针的改写与还原范围、全量与定向测试的退出码和耗时、以及源码哈希；不保存任何真实客户数据、真实商品数据、访问令牌或生产数据。变异探针只临时改写工作树中的 SQL 片段与参数个数并在同一轮内还原，校验还原后逐文件 sha256 与探针前一致、裸 LF 计数 0、备份文件已删，不触碰 `backend/data/`、`backend/reports/` 与任何生产目录。全量测试由 pytest-cov 在 `backend/htmlcov/`、`backend/coverage.xml`、`backend/.coverage` 生成覆盖率工件，属可重建的本地产物，不含真实数据。
+- summary: `M-20260926-036` 确认为真实 P1 并修复。根因是 `KnowledgeProductRepo._build_product_where` 这个共享 WHERE 构造器的两个调用方未对齐「子句需要的表别名」与「占位符/参数个数」：`get_all_products` 的 SQL 带 `LEFT JOIN youzan_products yp ON kb.youzan_item_id = CAST(yp.item_id AS TEXT)`，而 `count_products` 的 SQL 只有 `FROM knowledge_base kb WHERE ...`，但两者共用含 `yp.title` / `yp.tags` / `yp.item_no` 的 `search` 子句，于是 count 查询在 SQLite 准备语句阶段即报 `no such column: yp.title`；同时子句写了 4 个 `?` 而 `params` 只 `extend` 了 3 个 keyword，第二个缺陷被第一个完全掩盖（绕过 count 直调才暴露为 `uses 6, supplied 5`）。确定性后果：小程序商品页与后台商品管理在输入任意非空关键词时整页 500，「商品 -> 购物车 -> 下单」链路的前置查询不可用；非空关键词是常规操作、无需任何特殊状态即可触发。修复为两处最小改动（补 join + 补齐第 4 个参数），并把隐式契约写进 docstring。**该跨表检索是工作区里既有的未提交改动**（LOGBOOK 多轮记为「现有用户改动 `knowledge_product_repo.py` 保持原样」），此前从未被全量测试执行到、也无任何测试覆盖「只被有赞侧字段命中」这一新增检索意图，故潜伏至 r80 上线候选收口才暴露。新增 4 项契约测试专门覆盖该缺口，五轮变异探针（含逐字段抽除并同步对齐参数数）全部承重并已还原。同轮确认全量第三项失败 `HE-004 evidence_index_integrity` 的 35 项 `repo:` 哈希漂移**非本轮引入**（31 项对应文件本轮从未触碰），属证据条目按 commit 记录、`repo:` 却按当前工作树校验的结构性欠账，已拒绝以改写记录值的方式「修绿」。**全量耗时 1168.7s 较基线 738s 增长 58.3% 且超过 10 分钟阈值，按测试节奏约束必须建立测试优化事项，已在 LOGBOOK r80 `next` 登记待办内容，本轮不以跳过测试代替优化。**
+## E-20260926-079：有赞积分权威镜像抹掉本地发分，根因是同一余额列被绝对覆盖与相对增量两种语义共用；改为外部锚点加本地净额后镜像不再吞掉账本成果
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260926-miniapp-core-loop-candidate-review-r79
+- parent_run_id: 20260926-miniapp-core-loop-candidate-review-r78
+- generated_at: 2026-09-26
+- evidence_type: verification/miniapp-core-loop-confirmed-p1-points-authority-mirror-destroys-local-award
+- file: `repo:backend/app/repository/member_balance_repo.py`；`repo:backend/app/service/youzan/event_member.py`；`repo:backend/app/service/member_loyalty.py`；`repo:backend/app/migrations/v038_points_authority_anchor.sql`；`repo:backend/scripts/check_project.py`；`repo:backend/scripts/check_file_sizes.py`；`repo:backend/tests/service/order/test_core_loop_candidate_r79.py`；`repo:backend/tests/service/order/test_core_loop_candidate_r69.py`；`repo:backend/tests/service/order/test_core_loop_candidate_r70.py`；`repo:ERRORS.md`；`repo:PROJECT-STATE.md`；`repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r79.py -q --no-cov -p no:logging`（修复前六条中五条红，且红的原因全部是外部绝对总额 `550` 覆盖了本地净额——`assert 550 == ((500 + 50) + 100)`、`assert 450 == (500 + 50)`、`assert 550 == ((500 + 50) - 200)`，红点与根因精确同源，退出码 1；修复后六条全绿，退出码 0）。**期间发现并修正本轮自己引入的两处测试缺陷，未误判为产品缺陷**：一条用例漏 monkeypatch 商户号/AppID，失败于 `ValueError: 微信支付通知商户号不匹配` 而非根因；夹具用裸 `INSERT INTO member_balance` 造「余额来自外部」初始态，新列 `youzan_points_base` 默认 0 使整笔余额被误当本地净额、把修复后的实现测成 1150（`assert 1150 == 650`），改走真实导入入口 `mirror_youzan_points` 后才如实表达该初始态。**五轮变异探针全部承重并已全部还原**（`if True` / `if False and` / 锚点自赋值等残留计数 0，还原后逐文件 sha256 与探针前一致）：探针 A 退回绝对覆盖 `points = ?` → 5 条转红，含新增的懒建账户用例，证明其非空转；探针 B 不更新外部锚点 `youzan_points_base = youzan_points_base` → 转红，证明锚点推进是承重环节而非冗余赋值；探针 C 取消 `if settings.POINTS_AUTHORITY != "local"` 分支 → r69 第二阶段用例转红，证明该分支仍区分两种权威体制；探针 D 取消 `is_usable_int(total)` 校验 → r70 畸形输入用例转红，证明 r70 的输入防线未被本轮改动削弱；探针 E 单独复核懒建账户用例非空转。**如实记录本轮无「未转红探针」**（与 r78 探针 D 首次未转红的情形不同）。相邻回归 `backend/tests/service/order/` 全目录加 `test_member_accounting.py`、`test_points_service.py`、`test_points_payment.py`、`test_miniapp_points_api.py`、`test_miniapp_balance_api.py`、`test_stored_value.py`、`test_coupon_inventory.py`、`test_coupon_payment.py`、`tests/repository/test_privacy_lifecycle.py`、`tests/scripts/test_check_project.py` 共 313 项全通过。`python -m ruff check`（All checks passed）；`ruff format --check`（7 files already formatted）；`git diff --check`（退出码 0）；`python backend/scripts/check_project.py --skip-tests`（质量门禁通过，D1-0 直接写状态守卫 PASS——新写方法 `mirror_youzan_points` 已按「矩阵新增写路径必须同步显式写方法清单」补入 `D1_MATRIX_ALLOWED_WRITE_FUNCTIONS`）；`python -B backend/scripts/check_project_development_register.py`（tasks=41）；`python -B backend/scripts/check_chinese_governance.py --summary`（files=16 / coverage=1.0 / failed=0）；`python -B backend/scripts/check_mistake_ledger.py`（entries=247）。**体量门禁复跑并修正了上一轮记录的一处误判**：`check_file_sizes.py` 起初报三个未评审超线文件，但其中 `member_balance_repo.py`（HEAD 200 行 → 本轮后 273 行）与 `coupon_inventory_repo.py`（HEAD 229 行 → 276 行）是本 trace 自身改动推过 250 行阻断线的文件，先前 LOGBOOK 把阻断项全部归为存量问题并不成立；已按 ADR 0004 做真实职责评审后记录保留理由（前者为 `member_balance` 单表单行原子投影的第三条写路径，拆开会切散「余额 = 外部锚点 + 本地净额」不变量、正是本缺陷成因形态；后者 r64/r78 的 `cycle_no` 周期维度横穿该表每个方法、属全表排序键），不按行数机械切分。复跑后仅剩 `app/service/catalog/application.py`（352 行，HEAD 即超线、本 trace 无 diff）为既有欠账。**同轮清理两笔账本欠账（均有实证，非风格改动）**：其一，`M-20260912-083` 记的「`payment_runtime.py` 未登记职责评审」已不成立——该文件现有实质评审登记、复跑门禁不再报它（且它在本 trace 内由 416 行涨到 551 行仍超线，说明登记是承重的），故按其自身 `next_time_signal` 的「存量项继续单列」约定改判 `verified`，残留的 `app/service/catalog/application.py` 单列不在本轮做非必要重构（阅读结论：该文件确实混了 `fetch_product_image` 一族的受控出网图片代理职责，带 SSRF 白名单/字节上限/超时/失败降级 404 的独立失败语义，按 ADR 0004 属应拆分的职责混杂，留待目录域自身变更时处理）；其二，按本轮方法论复核 `M-20260906-003`（已入库脚本硬编码真实有赞密钥）——`test_youzan_product_feasibility.py` 确已改为环境变量读取，并对全部 git 跟踪文件扫描 `client_secret` / `YOUZAN_CLIENT_SECRET` / `kdt_id` 字面量，仅 3 处命中且经逐处判定全为占位符（`.env.example`、README 示例、券模拟器假值），确认代码侧无真实凭证残留；该条残余的密钥轮换与 git 历史清理属仓外动作，账本保持 `open` 正确，其「关闭前禁止上线」裁决与当前 No-Go 一致。本轮为代码与 Harness 记录变更，按测试节奏约束只跑定向与相邻回归，未跑全量测试
+- result: pass
+- sha256: backend/app/repository/member_balance_repo.py=cc6c9f555e7e6f891f535d008d442516438b36728d065179bae9e72d66fe678a；backend/app/service/youzan/event_member.py=f468d40d90296bae0e9d21805f8e65f5b959345ed270220dcc046c2408cc6154；backend/app/service/member_loyalty.py=2a69fd57720da2d6302ad01043eea357ece41dc56bbb4b61b984ec7b4bda29a8；backend/app/migrations/v038_points_authority_anchor.sql=fbe7881d258c623af5d8196e0b30209529ba6f34046f7acfea5e6f1edf817cfe；backend/scripts/check_project.py=172e4f3c6795c9d6d9f7883d242783257d5667c0724fc236f252160d43ff7e8c；backend/scripts/check_file_sizes.py=7a322426f2c525f737ea350611344fe5f628a0288c5ec549ea07f6db1c5c5ec1；backend/tests/service/order/test_core_loop_candidate_r79.py=9e36cca1c78e983bd56adbf06cae1f9d0e42c99886b34d6e5ed1bd351803dcc2；backend/tests/service/order/test_core_loop_candidate_r69.py=2e9d85049d1d0016407254f36829e9af057a1622004291b722111d535dd4629c；backend/tests/service/order/test_core_loop_candidate_r70.py=663d499d7f28dc616d1dfaed3fd9987e590171ddeac600347210de32fbcf7171；ERRORS.md=088e26d4328c122c6d79b3223cb0d93329562dbd47c50d4c0354a81f9fbbdd92；PROJECT-STATE.md=ef46cae8a882d203e339384d8b72c73af5e9986185b05804516fb6187c842cd9；LOGBOOK.md=3a06fc784cc8d0eb32f497ee177a318cc667d5581ee3c82d4549f964a09475b9
+- follow_up_guardrail: 本轮的核心产出是**「外部权威总额」与「本地账本净额」被硬塞进同一列的同一个含义时，修法是拆维度而不是选权威**。其一，「谁是权威」这个问题本身是错的方向：只要两类写入共用一列的同一含义，挑谁当权威都只是把冲突推迟到下一次写入，外部有写接口时两者仍会互相抹除；正确做法是显式建锚点列，让余额恒等于「锚点 + 本地偏移」，镜像只移动锚点。其二，**回填口径必须选「不发明数据」的那一个**：把既有行锚点回填为当前余额，看起来会「丢失」本地净额，但那恰好等价于修复前行为、不产生回归；而按 `points_ledger` 反推锚点会凭空把历史上已被旧覆盖逻辑抹掉的资产还回来，等于造钱。其三，**夹具必须走真实写入口**：本轮三份夹具原本用裸 `INSERT INTO member_balance` 造初始态，新列默认值 0 使整笔余额被误当本地净额，一度把修复后的实现测成 1150；这类「用裸 SQL 造投影行」的夹具在新增派生列后会集体失真，必须逐个改为走真实入口。其四，**误用入口要焊死而不只是改对**：本轮同时把 `points` 参数从 `upsert_identity` 签名中移除，使「绝对覆盖余额」无法再次通过编译与静态检查——只改调用点而保留可误用的参数，等于把缺陷留给下一个人。其五，**测试自身引入的失败必须与产品缺陷分开记账**：本轮两条红是自家夹具/夹具配置错误（漏 monkeypatch、裸 INSERT），若不做区分就会把它们当成「修复无效」而回头乱改生产代码。其六，**把缺陷当契约的测试要改名而不只是改断言**：r70 的 `test_valid_youzan_points_event_still_overwrites_balance` 把错误语义写进了测试名，只改断言会留下误导，改名后仍保留其「合法 total 必须被应用、不能一律忽略」这一真实防退化意图
+- failure_class: confirmed_p1_points_projection_absolute_overwrite_vs_local_delta
+- replayable: yes
+- storage_scope: repository
+- repository_origin: monorepo
+- related_logbook: 2026-09-26 - fix(miniapp): 有赞积分权威镜像抹掉本地发分，退款按原流水收回后形成客户净损失
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成会员/身份链/订单/积分账户行与外部权威锚点、本地文件 SQLite 连接、真实有赞会员域 webhook 入口、真实微信支付与退款通知入口、积分账本流水与退收回滚、变异探针的改写与还原范围、定向与相邻回归退出码和源码哈希；不保存访问令牌、openid、手机号全文、微信交易凭证或生产订单数据。变异探针只临时改写工作树中的守卫条件与偏移量表达式并在同一轮内还原，校验残留计数为 0 且逐文件 sha256 与探针前一致，不触碰 `backend/data/`、`backend/reports/` 与任何生产目录。
+- summary: `M-20260926-030` 确认为真实 P1 并修复。根因是同一张余额投影表被两种不兼容的语义写入：外部镜像（有赞 `POINTS` webhook 与 `member_loyalty` 导入）经 `upsert_identity` 执行 `points = CASE WHEN ? IS NOT NULL THEN ? ELSE points END` 的**绝对覆盖**，本地订单发分/抵扣扣减/退款退返经 `credit_points`/`deduct_points_if_sufficient` 执行 `points = points ± ?` 的**相对增量**。有赞侧无积分写接口（`member_api.py` 只有四个查询方法），本地发放的积分永远不可能进入其 `total`，于是任何一次外部积分变动都抹掉本地已发积分而 `points:award` 流水仍在；订单全额退款按原流水收回这笔从未到账的积分，`award`(+100) 与 `clawback`(-100) 金额与归属完全自洽、退款事实也完整落账（`refundStatus=full`、`refundFen=10000`），按流水对账查不出任何异常，属客户资产不可恢复净损失。**处置裁决推翻原记录**：M-20260926-030 原写「未修复，且不应作为单点改动修复……须等第二阶段积分权威切换」，本轮按 AGENTS.md「积分属项目承接范围、不得以阶段标签规避核心业务缺陷」改为单点修复语义冲突本身。修法是拆维度而非选权威：新增迁移 `v038_points_authority_anchor.sql` 增 `youzan_points_base` 外部锚点列；新增 `MemberBalanceRepo.mirror_youzan_points`，余额恒等于「锚点 + 本地账本净额」，镜像只移动锚点并按偏移量 `points - youzan_points_base` 重算余额、不触碰本地净额，偏移量在同一条 `UPDATE` 内现算（读写同一行由 SQLite 写锁串行化，无陈旧偏移窗口）；两个外部写入方一并改走该路径。回填口径选唯一不发明数据的那一个：既有行 `youzan_points_base = points`，等价于修复前行为故首次镜像不产生回归；按 `points_ledger` 反推锚点会凭空把历史上已被覆盖抹掉的资产还回来（等于造钱），明确不采用；迁移前已丢失的本地发分不追回。同时把 `points` 参数从 `upsert_identity` 签名移除以焊死误用入口，新写方法已补入 D1-0 显式写方法清单。r79 六条测试修复前五条红且红因与根因同源，期间发现并修正本轮自己引入的两处测试缺陷（漏 monkeypatch 商户号、夹具裸 INSERT 致新列默认 0）；五轮变异探针全部承重并已还原，如实记录本轮无「未转红探针」。同步改写两处把缺陷当契约的既有期望（r69 复现用例、r70 被写成 `..._still_overwrites_balance` 的用例，后者改名并保留「合法 total 必须被应用」的原意），三份夹具改走真实导入入口。相邻回归 313 项全通过。ADR 0008 D1-B 事件投影重写与第二阶段 `POINTS_AUTHORITY=local` 权威切换均属未批准工作包，本轮刻意未做
+
+## E-20260926-078：全额退款退回的优惠券被永久作废，根因是唯一键含状态使第二个消费周期在库层不可表达；修复后券可跨周期复用且重复退款不重复写行
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260926-miniapp-core-loop-candidate-review-r78
+- parent_run_id: 20260926-miniapp-core-loop-candidate-review-r77
+- generated_at: 2026-09-26
+- evidence_type: verification/miniapp-core-loop-confirmed-p1-coupon-back-terminal-state
+- file: `repo:backend/app/repository/coupon_inventory_repo.py`；`repo:backend/app/models/member.py`；`repo:backend/app/service/coupon/payment.py`；`repo:backend/app/migrations/v037_coupon_use_cycle.sql`；`repo:backend/tests/service/order/test_core_loop_candidate_r67.py`；`repo:backend/tests/service/order/test_core_loop_candidate_r63.py`；`repo:backend/tests/service/order/test_core_loop_candidate_r66.py`；`repo:backend/tests/service/test_coupon_inventory.py`；`repo:ERRORS.md`；`repo:PROJECT-STATE.md`；`repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r67.py -q --no-cov`（修复前 `test_refunded_coupon_can_be_reused_on_new_order` 使用真实 SQLite 文件连接、真实 `handle_wechat_payment_notify`/`handle_wechat_refund_notify` 通知入口、真实券应用/核销/退回服务稳定失败于 `app/service/coupon/payment.py:65` 抛「优惠券不可用」，退出码 1；修复后四条全绿，退出码 0）。**四轮变异探针，其中一轮首次未转红并如实记录**：探针 A 把唯一键改回三列 `(coupon_id, status, mobile)` → 四条全部转红且报 `UNIQUE constraint failed: coupon_inventory.coupon_id, coupon_inventory.status, coupon_inventory.mobile`，正是原缺陷签名，证明该唯一键是根因而非表象；探针 B 去掉退款腿新周期补写的 `TAKE` → 三条转红；探针 C 放松 `refund` 的 `latest != CONSUME → return None` → 恰好两条幂等测试转红，证明重复退款的兜底确实承重；探针 D 反转 `get_latest_state` 排序中 `cycle_no DESC` 与 `occurred_at DESC` 的位次 → **首次运行未转红，如实判为「未被夹具承重的守卫」而非胜利**，补上跨周期乱序时间戳夹具（`test_latest_state_prefers_higher_cycle_over_later_timestamp`）后重跑才如实转红（`assert 1 == 2`），该守卫现已诚实承重。每轮还原后校验 `探针`/`if False`/`and False` 残留计数为 0，且 `cycle_no DESC` 出现 3 次、`cycle_no + 1` 出现 1 次。相邻回归 `backend/tests/service/order/` 全目录加 `tests/service/test_coupon_inventory.py`、`test_coupon_payment.py`、`test_stored_value.py`、`test_points_service.py`、`tests/repository/test_privacy_lifecycle.py` 共 276 项全通过，r67 与 r68 两条此前故意保留的红均已转绿。`python -m ruff check`（All checks passed）；`ruff format --check`（8 files already formatted）；`git diff --check`（退出码 0）；`python backend/scripts/check_project.py --skip-tests`（质量门禁通过，D1-0 直接写状态守卫 PASS，退款腿新增写入仍在既有 allowlist 函数 `coupon_inventory_repo.refund` 内，无需扩 `D1_MATRIX_ALLOWED_WRITE_FUNCTIONS`）；`python -B backend/scripts/check_project_development_register.py`（tasks=41）；`python -B backend/scripts/check_chinese_governance.py --summary`（files=16 / coverage=1.0 / failed=0）；`python -B backend/scripts/check_mistake_ledger.py`（entries=247）；`python -B backend/scripts/check_file_sizes.py` 仍仅被既有 `app/service/catalog/application.py` 职责评审缺口阻断，非本轮引入；`python -B backend/scripts/check_evidence_index.py` 仍 failed 且为本轮改动前即存在的 32 条 `repo:` 哈希失配（报错含本轮未触碰的 `payment_runtime.py`、`test_stored_value.py`、r34/r43/r47），属 `repo:` 前缀按语义绑定当前工作树的既有失配。本轮为代码与 Harness 记录变更，按测试节奏约束只跑定向与相邻回归，未跑全量测试
+- result: pass
+- sha256: backend/app/repository/coupon_inventory_repo.py=93525be093fab7da2d5ad3cfe00f3292583dc77c5350a5afcdda3b86d0184b24；backend/app/models/member.py=3a5bd0a71256333711243eca0afeb9d80deb20336c38ce8831abee09e7194d97；backend/app/service/coupon/payment.py=0017dc4cfcdb745edebc79192cf2a92475e318695ebaf4d3bb3f9cfc5079ad53；backend/app/migrations/v037_coupon_use_cycle.sql=83771d20e098d56d4195c9d1e21db02545df69f778fa5f1701ac18602023e7e7；backend/tests/service/order/test_core_loop_candidate_r67.py=f9c4e53bae9bf749834a0d5d91f696063150b58b1494031db80db02345585bb5；backend/tests/service/order/test_core_loop_candidate_r63.py=87dfa8d57e6ba4a5a6b302906155c0d0184783e7fdc388383cb46ba498035bc4；backend/tests/service/order/test_core_loop_candidate_r66.py=a6620cb6c8677e5f23a3ca6c0ca2d0f5782928920a2ac132724468088996835f；backend/tests/service/test_coupon_inventory.py=9835e18939d2fb06caf8bfe5cddbdae0f193757103f9aa241499cee3a9beab1f；ERRORS.md=2e7bc68a27e13ba988698c2004c741ba1765ad52bb4621dfa97516d70f7d623b；PROJECT-STATE.md=7cc2c74fe992b0e23c6672471a369724c4db264276ff80da315e90d0edde5dbe；LOGBOOK.md=92a615e7b150153336a0ba0d253cd4bcca4ad4d2a87b633b94baf5310dddb2b4
+- follow_up_guardrail: 本轮的核心产出是**把一个事实表的状态机从「单周期」升级为「多周期」时，唯一键、口径、排序与守卫必须一起改**，四者任一漏改都会留下一个比原缺陷更隐蔽的问题。其一，唯一键是根因而非表象：探针 A 证明只要把状态放回唯一键，缺陷原样复现，因此新增周期维度是唯一可行解——而周期维度不必发明新范式，同库的 `points_ledger`/`balance_ledger` 早就用 `UNIQUE(unique_id)` 把 `order_id` 放进键内，故同一订单的不同补偿周期天然不冲突；遇到「事实表第二次进入同一状态被库层拒绝」时，先去同库找既有的多周期实现，而不是直接造事件表。其二，**一次业务动作可能要写不止一行事实**：退款腿写 `BACK`（冲正事实）+ 新周期 `TAKE`（后果行）两行，返回值仍是 `BACK` 行。这提醒「冲正」类动作的完整性不由冲正行本身给出，必须显式补出「资产重新可用」这一后果，否则退款成功而权益作废。其三，**排序键有因果语义，周期必须压过时间戳**：外部 webhook/import 事件会让 `occurred_at` 乱序倒置，若仍按「时间最新即当前态」取当前态，跨周期事实会被旧周期的晚到事件压回去。其四，**守卫的承重性必须用探针证明，不能用「测试是绿的」代替**：探针 D 首次未转红，如实判为未被承重而不是当作胜利，补齐夹具后才承重。其五，**缺陷消失不等于守卫可以删**：r63 那条「退款后另一订单不得再用」的测试，其期望值本身是本缺陷的直接后果，本轮重写为「B 单合法可用，但不得为 B 单写 `BACK` 行」——把过期契约换成真正的不变量，而不是顺手删掉
+- failure_class: confirmed_p1_coupon_back_terminal_state_unique_key_contains_status
+- replayable: yes
+- storage_scope: repository
+- repository_origin: monorepo
+- related_logbook: 2026-09-26 - fix(miniapp): 全额退款退回的优惠券被永久作废，退款后无法再次使用
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成会员/身份链/订单/优惠券、券生命周期状态行与消费周期、本地文件 SQLite 连接、真实微信支付与退款通知入口、定向与相邻回归退出码和源码哈希；不保存访问令牌、openid、手机号全文、微信交易凭证或生产订单数据。变异探针只临时改写工作树中的唯一键与守卫条件并在同一轮内还原，校验残留计数为 0，不触碰 `backend/data/`、`backend/reports/` 与任何生产目录。
+- summary: `M-20260926-028` 确认为真实 P1 并修复。根因是库层结构性限制：`v024_coupon_module.sql` 的 `UNIQUE(coupon_id, status, mobile)` 把**状态**放进唯一键，使 `TAKE → CONSUME → BACK → CONSUME` 的第二个消费周期在数据库层不可表达；现有的「仅 `TAKE` 可消费」检查只让 `BACK` 表现为终态，并未提供任何回到 `TAKE` 的路径，而全仓唯一写 `TAKE` 的入口是后台发券、它生成新的 `coupon_id`，无法复活原券。于是每一次「用券支付后全额退款」都让客户在拿回全部现金的同时永久损失券面价值，且无任何自动或人工恢复路径。修复对齐到同库既有约定「唯一键 = 业务操作」：`v037_coupon_use_cycle.sql` 增 `cycle_no`、删旧索引、建 `idx_coupon_inventory_cycle (coupon_id, status, mobile, cycle_no)`，既有行统一落 cycle 0（旧唯一键本就限制每状态至多一行，迁移不产生冲突）；退款腿写两行——周期 c 的 `BACK`（冲正事实，仍作返回值）+ 周期 c+1 的 `TAKE`（重新建立可持有事实），`consume` 复制最新态周期；选此方案而非「让 `BACK` 直接可消费」，是为了让应用/预览券继续只认 `TAKE`，与小程序 `BACK→已退回`/`TAKE→可用` 映射一致，前端与 API 契约零改动。`get_latest_state`/`list_by_mobile`/`list_all` 把 `cycle_no DESC` 排在 `occurred_at DESC` 之前（周期是因果序，外部事件可令时间戳乱序倒置），`coupon/payment.py` 的 savepoint 冲突断言同步放宽为接受最新态 ∈ {`BACK`, `TAKE`}。同步修正三处把缺陷当契约的既有期望（`test_coupon_inventory.py` 的幂等断言改为按行数而非返回形状、r44 共享断言与 r66 补第 4 行、r63 那条重写为「B 单合法可用但不得为其写 `BACK`」）。四条变异探针全部承重并已还原，其中排序守卫的探针首次未转红并如实记为「未被承重」，补夹具后才诚实转红。ADR 0008 D1-B 的事件投影重写属未批准的 FP-2 工作包，本轮刻意未做。`M-20260926-030` 仍为 open
+
+## E-20260926-077：有赞权威侧券核销与小程序支付竞争，核销守卫缺第三语义致已到账收款被回滚成永远不落单；修复后收款落账并开对账案件，且补上退款腿归属守卫
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260926-miniapp-core-loop-candidate-review-r77
+- parent_run_id: 20260926-miniapp-core-loop-candidate-review-r76
+- generated_at: 2026-09-26
+- evidence_type: verification/miniapp-core-loop-confirmed-p1-external-coupon-consume-strands-payment
+- file: `repo:backend/app/service/coupon/inventory.py`；`repo:backend/app/service/coupon/payment.py`；`repo:backend/app/repository/coupon_reconcile_repo.py`；`repo:backend/app/migrations/v036_coupon_reconcile_case.sql`；`repo:backend/tests/service/order/test_core_loop_candidate_r68.py`；`repo:backend/scripts/check_project.py`；`repo:ERRORS.md`；`repo:PROJECT-STATE.md`；`repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r68.py -q --no-cov -p no:logging`（修复前 3 项全部失败且失败点同源：均在 `app/service/coupon/inventory.py:42` 抛 `ValueError: 优惠券已被其他订单核销`，与根因精确同点，退出码 1；修复后 3 passed，退出码 0）；**变异探针三轮全部如期转红**：放松支付腿外部分支（`if not _is_local_state(existing)` → `if False and not ...`）→ 三条同时转红；放松退款腿归属守卫（`and not _consumed_by_this_order(existing, order_no)` → `and False`）→ 第二条转红并如实出现 `source='order'`、`order_no` 为本单的 `BACK` 行，即该守卫阻止的「把有赞侧已消耗的券放回可用池」二次使用被真实复现；反转 `_is_local_state` 使外部被视为本地（`return ... in _LOCAL_SOURCES` → `return True`）→ r68 三条转红而 r63 两条与 `tests/service/test_coupon_inventory.py` 保持绿，证明该谓词真正区分外部与本地两支、不是一味放行。每轮还原后校验 `if False`/`and False` 残留计数为 0；**如实记录本轮无「未转红探针」**（三轮探针全部承重）；守卫不对称性核查：r63 两条本地跨单用例在修复前后均为绿，确认 `M-20260926-028` 与本轮同批相邻回归的 `test_coupon_inventory.py` 未被放宽；D1-0 直接写状态守卫曾如实报出 `append@_open_external_consume_case` 越界，按「矩阵新增写路径必须同步方法级 allowlist」补入 `D1_MATRIX_ALLOWED_WRITE_FUNCTIONS` 后 PASS；相邻回归 `backend/tests/service/order/` 全目录加 `test_coupon_inventory.py`、`test_coupon_payment.py`、`test_stored_value.py`、`test_points_payment.py`、`test_points_service.py`（273 项，272 项通过，唯一失败为 `test_core_loop_candidate_r67.py::test_refunded_coupon_can_be_reused_on_new_order`，即 `M-20260926-028` 故意保留的红）；`python -m ruff check`（All checks passed）与 `ruff format --check`（本轮改动文件全部已格式化）；`git diff --check`（退出码 0）；`python backend/scripts/check_project.py --skip-tests`（质量门禁通过，D1-0 PASS）；`python -B backend/scripts/check_project_development_register.py`（tasks=41）；`python -B backend/scripts/check_chinese_governance.py --summary`（files=16 / coverage=1.0 / failed=0）；`python -B backend/scripts/check_mistake_ledger.py`（entries=247）；`python -B backend/scripts/check_file_sizes.py` 仍仅被既有 `app/service/catalog/application.py` 职责评审缺口阻断，非本轮引入；`python -B backend/scripts/check_evidence_index.py` 仍 failed，但该门禁在本轮改动前即已失败（报错条目含本轮未触碰的 `payment_runtime.py`、`test_stored_value.py`、r34/r43/r47），属 `repo:` 前缀按语义绑定当前工作树的既有失配。本轮为代码与 Harness 记录变更，按测试节奏约束只跑定向与相邻回归，未跑全量测试
+- result: pass
+- sha256: backend/app/service/coupon/inventory.py=b7eec9b6c55e26677d2c3f560ac4eba3694deeff5221f5272cd3d9cfcc271c80；backend/app/service/coupon/payment.py=63f1d91cb754ffccc8493f228c329fdd2b86a02aceefa71c7d8b0ca6a0acc0c1；backend/app/repository/coupon_reconcile_repo.py=5d91c1bf09275a515aa782351c832fa31b48cebf65795acef2170cb9d767571e；backend/app/migrations/v036_coupon_reconcile_case.sql=ccaef18e92e5cb373c1329733eb0c7837d7305a33bdba61eeaade1988b34d131；backend/tests/service/order/test_core_loop_candidate_r68.py=83c77690d6e236ac8e0ce4ef6e175fd4840857887adaa9c7c4bc094db24e8c57；backend/scripts/check_project.py=ab931f5854e75640505fa0f5315806b396e8e877020901f7b79ffa288ee82b24；ERRORS.md=bd19b2333fffb53ccd3af9534c6d1a8fa64799f96d94fd0d23e0153fb23ff014；PROJECT-STATE.md=b5dd502ed51ff9e79764db584935b9cba157ab433ed6de908ff7e1e463b867e3；LOGBOOK.md=5e2b2dabe0ccd52f7c6b6c8c65daf1ddf8ff3112e3e2f82f184f719fb9164b19
+- follow_up_guardrail: 本轮的核心产出是**一条位于支付事务内、失败会回滚已确认收款事实的守卫补上了第三语义**，以及**修复自己打通的新可达路径被同步补上守卫**。其一，只区分「同单/跨单」的核销守卫迟早会把外部事实当成本地可挽回的错误；凡是这类守卫都必须能表达「资产归属在第三方、我方无权抢占，但也不得连坐已到账收款」。其二，把收款放行会新造出「订单带 `couponId` 落为已支付但本地从未核销」这个此前不可达的状态，**放宽一处守卫就必须同时收紧它的下游**：本案若只改支付腿而不补 `refund_once` 归属守卫，全额退款会写出一条本单 `source=order` 的 `BACK` 行，把外部已消耗的券放回可用池——修复一个资金搁浅换来一个资产双花。已用变异探针把这条二次使用真实复现出来作为证据。其三，**状态行归属比状态值更重要**：同一张券的 `CONSUME` 可能是本地裁决也可能是外部观察，两者的正确后果完全相反（拒付 vs 放行 + 建案），因此判据必须落在 `source` 归属上而不是状态值或订单号上；本轮用反转 `_is_local_state` 的探针证明该谓词真正区分两支。其四，**治理文件本身也会被写错且必须同样对待**：本轮 `ERRORS.md` 的 `status` 枚举只允许 `open`/`guarded`/`verified`（误写 `fixed` 被 `check_mistake_ledger.py` 拦下），且一次无上下文的补丁把状态误改到了相邻小节 `M-20260926-030`——两者都靠逐节核对发现并已修复，与生产代码写错同级处理
+- failure_class: confirmed_p1_payment_rollback_on_external_coupon_consume_conflict
+- replayable: yes
+- storage_scope: repository
+- repository_origin: monorepo
+- related_logbook: 2026-09-26 - fix(miniapp): 有赞权威侧券核销与小程序支付竞争把已到账收款回滚成永远不落单
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成会员/身份链/储值账户/会话/订单/优惠券与券对账案件、本地文件 SQLite 连接、真实有赞会员域 webhook 入口、真实微信支付与退款通知入口、inbox 认领与重试终态、券生命周期状态行、对账案件行、变异探针的改写与还原范围、定向与相邻回归退出码和源码哈希；不保存访问令牌、openid、手机号全文、微信交易凭证或生产订单数据。变异探针只临时改写工作树中的守卫条件并在同一轮内还原，校验残留计数为 0，不触碰 `backend/data/`、`backend/reports/` 与任何生产目录。
+- summary: `M-20260926-029` 确认为真实 P1 并修复。根因是 `consume_once` 只区分「同单幂等」与「跨单拒绝」两支，缺「资产归属在第三方、我方无权抢占」这一支；该调用位于 `mark_paid` 内的支付事务最后一步，抛错即回滚全部已到账事实。`COUPON_AUTHORITY` 默认 `youzan`，有赞侧 `COUPON_CUSTOMER_PROMOTION`(status=CONSUME) webhook 可在「小程序已应用券快照」到「微信支付成功通知到达」窗口内到达，此时本地最新态变成 `source=webhook` 且 `order_no` 为有赞侧订单号，于是 9,000 分已真实到账的收款连同交易认领一起被回滚，订单停留 `partial`、无 `payment_transactions` 行、inbox `failed`，按 `MAX_INBOX_ATTEMPTS=5` 重试耗尽后进入 `dead_letter` 且不再自动认领，而 `reconcile_pay_from_query` 在 `backend/app/` 内无生产调用方、`PAYMENT_TIMEOUT_MINUTES=30` 远晚于 75 秒重试窗口——已到账资金既不能自动落账也不能自动恢复。修复按「冲突的 `CONSUME` 是否归属本地」拆成三支：新增 `coupon_reconcile_case` 表（`v036_coupon_reconcile_case.sql`）与 `CouponReconcileRepo`（`case_key` 幂等追加，支付腿与退款腿共用一条案件），外部核销时不核销、不抛错、开案件如实记录被争议的 `deducted_fen`，让已到账收款落账，平台按案件吸收或追偿这笔有界可对账的抵扣金额。本地跨单核销仍按原样抛错（r63 已定稿的防双花契约，平台是权威方可以拒付）。本轮修复自己打通了一条新可达路径并同步补守卫：订单带 `couponId` 落为已支付但本地从未核销时，全额退款若沿用旧逻辑会在外部 `CONSUME` 之上写一条本单 `source=order` 的 `BACK` 行、把有赞侧已消耗的券放回可用池形成二次使用，故 `refund_once` 补归属守卫（只有本单本地核销过的 `CONSUME` 才允许写 `BACK`）。同时修正原记录的一处不准确归因：「外部观察不得改投影」属 `coupon_mode=local` 切换后的 FP-2 范围（ADR 0008 状态 pending、最早窗口 2027-06 且须负责人批准），当前 `youzan` 体制下有赞本就是券权威方、webhook 参与判定是设计如此，真缺陷是守卫缺第三语义。`M-20260926-028`（券 `BACK` 成终态）仍是唯一故意保留的红
+
+## E-20260926-076：主体删除与导出对真实小程序用户恒不命中身份链致客户主档层全量留存，且删除顺序先删父表撞外键；并重写 r73 一处把缺陷当契约的守卫
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260926-miniapp-core-loop-candidate-review-r76
+- parent_run_id: 20260926-miniapp-core-loop-candidate-review-r75
+- generated_at: 2026-09-26
+- evidence_type: verification/miniapp-core-loop-confirmed-p1-identity-mismatch-and-fk-ordering
+- file: `repo:backend/app/repository/privacy_repo.py`；`repo:backend/app/utils.py`；`repo:backend/app/service/order/payment_state.py`；`repo:backend/tests/service/order/test_core_loop_candidate_r76.py`；`repo:backend/tests/service/order/test_core_loop_candidate_r73.py`；`repo:backend/scripts/check_file_sizes.py`；`repo:ERRORS.md`；`repo:PROJECT-STATE.md`；`repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r76.py -q --no-cov -p no:logging`（修复前 3 项全部失败且失败原因各异：口径项 `assert (1, 1, 0) == (0, 0, 0)` 并有「订单确已删除」防空洞断言兜底、导出项 `assert []`、顺序项在 `privacy_repo.py:240` 抛 `sqlite3.IntegrityError: FOREIGN KEY constraint failed`；修复后 3 passed，连续 5 轮退出码 `0,0,0,0,0`）；变异探针四轮全部如期转红（撤销 `_customer_ids` 归一 → 口径项与导出项同时转红；把身份链接删除提到 `_delete_customer_records` 最前 → 顺序项转红；让 `subject_identity_candidates` 只返回原值 → 口径项与导出项同时转红；把 `_settle_holding_stored_value` 挪到 `_privacy_repo.delete_subject` 之后 → r73 重写后的守卫与 r73 原孤儿守卫同时转红），每轮还原后校验 sha256 完全一致；**如实记录一个未转红探针**：摘掉按 `identity_link_id` 清 `customer_source_snapshots` / `customer_merge_reviews` 的两步后测试仍绿，核对 `CustomerImportService._create_snapshot` 的两个调用点确认生产始终同时写入 `customer_id` 与 `identity_link_id` 且指向同一客户，故该分支属纵深防御而非已证活守卫，不计为守卫承重；生产写入点核查（`build_miniapp_openid_identity` 与 `attach_identity` 全仓无生产调用方，身份链接实际只经 `importer_support.py` 写入 `phone` 与 `youzan_customer` 两类，确认候选的可达性来自口径而非构造）；外键与自核查（迁移后真实库 `PRAGMA foreign_key_list` 语义遍历确认指向 `customer_master` 的仅 `customer_identity_links.customer_id`、`customer_source_snapshots.customer_id`、`customer_merge_reviews.source/target_customer_id` 与 `customer_master.merge_into_customer_id` 自引用，且后者全仓无写入点；`member_balance` 与 `coupon_*` 的 `customer_id` 为无外键普通 TEXT，不受影响）；相邻回归 `backend/tests/service/order/` 全目录加 `test_stored_value.py`、`test_coupon_inventory.py`、`test_coupon_payment.py`、`test_points_payment.py`、`test_points_service.py`、`tests/repository/test_privacy_lifecycle.py`（202 项，200 项通过，2 项失败即 r67/r68 故意保留的红色复现测试）；`python -m ruff check`（All checks passed）与 `ruff format --check`（本轮改动文件全部已格式化）；`git diff --check`（退出码 0）；`python backend/scripts/check_project.py --skip-tests`（质量门禁通过）；`python -B backend/scripts/check_project_development_register.py`（tasks=41）；`python -B backend/scripts/check_chinese_governance.py --summary`（files=16 / coverage=1.0 / failed=0）；`python -B backend/scripts/check_mistake_ledger.py`（entries=247）；`python -B backend/scripts/check_text_encoding.py`（checked 108 files，ok）；`python -B backend/scripts/check_file_sizes.py`（仍仅被既有 `app/service/catalog/application.py` 职责评审缺口阻断，非本轮引入，`privacy_repo.py` 职责评审已补 r76 说明）；`python -B backend/scripts/check_evidence_index.py` 仍 failed，但该门禁在本轮改动前即已失败（其报错条目含本轮未触碰的 `payment_runtime.py`、`test_stored_value.py`、r34/r43/r47 等文件），属 `repo:` 前缀按语义绑定当前工作树的既有 sha256 失配，非本轮引入；本轮为代码与 Harness 记录变更，按测试节奏约束只跑定向与相邻回归，未跑全量测试。
+- result: pass
+- sha256: backend/app/repository/privacy_repo.py=1c0b2b3df30c72f921499c775ec51a8a2505a5d66acf46244494c77a4a9956e5；backend/app/utils.py=68d41720736d8f8f78051fd6370490aac3d031d2047ddc5aabb66f2bb650cb4a；backend/app/service/order/payment_state.py=4a5c487e9eda60e1337a8c1d692c2f545bce020d82118b7205f0d33b23e52582；backend/tests/service/order/test_core_loop_candidate_r76.py=356a45792b7e68acc5373cb56d8ec6e411a92141a5b2a51f5c0db229b2706366；backend/tests/service/order/test_core_loop_candidate_r73.py=fcdfd3491788d7e4ec282890c5b2f34d16cfb7e5e6904e8469d9435afeb133fb；backend/scripts/check_file_sizes.py=bd5adefccf699c1d66f44bc3b41883813be0f09b80d0b8ae3356e8b225b6cc1d；ERRORS.md=6089f976258c4dd6ad89f26c5970394f6609829dcb674c9acd66ede2445e5092；PROJECT-STATE.md=89b041e7250f1af0c9f18126ba8ae47495bc30cd996347cb3ff0450cb4bfdf25；LOGBOOK.md=1a3a7a6813c44d805d3b8af8e4d39193d1e362da0979bb9d4e2d27ca69ef5e57
+- follow_up_guardrail: 本轮的核心产出是**两处必须同批修复的耦合缺陷**，以及**一条把缺陷当契约的守卫**。其一，身份标识的写入侧存裸 openid（`build_miniapp_openid_identity`）、读取侧拿 `wx_{openid}`（`StorefrontAuthService.login`），而 `_customer_ids` 与 `_delete_customer_records` 只按原值匹配，使 `wx_` 前缀对每个真实小程序用户恒不命中；其二，删除顺序先删 `customer_identity_links`、后删引用它的两张子表，该缺陷当前被前者掩盖——**只修前者会把「静默漏删」升级成「永久阻断删除」，比原缺陷更严重**，因此两者同批修复同批验证。其三，r73 的 `test_stored_value_refund_account_survives_subject_erasure` 把「客户主档与身份链在删除后仍完好」写成期望值，其 docstring 的排除理由正是「`_customer_ids` 恒不命中」这个缺陷本身：守卫把缺陷固化成了契约，比没有守卫更危险。已改写为 `test_stored_value_settles_before_customer_layer_erasure`，断言真正保护退款的不变量（结清先于销毁、且同事务），并用专项探针确认其承重。至此 r74、r75、r73 连续三轮各发现一处「断言通过但什么都没证明」的用例，已归为同一族教训沉淀进 `next_time_signal`。
+- failure_class: confirmed_p1_identity_mismatch_silent_over_retention
+- replayable: yes
+- storage_scope: repository
+- repository_origin: monorepo
+- related_logbook: 2026-09-26 - fix(miniapp): 主体删除与导出漏删客户主档层，修复身份标识口径不一致与删除撞外键
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成会员/身份链/来源快照/会话/订单、三个本地文件 SQLite 连接、真实主体导出与真实主体删除、外键与自引用外键语义核查结果、变异探针的改写与还原范围、定向与相邻回归退出码和源码哈希；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。变异探针只临时改写工作区生产文件并已原样还原，还原后经 sha256 校验确认无残留；本轮临时产物（`backend/_tmp_r76_*.py`）在收口时清理。因 `repo:` 前缀按语义绑定当前工作树，本条目以最新哈希承接 r73/r74 条目记录的同批文件，属前缀语义的必然结果而非证据缺失。
+- summary: 两个候选均确认为真实缺陷且必须同批修复。候选一（真实 P1）：`_customer_ids` 与 `_delete_customer_records` 第 1 步只按 `identity_value = user_id` 原值匹配身份链，而写入侧存裸 openid、读取侧拿 `wx_{openid}`，`wx_` 前缀使匹配对每个真实小程序用户恒不命中，`customer_ids` 恒空，`customer_master` / `customer_identity_links` / `customer_source_snapshots` 三张表整层留存，接口却照常返回 `status=revoked`；`export_subject` 复用同一函数，故导出恒缺客户主档段。候选二（真实缺陷，被候选一掩盖）：`_delete_customer_records` 先删 `customer_identity_links`、后删引用它的 `customer_source_snapshots` 与 `customer_merge_reviews`（均 `REFERENCES customer_identity_links(id)`、`PRAGMA foreign_keys = ON`、`on_delete=NO ACTION`），第 1 步一旦真实命中即抛 `FOREIGN KEY constraint failed` 并回滚整笔删除，错误精确落在 `privacy_repo.py:240`。修复：主体标识归一收成全仓唯一纯函数 `normalize_miniapp_openid` / `subject_identity_candidates` 落 `app/utils.py`（`extract_openid` 改为委托，避免仓储反向依赖 service 层），删除顺序改为先按 `identity_link_id` 清子表再删链接。资金侧无损：储值账本按手机号记账、对 orders 无外键，且结清在删除前于同一事务内完成。真实微信支付/退款、真实有赞券与积分、真实闪送、真机、生产 API、生产验收和正式上线仍未验证，正式上线继续为 No-Go。
+
+## E-20260926-075：删订单漏清硬外键子表致已支付用户永久无法删除主体、保留期作业永久失败，并修正 r74 一处空转用例
+
+- trace_id: 20260925-miniapp-core-loop-candidate-review
+- run_id: 20260926-miniapp-core-loop-candidate-review-r75
+- parent_run_id: 20260926-miniapp-core-loop-candidate-review-r74
+- generated_at: 2026-09-26
+- evidence_type: verification/miniapp-core-loop-confirmed-p1-and-vacuous-test-correction
+- file: `repo:backend/app/repository/privacy_repo.py`; `repo:backend/tests/service/order/test_core_loop_candidate_r75.py`; `repo:backend/tests/service/order/test_core_loop_candidate_r74.py`; `repo:backend/scripts/check_file_sizes.py`; `repo:ERRORS.md`; `repo:PROJECT-STATE.md`; `repo:LOGBOOK.md`
+- commit_sha: 2cb4a2fd9074e02b429ee4924bfbcf3ef9599364
+- command: `python -B -m pytest backend/tests/service/order/test_core_loop_candidate_r75.py -q --no-cov -p no:logging`（修复前 2 failed / 2 passed，均为 `sqlite3.IntegrityError: FOREIGN KEY constraint failed`，修复后 4 passed，连续 5 轮退出码 `0,0,0,0,0`）；变异探针七轮（临时撤销 `delete_subject` 的 `payment_transactions` 清理、撤销其 `delivery_orders` 清理、去掉用户作用域改为无条件删除、把两张子表清理挪到 `DELETE FROM orders` 之后、撤销 `_purge_orders` 的 `payment_transactions` 子表清理、撤销其 `delivery_orders` 子表清理、把保留期子表清理的截止与终态作用域改为 `SELECT id FROM orders`，每轮确认对应测试转红后原样还原，还原后逐个校验字节完全一致，末轮再次确认基线全绿）；专项空转核验一轮（仅撤销 `payment_transactions` 清理后单跑修正后的 r74 用例，确认其**单独**转红）；外键枚举（对迁移后真实库逐表执行 `PRAGMA foreign_key_list`，得全库 17 条外键，指向 `orders` 的恰为 `delivery_orders.order_id` 与 `payment_transactions.order_id` 两条且均 `on_delete=NO ACTION`）；SQL 拼接门禁自检（全仓 f-string SQL 命中 0 处，修复未引入）；相邻回归 `backend/tests/service/order/` 全目录加 `test_stored_value.py`、`test_coupon_inventory.py`、`test_coupon_payment.py`、`test_points_payment.py`、`test_points_service.py`、`tests/repository/test_privacy_lifecycle.py`（271 项，269 项通过，2 项失败即 r67/r68 故意保留的红色复现测试）；`python -m ruff check` 与 `python -m ruff format --check`（All checks passed / 3 files already formatted）；`git diff --check`（退出码 0）；`python -B backend/scripts/check_mistake_ledger.py`（entries=246）；`python -B backend/scripts/check_project_development_register.py`（tasks=41）；`python -B backend/scripts/check_chinese_governance.py --summary`（files=16 / coverage=1.0 / failed=0）；`python -B backend/scripts/check_file_sizes.py`（仍仅被既有 `app/service/catalog/application.py` 352 行/线 320 阻断）
+- result: pass
+- sha256: backend/app/repository/privacy_repo.py=1341a500257e7fce60997433f3ca4ac22cf5d31153c4c1551b922670458a1122；backend/tests/service/order/test_core_loop_candidate_r75.py=1b7f36089c327eb1ac231017567b95e44e46ba77ecda9a74a7a194039c6a705d；backend/tests/service/order/test_core_loop_candidate_r74.py=3d3d6398b426a1d3dabfdb8640862a12a7c51dca6e5cb0c366ffa615ab58bbc7；backend/scripts/check_file_sizes.py=f5ffe1faa83164409330fffdce32b23e7e89749202c9aff742c5d9204d9e554a
+- follow_up_guardrail: 本轮最重要的产出不是那个 P1，而是**发现自己上一轮的护栏是空转的**。r74 的 `test_settled_wechat_prepay_does_not_block_erasure` 声称验证「已支付订单不阻塞主体删除」，实现却是直接 `UPDATE orders SET payment=...` 造出 paid 态——而真实支付必然写入 `payment_transactions`，该 UPDATE 绕过唯一会产生这张外键子表行的入口。于是这条用例「通过」却完全没有覆盖真实用户会走的路径，r75 的 P1 正好从它放过的地方穿过去。这条教训与 r73/r74 的「探针不转红有两种成因」同源但更进一步：**夹具与生产可达状态不一致时，绿色断言的最危险形态不是失败，而是通过**。可操作的判别方式有两条：一是凡断言依赖某张关联表有行，夹具必须由真实业务动作产生那些行，而不是手工 UPDATE 造终态；二是写完护栏后专门做一次「撤销底层守卫、该用例是否单独转红」的单用例核验——r75 的专项探针正是这么做的，确认修正后的 r74 用例**单独**转红才算数。另一条方法论固化是**外键枚举方式**：判断「删父表会漏哪些子表」不要靠读表结构文件，而要对迁移后的真实库逐表跑 `PRAGMA foreign_key_list`，本轮据此拿到确切 17 条外键清单并确认指向 `orders` 的恰为两张——凭 grep 源码极易漏掉 `v035` 这种后加迁移。此外记录一个顺序依赖的放大效应：保留期作业把 orders 排在五张表的最后一位，这个看似无关的顺序把故障从「一张表删不掉」放大成「整批清理全部回滚、连消息与画像都删不下来」，这类依赖只有刻意构造多张待清表才会在测试里暴露。
+- failure_class: confirmed_p1_data_loss
+- replayable: yes
+- storage_scope: repository
+- repository_origin: monorepo
+- related_logbook: 2026-09-26 - fix(miniapp): 删订单漏清硬外键子表，使已支付用户永久无法删除主体、保留期作业永久失败
+- contains_sensitive_data: no
+- retention_note: 仅记录本地合成订单/会员/会话、三个本地文件 SQLite 连接、真实微信预下单加锁与真实支付成功通知、真实主体删除与真实保留期清理、外键枚举结果、变异探针的改写与还原范围、定向回归退出码和源码哈希；不保存访问令牌、openid、手机号全文、客户地址、微信交易凭证或生产订单数据。变异探针只临时改写工作区一处生产文件并已原样还原，还原后经字节比对确认无残留；本轮临时产物（`backend/_tmp_r75_probe.py`、`backend/_tmp_r75_fk_probe.py`、`backend/_tmp_r75_sqlcheck.py`、`backend/_tmp_r75_state.py`、本证据片段临时文件、回归输出临时文件）已随用随清。
+- summary: 候选一确认为真实 P1：`payment_transactions.order_id`（`schema.py:123`）与 `delivery_orders.order_id`（`v035_delivery_quotes.sql:20`）都声明 `REFERENCES orders(id)`，建库时 `PRAGMA foreign_keys = ON`（`schema.py:572`）且两张表均 `on_delete=NO ACTION`，数据库层强制 orders 不能在子表存活时被删；而 `PrivacyRepo.delete_subject` 的清理清单里有无外键的 `order_events` 却独独漏掉这两张硬外键表。修复前走真实预支付 + 真实支付通知把订单付成功（先断言 `payment_transactions` 确有该交易号）后执行主体删除，稳定失败于 `privacy_repo.py:202` 的 `FOREIGN KEY constraint failed` 并整体回滚，所有真实付过款的用户永久无法行使删除权，下过闪送单的用户亦然。第二条路径 `purge_expired` 同病且破坏面更大：五张表在同一事务内按 messages → profiles → retrieval_logs → address_audit → orders 顺序执行，orders 排在最后，撞外键会把前四张表已删的行全部回滚，使整个合规作业永久失败且一条数据都删不下来。两条路径同形修复为「先清两张子表再删父表」，删除均按用户/按截止作用域限定。候选二为自证并确认成立：r74 那条护栏属空转用例，已改为走真实支付入口并经专项探针确认单独转红。根因归纳为删除订单类缺陷家族的第三个实例——r73 是软引用留孤儿（储值账本无外键）、r74 是外部不可逆动作（在途预支付不可撤销）、r75 是硬外键直接拒绝删除，三者共同要求「删父记录前把以它为父的表列全」。
+- residual_risks: 修复采用同事务先清子表再删父表，失败即整体回滚，不会出现「子表清了但订单还在」的中间态。子表随订单一并删除的依据是二者都以订单为唯一定位依据；资金侧无损——删除后不存在可被重复认领的订单，重复微信通知会按「订单不存在」走 `dead_letter`，不会凭空增发储值或积分。保留期路径的 `done`/`cancelled` + `updated_at < cutoff` 口径沿用原实现，未改变既有清理范围语义。变异探针只覆盖本轮夹具构造出的单一路径，未穷举其它入口；夹具使用本地文件 SQLite、合成订单/会员与本地假微信预下单/通知，不等同于生产数据库、真实微信商户或生产回调。r67（`M-20260926-028`）与 r68（`M-20260926-029`）两个红色复现测试仍为 open，本轮未触及。证据索引中 `E-20260926-073`/`074` 的 `repo:` 引用因本轮继续改动同两个生产文件而失配，属该前缀绑定当前工作树的必然结果，本条目以最新哈希承接。文件体量门禁仍被既有 `app/service/catalog/application.py` 职责评审缺口阻断。真实微信支付/退款、真实有赞券与积分、真实闪送、真机、生产 API、生产验收和正式上线仍未验证，正式上线继续为 No-Go。

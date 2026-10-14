@@ -32,6 +32,8 @@ def create_storefront_delivery_router(
         payload: dict[str, Any],
         x_miniapp_user_id: str | None = Header(default=None, alias="x-miniapp-user-id"),
     ) -> dict[str, Any]:
+        from app.service.customer.address_support import validate_address
+
         user_id = require_storefront_user_id(x_miniapp_user_id)
         try:
             fulfillment_method = FulfillmentMethod(
@@ -65,6 +67,15 @@ def create_storefront_delivery_router(
         ]
         if missing:
             raise HTTPException(status_code=400, detail="配送报价信息不完整")
+
+        try:
+            validate_address(
+                str(payload["receiverName"]),
+                str(payload["receiverPhone"]),
+                str(payload["receiverAddress"]),
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
         try:
             items = normalize_delivery_quote_items(

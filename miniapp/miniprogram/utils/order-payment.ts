@@ -34,6 +34,9 @@ function requestWechatPayment(params: WechatPaymentParams): Promise<void> {
 export async function executePreparedPayment(
   payment: PreparedPayment
 ): Promise<OrderSummary> {
+  if (payment.paymentStatus === "paid") {
+    return getOrder(payment.orderId);
+  }
   if (payment.mode === "wechat") {
     if (!isWechatPaymentParams(payment.paymentParams)) {
       throw new Error("微信支付参数不完整");

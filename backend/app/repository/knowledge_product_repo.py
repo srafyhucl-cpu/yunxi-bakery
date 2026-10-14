@@ -26,15 +26,21 @@ class KnowledgeProductRepo(BaseRepository):
         item_no_filter: str = "",
         category_search: str = "",
     ) -> tuple[list[str], list] | None:
-        """构建商品筛选 WHERE 子句与参数列表；每个字段显式加上 kb. 前缀防止联合查询中字段歧义。"""
+        """构建商品筛选 WHERE 子句与参数列表；知识库字段加 kb. 前缀、商品权威字段加 yp. 前缀防止联合查询中字段歧义。
+
+        r80：`search` 子句会引用 `yp.title` / `yp.tags` / `yp.item_no`，因此**任何使用本构造器的
+        查询都必须自己 JOIN `youzan_products yp`**，否则 SQLite 在准备语句时报
+        `no such column: yp.title`。占位符与参数个数必须逐项对齐（`search` 子句 4 个占位符
+        对应 4 个参数），少一个会在执行期报 `Incorrect number of bindings supplied`。
+        """
         clauses: list[str] = ["kb.category = 'product'"]
         params: list = []
         if search:
             keyword = f"%{search}%"
             clauses.append(
-                "(kb.title LIKE ? OR kb.content LIKE ? OR kb.keywords LIKE ?)"
+                "(kb.title LIKE ? OR yp.title LIKE ? OR yp.tags LIKE ? OR yp.item_no LIKE ?)"
             )
-            params.extend([keyword, keyword, keyword])
+            params.extend([keyword, keyword, keyword, keyword])
         if category_search:
             category_like = f"%{category_search}%"
             clauses.append(
@@ -207,7 +213,9 @@ class KnowledgeProductRepo(BaseRepository):
         clauses, params = result
         where = " AND ".join(clauses)
         rows = await self._db.execute_fetchall(
-            "SELECT COUNT(*) AS c FROM knowledge_base kb WHERE " + where,
+            "SELECT COUNT(*) AS c FROM knowledge_base kb "
+            "LEFT JOIN youzan_products yp ON kb.youzan_item_id = CAST(yp.item_id AS TEXT) "
+            "WHERE " + where,
             tuple(params),
         )
         return int(rows[0]["c"]) if rows else 0

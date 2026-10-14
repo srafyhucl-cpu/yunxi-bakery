@@ -10,14 +10,25 @@ from app.repository.order_event_repo import OrderEventRepo
 from app.repository.order_repo import OrderRepo
 from app.repository.points_ledger_repo import PointsLedgerRepo
 from app.repository.session_repo import SessionRepo
-from app.repository.youzan_inventory_repo import YouzanInventoryRepo
-from app.repository.youzan_repo import YouzanProductRepo
 from app.service.order import OrderApplicationService
 from app.service.points import PointsService
+from tests.helpers.legacy_order_catalog import (
+    LegacyOrderInventoryRepo,
+    LegacyOrderProductRepo,
+)
 
 MOBILE = "13800000002"
 OPENID = "openid_m3_001"
 USER_ID = f"wx_{OPENID}"
+
+
+class _PointsTestProductRepo(LegacyOrderProductRepo):
+    """为积分服务测试提供明确的合成目录价格。"""
+
+    legacy_prices = {
+        **LegacyOrderProductRepo.legacy_prices,
+        "p_m3_001": 10_000,
+    }
 
 
 async def _seed_member(db: aiosqlite.Connection, *, points: int = 0) -> None:
@@ -59,8 +70,8 @@ def order_service(db: aiosqlite.Connection) -> OrderApplicationService:
         order_repo=OrderRepo(db),
         event_repo=OrderEventRepo(db),
         session_repo=SessionRepo(db),
-        product_repo=YouzanProductRepo(db),
-        inventory_repo=YouzanInventoryRepo(db),
+        product_repo=_PointsTestProductRepo(db),
+        inventory_repo=LegacyOrderInventoryRepo(db),
         config_repo=ConfigRepo(db),
     )
 

@@ -39,11 +39,13 @@ export const ORDER_PROGRESS_STEPS = [
 
 export const PAYMENT_STATUS_LABELS: Record<string, string> = {
   unpaid: "待支付",
+  partial: "待支付",
   paid: "已支付",
   expired: "支付超时",
 };
 
 export const PAYABLE_PAYMENT_STATUS = "unpaid";
+export const PAYABLE_PAYMENT_STATUSES = [PAYABLE_PAYMENT_STATUS, "partial"];
 
 export type OrderListFilterKey = "all" | "unpaid" | "processing" | "done" | "closed";
 
@@ -78,7 +80,7 @@ export function canUserCancelOrder(order: OrderActionInput): boolean {
 }
 
 export function canPayOrder(order: OrderActionInput): boolean {
-  return normalizedPaymentStatus(order) === PAYABLE_PAYMENT_STATUS && !isClosedOrder(order);
+  return PAYABLE_PAYMENT_STATUSES.includes(normalizedPaymentStatus(order)) && !isClosedOrder(order);
 }
 
 export const DEFAULT_ORDER_LIST_FILTER: OrderListFilterKey = "all";
@@ -94,7 +96,7 @@ export const ORDER_LIST_FILTERS: OrderListFilterConfig[] = [
     key: "unpaid",
     label: "待支付",
     emptyText: "暂无待支付订单",
-    match: (order) => normalizedPaymentStatus(order) === PAYABLE_PAYMENT_STATUS && !isClosedOrder(order),
+    match: (order) => PAYABLE_PAYMENT_STATUSES.includes(normalizedPaymentStatus(order)) && !isClosedOrder(order),
   },
   {
     key: "processing",

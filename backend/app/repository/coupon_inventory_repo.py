@@ -13,7 +13,8 @@ class CouponInventoryRepo(BaseRepository):
     _COLS = (
         "id, coupon_id, coupon_group_id, customer_id, mobile, status, order_no, "
         "title, value_fen, detail_json, source, occurred_at, created_at, "
-        "template_id, valid_from, valid_until, deducted_fen, consumed_at, refunded_at"
+        "template_id, valid_from, valid_until, deducted_fen, consumed_at, refunded_at, "
+        "cycle_no"
     )
 
     def __init__(self, db: DatabaseHandle | aiosqlite.Connection | None = None) -> None:
@@ -48,8 +49,8 @@ class CouponInventoryRepo(BaseRepository):
             "INSERT INTO coupon_inventory (coupon_id, coupon_group_id, customer_id, "
             "mobile, status, order_no, title, value_fen, detail_json, source, "
             "occurred_at, created_at, template_id, valid_from, valid_until, "
-            "deducted_fen, consumed_at, refunded_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "deducted_fen, consumed_at, refunded_at, cycle_no) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 entry.coupon_id,
                 entry.coupon_group_id,
@@ -69,6 +70,7 @@ class CouponInventoryRepo(BaseRepository):
                 entry.deducted_fen,
                 entry.consumed_at,
                 entry.refunded_at,
+                max(0, int(entry.cycle_no or 0)),
             ),
         )
 
@@ -90,7 +92,7 @@ class CouponInventoryRepo(BaseRepository):
             "ROW_NUMBER() OVER (PARTITION BY coupon_id "
             "ORDER BY "
             + rank
-            + " DESC, occurred_at DESC, created_at DESC, id DESC) AS rn "
+            + " DESC, cycle_no DESC, occurred_at DESC, created_at DESC, id DESC) AS rn "
             "FROM coupon_inventory WHERE mobile = ?" + source_filter + " "
             ") WHERE rn = 1 ORDER BY occurred_at DESC, id DESC LIMIT ?",
             (mobile, limit),
@@ -99,7 +101,12 @@ class CouponInventoryRepo(BaseRepository):
     async def get_latest_state(
         self, coupon_id: str, mobile: str, *, authority: str = "youzan"
     ) -> dict | None:
-        """读取券最新状态行（来源权重 + 时间）。"""
+        """读取券最新状态行（来源权重 + 消费周期 + 时间）。
+
+        `cycle_no` 必须排在 `occurred_at` 之前：周期是业务事实的因果序，跨周期的
+        事实即使 `occurred_at` 因外部事件乱序而倒置，也应以更高周期为准；时间戳
+        只承担同源展示序，不承担因果语义。
+        """
         source_filter = (
             "" if authority == "youzan" else " AND source IN ('order', 'local')"
         )
@@ -109,7 +116,8 @@ class CouponInventoryRepo(BaseRepository):
             "FROM coupon_inventory WHERE coupon_id = ? AND mobile = ?"
             + source_filter
             + " "
-            "ORDER BY src_rank DESC, occurred_at DESC, created_at DESC, id DESC LIMIT 1",
+            "ORDER BY src_rank DESC, cycle_no DESC, occurred_at DESC, "
+            "created_at DESC, id DESC LIMIT 1",
             (coupon_id, mobile),
         )
         return rows[0] if rows else None
@@ -133,9 +141,11 @@ class CouponInventoryRepo(BaseRepository):
         latest = await self.get_latest_state(coupon_id, mobile, authority=authority)
         if latest is None or latest["status"] != CouponStatus.TAKE:
             return None
-        valid_until = str(latest.get("valid_until", "") or "")
-        if valid_until and consumed_at[:10] > valid_until[:10]:
-            return None
+        # 不在此处复查有效期：券进入订单支付快照的唯一入口已按模板校验过
+        # 可用性（含有效期），且抵扣金额在应用时即锁定。用户跨过有效期后
+        # 完成支付时，微信资金已到账，此时返回 None 会让核销守卫把整笔支付
+        # 回滚成未支付，形成「已付款但永远不落单」且无法自动收敛的资金搁浅。
+        # 已锁定快照按应用时的约定兑现，券记为已消耗。
         entry = CouponInventoryEntry(
             coupon_id=coupon_id,
             status=CouponStatus.CONSUME,
@@ -150,9 +160,10 @@ class CouponInventoryRepo(BaseRepository):
             occurred_at=occurred_at,
             template_id=str(latest.get("template_id", "")),
             valid_from=str(latest.get("valid_from", "")),
-            valid_until=valid_until,
+            valid_until=str(latest.get("valid_until", "")),
             deducted_fen=max(0, int(deducted_fen or 0)),
             consumed_at=consumed_at,
+            cycle_no=max(0, int(latest.get("cycle_no", 0) or 0)),
         )
         await self.insert(entry)
         return entry
@@ -167,10 +178,22 @@ class CouponInventoryRepo(BaseRepository):
         occurred_at: str,
         authority: str = "youzan",
     ) -> dict | None:
-        """退回：基于最新 CONSUME 行插入 order 来源 BACK 行。"""
+        """退回：基于最新 CONSUME 行插入 order 来源 BACK 冲正行，并在新周期补写 TAKE。
+
+        退款把整笔权益（现金 + 券）退回客户，券必须能再次使用；而 `BACK` 之后
+        全仓没有任何回到 `TAKE` 的迁移路径（唯一写 `TAKE` 的入口是后台发券，
+        它生成新的 `coupon_id`，无法复活原券），因此由本腿在新周期补写 `TAKE`
+        建立新的可持有事实（r78，`M-20260926-028`）。
+
+        周期维度使第二个消费周期在库层可表达，唯一键
+        `(coupon_id, status, mobile, cycle_no)` 仍保证：同一周期内重复进入同一
+        状态被挡住（幂等兜底不丢），跨周期各占键位。返回 BACK 行本身——它是
+        「退款确实发生过」的冲正事实；`TAKE` 是其后果行。
+        """
         latest = await self.get_latest_state(coupon_id, mobile, authority=authority)
         if latest is None or latest["status"] != CouponStatus.CONSUME:
             return None
+        cycle_no = max(0, int(latest.get("cycle_no", 0) or 0))
         entry = CouponInventoryEntry(
             coupon_id=coupon_id,
             status=CouponStatus.BACK,
@@ -188,8 +211,29 @@ class CouponInventoryRepo(BaseRepository):
             valid_until=str(latest.get("valid_until", "")),
             deducted_fen=int(latest.get("deducted_fen", 0) or 0),
             refunded_at=refunded_at,
+            cycle_no=cycle_no,
         )
         await self.insert(entry)
+        # 新周期重新建立可持有事实：券已回到客户手里，必须还能再次使用。
+        await self.insert(
+            CouponInventoryEntry(
+                coupon_id=coupon_id,
+                status=CouponStatus.TAKE,
+                mobile=mobile,
+                coupon_group_id=str(latest.get("coupon_group_id", "")),
+                customer_id=str(latest.get("customer_id", "")),
+                order_no=order_no,
+                title=str(latest.get("title", "")),
+                value_fen=int(latest.get("value_fen", 0) or 0),
+                detail_json=str(latest.get("detail_json", "{}")),
+                source=LedgerSource.ORDER,
+                occurred_at=occurred_at,
+                template_id=str(latest.get("template_id", "")),
+                valid_from=str(latest.get("valid_from", "")),
+                valid_until=str(latest.get("valid_until", "")),
+                cycle_no=cycle_no + 1,
+            )
+        )
         return entry
 
     async def list_by_order(self, order_no: str) -> list[dict]:
@@ -224,6 +268,9 @@ class CouponInventoryRepo(BaseRepository):
         if template_id:
             sql += " AND template_id = ?"
             params.append(template_id)
-        sql += " ORDER BY src_rank DESC, occurred_at DESC, created_at DESC, id DESC LIMIT ?"
+        sql += (
+            " ORDER BY src_rank DESC, cycle_no DESC, occurred_at DESC, "
+            "created_at DESC, id DESC LIMIT ?"
+        )
         params.append(limit)
         return await self._db.execute_fetchall(sql, params)

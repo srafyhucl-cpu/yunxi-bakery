@@ -5,6 +5,7 @@ import { getErrorMessage } from "../../services/http";
 import {
   cancelOrder,
   createOrder,
+  getOrder,
   payWithBalance,
   prepareCombinedPayment,
   prepareOrderPayment
@@ -35,11 +36,12 @@ import { goBackOrHome } from "../../utils/navigation";
 import { isMiniappLoggedIn } from "../../utils/session";
 import { getBalance } from "../../services/balance";
 import { applyCoupon, getMyCoupons } from "../../services/coupons";
-import { applyPoints, getPoints } from "../../services/points";
+import { getPoints } from "../../services/points";
 import { ONLINE_PAYMENT_READY } from "../../services/payment-gate";
 import { executePreparedPayment } from "../../utils/order-payment";
 import {
   buildPaymentBranch,
+  calculatePaymentEstimate,
   classifyCouponStatus,
   resolveAssetToggle,
   type MemberCoupon,
@@ -63,6 +65,22 @@ function buildOrderRemark(
     return remark;
   }
   return [remark, `自提说明：${pickupNote}`].filter(Boolean).join("；");
+}
+
+type PendingOrderForm = {
+  receiverName: string;
+  receiverPhone: string;
+  deliveryType: "pickup" | "delivery";
+  deliveryAddress: string;
+  pickupNote: string;
+  expectTime: string;
+  remark: string;
+  pickupAddress: string;
+  deliveryQuoteId: string;
+};
+
+function getCartSignature(items: CartItem[]): string {
+  return items.map((item) => `${item.productId}:${item.quantity}`).join(",");
 }
 
 function getCartItemLabel(item: CartItem): string {
@@ -156,6 +174,8 @@ Page({
     pointsBalance: 0,
     balanceEnabled: false,
     balanceFen: 0,
+    partialBalanceFen: 0,
+    assetsApplied: false,
     goodsFen: 0,
     estimateCouponFen: 0,
     estimateRemainFen: 0,
@@ -167,6 +187,7 @@ Page({
     checkoutItems: [] as CartItem[],
     pendingOrderId: "",
     pendingBarVisible: false,
+    pendingOrderMatchesCurrentOrder: false,
     showCouponPanel: false,
     orderLocked: false,
     deliveryFeeFen: 0,
@@ -257,27 +278,63 @@ Page({
       ? this.buildCouponList(couponsData.coupons || [], goodsFen)
       : [];
     const pending = this.readPendingOrder();
-    const pendingBarVisible =
-      pending !== null &&
-      pending.signature === getCartItems().map((item) => `${item.productId}:${item.quantity}`).join(",");
+    const cartSignature = getCartSignature(checkoutItems);
+    const pendingMatchesCart = pending !== null && pending.signature === cartSignature;
+    // 恢复时表单将回到待支付订单自身的快照；旧版本没有快照的记录不能直接复用。
+    const pendingMatchesCurrentOrder = pendingMatchesCart && Boolean(pending && pending.form);
+    const pendingForm = pendingMatchesCart && pending && pending.form ? pending.form : null;
+    let pendingPartialBalanceFen =
+      pendingMatchesCurrentOrder && pending?.paymentStatus === "partial"
+        ? Number(pending?.partialBalanceFen ?? 0)
+        : 0;
+    if (pendingMatchesCurrentOrder && pending?.paymentStatus === "partial" && pendingPartialBalanceFen <= 0) {
+      const pendingOrder = await getOrder(pending.orderId).catch(() => null);
+      pendingPartialBalanceFen = Number(pendingOrder?.balanceFen ?? 0);
+    }
     const balanceFen = balance ? balance.balanceFen : 0;
     const pointsBalance = points ? points.pointsBalance : 0;
-    const requestedBalanceEnabled = pending && typeof pending.balanceEnabled === "boolean"
-      ? pending.balanceEnabled
-      : balanceFen > 0;
+    const requestedBalanceEnabled =
+      pendingMatchesCurrentOrder && pending?.paymentStatus === "partial"
+        ? false
+        : pendingMatchesCurrentOrder && typeof pending?.balanceEnabled === "boolean"
+        ? pending.balanceEnabled
+        : balanceFen > 0;
+    const pendingAssetsApplied =
+      pendingMatchesCurrentOrder &&
+      (pending?.paymentStatus === "partial" ||
+        (pending?.assetsApplied === true && Number(pending?.couponFen ?? 0) > 0));
     this.setData({
       goodsFen,
       balanceFen,
+      partialBalanceFen: pendingPartialBalanceFen,
       pointsBalance,
       availableCoupons,
-      pendingOrderId: pending ? pending.orderId : "",
-      pendingBarVisible,
-      selectedCouponId: pending ? pending.couponId : "",
-      pointsEnabled: pending ? pending.pointsEnabled : false,
-      balanceEnabled: requestedBalanceEnabled
+      receiverName: pendingForm ? pendingForm.receiverName : this.data.receiverName,
+      receiverPhone: pendingForm ? pendingForm.receiverPhone : this.data.receiverPhone,
+      deliveryType: pendingForm ? pendingForm.deliveryType : this.data.deliveryType,
+      deliveryAddress: pendingForm
+        ? pendingForm.deliveryType === "pickup"
+          ? pendingForm.pickupNote
+          : pendingForm.deliveryAddress
+        : this.data.deliveryAddress,
+      expectTime: pendingForm ? pendingForm.expectTime : this.data.expectTime,
+      remark: pendingForm ? pendingForm.remark : this.data.remark,
+      pickupAddress: pendingForm ? pendingForm.pickupAddress : this.data.pickupAddress,
+      deliveryQuoteId: pendingForm ? pendingForm.deliveryQuoteId : this.data.deliveryQuoteId,
+      pendingOrderId: pendingMatchesCurrentOrder && pending ? pending.orderId : "",
+      pendingBarVisible: pending !== null,
+      pendingOrderMatchesCurrentOrder: pendingMatchesCurrentOrder,
+      orderLocked: pendingMatchesCurrentOrder,
+      selectedCouponId: pendingMatchesCurrentOrder && pending ? pending.couponId : "",
+      pointsEnabled: false,
+      balanceEnabled: requestedBalanceEnabled,
+      assetsApplied: pendingAssetsApplied
     });
+    if (pendingForm) {
+      this.syncExpectTimeSchedule(pendingForm.expectTime, shopSettings.businessHours);
+    }
     this.applyAssetAvailability();
-    if (this.data.deliveryType === "delivery") {
+    if (this.data.deliveryType === "delivery" && !pendingMatchesCurrentOrder) {
       void this.fetchDeliveryQuote();
     } else {
       this.refreshSubmitState();
@@ -285,8 +342,9 @@ Page({
   },
   applyAssetAvailability() {
     this.setData({
-      pointsEnabled: resolveAssetToggle(this.data.pointsEnabled, this.data.pointsBalance),
-      balanceEnabled: resolveAssetToggle(this.data.balanceEnabled, this.data.balanceFen)
+      balanceEnabled: this.data.partialBalanceFen > 0
+        ? false
+        : resolveAssetToggle(this.data.balanceEnabled, this.data.balanceFen)
     }, () => {
       this.refreshEstimate();
     });
@@ -297,6 +355,7 @@ Page({
     this.setData({
       [field]: value
     }, () => {
+      this.refreshPendingOrderMatch();
       if (
         this.data.deliveryType === "delivery" &&
         ["deliveryAddress", "receiverName", "receiverPhone"].includes(field)
@@ -317,6 +376,7 @@ Page({
       deliveryAddress: deliveryType === "delivery" ? selectedAddress?.address || this.data.deliveryAddress : "",
       errorMessage: ""
     }, () => {
+      this.refreshPendingOrderMatch();
       if (deliveryType === "delivery") {
         this.invalidateDeliveryQuote("quoting", "确认运费中...");
       }
@@ -360,6 +420,7 @@ Page({
       isSameDayOrder: isCheckoutDateToday(selectedDateValue),
       errorMessage: ""
     }, () => {
+      this.refreshPendingOrderMatch();
       void this.refreshDeliveryQuoteForAppointment();
     });
   },
@@ -376,6 +437,7 @@ Page({
       ),
       errorMessage: ""
     }, () => {
+      this.refreshPendingOrderMatch();
       void this.refreshDeliveryQuoteForAppointment();
     });
   },
@@ -390,6 +452,7 @@ Page({
       expectTime: buildExpectTime(dateValue, hourValue, minuteValue),
       errorMessage: ""
     }, () => {
+      this.refreshPendingOrderMatch();
       void this.refreshDeliveryQuoteForAppointment();
     });
   },
@@ -453,24 +516,111 @@ Page({
         disabled: coupon.thresholdFen > 0 && goodsFen < coupon.thresholdFen
       }));
   },
-  savePendingOrder(orderId: string) {
-    const signature = getCartItems()
-      .map((item) => `${item.productId}:${item.quantity}`)
-      .join(",");
+  savePendingOrder(
+    orderId: string,
+    updates: {
+      assetsApplied?: boolean;
+      balanceEnabled?: boolean;
+      couponFen?: number;
+      partialBalanceFen?: number;
+      paymentStatus?: string;
+    } = {}
+  ) {
+    const existing = this.readPendingOrder();
+    const signature = getCartSignature(getCartItems());
+    const partialBalanceFen =
+      updates.partialBalanceFen ?? existing?.partialBalanceFen ?? 0;
+    const assetsApplied = updates.assetsApplied ?? existing?.assetsApplied ?? false;
+    const balanceEnabled =
+      partialBalanceFen > 0
+        ? false
+        : updates.balanceEnabled ?? this.data.balanceEnabled;
     wx.setStorageSync("yunxiPendingOrder", {
       orderId,
       signature,
-      couponId: this.data.selectedCouponId,
-      pointsEnabled: this.data.pointsEnabled,
-      balanceEnabled: this.data.balanceEnabled
+      form: this.getPendingOrderForm(),
+      couponId: this.data.selectedCouponId || existing?.couponId || "",
+      couponFen:
+        updates.couponFen ??
+        existing?.couponFen ??
+        0,
+      assetsApplied,
+      paymentStatus: updates.paymentStatus ?? existing?.paymentStatus ?? "unpaid",
+      pointsEnabled: false,
+      balanceEnabled,
+      partialBalanceFen
+    });
+    this.setData({
+      assetsApplied,
+      partialBalanceFen,
+      balanceEnabled
+    });
+  },
+  getPendingOrderForm(): PendingOrderForm {
+    return {
+      receiverName: normalizeText(this.data.receiverName),
+      receiverPhone: normalizeText(this.data.receiverPhone),
+      deliveryType: this.data.deliveryType,
+      deliveryAddress: getOrderDeliveryAddress(this.data.deliveryType, this.data.deliveryAddress),
+      pickupNote: this.data.deliveryType === "pickup" ? this.data.deliveryAddress : "",
+      expectTime: normalizeText(this.data.expectTime),
+      remark: this.data.remark,
+      pickupAddress: getPickupAddressForQuote(this.data.pickupAddress),
+      deliveryQuoteId: this.data.deliveryType === "delivery" ? this.data.deliveryQuoteId : ""
+    };
+  },
+  isPendingOrderFormCurrent(form: PendingOrderForm | null | undefined): boolean {
+    if (!form) {
+      return false;
+    }
+    const currentForm = this.getPendingOrderForm();
+    return JSON.stringify(currentForm) === JSON.stringify(form);
+  },
+  refreshPendingOrderMatch() {
+    const pending = this.readPendingOrder();
+    if (!pending) {
+      this.setData({
+        pendingOrderId: "",
+        pendingBarVisible: false,
+        pendingOrderMatchesCurrentOrder: false,
+        orderLocked: false
+      });
+      return;
+    }
+    const matches =
+      pending.signature === getCartSignature(getCartItems()) &&
+      this.isPendingOrderFormCurrent(pending.form);
+    this.setData({
+      pendingOrderId: matches && pending ? pending.orderId : "",
+      pendingBarVisible: pending !== null,
+      pendingOrderMatchesCurrentOrder: matches,
+      orderLocked: matches,
+      selectedCouponId: matches && pending ? pending.couponId : "",
+      pointsEnabled: false,
+      balanceEnabled:
+        matches && pending?.paymentStatus === "partial"
+          ? false
+          : matches && pending
+            ? pending.balanceEnabled === true
+            : false,
+      partialBalanceFen: matches && pending ? Number(pending.partialBalanceFen ?? 0) : 0,
+      assetsApplied:
+        matches &&
+        (pending?.paymentStatus === "partial" ||
+          (pending?.assetsApplied === true && Number(pending?.couponFen ?? 0) > 0))
     });
   },
   readPendingOrder(): {
     orderId: string;
     signature: string;
+    form?: PendingOrderForm;
     couponId: string;
-    pointsEnabled: boolean;
+    couponFen?: number;
+    assetsApplied?: boolean;
+    paymentStatus?: string;
+    pointsEnabled?: boolean;
     balanceEnabled?: boolean;
+    partialBalanceFen?: number;
   } | null {
     return wx.getStorageSync("yunxiPendingOrder") || null;
   },
@@ -609,18 +759,36 @@ Page({
     const selected = this.data.availableCoupons.find(
       (coupon) => coupon.couponId === this.data.selectedCouponId
     );
-    const couponFen = selected && !selected.disabled ? selected.valueFen : 0;
-    const balanceFen = this.data.balanceEnabled ? this.data.balanceFen : 0;
-    const remainFen = Math.max(0, totalWithDelivery - couponFen - balanceFen);
+    const pending = this.readPendingOrder();
+    const pendingMatchesCurrentOrder =
+      pending !== null &&
+      pending.signature === getCartSignature(getCartItems()) &&
+      this.isPendingOrderFormCurrent(pending.form);
+    const assetsLocked =
+      pendingMatchesCurrentOrder &&
+      (pending?.paymentStatus === "partial" ||
+        (pending?.assetsApplied === true && Number(pending?.couponFen ?? 0) > 0));
+    const estimate = calculatePaymentEstimate({
+      totalFen: totalWithDelivery,
+      couponFen: selected && !selected.disabled ? selected.valueFen : 0,
+      pendingCouponFen: Number(pending?.couponFen ?? 0),
+      pointsFen: 0,
+      currentBalanceFen: this.data.balanceFen,
+      balanceEnabled: this.data.balanceEnabled,
+      partialBalanceFen: this.data.partialBalanceFen,
+      assetsLocked,
+    });
     this.setData({
-      estimateCouponFen: couponFen,
-      estimateRemainFen: remainFen,
+      estimateCouponFen: estimate.couponFen,
+      estimateRemainFen: estimate.remainFen,
       // 顶部购买卡展示商品小计（自提价口径），与底栏实付估算同步刷新，避免停留旧金额或 0 元。
       totalText: formatFen(goodsFen),
       goodsFenText: formatFen(goodsFen),
-      estimateCouponFenText: formatDeductionFen(couponFen),
-      estimateRemainFenText: formatFen(remainFen),
-      balanceDeductText: formatDeductionFen(Math.min(balanceFen, Math.max(0, totalWithDelivery - couponFen))),
+      estimateCouponFenText: formatDeductionFen(estimate.couponFen),
+      estimateRemainFenText: formatFen(estimate.remainFen),
+      balanceDeductText: formatDeductionFen(
+        Math.min(estimate.balanceFen, Math.max(0, totalWithDelivery - estimate.couponFen))
+      ),
       footerAmountNote: this.buildFooterAmountNote()
     });
   },
@@ -653,45 +821,22 @@ Page({
     if (coupon && coupon.disabled) {
       return;
     }
-    // 订单已生成（快照已写）：已应用券不可退选（后端无撤销端点），允许换选（apply 覆盖写）
-    if (this.data.orderLocked && this.data.selectedCouponId === couponId) {
-      wx.showToast({ title: "已应用优惠券，如需取消请取消订单", icon: "none" });
-      return;
-    }
+        // 订单已生成且资产已写入快照后，后端没有撤销接口，不能再换选。
+        if (this.data.orderLocked && this.data.assetsApplied) {
+          wx.showToast({ title: "订单已锁定当前资产，如需变更请取消订单", icon: "none" });
+          return;
+        }
     this.setData({
       selectedCouponId: this.data.selectedCouponId === couponId ? "" : couponId,
       showCouponPanel: false
     });
     this.refreshEstimate();
   },
-  onPointsSwitch(event: WechatMiniprogram.SwitchChange) {
-    if (this.data.orderLocked) {
-      this.setData({ pointsEnabled: true });
-      wx.showToast({ title: "积分已应用，如需取消请取消订单", icon: "none" });
-      return;
-    }
-    if (this.data.pointsBalance <= 0) {
-      this.setData({ pointsEnabled: false });
-      return;
-    }
-    this.setData({
-      pointsEnabled: resolveAssetToggle(Boolean(event.detail.value), this.data.pointsBalance)
-    });
-    this.refreshEstimate();
-  },
-  togglePointsRow() {
-    if (this.data.orderLocked) {
-      wx.showToast({ title: "积分已应用，如需取消请取消订单", icon: "none" });
-      return;
-    }
-    if (this.data.pointsBalance <= 0) {
-      wx.showToast({ title: "当前没有可用积分", icon: "none" });
-      return;
-    }
-    this.setData({ pointsEnabled: !this.data.pointsEnabled });
-    this.refreshEstimate();
-  },
   onBalanceSwitch(event: WechatMiniprogram.SwitchChange) {
+    if (this.data.partialBalanceFen > 0) {
+      this.setData({ balanceEnabled: false });
+      return;
+    }
     if (this.data.balanceFen <= 0) {
       this.setData({ balanceEnabled: false });
       return;
@@ -702,6 +847,10 @@ Page({
     this.refreshEstimate();
   },
   toggleBalanceRow() {
+    if (this.data.partialBalanceFen > 0) {
+      wx.showToast({ title: "组合支付余额已锁定", icon: "none" });
+      return;
+    }
     if (this.data.balanceFen <= 0) {
       wx.showToast({ title: "当前没有可用余额", icon: "none" });
       return;
@@ -813,7 +962,37 @@ Page({
       if (!cartStillValid) {
         return;
       }
-      let orderId = this.data.pendingOrderId;
+      const pending = this.readPendingOrder();
+      const cartSignature = getCartSignature(cartItems);
+      const pendingMatchesCurrentOrder =
+        pending !== null &&
+        pending.signature === cartSignature &&
+        this.isPendingOrderFormCurrent(pending.form);
+      const pendingIsPartial =
+        pendingMatchesCurrentOrder && pending?.paymentStatus === "partial";
+      const pendingCouponFen = pendingMatchesCurrentOrder
+        ? Math.max(0, Number(pending?.couponFen ?? 0) || 0)
+        : 0;
+      const pendingAssetsApplied =
+        pendingIsPartial ||
+        (pendingMatchesCurrentOrder &&
+          pending?.assetsApplied === true &&
+          Boolean(pending.couponId) &&
+          pendingCouponFen > 0);
+      let orderId = pendingMatchesCurrentOrder ? pending.orderId : "";
+      if (pending && !pendingMatchesCurrentOrder) {
+        await cancelOrder(pending.orderId);
+        this.clearPendingOrder();
+        this.setData({
+          pendingOrderId: "",
+          pendingBarVisible: false,
+          pendingOrderMatchesCurrentOrder: false,
+          orderLocked: false,
+          selectedCouponId: "",
+              pointsEnabled: false,
+          balanceEnabled: false
+        });
+      }
       if (!orderId) {
         const order = await createOrder({
           items: cartItems.map((item) => ({
@@ -835,35 +1014,61 @@ Page({
         });
         orderId = order.orderId;
         this.savePendingOrder(orderId);
-        this.setData({ pendingOrderId: orderId, orderLocked: true });
+        this.setData({
+          pendingOrderId: orderId,
+          pendingBarVisible: true,
+          pendingOrderMatchesCurrentOrder: true,
+          orderLocked: true
+        });
       }
       // 按序 apply（弹窗确认前不改订单金额展示，只写后端快照）
-      let couponFen = 0;
-      if (this.data.selectedCouponId) {
+      let couponFen = pendingAssetsApplied ? pendingCouponFen : 0;
+      let assetsLocked = pendingAssetsApplied;
+      if (!pendingAssetsApplied && this.data.selectedCouponId) {
         const applied = await applyCoupon(orderId, this.data.selectedCouponId);
         couponFen = applied.couponFen || 0;
+        assetsLocked = true;
+        this.savePendingOrder(orderId, { assetsApplied: true, couponFen });
       }
-      let pointsFen = 0;
-      if (this.data.pointsEnabled) {
-        const applied = await applyPoints(orderId);
-        pointsFen = applied.pointsFen || 0;
-      }
+      const pointsFen = 0;
       const deliveryFeeFen = this.data.deliveryType === "delivery" ? this.data.deliveryFeeFen : 0;
       const totalFen = this.data.goodsFen + deliveryFeeFen;
-      const remainFen = Math.max(0, totalFen - couponFen - pointsFen);
       const balance = await getBalance();
+      const partialBalanceFen = pendingIsPartial
+        ? Math.max(
+            0,
+            Number(pending?.partialBalanceFen ?? this.data.partialBalanceFen ?? 0) || 0
+          )
+        : 0;
+      if (pendingIsPartial && partialBalanceFen <= 0) {
+        this.showValidationError("组合支付余额快照缺失，请刷新订单后再支付");
+        return;
+      }
+      const balanceEnabled = !pendingIsPartial && this.data.balanceEnabled;
+      const estimate = calculatePaymentEstimate({
+        totalFen,
+        couponFen: this.data.selectedCouponId ? couponFen : 0,
+        pendingCouponFen: couponFen,
+        pointsFen,
+        currentBalanceFen: balance.balanceFen,
+        balanceEnabled,
+        partialBalanceFen,
+        assetsLocked
+      });
+      const remainFen = estimate.remainFen;
       const branch = buildPaymentBranch({
         remainFen,
-        balanceFen: this.data.balanceEnabled ? balance.balanceFen : 0,
-        balanceEnabled: this.data.balanceEnabled
+        balanceFen: balanceEnabled ? balance.balanceFen : 0,
+        balanceEnabled
       });
       await this.confirmAndPay(orderId, {
-        couponFen,
+        couponFen: estimate.couponFen,
         pointsFen,
         remainFen,
         branch,
-        balanceFen: balance.balanceFen,
-        deliveryFeeFen
+        balanceFen: pendingIsPartial ? partialBalanceFen : balance.balanceFen,
+        deliveryFeeFen,
+        resumePartialRemainder: pendingIsPartial
       });
     } catch (error) {
       const message = getErrorMessage(error, "提交失败，请稍后重试");
@@ -882,11 +1087,22 @@ Page({
       branch: PaymentBranch;
       balanceFen: number;
       deliveryFeeFen?: number;
+      resumePartialRemainder?: boolean;
     }
   ): Promise<void> {
-    const { couponFen, pointsFen, remainFen, branch, balanceFen, deliveryFeeFen } = summary;
+    const {
+      couponFen,
+      pointsFen,
+      remainFen,
+      branch,
+      balanceFen,
+      deliveryFeeFen,
+      resumePartialRemainder
+    } = summary;
     let content = "";
-    if (branch === "free") {
+    if (resumePartialRemainder) {
+      content = `组合支付余额已扣 ${formatFen(balanceFen)}\n剩余在线支付 ${formatFen(remainFen)}`;
+    } else if (branch === "free") {
       content = "本单已由优惠全额抵扣，无需支付";
     } else if (branch === "balance") {
       content = `实付 ${formatFen(remainFen)}（余额支付）`;
@@ -900,7 +1116,7 @@ Page({
       content += `\n闪送运费 +${formatFen(deliveryFeeFen)}`;
     }
     if (couponFen > 0) {
-      content += `\n优惠券 -${formatFen(couponFen)}`;
+      content += `\n优惠券 ${formatDeductionFen(couponFen)}`;
     }
     if (pointsFen > 0) {
       content += `\n积分 -${formatFen(pointsFen)}`;
@@ -919,7 +1135,14 @@ Page({
       wx.showToast({ title: "订单已保留，可继续支付或取消订单", icon: "none" });
       return;
     }
-    if (branch === "free") {
+    if (resumePartialRemainder) {
+      if (!ONLINE_PAYMENT_READY) {
+        wx.showToast({ title: "在线支付即将上线，请到店支付或联系客服", icon: "none" });
+        return;
+      }
+      const payment = await prepareOrderPayment(orderId);
+      await executePreparedPayment(payment);
+    } else if (branch === "free") {
       await payWithBalance(orderId);
     } else if (branch === "balance") {
       await payWithBalance(orderId);
@@ -929,7 +1152,13 @@ Page({
         return;
       }
       const payment = await prepareCombinedPayment(orderId, balanceFen);
-      await executePreparedPayment(payment);
+      this.savePendingOrder(orderId, {
+        assetsApplied: true,
+        couponFen,
+        partialBalanceFen: payment.payment.balanceFen,
+        paymentStatus: "partial"
+      });
+      await executePreparedPayment(payment.remainderPayment);
     } else {
       if (!ONLINE_PAYMENT_READY) {
         wx.showToast({ title: "在线支付即将上线，请到店支付或联系客服", icon: "none" });
@@ -945,19 +1174,31 @@ Page({
   },
   async resumePendingOrder() {
     const pending = this.readPendingOrder();
-    if (!pending) {
+    if (
+      !pending ||
+      pending.signature !== getCartSignature(getCartItems()) ||
+      !this.isPendingOrderFormCurrent(pending.form)
+    ) {
+      this.refreshPendingOrderMatch();
       return;
     }
     this.setData({
       pendingOrderId: pending.orderId,
       selectedCouponId: pending.couponId,
-      pointsEnabled: pending.pointsEnabled,
-      balanceEnabled: pending.balanceEnabled === true,
+      pointsEnabled: false,
+      balanceEnabled: pending.paymentStatus === "partial"
+        ? false
+        : pending.balanceEnabled === true,
+      partialBalanceFen: Number(pending.partialBalanceFen ?? 0),
+      assetsApplied:
+        pending.paymentStatus === "partial" ||
+        (pending.assetsApplied === true && Number(pending.couponFen ?? 0) > 0),
       pendingBarVisible: false,
+      pendingOrderMatchesCurrentOrder: true,
       orderLocked: true
     });
     this.applyAssetAvailability();
-    wx.showToast({ title: "已恢复待支付订单，积分与已选券已锁定，请确认支付", icon: "none" });
+    wx.showToast({ title: "已恢复待支付订单，已选券已锁定，请确认支付", icon: "none" });
   },
   async cancelPendingOrder() {
     const pending = this.readPendingOrder();
@@ -967,7 +1208,12 @@ Page({
     try {
       await cancelOrder(pending.orderId);
       this.clearPendingOrder();
-      this.setData({ pendingOrderId: "", pendingBarVisible: false, orderLocked: false });
+      this.setData({
+        pendingOrderId: "",
+        pendingBarVisible: false,
+        pendingOrderMatchesCurrentOrder: false,
+        orderLocked: false
+      });
       wx.showToast({ title: "订单已取消", icon: "success" });
     } catch (error) {
       wx.showToast({ title: getErrorMessage(error, "取消失败"), icon: "none" });

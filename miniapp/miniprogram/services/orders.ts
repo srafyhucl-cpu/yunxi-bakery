@@ -25,6 +25,7 @@ export interface OrderSummary {
   paymentStatus?: string;
   paymentMethod?: string;
   paymentPaidAt?: string;
+  balanceFen?: number;
   paymentExpiredAt?: string;
   paymentExpiredReason?: string;
   totalFen: number;
@@ -76,6 +77,17 @@ export interface PreparedPayment {
     action?: string;
     message?: string;
   };
+}
+
+export interface CombinedPaymentResponse {
+  orderId: string;
+  payment: {
+    status: string;
+    method: "combined";
+    balanceFen: number;
+    remainFen: number;
+  };
+  remainderPayment: PreparedPayment;
 }
 
 interface WrappedApiResponse<TData> {
@@ -161,9 +173,9 @@ export async function payWithBalance(orderId: string): Promise<OrderSummary> {
 export async function prepareCombinedPayment(
   orderId: string,
   balanceFen: number
-): Promise<PreparedPayment> {
+): Promise<CombinedPaymentResponse> {
   const response = await request<
-    WrappedApiResponse<PreparedPayment> | PreparedPayment,
+    WrappedApiResponse<CombinedPaymentResponse> | CombinedPaymentResponse,
     { balanceFen: number }
   >({
     method: "POST",

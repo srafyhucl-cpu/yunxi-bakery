@@ -127,10 +127,16 @@ async def create_quote(
 
 
 async def test_pickup_order_ignores_client_delivery_fee(
+    db: aiosqlite.Connection,
     order_service: OrderApplicationService,
 ) -> None:
+    await seed_catalog_product(
+        db, item_id=91002, title="自提价格蛋糕", price_fen=19800, stock=1
+    )
     payload = {
-        "items": [{"productId": "p_pickup", "quantity": 1, "priceFen": 19800}],
+        "items": [{"productId": "91002", "quantity": 1, "priceFen": 19800}],
+        "receiverName": "自提测试",
+        "receiverPhone": "18800000002",
         "expectTime": "2026-09-10 15:00",
         "deliveryType": "pickup",
         "deliveryFeeFen": 99999,
@@ -144,11 +150,17 @@ async def test_pickup_order_ignores_client_delivery_fee(
 
 
 async def test_pickup_order_returns_pickup_address_snapshot(
+    db: aiosqlite.Connection,
     order_service: OrderApplicationService,
 ) -> None:
+    await seed_catalog_product(
+        db, item_id=91003, title="自提地址蛋糕", price_fen=19800, stock=1
+    )
     pickup_address = "北京市东城区南竹杆胡同2号银河SOHO"
     payload = {
-        "items": [{"productId": "p_pickup_address", "quantity": 1, "priceFen": 19800}],
+        "items": [{"productId": "91003", "quantity": 1, "priceFen": 19800}],
+        "receiverName": "自提地址测试",
+        "receiverPhone": "18800000003",
         "expectTime": "2026-09-10 15:00",
         "deliveryType": "pickup",
         "fulfillmentMethod": "pickup",
@@ -209,9 +221,13 @@ async def test_delivery_order_uses_quote_fee_and_binds_normalized_items(
 
 
 async def test_delivery_order_rejects_quote_for_other_user(
+    db: aiosqlite.Connection,
     delivery_service: DeliveryApplicationService,
     order_service: OrderApplicationService,
 ) -> None:
+    await seed_catalog_product(
+        db, item_id=91001, title="跨用户报价蛋糕", price_fen=19800, stock=1
+    )
     quote = await create_quote(delivery_service, user_id="quote-owner")
 
     with pytest.raises(ValueError, match="配送报价不存在"):

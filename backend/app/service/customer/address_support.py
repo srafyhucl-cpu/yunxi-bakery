@@ -45,6 +45,15 @@ def build_address(
 
 def validate_address(receiver_name: str, receiver_phone: str, address: str) -> None:
     """校验地址簿字段。"""
+    validate_receiver_contact(receiver_name, receiver_phone)
+    if not address:
+        raise ValueError("请填写收货地址")
+    if not is_address_detailed_enough(address):
+        raise ValueError("请补充小区、楼栋或门牌号")
+
+
+def validate_receiver_contact(receiver_name: str, receiver_phone: str) -> None:
+    """校验联系人和大陆手机号。"""
     if not receiver_name:
         raise ValueError("请填写联系人")
     if (
@@ -53,10 +62,6 @@ def validate_address(receiver_name: str, receiver_phone: str, address: str) -> N
         or receiver_phone[:2] not in MAINLAND_PHONE_PATTERN_PREFIXES
     ):
         raise ValueError("请填写正确的 11 位手机号")
-    if not address:
-        raise ValueError("请填写收货地址")
-    if not is_address_detailed_enough(address):
-        raise ValueError("请补充小区、楼栋或门牌号")
 
 
 def is_address_detailed_enough(address: str) -> bool:
@@ -147,7 +152,9 @@ __all__ = [
     "build_audit_entry",
     "build_address",
     "dumps_dict",
+    "is_address_detailed_enough",
     "serialize_address",
     "serialize_audit",
     "utc_now",
+    "validate_receiver_contact",
 ]

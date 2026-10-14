@@ -68,7 +68,9 @@ async def test_admin_order_api_expire_unpaid_releases_stock(
                     "quantity": 1,
                 }
             ],
-            "expectTime": "2026-06-18 18:00",
+            "receiverName": "合成顾客",
+            "receiverPhone": "13800000000",
+            "expectTime": "2099-06-18 18:00",
         },
         user_id="admin-expire-user",
     )
@@ -92,21 +94,31 @@ async def test_admin_order_api_expire_unpaid_releases_stock(
 
 @pytest.mark.asyncio
 async def test_admin_order_api_status_update_writes_timeline(
+    db: aiosqlite.Connection,
     service: OrderApplicationService,
     app: FastAPI,
 ) -> None:
     """后台更新订单状态后，订单详情应返回真实状态事件。"""
+    await seed_miniapp_product(
+        db,
+        item_id=83004,
+        title="后台时间线蛋糕",
+        price_fen=19800,
+        stock=1,
+    )
     created = await service.create_order(
         {
             "items": [
                 {
-                    "productId": "p_admin_timeline",
+                    "productId": "83004",
                     "title": "后台时间线蛋糕",
                     "priceFen": 19800,
                     "quantity": 1,
                 }
             ],
-            "expectTime": "2026-06-18 18:00",
+            "receiverName": "合成顾客",
+            "receiverPhone": "13800000000",
+            "expectTime": "2099-06-18 18:00",
         },
         user_id="admin-timeline-user",
     )
@@ -156,7 +168,9 @@ async def test_admin_order_api_expire_timeout_unpaid_orders(
                     "quantity": 1,
                 }
             ],
-            "expectTime": "2026-06-18 18:00",
+            "receiverName": "合成顾客",
+            "receiverPhone": "13800000000",
+            "expectTime": "2099-06-18 18:00",
         },
         user_id="admin-scan-user",
     )
@@ -187,21 +201,45 @@ async def test_admin_order_api_expire_timeout_unpaid_orders(
 
 @pytest.mark.asyncio
 async def test_admin_order_summary_and_board_filter(
+    db: aiosqlite.Connection,
     service: OrderApplicationService,
     app: FastAPI,
 ) -> None:
     """后台订单经营看板应使用全量汇总口径，并支持同口径列表筛选。"""
+    await seed_miniapp_product(
+        db,
+        item_id=83005,
+        title="汇总待确认蛋糕",
+        price_fen=10000,
+        stock=1,
+    )
+    await seed_miniapp_product(
+        db,
+        item_id=83006,
+        title="汇总履约蛋糕",
+        price_fen=20000,
+        stock=1,
+    )
+    await seed_miniapp_product(
+        db,
+        item_id=83007,
+        title="汇总关闭蛋糕",
+        price_fen=30000,
+        stock=1,
+    )
     pending = await service.create_order(
         {
             "items": [
                 {
-                    "productId": "summary_pending",
+                    "productId": "83005",
                     "title": "汇总待确认蛋糕",
                     "priceFen": 10000,
                     "quantity": 1,
                 }
             ],
-            "expectTime": "2026-06-18 18:00",
+            "receiverName": "合成顾客",
+            "receiverPhone": "13800000000",
+            "expectTime": "2099-06-18 18:00",
         },
         user_id="summary-pending-user",
     )
@@ -209,13 +247,15 @@ async def test_admin_order_summary_and_board_filter(
         {
             "items": [
                 {
-                    "productId": "summary_fulfilling",
+                    "productId": "83006",
                     "title": "汇总履约蛋糕",
                     "priceFen": 20000,
                     "quantity": 1,
                 }
             ],
-            "expectTime": "2026-06-18 18:00",
+            "receiverName": "合成顾客",
+            "receiverPhone": "13800000000",
+            "expectTime": "2099-06-18 18:00",
         },
         user_id="summary-fulfilling-user",
     )
@@ -223,13 +263,15 @@ async def test_admin_order_summary_and_board_filter(
         {
             "items": [
                 {
-                    "productId": "summary_closed",
+                    "productId": "83007",
                     "title": "汇总关闭蛋糕",
                     "priceFen": 30000,
                     "quantity": 1,
                 }
             ],
-            "expectTime": "2026-06-18 18:00",
+            "receiverName": "合成顾客",
+            "receiverPhone": "13800000000",
+            "expectTime": "2099-06-18 18:00",
         },
         user_id="summary-closed-user",
     )
@@ -288,3 +330,140 @@ async def test_admin_order_summary_and_board_filter(
     assert [item["id"] for item in closed_response.json()["data"]["items"]] == [
         closed["orderId"]
     ]
+
+
+@pytest.mark.asyncio
+async def test_admin_order_unpaid_filter_includes_partial_payment(
+    db: aiosqlite.Connection,
+    service: OrderApplicationService,
+    app: FastAPI,
+) -> None:
+    """组合支付已扣余额但外部支付未完成的订单仍属于后台待支付。"""
+    await seed_miniapp_product(
+        db,
+        item_id=83003,
+        title="组合支付待续付蛋糕",
+        price_fen=5000,
+        stock=1,
+    )
+    created = await service.create_order(
+        {
+            "items": [
+                {
+                    "productId": "83003",
+                    "title": "组合支付待续付蛋糕",
+                    "priceFen": 5000,
+                    "quantity": 1,
+                }
+            ],
+            "receiverName": "合成顾客",
+            "receiverPhone": "13800000000",
+            "expectTime": "2099-06-18 18:00",
+        },
+        user_id="partial-board-filter-user",
+    )
+    await OrderRepo(db).update_payment(
+        created["orderId"],
+        json.dumps(
+            {
+                "status": "partial",
+                "method": "combined",
+                "balanceFen": 2000,
+                "couponFen": 0,
+                "pointsFen": 0,
+                "createdAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            },
+            ensure_ascii=False,
+        ),
+        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    )
+
+    transport = httpx.ASGITransport(app=app)
+    headers = {"Authorization": f"Bearer {settings.ADMIN_API_TOKEN}"}
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as client:
+        list_response = await client.get(
+            "/api/v1/admin/orders",
+            params={"boardFilter": "unpaid"},
+            headers=headers,
+        )
+        summary_response = await client.get(
+            "/api/v1/admin/orders/summary",
+            headers=headers,
+        )
+
+    assert list_response.status_code == 200
+    assert [item["id"] for item in list_response.json()["data"]["items"]] == [
+        created["orderId"]
+    ]
+    assert summary_response.status_code == 200
+    cards = {card["key"]: card for card in summary_response.json()["data"]["cards"]}
+    assert cards["unpaid"]["count"] == 1
+    assert cards["unpaid"]["totalFen"] == 5000
+
+
+@pytest.mark.asyncio
+async def test_admin_cannot_confirm_partial_payment_order(
+    db: aiosqlite.Connection,
+    service: OrderApplicationService,
+    app: FastAPI,
+) -> None:
+    """组合支付尚未完成外部支付时，后台不得确认订单进入履约。"""
+    await seed_miniapp_product(
+        db,
+        item_id=83008,
+        title="组合支付待续付确认蛋糕",
+        price_fen=5000,
+        stock=1,
+    )
+    created = await service.create_order(
+        {
+            "items": [
+                {
+                    "productId": "83008",
+                    "title": "组合支付待续付确认蛋糕",
+                    "priceFen": 5000,
+                    "quantity": 1,
+                }
+            ],
+            "receiverName": "合成顾客",
+            "receiverPhone": "13800000000",
+            "expectTime": "2099-06-18 18:00",
+        },
+        user_id="partial-confirm-guard-user",
+    )
+    payment_updated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    await OrderRepo(db).update_payment(
+        created["orderId"],
+        json.dumps(
+            {
+                "status": "partial",
+                "method": "combined",
+                "balanceFen": 2000,
+                "couponFen": 0,
+                "pointsFen": 0,
+                "createdAt": payment_updated_at,
+            },
+            ensure_ascii=False,
+        ),
+        payment_updated_at,
+    )
+
+    transport = httpx.ASGITransport(app=app)
+    headers = {"Authorization": f"Bearer {settings.ADMIN_API_TOKEN}"}
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as client:
+        response = await client.post(
+            f"/api/v1/admin/orders/{created['orderId']}/status",
+            json={"status": "confirmed"},
+            headers=headers,
+        )
+
+    order = await OrderRepo(db).get_order(created["orderId"])
+    assert response.status_code == 400
+    assert "未完成支付" in response.json()["detail"]
+    assert order is not None
+    assert order.status == "pending"
+    assert json.loads(order.payment)["status"] == "partial"
