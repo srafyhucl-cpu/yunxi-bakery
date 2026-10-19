@@ -1,6 +1,8 @@
 """会员储值余额 M2 测试：充值入账 / 余额支付 / 组合支付与退款闭环。"""
 
 import json
+import logging
+import sqlite3
 
 import aiosqlite
 import pytest
@@ -9,6 +11,7 @@ from app.config import settings
 from app.models.coupon import CouponTemplate, CouponType
 from app.models.member import CouponInventoryEntry, CouponStatus, LedgerSource
 from app.models.order import Order
+from app.models.stored_value import BalanceLedgerEntry
 
 from app.repository.balance_ledger_repo import BalanceLedgerRepo
 from app.repository.config_repo import ConfigRepo
@@ -21,6 +24,7 @@ from app.repository.order_repo import OrderRepo
 from app.repository.recharge_repo import RechargeRepo
 from app.repository.session_repo import SessionRepo
 from app.service.integrations.wechat_pay import WechatPayPrepayResult
+from app.service.idempotency import IdempotencyConflict
 from app.service.order.payment_notification import WechatPaymentNotificationService
 from app.service.order import OrderApplicationService
 from app.service.coupon import CouponService
@@ -1410,3 +1414,323 @@ async def test_combined_payment_query_recovery_uses_remainder_and_settles_once(
         (order_id,),
     )
     assert len(paid_events) == 1
+
+
+def _member_balance_service(db: aiosqlite.Connection) -> MemberBalanceService:
+    """使用真实内存库仓储构建储值记账服务。"""
+    return MemberBalanceService(
+        balance_repo=MemberBalanceRepo(db),
+        ledger_repo=BalanceLedgerRepo(db),
+        customer_repo=CustomerMasterRepo(db),
+    )
+
+
+async def _balance_split(db: aiosqlite.Connection) -> tuple[int, int, int]:
+    """读取会员余额的（总额, 本金, 赠送金）。"""
+    rows = await db.execute_fetchall(
+        "SELECT stored_value_fen, principal_fen, bonus_fen FROM member_balance "
+        "WHERE mobile = ? LIMIT 1",
+        (MOBILE,),
+    )
+    if not rows:
+        return (0, 0, 0)
+    return (
+        int(rows[0]["stored_value_fen"]),
+        int(rows[0]["principal_fen"]),
+        int(rows[0]["bonus_fen"]),
+    )
+
+
+async def _ledger_split(db: aiosqlite.Connection, unique_id: str) -> dict:
+    """按幂等键读取流水的带符号金额与本金/赠送金拆分。"""
+    rows = await db.execute_fetchall(
+        "SELECT amount_fen, principal_delta_fen, bonus_delta_fen "
+        "FROM balance_ledger WHERE unique_id = ? LIMIT 1",
+        (unique_id,),
+    )
+    return dict(rows[0]) if rows else {}
+
+
+@pytest.mark.asyncio
+async def test_credit_placeholder_race_rejects_split_mismatch(
+    db: aiosqlite.Connection, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """占位竞争失败时同键同额但拆分不同必须抛幂等冲突，不得静默复用旧结构。"""
+    ledger_repo = BalanceLedgerRepo(db)
+    await ledger_repo.insert(
+        BalanceLedgerEntry(
+            unique_id="recharge:race_split",
+            mobile=MOBILE,
+            amount_fen=10_000,
+            balance_after_fen=10_000,
+            biz_type="recharge",
+            biz_id="r_race",
+            source="recharge",
+            principal_delta_fen=8_000,
+            bonus_delta_fen=2_000,
+        )
+    )
+
+    original_read = BalanceLedgerRepo.get_by_unique_id
+    calls = {"count": 0}
+
+    async def _first_read_invisible(self, unique_id: str):
+        """首次读取伪装成“流水尚不可见”，以进入占位竞争失败分支。"""
+        calls["count"] += 1
+        if calls["count"] == 1:
+            return None
+        return await original_read(self, unique_id)
+
+    monkeypatch.setattr(BalanceLedgerRepo, "get_by_unique_id", _first_read_invisible)
+
+    with pytest.raises(IdempotencyConflict, match="幂等键金额冲突"):
+        await _member_balance_service(db).credit(
+            user_id=USER_ID,
+            mobile=MOBILE,
+            amount_fen=10_000,
+            bonus_fen=5_000,
+            biz_type="recharge",
+            biz_id="r_race",
+            unique_id="recharge:race_split",
+            source="recharge",
+        )
+
+    # 未静默复用旧结构、也未改动余额
+    assert await _balance_split(db) == (0, 0, 0)
+
+    # 同拆分重放仍按幂等返回原余额，不误报冲突
+    calls["count"] = 0
+    replayed = await _member_balance_service(db).credit(
+        user_id=USER_ID,
+        mobile=MOBILE,
+        amount_fen=10_000,
+        bonus_fen=2_000,
+        biz_type="recharge",
+        biz_id="r_race",
+        unique_id="recharge:race_split",
+        source="recharge",
+    )
+    assert replayed == 10_000
+    assert await _balance_split(db) == (0, 0, 0)
+
+
+@pytest.mark.asyncio
+async def test_credit_with_bonus_splits_account_and_ledger(
+    db: aiosqlite.Connection,
+) -> None:
+    """加款带赠送金时账户与流水按本金/赠送金拆分；扣款优先扣赠送金再扣本金。"""
+    await _seed_member(db)
+    service = _member_balance_service(db)
+    credited = await service.credit(
+        user_id=USER_ID,
+        mobile=MOBILE,
+        amount_fen=10_000,
+        bonus_fen=3_000,
+        biz_type="recharge",
+        biz_id="r_split_1",
+        unique_id="recharge:split_1",
+        source="recharge",
+    )
+    assert credited == 10_000
+    assert await _balance_split(db) == (10_000, 7_000, 3_000)
+    assert await _ledger_split(db, "recharge:split_1") == {
+        "amount_fen": 10_000,
+        "principal_delta_fen": 7_000,
+        "bonus_delta_fen": 3_000,
+    }
+
+    deducted = await service.deduct(
+        user_id=USER_ID,
+        mobile=MOBILE,
+        amount_fen=5_000,
+        biz_type="order_pay",
+        biz_id="o_split_1",
+        unique_id="order_pay:o_split_1",
+        source="order",
+    )
+    assert deducted == 5_000
+    assert await _balance_split(db) == (5_000, 5_000, 0)
+    assert await _ledger_split(db, "order_pay:o_split_1") == {
+        "amount_fen": -5_000,
+        "principal_delta_fen": -2_000,
+        "bonus_delta_fen": -3_000,
+    }
+
+
+@pytest.mark.asyncio
+async def test_deduct_insufficient_leaves_no_placeholder(
+    db: aiosqlite.Connection,
+) -> None:
+    """赠送金与本金都不足时拒绝扣款，余额不变且不留下占位流水。"""
+    await _seed_member(db)
+    service = _member_balance_service(db)
+    await service.credit(
+        user_id=USER_ID,
+        mobile=MOBILE,
+        amount_fen=3_000,
+        bonus_fen=3_000,
+        biz_type="recharge",
+        biz_id="r_split_2",
+        unique_id="recharge:split_2",
+        source="recharge",
+    )
+    deducted = await service.deduct(
+        user_id=USER_ID,
+        mobile=MOBILE,
+        amount_fen=3_000,
+        biz_type="order_pay",
+        biz_id="o_split_2",
+        unique_id="order_pay:o_split_2",
+        source="order",
+    )
+    assert deducted == 0
+    # 赠送金已扣尽且无本金，再扣 100 分必须拒绝且不留占位流水
+    assert (
+        await service.deduct(
+            user_id=USER_ID,
+            mobile=MOBILE,
+            amount_fen=100,
+            biz_type="order_pay",
+            biz_id="o_split_3",
+            unique_id="order_pay:o_split_3",
+            source="order",
+        )
+        is None
+    )
+    assert await _balance_split(db) == (0, 0, 0)
+    assert await _ledger_split(db, "order_pay:o_split_3") == {}
+    assert await _ledger_split(db, "order_pay:o_split_2") == {
+        "amount_fen": -3_000,
+        "principal_delta_fen": 0,
+        "bonus_delta_fen": -3_000,
+    }
+
+
+@pytest.mark.asyncio
+async def test_credit_without_split_columns_fails_closed(
+    tmp_path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """旧库缺少拆分列时加款必须失败，不得退化为只加总额冒充成功。"""
+    conn = await aiosqlite.connect(str(tmp_path / "legacy-balance.db"))
+    conn.row_factory = aiosqlite.Row
+    await conn.execute(
+        "CREATE TABLE member_balance (id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "mobile TEXT NOT NULL, stored_value_fen INTEGER NOT NULL DEFAULT 0)"
+    )
+    await conn.execute(
+        "INSERT INTO member_balance (mobile, stored_value_fen) VALUES (?, ?)",
+        (MOBILE, 500),
+    )
+    await conn.commit()
+    repo = MemberBalanceRepo(conn)
+
+    with caplog.at_level(logging.ERROR):
+        with pytest.raises(sqlite3.OperationalError, match="no such column"):
+            await repo.credit_stored_value(MOBILE, amount_fen=1_000, bonus_fen=200)
+
+    rows = await conn.execute_fetchall(
+        "SELECT stored_value_fen FROM member_balance WHERE mobile = ? LIMIT 1",
+        (MOBILE,),
+    )
+    await conn.close()
+    # 只有总额的老库不得被“只加总额”污染成 1500，必须原样保持
+    assert int(rows[0]["stored_value_fen"]) == 500
+    assert any(record.levelno == logging.ERROR for record in caplog.records)
+
+
+@pytest.mark.asyncio
+async def test_legacy_deduct_keeps_principal_bonus_consistent(
+    db: aiosqlite.Connection,
+) -> None:
+    """旧扣款方法委托拆分扣款，扣款后 principal_fen + bonus_fen 恒等于总额。"""
+    repo = MemberBalanceRepo(db)
+    await repo.credit_stored_value(MOBILE, amount_fen=10_000, bonus_fen=4_000)
+    assert await repo.deduct_stored_value_if_sufficient(MOBILE, 6_000) is True
+    balance = await _balance_split(db)
+    assert balance == (4_000, 4_000, 0)
+    assert balance[1] + balance[2] == balance[0]
+    # 余额不足时不扣款，也不破坏拆分结构
+    assert await repo.deduct_stored_value_if_sufficient(MOBILE, 9_999) is False
+    assert await _balance_split(db) == (4_000, 4_000, 0)
+
+
+@pytest.mark.asyncio
+async def test_combined_payment_refund_restores_split_and_is_idempotent(
+    db: aiosqlite.Connection,
+    stored_value_service: StoredValueService,
+    order_service: OrderApplicationService,
+) -> None:
+    """本金+赠送金支付后取消，退款按原结构精确恢复；重复退款不重复加款。"""
+    await _seed_member(db)
+    await _member_balance_service(db).credit(
+        user_id=USER_ID,
+        mobile=MOBILE,
+        amount_fen=10_000,
+        bonus_fen=2_000,
+        biz_type="recharge",
+        biz_id="r_split_3",
+        unique_id="recharge:split_3",
+        source="recharge",
+    )
+    order_id = await _create_order(order_service, price_fen=5000)
+    await stored_value_service.prepare_combined_payment(
+        order_id, user_id=USER_ID, balance_fen=3_000
+    )
+    assert await _balance_split(db) == (7_000, 7_000, 0)
+
+    cancelled = await order_service.cancel_user_order(order_id, user_id=USER_ID)
+    assert cancelled["status"] == "cancelled"
+    assert await _balance_split(db) == (10_000, 8_000, 2_000)
+    assert await _ledger_split(db, f"order_refund:{order_id}") == {
+        "amount_fen": 3_000,
+        "principal_delta_fen": 1_000,
+        "bonus_delta_fen": 2_000,
+    }
+
+    paid_order = await OrderRepo(db).get_order(order_id)
+    assert paid_order is not None
+    await stored_value_service.refund_order_balance(paid_order)
+    assert await _balance_split(db) == (10_000, 8_000, 2_000)
+    refund_rows = await db.execute_fetchall(
+        "SELECT COUNT(*) AS c FROM balance_ledger WHERE unique_id = ?",
+        (f"order_refund:{order_id}",),
+    )
+    assert int(refund_rows[0]["c"]) == 1
+
+
+@pytest.mark.asyncio
+async def test_refund_without_split_ledger_falls_back_to_principal(
+    db: aiosqlite.Connection,
+    stored_value_service: StoredValueService,
+    order_service: OrderApplicationService,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """历史订单缺少拆分流水时，退款全额记本金并显式告警，不静默处理。"""
+    await _seed_member(db, balance_fen=1_000)
+    order_id = await _create_order(order_service, price_fen=5000)
+    order_repo = OrderRepo(db)
+    order = await order_repo.get_order(order_id)
+    assert order is not None
+    payment = loads_payment(order.payment)
+    payment["status"] = "partial"
+    payment["method"] = "combined"
+    payment["balanceFen"] = 2_000
+    payment["remainFen"] = 3_000
+    updated = await order_repo.update_payment(
+        order_id, dumps_payment(payment), "2026-08-20 19:00"
+    )
+    assert updated is not None
+
+    with caplog.at_level(logging.WARNING):
+        await stored_value_service.refund_order_balance(updated)
+
+    assert await _balance_split(db) == (3_000, 3_000, 0)
+    assert await _ledger_split(db, f"order_refund:{order_id}") == {
+        "amount_fen": 2_000,
+        "principal_delta_fen": 2_000,
+        "bonus_delta_fen": 0,
+    }
+    assert any(
+        record.levelno == logging.WARNING and order_id in record.getMessage()
+        for record in caplog.records
+    )

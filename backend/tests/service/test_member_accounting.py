@@ -4,6 +4,9 @@ import aiosqlite
 import pytest
 
 from app.config import settings
+from app.repository.customer_master_repo import CustomerMasterRepo
+from app.repository.member_balance_repo import MemberBalanceRepo
+from app.service.channels.storefront import StorefrontAuthService
 from app.service.member_loyalty import MemberLoyaltyImportService
 from app.service.youzan.event_member import handle_member_event
 from app.service.youzan.event_handler import YouzanEventHandler
@@ -296,6 +299,65 @@ async def _column_names(db: aiosqlite.Connection, table_name: str) -> set[str]:
         "SELECT name FROM pragma_table_info(?)", (table_name,)
     )
     return {row["name"] for row in rows}
+
+
+@pytest.mark.asyncio
+async def test_v040_backfill_repairs_bare_balance_and_claim_shows_principal(
+    db: aiosqlite.Connection,
+) -> None:
+    """裸写总额后重跑 v040：本金被补齐、总额不变，认领回显 principalFen。"""
+    mobile = "13800000007"
+    await db.execute(
+        "INSERT INTO member_balance (mobile, stored_value_fen, bonus_fen) "
+        "VALUES (?, ?, ?)",
+        (mobile, 8000, 0),
+    )
+    await db.commit()
+    before = await db.execute_fetchall(
+        "SELECT principal_fen FROM member_balance WHERE mobile = ? LIMIT 1",
+        (mobile,),
+    )
+    assert int(before[0]["principal_fen"]) == 0
+
+    # 模拟升级到 v040：丢弃版本记录后重跑迁移，回填语句应补齐本金
+    await db.execute("DELETE FROM _schema_version WHERE version = ?", (40,))
+    await db.commit()
+    from app.migrations.runner import run_migrations
+
+    assert await run_migrations(db) == 1
+
+    repaired = await db.execute_fetchall(
+        "SELECT stored_value_fen, principal_fen, bonus_fen FROM member_balance "
+        "WHERE mobile = ? LIMIT 1",
+        (mobile,),
+    )
+    assert (
+        int(repaired[0]["stored_value_fen"]),
+        int(repaired[0]["principal_fen"]),
+        int(repaired[0]["bonus_fen"]),
+    ) == (8000, 8000, 0)
+
+    claimed = await StorefrontAuthService(
+        customer_repo=CustomerMasterRepo(db),
+        member_balance_repo=MemberBalanceRepo(db),
+        db=db,
+    ).claim_member_by_phone(user_id="wx_legacy_split", phone=mobile)
+    assert claimed["storedValueFen"] == 8000
+    assert claimed["principalFen"] == 8000
+    assert claimed["bonusFen"] == 0
+
+    # 导入路径绝对覆盖总额时同步维护本金结构
+    await MemberBalanceRepo(db).upsert_identity(mobile=mobile, stored_value_fen=6000)
+    overridden = await db.execute_fetchall(
+        "SELECT stored_value_fen, principal_fen, bonus_fen FROM member_balance "
+        "WHERE mobile = ? LIMIT 1",
+        (mobile,),
+    )
+    assert (
+        int(overridden[0]["stored_value_fen"]),
+        int(overridden[0]["principal_fen"]),
+        int(overridden[0]["bonus_fen"]),
+    ) == (6000, 6000, 0)
 
 
 @pytest.mark.asyncio

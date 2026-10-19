@@ -47,7 +47,12 @@ class RechargeOrder:
 
 @dataclass
 class BalanceLedgerEntry:
-    """一条储值余额变动流水（amount_fen 带符号）。"""
+    """一条储值余额变动流水（amount_fen 带符号，并拆分本金/赠送金）。
+
+    amount_fen 保持带符号语义，恒满足
+    principal_delta_fen + bonus_delta_fen == amount_fen；
+    本金与赠送金各自按同号增量记录，使退款可按原结构还原。
+    """
 
     unique_id: str
     user_id: str = ""
@@ -60,3 +65,5 @@ class BalanceLedgerEntry:
     source: str = BalanceSource.RECHARGE
     occurred_at: str = ""
     request_fingerprint: str = ""
+    principal_delta_fen: int = 0
+    bonus_delta_fen: int = 0
