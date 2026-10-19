@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 
 from app.models.order import Order, OrderStatus
 from app.repository.order_repo import OrderRepo
+from app.service.order.cake_slots import CakeSlotCapacityService
 from app.service.order.inventory import OrderInventoryService
 from app.service.order.payment_state import (
     PAYMENT_STATUS_EXPIRED,
@@ -39,11 +40,13 @@ class OrderExpirationService:
         inventory_service: OrderInventoryService,
         timeline_service: OrderTimelineService,
         stored_value_service: StoredValueService | None = None,
+        slot_service: CakeSlotCapacityService | None = None,
     ) -> None:
         self._order_repo = order_repo
         self._inventory_service = inventory_service
         self._timeline_service = timeline_service
         self._stored_value_service = stored_value_service
+        self._slot_service = slot_service
 
     async def expire_unpaid_order(self, order_id: str) -> dict:
         """后台手动关闭单笔未支付订单。"""
@@ -112,6 +115,7 @@ class OrderExpirationService:
         await self._inventory_service.release_reserved_inventory(
             self._inventory_service.items_from_order(closed)
         )
+        await self._release_slot(closed)
         return closed
 
     async def _record_expiration_event(
@@ -147,6 +151,11 @@ class OrderExpirationService:
             PAYMENT_STATUS_UNPAID,
             PAYMENT_STATUS_PARTIAL,
         )
+
+    async def _release_slot(self, order: Order) -> None:
+        """超时或后台关闭成功后释放定制蛋糕时段名额，幂等。"""
+        if self._slot_service is not None:
+            await self._slot_service.release(order.id)
 
     async def _refund_balance(self, order: Order) -> None:
         """组合支付超时关闭时原路退回已扣储值余额。"""

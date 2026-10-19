@@ -67,6 +67,7 @@ def init_services(repos: dict[str, Any], vs: Any, bm25: Any = None) -> dict[str,
         ShopPageConfigurationService,
     )
     from app.service.order import OrderApplicationService
+    from app.service.order.cake_slots import CakeSlotCapacityService
     from app.service.order.schedule import OrderScheduleService
     from app.service.transfer_manager import TransferManager
     from app.service.wecom.employee_agent_service import EmployeeAgentService
@@ -119,6 +120,13 @@ def init_services(repos: dict[str, Any], vs: Any, bm25: Any = None) -> dict[str,
     if daily_stock_repo is None:
         daily_stock_repo = ProductDailyStockRepo(None)
     product_daily_stock_service = ProductDailyStockService(daily_stock_repo)
+    # 时段容量仓储同样用 None 占位，请求期由 db_session_scope 的 ContextVar 解析。
+    cake_slot_repo = repos.get("cake_slot_repo")
+    if cake_slot_repo is None:
+        from app.repository.cake_slot_repo import CakeSlotRepo
+
+        cake_slot_repo = CakeSlotRepo(None)
+    cake_slot_service = CakeSlotCapacityService(cake_slot_repo)
     order_service = OrderApplicationService(
         order_repo=repos["order_repo"],
         event_repo=repos["order_event_repo"],
@@ -130,6 +138,7 @@ def init_services(repos: dict[str, Any], vs: Any, bm25: Any = None) -> dict[str,
         stored_value_service=stored_value_service,
         delivery_service=delivery_service,
         daily_stock_service=product_daily_stock_service,
+        slot_service=cake_slot_service,
     )
     customer_address_service = CustomerAddressService(
         address_repo=repos["customer_address_repo"],

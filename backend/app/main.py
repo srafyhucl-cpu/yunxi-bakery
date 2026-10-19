@@ -48,6 +48,7 @@ from app.repository.customer_group_repo import CustomerGroupRepo
 from app.repository.delivery_quote_repo import DeliveryQuoteRepo
 from app.repository.offline_session_repo import OfflineSessionRepo
 from app.repository.order_event_repo import OrderEventRepo
+from app.repository.cake_slot_repo import CakeSlotRepo
 from app.repository.order_repo import OrderRepo
 from app.repository.product_daily_stock_repo import ProductDailyStockRepo
 from app.repository.session_repo import SessionRepo
@@ -227,6 +228,7 @@ def _init_repositories() -> dict[str, object]:
         "offline_session_repo": OfflineSessionRepo(None),
         "order_repo": OrderRepo(None),
         "order_event_repo": OrderEventRepo(None),
+        "cake_slot_repo": CakeSlotRepo(None),
         "customer_address_repo": CustomerAddressRepo(None),
         "customer_address_audit_repo": CustomerAddressAuditRepo(None),
         "customer_group_repo": CustomerGroupRepo(None),

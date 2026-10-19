@@ -6,8 +6,13 @@ from collections.abc import Callable
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+from app.logger import setup_logger
 from app.models.order import OrderStatus
 from app.repository.order_repo import OrderRepo
+from app.service.order.cake_slots import (
+    DEFAULT_CAKE_SLOT_CAPACITY,
+    extract_slot_key as resolve_cake_slot_key,
+)
 from app.service.order.fulfillment_types import (
     CAKE_KEYWORDS,
     FULFILLMENT_DAILY_READY,
@@ -16,11 +21,13 @@ from app.service.order.fulfillment_types import (
 )
 from app.service.order.inventory import NormalizedOrderItem
 
+logger = setup_logger()
+
 BEIJING_TIME_ZONE = ZoneInfo("Asia/Shanghai")
 EXPECT_TIME_FORMAT = "%Y-%m-%d %H:%M"
 
 DEFAULT_CAKE_MIN_ADVANCE_HOURS = 4
-DEFAULT_SLOT_MAX_CAPACITY = 5
+DEFAULT_SLOT_MAX_CAPACITY = DEFAULT_CAKE_SLOT_CAPACITY
 
 
 def get_current_beijing_time() -> datetime:
@@ -53,8 +60,9 @@ class OrderFulfillmentDualTrackService:
         normalized_items: list[NormalizedOrderItem],
         delivery: dict,
         expect_time: str,
+        check_capacity: bool = True,
     ) -> None:
-        """执行双轨履约校验。"""
+        """执行双轨履约校验；check_capacity 为 False 时由原子预占服务接管容量。"""
         has_cake = False
         cake_min_advance_hours = DEFAULT_CAKE_MIN_ADVANCE_HOURS
 
@@ -83,7 +91,7 @@ class OrderFulfillmentDualTrackService:
             self.validate_advance_hours(
                 expect_time, min_advance_hours=cake_min_advance_hours
             )
-            if self._order_repo is not None:
+            if check_capacity and self._order_repo is not None:
                 await self.validate_delivery_slot_capacity(expect_time)
 
     def validate_cake_customization(self, raw_item: dict, item_title: str) -> None:
@@ -147,14 +155,8 @@ class OrderFulfillmentDualTrackService:
 
     @staticmethod
     def extract_slot_key(expect_time: str) -> str:
-        """从预约时间中提取时段唯一键（按日期与2小时时间窗口分组）。"""
-        try:
-            dt = datetime.strptime(expect_time, EXPECT_TIME_FORMAT)
-            slot_start_hour = (dt.hour // 2) * 2
-            slot_end_hour = slot_start_hour + 2
-            return f"{dt.strftime('%Y-%m-%d')} {slot_start_hour:02d}:00-{slot_end_hour:02d}:00"
-        except Exception:
-            return expect_time
+        """兼容转发：时段键实现已迁移到 cake_slots.extract_slot_key。"""
+        return resolve_cake_slot_key(expect_time)
 
     async def _count_active_cake_orders_in_slot(self, slot_key: str) -> int:
         """统计某预约时段内当前活跃（未取消）的定制蛋糕订单数量。"""
@@ -187,7 +189,15 @@ class OrderFulfillmentDualTrackService:
                     order_expect = str(d_dict.get("expectTime", ""))
                 except Exception:
                     pass
-            if order_expect and self.extract_slot_key(order_expect) == slot_key:
+            try:
+                order_slot_key = (
+                    resolve_cake_slot_key(order_expect) if order_expect else ""
+                )
+            except ValueError as exc:
+                # 历史脏数据中的非法预约时间不参与容量统计。
+                logger.debug("跳过非法预约时间订单容量统计: %s", exc)
+                order_slot_key = ""
+            if order_slot_key and order_slot_key == slot_key:
                 # 检查该订单是否包含定制蛋糕（含定制信息、PREORDER_CAKE标识或定制关键词）
                 if (
                     "customization" in products_json

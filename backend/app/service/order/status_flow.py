@@ -8,6 +8,7 @@ from datetime import datetime
 
 from app.models.order import Order, OrderStatus
 from app.repository.order_repo import OrderRepo
+from app.service.order.cake_slots import CakeSlotCapacityService
 from app.service.order.inventory import OrderInventoryService
 from app.service.order.payment_state import (
     PAYMENT_STATUS_PARTIAL,
@@ -61,11 +62,13 @@ class OrderAdminStatusService:
         inventory_service: OrderInventoryService,
         timeline_service: OrderTimelineService,
         stored_value_service: StoredValueService | None = None,
+        slot_service: CakeSlotCapacityService | None = None,
     ) -> None:
         self._order_repo = order_repo
         self._inventory_service = inventory_service
         self._timeline_service = timeline_service
         self._stored_value_service = stored_value_service
+        self._slot_service = slot_service
 
     async def update_admin_order_status(self, order_id: str, status: str) -> dict:
         """后台更新订单履约状态。"""
@@ -112,6 +115,7 @@ class OrderAdminStatusService:
                 target_status,
             )
         await self._release_inventory_if_needed(updated, target_status)
+        await self._release_slot_if_cancelled(updated, target_status)
         await self._timeline_service.record_event(
             order_id=order_id,
             status=target_status,
@@ -195,6 +199,17 @@ class OrderAdminStatusService:
         await self._inventory_service.release_reserved_inventory(
             self._inventory_service.items_from_order(order)
         )
+
+    async def _release_slot_if_cancelled(
+        self,
+        order: Order,
+        target_status: str,
+    ) -> None:
+        """仅后台取消释放时段名额；完成/制作/配送保持占用。"""
+        if target_status != OrderStatus.CANCELLED.value:
+            return
+        if self._slot_service is not None:
+            await self._slot_service.release(order.id)
 
     def _status_value(self, status: object) -> str:
         return status.value if hasattr(status, "value") else str(status)
