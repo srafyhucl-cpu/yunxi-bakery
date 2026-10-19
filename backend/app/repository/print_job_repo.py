@@ -92,6 +92,26 @@ class PrintJobRepo(BaseRepository):
         )
         return [OrderPrintJob(**dict(row)) for row in rows]
 
+    async def list_by_status(
+        self, status: str = "", limit: int = 50
+    ) -> list[OrderPrintJob]:
+        """按状态读取作业；status 为空时返回全部，最新在前。"""
+        resolved_status = _status_value(status or "").strip().upper()
+        resolved_limit = max(int(limit), 0)
+        if resolved_status:
+            rows = await self._db.execute_fetchall(
+                "SELECT " + _JOB_COLUMNS + " FROM order_print_jobs "
+                "WHERE status = ? ORDER BY created_at DESC, id DESC LIMIT ?",
+                (resolved_status, resolved_limit),
+            )
+        else:
+            rows = await self._db.execute_fetchall(
+                "SELECT " + _JOB_COLUMNS + " FROM order_print_jobs "
+                "ORDER BY created_at DESC, id DESC LIMIT ?",
+                (resolved_limit,),
+            )
+        return [OrderPrintJob(**dict(row)) for row in rows]
+
     async def mark_claimed(self, job_id: str, updated_at: str = "") -> bool:
         """CAS 领取作业：仅 PENDING/FAILED 可进入 CLAIMED。"""
         cursor = await self._db.execute(
@@ -145,7 +165,8 @@ class PrintJobRepo(BaseRepository):
         resolved_at = updated_at or now_str()
         cursor = await self._db.execute(
             "UPDATE order_print_jobs SET status = 'PRINTED', provider_job_id = ?, "
-            "last_error = '', printed_at = ?, updated_at = ? WHERE id = ?",
+            "last_error = '', printed_at = ?, updated_at = ? "
+            "WHERE id = ? AND status IN ('SUBMITTED', 'MOCKED', 'PRINTED')",
             (provider_job_id, resolved_at, resolved_at, job_id),
         )
         return cursor.rowcount == 1

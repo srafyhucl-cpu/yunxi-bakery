@@ -129,11 +129,13 @@ def _register_admin_operations_routes(app: FastAPI, services: dict[str, Any]) ->
     from app.api.admin.coupons import create_admin_coupons_router
     from app.api.admin.invoices import create_admin_invoices_router
     from app.api.admin.orders import create_admin_orders_router
+    from app.api.admin.print_jobs import create_admin_print_jobs_router
     from app.api.admin.products import create_admin_products_router
     from app.service.coupon.admin import AdminCouponService
     from app.service.invoice.admin import AdminInvoiceService
 
     app.include_router(create_admin_orders_router(services["order_service"]))
+    app.include_router(create_admin_print_jobs_router(services["print_job_service"]))
     app.include_router(
         create_admin_customer_groups_router(services["customer_group_service"])
     )

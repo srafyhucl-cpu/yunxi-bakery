@@ -1,8 +1,8 @@
 """订单打印作业服务。
 
-只负责入队、提交网关与失败重试记录：
+只负责入队、提交网关、失败重试记录与后台补打：
 - 不接支付成功事件（3B 调用 enqueue_for_order）；
-- 不启动后台 worker（3B 调度 process_pending）；
+- 后台消费由 print_worker 调度 process_pending；
 - 不覆盖历史作业，补打永远新建一条 PENDING。
 """
 
@@ -28,6 +28,12 @@ SUCCESS_PRINT_STATUSES = (
     PrintJobStatus.MOCKED.value,
     PrintJobStatus.SUBMITTED.value,
 )
+
+# 后台列表可筛选的合法状态；非法状态由服务层直接拒绝。
+VALID_PRINT_JOB_STATUSES = tuple(status.value for status in PrintJobStatus)
+
+# 列表只回传小票内容预览，避免把完整客户电话/地址带到后台列表。
+CONTENT_PREVIEW_LENGTH = 80
 
 
 class PrintJobService:
@@ -208,9 +214,48 @@ class PrintJobService:
         return self._job_dict(job, created=True)
 
     async def list_for_order(self, order_id: str) -> list[dict]:
-        """读取订单的全部打印作业。"""
+        """读取订单的全部打印作业；列表不返回完整小票快照。"""
         jobs = await self._repo.list_for_order(order_id)
-        return [self._job_dict(job) for job in jobs]
+        return [self._job_metadata(job) for job in jobs]
+
+    async def list_jobs(self, status: str = "", limit: int = 50) -> list[dict]:
+        """读取打印队列；status 为空返回全部，非法状态抛 ValueError。"""
+        resolved_status = str(getattr(status, "value", status) or "").strip().upper()
+        if resolved_status and resolved_status not in VALID_PRINT_JOB_STATUSES:
+            raise ValueError(f"非法打印作业状态: {resolved_status}")
+        jobs = await self._repo.list_by_status(resolved_status, limit)
+        return [self._job_metadata(job) for job in jobs]
+
+    async def get_job(self, job_id: str) -> dict | None:
+        """读取单条作业元数据，不含完整小票快照。"""
+        job = await self._repo.get_job(job_id)
+        if job is None:
+            return None
+        return self._job_metadata(job)
+
+    async def mark_printed(self, job_id: str) -> bool:
+        """人工确认真实出纸；仅已受理或已打印作业允许确认。"""
+        job = await self._repo.get_job(job_id)
+        if job is None:
+            return False
+        allowed = (
+            PrintJobStatus.SUBMITTED.value,
+            PrintJobStatus.MOCKED.value,
+            PrintJobStatus.PRINTED.value,
+        )
+        if job.status not in allowed:
+            raise ValueError(
+                f"当前状态 {job.status} 不允许确认已打印，"
+                "仅 SUBMITTED/MOCKED/PRINTED 可确认"
+            )
+        updated = await self._repo.mark_printed(job.id, job.provider_job_id)
+        if updated:
+            logger.info(
+                "打印作业已人工确认出纸 job_id=%s order_id=%s",
+                job.id,
+                job.order_id,
+            )
+        return updated
 
     def _new_job(
         self,
@@ -319,6 +364,38 @@ class PrintJobService:
             "printedAt": job.printed_at,
             "created": created,
         }
+
+    def _job_metadata(self, job: OrderPrintJob) -> dict:
+        """后台列表使用的作业元数据，刻意不返回 payloadSnapshot。"""
+        return {
+            "id": job.id,
+            "orderId": job.order_id,
+            "ticketType": job.ticket_type,
+            "status": job.status,
+            "provider": job.provider,
+            "printerId": job.printer_id,
+            "attempts": job.attempts,
+            "lastError": job.last_error,
+            "providerJobId": job.provider_job_id,
+            "idempotencyKey": job.idempotency_key,
+            "contentPreview": self._content_preview(job.payload_snapshot),
+            "operator": job.operator,
+            "createdAt": job.created_at,
+            "updatedAt": job.updated_at,
+            "printedAt": job.printed_at,
+        }
+
+    @staticmethod
+    def _content_preview(payload_snapshot: str) -> str:
+        """提取小票内容前 80 字符，供后台列表快速辨识。"""
+        text = str(payload_snapshot or "")
+        try:
+            payload = json.loads(text or "{}")
+        except json.JSONDecodeError:
+            payload = None
+        if isinstance(payload, dict):
+            text = str(payload.get("content", ""))
+        return text[:CONTENT_PREVIEW_LENGTH]
 
     @staticmethod
     def _enqueue_key(order_id: str, ticket_type: str) -> str:

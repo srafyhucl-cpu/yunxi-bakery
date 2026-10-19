@@ -304,6 +304,14 @@ def _start_background_tasks(
         bg_tasks,
         db_session_scope,
     )
+    from app.service.order.print_worker import register_print_worker
+
+    register_print_worker(
+        app,
+        services["print_job_service"],
+        bg_tasks,
+        db_session_scope,
+    )
     return bg_tasks
 
 
@@ -365,6 +373,10 @@ async def _shutdown_lifespan_services(
     from app.service.order.print_dispatch import stop_print_dispatch_scheduler
 
     await stop_print_dispatch_scheduler(app)
+
+    from app.service.order.print_worker import stop_print_worker
+
+    await stop_print_worker(app)
 
     # 关闭企微客户端
     from app.service.wecom.client import close_wecom_client

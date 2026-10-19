@@ -144,6 +144,10 @@ class Settings(BaseSettings):
     PRINT_DISPATCH_ENABLED: bool = True
     PRINT_DISPATCH_INTERVAL_SECONDS: float = 5.0
     PRINT_DISPATCH_BATCH_SIZE: int = 200
+    # 打印消费 worker：定时把 PENDING 作业交给网关，绝不伪造真实出纸。
+    PRINT_WORKER_ENABLED: bool = True
+    PRINT_WORKER_INTERVAL_SECONDS: float = 2.0
+    PRINT_WORKER_BATCH_SIZE: int = 20
     FEIEYUN_USER: str = ""
     FEIEYUN_UKEY: str = ""
     FEIEYUN_SN: str = ""

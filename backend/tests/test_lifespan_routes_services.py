@@ -149,6 +149,11 @@ def test_register_routes_starts_workers_and_includes_all_routers(
     )
     _install_module(
         monkeypatch,
+        "app.api.admin.print_jobs",
+        create_admin_print_jobs_router=lambda service: ("admin-print-jobs", service),
+    )
+    _install_module(
+        monkeypatch,
         "app.api.admin.shop_pages",
         create_shop_page_config_router=lambda service: ("shop-pages", service),
     )
@@ -298,6 +303,7 @@ def test_register_routes_starts_workers_and_includes_all_routers(
         "catalog_service": "catalog-service",
         "delivery_service": "delivery-service",
         "order_service": "order-service",
+        "print_job_service": "print-job-service",
         "stored_value_service": "stored-value-service",
         "points_service": "points-service",
         "coupon_service": "coupon-service",
@@ -317,11 +323,12 @@ def test_register_routes_starts_workers_and_includes_all_routers(
 
     assert wecom_queue.started_with == ["chat"]
     assert kf_queue.started_with == ["chat"]
-    assert len(app.included_routers) == 31
+    assert len(app.included_routers) == 32
     assert (
         "admin-daily-stock",
         "product-daily-stock-service",
     ) in app.included_routers
+    assert ("admin-print-jobs", "print-job-service") in app.included_routers
     assert ("miniapp-delivery", "delivery-service") in app.included_routers
     assert app.included_routers[0] == ("webhook", "chat")
     wecom_router = app.included_routers[-2]
