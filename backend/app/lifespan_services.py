@@ -117,13 +117,6 @@ def init_services(repos: dict[str, Any], vs: Any, bm25: Any = None) -> dict[str,
         staff_repo=staff_repo,
         audit_repo=staff_audit_repo,
     )
-    staff_quick_order_service = StaffQuickOrderService(
-        customer_repo=repos.get("customer_master_repo"),
-        member_balance_repo=repos.get("member_balance_repo"),
-        youzan_order_repo=repos.get("youzan_order_repo"),
-        catalog_service=catalog_service,
-        audit_repo=staff_audit_repo,
-    )
     from app.service.stored_value import StoredValueService
 
     stored_value_service = StoredValueService()
@@ -174,6 +167,24 @@ def init_services(repos: dict[str, Any], vs: Any, bm25: Any = None) -> dict[str,
         delivery_service=delivery_service,
         daily_stock_service=product_daily_stock_service,
         slot_service=cake_slot_service,
+    )
+    # 快捷开单请求仓储同样用 None 占位，启动期不读取数据库连接。
+    from app.repository.staff_quick_order_repo import StaffQuickOrderRequestRepo
+
+    staff_quick_order_request_repo = repos.get("staff_quick_order_request_repo")
+    if staff_quick_order_request_repo is None:
+        staff_quick_order_request_repo = StaffQuickOrderRequestRepo(None)
+    staff_quick_order_service = StaffQuickOrderService(
+        customer_repo=repos.get("customer_master_repo"),
+        member_balance_repo=repos.get("member_balance_repo"),
+        youzan_order_repo=repos.get("youzan_order_repo"),
+        catalog_service=catalog_service,
+        audit_repo=staff_audit_repo,
+        order_service=order_service,
+        stored_value_service=stored_value_service,
+        order_repo=repos["order_repo"],
+        request_repo=staff_quick_order_request_repo,
+        staff_audit_repo=staff_audit_repo,
     )
     customer_address_service = CustomerAddressService(
         address_repo=repos["customer_address_repo"],

@@ -54,6 +54,7 @@ from app.repository.print_dispatch_state_repo import PrintDispatchStateRepo
 from app.repository.print_job_repo import PrintJobRepo
 from app.repository.product_daily_stock_repo import ProductDailyStockRepo
 from app.repository.session_repo import SessionRepo
+from app.repository.staff_quick_order_repo import StaffQuickOrderRequestRepo
 from app.repository.staff_repo import StaffAuditRepo, StaffRepo
 from app.repository.transfer_repo import TransferRepo
 from app.repository.youzan_inventory_repo import YouzanInventoryRepo
@@ -240,6 +241,7 @@ def _init_repositories() -> dict[str, object]:
         "delivery_quote_repo": DeliveryQuoteRepo(None),
         "staff_repo": StaffRepo(None),
         "staff_audit_repo": StaffAuditRepo(None),
+        "staff_quick_order_request_repo": StaffQuickOrderRequestRepo(None),
     }
     return _with_legacy_repository_aliases(repos)
 
