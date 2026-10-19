@@ -56,6 +56,7 @@ def init_services(repos: dict[str, Any], vs: Any, bm25: Any = None) -> dict[str,
     from app.service.catalog.daily_stock import ProductDailyStockService
     from app.service.channels.storefront import StorefrontAuthService
     from app.service.conversation import StorefrontConversationService
+    from app.service.customization_card import CustomizationCardService
     from app.service.customer import CustomerAddressService
     from app.service.customer import CustomerGroupOperationsService
     from app.service.customer_consent import CustomerConsentService
@@ -248,6 +249,8 @@ def init_services(repos: dict[str, Any], vs: Any, bm25: Any = None) -> dict[str,
         message_repo=repos["message_repo"],
         transfer_mgr=transfer_mgr,
     )
+    # 定制需求卡服务无数据库依赖，只做校验与文本化，不建单不写库。
+    customization_card_service = CustomizationCardService()
     wecom_order_lookup_service = WeComOrderLookupService(
         order_service=order_service,
         youzan_order_repo=repos.get("youzan_order_repo"),
@@ -306,6 +309,7 @@ def init_services(repos: dict[str, Any], vs: Any, bm25: Any = None) -> dict[str,
         "reconcile_service": reconcile_service,
         "chat_service": chat_service,
         "storefront_conversation_service": storefront_conversation_service,
+        "customization_card_service": customization_card_service,
         "wecom_order_lookup_service": wecom_order_lookup_service,
         "wecom_bot_business_tool_service": wecom_bot_business_tool_service,
         "wecom_bot_ops_tool_service": wecom_bot_ops_tool_service,

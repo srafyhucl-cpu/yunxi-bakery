@@ -82,7 +82,10 @@ def register_routes(app: FastAPI, services: dict[str, Any]) -> None:
     app.include_router(create_storefront_points_router(services["points_service"]))
     app.include_router(create_storefront_coupons_router(services["coupon_service"]))
     app.include_router(
-        create_storefront_chat_router(services["storefront_conversation_service"])
+        create_storefront_chat_router(
+            services["storefront_conversation_service"],
+            services.get("customization_card_service"),
+        )
     )
     app.include_router(
         create_storefront_group_registrations_router(services["customer_group_service"])

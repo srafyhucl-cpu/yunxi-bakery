@@ -204,7 +204,10 @@ def test_register_routes_starts_workers_and_includes_all_routers(
     _install_module(
         monkeypatch,
         "app.api.channels.storefront.chat",
-        create_storefront_chat_router=lambda service: ("miniapp-chat", service),
+        create_storefront_chat_router=lambda service, card_service=None: (
+            "miniapp-chat",
+            service,
+        ),
     )
     _install_module(
         monkeypatch,
@@ -329,6 +332,7 @@ def test_register_routes_starts_workers_and_includes_all_routers(
         "coupon_service": "coupon-service",
         "knowledge_retriever": "knowledge-retriever",
         "storefront_conversation_service": "storefront-conversation-service",
+        "customization_card_service": "customization-card-service",
         "customer_group_service": "customer-group-service",
         "product_daily_stock_service": "product-daily-stock-service",
         "customer_consent_service": "customer-consent-service",
@@ -639,6 +643,7 @@ def test_init_services_wires_core_services(monkeypatch) -> None:
         "points_service",
         "coupon_service",
         "storefront_conversation_service",
+        "customization_card_service",
         "wecom_order_lookup_service",
         "transfer_mgr",
         "shop_page_configuration_service",
