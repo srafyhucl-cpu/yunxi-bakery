@@ -97,6 +97,15 @@ export const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: "/print-jobs",
+    name: "print-jobs",
+    component: () => import("@/pages/print-jobs/PrintJobsPage.vue"),
+    meta: {
+      title: "打印队列",
+      navKey: "print-jobs",
+    },
+  },
+  {
     path: "/addresses",
     name: "addresses",
     component: () => import("@/pages/addresses/AddressesPage.vue"),
