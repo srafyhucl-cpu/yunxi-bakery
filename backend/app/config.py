@@ -162,6 +162,9 @@ class Settings(BaseSettings):
     ADMIN_ALLOW_LEGACY_BEARER: bool = False
     ADMIN_COOKIE_SECURE: bool = True
     ADMIN_ALLOWED_ORIGINS: str = ""
+    # ── 店员会话（与后台管理员完全隔离） ──
+    STAFF_SESSION_SECRET: str = ""
+    STAFF_SESSION_TTL_SECONDS: int = 28800
     ENABLE_API_DOCS: bool = False
     MAX_REQUEST_BODY_BYTES: int = 1_048_576
     MAX_CONCURRENT_REQUESTS: int = 100

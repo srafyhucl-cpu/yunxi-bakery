@@ -35,6 +35,8 @@ def register_routes(app: FastAPI, services: dict[str, Any]) -> None:
         create_wecom_intelligent_bot_router,
     )
     from app.api.integrations.youzan_webhook import create_webhook_router
+    from app.api.staff.auth import create_staff_auth_router
+    from app.api.staff.quick_order import create_staff_quick_order_router
     from app.service.wecom.kf_message_queue import kf_queue
     from app.service.wecom.message_queue import wecom_queue
 
@@ -45,6 +47,13 @@ def register_routes(app: FastAPI, services: dict[str, Any]) -> None:
     _register_admin_shell_routes(app, services)
     app.include_router(
         create_storefront_auth_router(services["storefront_auth_service"])
+    )
+    app.include_router(create_staff_auth_router(services["staff_auth_service"]))
+    app.include_router(
+        create_staff_quick_order_router(
+            services["staff_quick_order_service"],
+            services["staff_auth_service"],
+        )
     )
     app.include_router(
         create_storefront_addresses_router(services["customer_address_service"])

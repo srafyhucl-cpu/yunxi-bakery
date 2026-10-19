@@ -16,6 +16,7 @@ from app.service.youzan.product_reconciler import ProductReconcileService
 from app.service.agents.trace_sink import build_local_agent_trace_sink
 from app.repository.privacy_repo import PrivacyRepo
 from app.repository.product_daily_stock_repo import ProductDailyStockRepo
+from app.repository.staff_repo import StaffAuditRepo, StaffRepo
 
 LEGACY_SERVICE_ALIASES = {
     "miniapp_auth_service": "storefront_auth_service",
@@ -72,6 +73,8 @@ def init_services(repos: dict[str, Any], vs: Any, bm25: Any = None) -> dict[str,
     from app.service.order.cake_slots import CakeSlotCapacityService
     from app.service.order.print_job_service import PrintJobService
     from app.service.order.schedule import OrderScheduleService
+    from app.service.staff_auth import StaffAuthService
+    from app.service.staff_quick_order import StaffQuickOrderService
     from app.service.transfer_manager import TransferManager
     from app.service.wecom.employee_agent_service import EmployeeAgentService
     from app.service.wecom.intelligent_bot_ops_tools import WeComBotOpsToolService
@@ -102,6 +105,24 @@ def init_services(repos: dict[str, Any], vs: Any, bm25: Any = None) -> dict[str,
         knowledge_repo=repos["knowledge_repo"],
         config_repo=repos["config_repo"],
         youzan_product_repo=repos["youzan_product_repo"],
+    )
+    # 店员仓储缺失时仍用 None 占位，请求期由 db_session_scope 的 ContextVar 解析。
+    staff_repo = repos.get("staff_repo")
+    if staff_repo is None:
+        staff_repo = StaffRepo(None)
+    staff_audit_repo = repos.get("staff_audit_repo")
+    if staff_audit_repo is None:
+        staff_audit_repo = StaffAuditRepo(None)
+    staff_auth_service = StaffAuthService(
+        staff_repo=staff_repo,
+        audit_repo=staff_audit_repo,
+    )
+    staff_quick_order_service = StaffQuickOrderService(
+        customer_repo=repos.get("customer_master_repo"),
+        member_balance_repo=repos.get("member_balance_repo"),
+        youzan_order_repo=repos.get("youzan_order_repo"),
+        catalog_service=catalog_service,
+        audit_repo=staff_audit_repo,
     )
     from app.service.stored_value import StoredValueService
 
@@ -253,6 +274,8 @@ def init_services(repos: dict[str, Any], vs: Any, bm25: Any = None) -> dict[str,
         **knowledge_services,
         "storefront_auth_service": storefront_auth_service,
         "catalog_service": catalog_service,
+        "staff_auth_service": staff_auth_service,
+        "staff_quick_order_service": staff_quick_order_service,
         "order_service": order_service,
         "print_job_service": print_job_service,
         "product_daily_stock_service": product_daily_stock_service,

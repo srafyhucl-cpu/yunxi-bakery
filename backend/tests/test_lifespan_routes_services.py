@@ -35,7 +35,11 @@ class FakeStatusToolService:
 
 def _install_module(monkeypatch: Any, name: str, **attrs: Any) -> None:
     module = types.ModuleType(name)
-    if name in {"app.api.admin", "app.api.integrations"}:
+    existing_module = sys.modules.get(name)
+    if existing_module is not None and hasattr(existing_module, "__path__"):
+        # 保留真实包的子模块搜索路径，避免替换父包后影响惰性导入。
+        module.__path__ = list(existing_module.__path__)
+    elif name in {"app.api.admin", "app.api.integrations"}:
         module.__path__ = []
     for key, value in attrs.items():
         setattr(module, key, value)
@@ -161,6 +165,20 @@ def test_register_routes_starts_workers_and_includes_all_routers(
         monkeypatch,
         "app.api.channels.storefront.auth",
         create_storefront_auth_router=lambda service: ("miniapp-auth", service),
+    )
+    _install_module(
+        monkeypatch,
+        "app.api.staff.auth",
+        create_staff_auth_router=lambda service: ("staff-auth", service),
+    )
+    _install_module(
+        monkeypatch,
+        "app.api.staff.quick_order",
+        create_staff_quick_order_router=lambda service, auth_service: (
+            "staff-quick-order",
+            service,
+            auth_service,
+        ),
     )
     _install_module(
         monkeypatch,
@@ -299,6 +317,8 @@ def test_register_routes_starts_workers_and_includes_all_routers(
         "knowledge_sync_service": "knowledge-sync",
         "shop_page_configuration_service": "shop-pages-service",
         "storefront_auth_service": "storefront-auth-service",
+        "staff_auth_service": "staff-auth-service",
+        "staff_quick_order_service": "staff-quick-order-service",
         "customer_address_service": "customer-address-service",
         "catalog_service": "catalog-service",
         "delivery_service": "delivery-service",
@@ -323,13 +343,19 @@ def test_register_routes_starts_workers_and_includes_all_routers(
 
     assert wecom_queue.started_with == ["chat"]
     assert kf_queue.started_with == ["chat"]
-    assert len(app.included_routers) == 32
+    assert len(app.included_routers) == 34
     assert (
         "admin-daily-stock",
         "product-daily-stock-service",
     ) in app.included_routers
     assert ("admin-print-jobs", "print-job-service") in app.included_routers
     assert ("miniapp-delivery", "delivery-service") in app.included_routers
+    assert ("staff-auth", "staff-auth-service") in app.included_routers
+    assert (
+        "staff-quick-order",
+        "staff-quick-order-service",
+        "staff-auth-service",
+    ) in app.included_routers
     assert app.included_routers[0] == ("webhook", "chat")
     wecom_router = app.included_routers[-2]
     assert wecom_router[0] == "wecom-intelligent-bot-router"
@@ -617,6 +643,8 @@ def test_init_services_wires_core_services(monkeypatch) -> None:
         "transfer_mgr",
         "shop_page_configuration_service",
         "shop_configuration_service",
+        "staff_auth_service",
+        "staff_quick_order_service",
         "wecom_bot_business_tool_service",
         "wecom_bot_ops_tool_service",
         "wecom_bot_status_tool_service",
