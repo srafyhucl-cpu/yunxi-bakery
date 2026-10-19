@@ -51,6 +51,7 @@ def init_services(repos: dict[str, Any], vs: Any, bm25: Any = None) -> dict[str,
 
     from app.service.admin import AdminService
     from app.service.catalog import CatalogApplicationService
+    from app.service.catalog.daily_stock import ProductDailyStockService
     from app.service.channels.storefront import StorefrontAuthService
     from app.service.conversation import StorefrontConversationService
     from app.service.customer import CustomerAddressService
@@ -112,6 +113,12 @@ def init_services(repos: dict[str, Any], vs: Any, bm25: Any = None) -> dict[str,
     )
     shop_configuration_service = ShopConfigurationService(repos["config_repo"])
     order_schedule_service = OrderScheduleService(shop_configuration_service)
+    daily_stock_repo = repos.get("product_daily_stock_repo")
+    product_daily_stock_service = (
+        ProductDailyStockService(daily_stock_repo)
+        if daily_stock_repo is not None
+        else None
+    )
     order_service = OrderApplicationService(
         order_repo=repos["order_repo"],
         event_repo=repos["order_event_repo"],
@@ -122,6 +129,7 @@ def init_services(repos: dict[str, Any], vs: Any, bm25: Any = None) -> dict[str,
         schedule_service=order_schedule_service,
         stored_value_service=stored_value_service,
         delivery_service=delivery_service,
+        daily_stock_service=product_daily_stock_service,
     )
     customer_address_service = CustomerAddressService(
         address_repo=repos["customer_address_repo"],

@@ -49,6 +49,7 @@ from app.repository.delivery_quote_repo import DeliveryQuoteRepo
 from app.repository.offline_session_repo import OfflineSessionRepo
 from app.repository.order_event_repo import OrderEventRepo
 from app.repository.order_repo import OrderRepo
+from app.repository.product_daily_stock_repo import ProductDailyStockRepo
 from app.repository.session_repo import SessionRepo
 from app.repository.transfer_repo import TransferRepo
 from app.repository.youzan_inventory_repo import YouzanInventoryRepo
@@ -215,6 +216,7 @@ def _init_repositories() -> dict[str, object]:
         "youzan_product_repo": YouzanProductRepo(None),
         "youzan_order_repo": YouzanOrderRepo(None),
         "youzan_inventory_repo": YouzanInventoryRepo(None),
+        "product_daily_stock_repo": ProductDailyStockRepo(None),
         "webhook_event_repo": YouzanWebhookEventRepo(None),
         "analytics_repo": AnalyticsRepo(None),
         "customer_profile_repo": CustomerProfileRepo(None),

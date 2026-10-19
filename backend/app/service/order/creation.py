@@ -6,6 +6,7 @@ import json
 from datetime import datetime
 from typing import TYPE_CHECKING
 from uuid import uuid4
+from zoneinfo import ZoneInfo
 
 from app.constants.storefront import STOREFRONT_CHANNEL, STOREFRONT_DEMO_USER_ID
 from app.models.delivery import DeliveryQuote
@@ -31,7 +32,9 @@ if TYPE_CHECKING:
     from app.service.delivery.application import DeliveryApplicationService
 
 TIME_FORMAT = "%Y-%m-%d %H:%M:%S"
+EXPECT_TIME_FORMAT = "%Y-%m-%d %H:%M"
 ORDER_ID_PREFIX = "mp"
+BEIJING_TIME_ZONE = ZoneInfo("Asia/Shanghai")
 
 
 class OrderCreationService:
@@ -84,7 +87,10 @@ class OrderCreationService:
             order_items=order_items,
             user_id=user_id,
         )
-        await self._inventory_service.reserve_inventory(order_items)
+        await self._inventory_service.reserve_inventory(
+            order_items,
+            stock_date=self._resolve_stock_date(delivery),
+        )
         order = await self._build_order(
             order_items,
             delivery=delivery,
@@ -108,6 +114,18 @@ class OrderCreationService:
             "deliveryFeeFen": int(delivery["deliveryFeeFen"]),
             "payableFen": payable_fen,
         }
+
+    def _resolve_stock_date(self, delivery: dict) -> str:
+        """从预约时间取库存日期；没有有效预约时间时按北京时间今天。"""
+        expect_time = str(delivery.get("expectTime", "")).strip()
+        if expect_time:
+            try:
+                return datetime.strptime(expect_time, EXPECT_TIME_FORMAT).strftime(
+                    "%Y-%m-%d"
+                )
+            except ValueError:
+                pass
+        return datetime.now(BEIJING_TIME_ZONE).strftime("%Y-%m-%d")
 
     async def _build_order(
         self,

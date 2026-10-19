@@ -8,25 +8,19 @@ from zoneinfo import ZoneInfo
 
 from app.models.order import OrderStatus
 from app.repository.order_repo import OrderRepo
+from app.service.order.fulfillment_types import (
+    CAKE_KEYWORDS,
+    FULFILLMENT_DAILY_READY,
+    FULFILLMENT_PREORDER_CAKE,
+    classify_fulfillment_type,
+)
 from app.service.order.inventory import NormalizedOrderItem
 
 BEIJING_TIME_ZONE = ZoneInfo("Asia/Shanghai")
 EXPECT_TIME_FORMAT = "%Y-%m-%d %H:%M"
 
-FULFILLMENT_PREORDER_CAKE = "PREORDER_CAKE"
-FULFILLMENT_DAILY_READY = "DAILY_READY"
-
 DEFAULT_CAKE_MIN_ADVANCE_HOURS = 4
 DEFAULT_SLOT_MAX_CAPACITY = 5
-
-CAKE_KEYWORDS = (
-    "定制蛋糕",
-    "预订蛋糕",
-    "生日定制",
-    "预订大蛋糕",
-    "定制慕斯",
-    "生巧慕斯定制",
-)
 
 
 def get_current_beijing_time() -> datetime:
@@ -50,23 +44,7 @@ class OrderFulfillmentDualTrackService:
     @staticmethod
     def classify_fulfillment_type(raw_item: dict, title: str = "") -> str:
         """根据商品参数或标题判定履约类型。"""
-        explicit = (
-            str(
-                raw_item.get("fulfillment_type")
-                or raw_item.get("fulfillmentType")
-                or ""
-            )
-            .strip()
-            .upper()
-        )
-        if explicit in (FULFILLMENT_PREORDER_CAKE, FULFILLMENT_DAILY_READY):
-            return explicit
-        if raw_item.get("customization"):
-            return FULFILLMENT_PREORDER_CAKE
-        item_title = str(raw_item.get("title") or title or "")
-        if any(keyword in item_title for keyword in CAKE_KEYWORDS):
-            return FULFILLMENT_PREORDER_CAKE
-        return FULFILLMENT_DAILY_READY
+        return classify_fulfillment_type(raw_item, title)
 
     async def validate_fulfillment(
         self,

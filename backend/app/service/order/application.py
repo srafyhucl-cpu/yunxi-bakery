@@ -11,6 +11,7 @@ from app.repository.session_repo import SessionRepo
 from app.repository.config_repo import ConfigRepo
 from app.repository.youzan_inventory_repo import YouzanInventoryRepo
 from app.repository.youzan_repo import YouzanProductRepo
+from app.service.catalog.daily_stock import ProductDailyStockService
 from app.service.order.cancellation import OrderCancellationService
 from app.service.order.creation import OrderCreationService
 from app.service.order.expiration import OrderExpirationService
@@ -52,10 +53,15 @@ class OrderApplicationService:
         event_repo: OrderEventRepo | None = None,
         stored_value_service: StoredValueService | None = None,
         delivery_service: DeliveryApplicationService | None = None,
+        daily_stock_service: ProductDailyStockService | None = None,
     ) -> None:
         self._order_repo = order_repo
         self._serialization_service = OrderSerializationService()
-        inventory_service = OrderInventoryService(product_repo, inventory_repo)
+        inventory_service = OrderInventoryService(
+            product_repo,
+            inventory_repo,
+            daily_stock_service=daily_stock_service,
+        )
         resolved_schedule_service = schedule_service or OrderScheduleService(
             ShopOperationsService(config_repo)
         )

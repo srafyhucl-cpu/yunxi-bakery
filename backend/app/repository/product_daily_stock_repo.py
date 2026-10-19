@@ -1,0 +1,129 @@
+"""每日现烤库存数据访问仓库。"""
+
+from app.repository.base import BaseRepository
+
+# 与 product_daily_stock 表保持一致的显式字段列表，避免 SELECT *。
+_DAILY_STOCK_COLUMNS = (
+    "stock_date, product_id, total_qty, reserved_qty, "
+    "updated_by, created_at, updated_at"
+)
+
+# 北京时间墙钟时间戳，库存按北京时间自然日切分。
+_BEIJING_NOW_SQL = "datetime('now', '+8 hours')"
+
+
+class ProductDailyStockRepo(BaseRepository):
+    """按“日期 + 商品”管理日常现烤每日库存。"""
+
+    async def get_for_date(self, product_id: str, stock_date: str) -> dict | None:
+        """读取指定商品在某一天的每日库存记录。"""
+        rows = await self._db.execute_fetchall(
+            "SELECT " + _DAILY_STOCK_COLUMNS + " FROM product_daily_stock "
+            "WHERE stock_date = ? AND product_id = ? LIMIT 1",
+            (stock_date, product_id),
+        )
+        return dict(rows[0]) if rows else None
+
+    async def list_for_date(self, stock_date: str) -> list[dict]:
+        """读取某一天的全部每日库存记录。"""
+        rows = await self._db.execute_fetchall(
+            "SELECT " + _DAILY_STOCK_COLUMNS + " FROM product_daily_stock "
+            "WHERE stock_date = ? ORDER BY product_id ASC",
+            (stock_date,),
+        )
+        return [dict(row) for row in rows]
+
+    async def list_with_products(self, stock_date: str) -> list[dict]:
+        """联表读取每日库存与商品展示字段，供后台页面使用。"""
+        rows = await self._db.execute_fetchall(
+            "SELECT pds.stock_date, pds.product_id, pds.total_qty, "
+            "pds.reserved_qty, pds.updated_by, pds.created_at, pds.updated_at, "
+            "yp.item_id, yp.title, yp.price_fen, yp.is_active, yp.stock "
+            "FROM product_daily_stock pds "
+            "LEFT JOIN youzan_products yp "
+            "ON yp.item_id = CAST(pds.product_id AS INTEGER) "
+            "WHERE pds.stock_date = ? "
+            "ORDER BY pds.product_id ASC",
+            (stock_date,),
+        )
+        return [dict(row) for row in rows]
+
+    async def upsert_total(
+        self,
+        stock_date: str,
+        product_id: str,
+        total_qty: int,
+        updated_by: str,
+    ) -> bool:
+        """原子写入当日总量；已预占数量高于新总量时拒绝更新。"""
+        if total_qty < 0:
+            return False
+        cursor = await self._db.execute(
+            "INSERT INTO product_daily_stock ("
+            "stock_date, product_id, total_qty, reserved_qty, "
+            "updated_by, created_at, updated_at"
+            ") VALUES (?, ?, ?, 0, ?, "
+            + _BEIJING_NOW_SQL
+            + ", "
+            + _BEIJING_NOW_SQL
+            + ") "
+            "ON CONFLICT(stock_date, product_id) DO UPDATE SET "
+            "total_qty = excluded.total_qty, "
+            "updated_by = excluded.updated_by, "
+            "updated_at = excluded.updated_at "
+            "WHERE product_daily_stock.reserved_qty <= excluded.total_qty",
+            (stock_date, product_id, total_qty, updated_by),
+        )
+        return bool(cursor.rowcount == 1)
+
+    async def copy_from_previous_date(self, target_date: str) -> int:
+        """把之前最近一个有库存记录的日期复制到目标日期，只补缺失商品行。"""
+        cursor = await self._db.execute(
+            "INSERT INTO product_daily_stock ("
+            "stock_date, product_id, total_qty, reserved_qty, "
+            "updated_by, created_at, updated_at"
+            ") SELECT ?, prev.product_id, prev.total_qty, 0, 'system_copy', "
+            + _BEIJING_NOW_SQL
+            + ", "
+            + _BEIJING_NOW_SQL
+            + " FROM product_daily_stock prev "
+            "WHERE prev.stock_date = ("
+            "SELECT MAX(stock_date) FROM product_daily_stock "
+            "WHERE stock_date < ?"
+            ") AND NOT EXISTS ("
+            "SELECT 1 FROM product_daily_stock cur "
+            "WHERE cur.stock_date = ? AND cur.product_id = prev.product_id"
+            ")",
+            (target_date, target_date, target_date),
+        )
+        return int(cursor.rowcount or 0)
+
+    async def reserve(self, product_id: str, stock_date: str, quantity: int) -> bool:
+        """原子预占每日库存，剩余可售量不足时失败。"""
+        if quantity <= 0:
+            return False
+        cursor = await self._db.execute(
+            "UPDATE product_daily_stock "
+            "SET reserved_qty = reserved_qty + ?, updated_at = "
+            + _BEIJING_NOW_SQL
+            + " WHERE stock_date = ? AND product_id = ? "
+            "AND total_qty - reserved_qty >= ?",
+            (quantity, stock_date, product_id, quantity),
+        )
+        return bool(cursor.rowcount == 1)
+
+    async def release(self, product_id: str, stock_date: str, quantity: int) -> bool:
+        """原子释放每日库存预占，最低归零不产生负数。"""
+        if quantity <= 0:
+            return False
+        cursor = await self._db.execute(
+            "UPDATE product_daily_stock "
+            "SET reserved_qty = MAX(0, reserved_qty - ?), updated_at = "
+            + _BEIJING_NOW_SQL
+            + " WHERE stock_date = ? AND product_id = ?",
+            (quantity, stock_date, product_id),
+        )
+        return bool(cursor.rowcount == 1)
+
+
+__all__ = ["ProductDailyStockRepo"]
