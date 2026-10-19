@@ -50,6 +50,7 @@ from app.repository.offline_session_repo import OfflineSessionRepo
 from app.repository.order_event_repo import OrderEventRepo
 from app.repository.cake_slot_repo import CakeSlotRepo
 from app.repository.order_repo import OrderRepo
+from app.repository.print_dispatch_state_repo import PrintDispatchStateRepo
 from app.repository.print_job_repo import PrintJobRepo
 from app.repository.product_daily_stock_repo import ProductDailyStockRepo
 from app.repository.session_repo import SessionRepo
@@ -230,6 +231,7 @@ def _init_repositories() -> dict[str, object]:
         "order_repo": OrderRepo(None),
         "order_event_repo": OrderEventRepo(None),
         "print_job_repo": PrintJobRepo(None),
+        "print_dispatch_state_repo": PrintDispatchStateRepo(None),
         "cake_slot_repo": CakeSlotRepo(None),
         "customer_address_repo": CustomerAddressRepo(None),
         "customer_address_audit_repo": CustomerAddressAuditRepo(None),
@@ -286,6 +288,19 @@ def _start_background_tasks(
     register_order_timeout_scheduler(
         app,
         services["order_service"],
+        bg_tasks,
+        db_session_scope,
+    )
+    from app.service.order.print_dispatch import register_print_dispatch_scheduler
+
+    print_dispatch_state_repo = repos.get("print_dispatch_state_repo")
+    if print_dispatch_state_repo is None:
+        print_dispatch_state_repo = PrintDispatchStateRepo(None)
+    register_print_dispatch_scheduler(
+        app,
+        repos["order_repo"],
+        services["print_job_service"],
+        print_dispatch_state_repo,
         bg_tasks,
         db_session_scope,
     )
@@ -346,6 +361,10 @@ async def _shutdown_lifespan_services(
     from app.service.ops import stop_order_timeout_scheduler
 
     await stop_order_timeout_scheduler(app)
+
+    from app.service.order.print_dispatch import stop_print_dispatch_scheduler
+
+    await stop_print_dispatch_scheduler(app)
 
     # 关闭企微客户端
     from app.service.wecom.client import close_wecom_client

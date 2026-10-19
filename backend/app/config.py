@@ -140,6 +140,10 @@ class Settings(BaseSettings):
     PRINT_PROVIDER: str = "mock"
     PRINT_MAX_ATTEMPTS: int = 3
     PRINT_TICKET_WIDTH: int = 32
+    # 已支付订单打印调度：持久游标扫描 + 幂等入队，默认每 5 秒一轮。
+    PRINT_DISPATCH_ENABLED: bool = True
+    PRINT_DISPATCH_INTERVAL_SECONDS: float = 5.0
+    PRINT_DISPATCH_BATCH_SIZE: int = 200
     FEIEYUN_USER: str = ""
     FEIEYUN_UKEY: str = ""
     FEIEYUN_SN: str = ""

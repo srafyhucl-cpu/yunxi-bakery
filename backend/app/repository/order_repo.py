@@ -64,6 +64,34 @@ class OrderRepo(BaseRepository):
         )
         return int(rows[0]["total"]) if rows else 0
 
+    async def list_paid_after(
+        self,
+        last_updated_at: str,
+        last_order_id: str,
+        limit: int = 50,
+    ) -> list[Order]:
+        """按时间游标读取已支付、未取消且未退款终态订单。
+
+        同一秒内订单 id 的字典序不可靠（mp_时间戳_uuid），因此只用
+        updated_at >= 游标；last_order_id 仅保留用于审计与调用兼容。
+        """
+        rows = await self._db.execute_fetchall(
+            "SELECT id, session_id, channel, user_id, products, total_amount, "
+            "delivery, payment, status, remark, created_at, updated_at "
+            "FROM orders WHERE json_valid(payment) "
+            "AND json_extract(payment, '$.status') = 'paid' "
+            "AND COALESCE(json_extract(payment, '$.refundStatus'), '') "
+            "NOT IN ('full', 'over') "
+            "AND status != 'cancelled' "
+            "AND updated_at >= ? "
+            "ORDER BY updated_at ASC, id ASC LIMIT ?",
+            (
+                last_updated_at,
+                max(int(limit), 0),
+            ),
+        )
+        return [Order(**dict(row)) for row in rows]
+
     async def get_order(self, order_id: str) -> Order | None:
         """按订单号读取订单。"""
         rows = await self._db.execute_fetchall(

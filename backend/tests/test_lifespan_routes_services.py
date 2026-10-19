@@ -600,6 +600,7 @@ def test_init_services_wires_core_services(monkeypatch) -> None:
         "catalog_service",
         "delivery_service",
         "order_service",
+        "print_job_service",
         "product_daily_stock_service",
         "stored_value_service",
         "points_service",
