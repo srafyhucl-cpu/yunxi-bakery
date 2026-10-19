@@ -15,6 +15,7 @@ from app.service.youzan.event_handler import YouzanEventHandler
 from app.service.youzan.product_reconciler import ProductReconcileService
 from app.service.agents.trace_sink import build_local_agent_trace_sink
 from app.repository.privacy_repo import PrivacyRepo
+from app.repository.product_daily_stock_repo import ProductDailyStockRepo
 
 LEGACY_SERVICE_ALIASES = {
     "miniapp_auth_service": "storefront_auth_service",
@@ -113,12 +114,11 @@ def init_services(repos: dict[str, Any], vs: Any, bm25: Any = None) -> dict[str,
     )
     shop_configuration_service = ShopConfigurationService(repos["config_repo"])
     order_schedule_service = OrderScheduleService(shop_configuration_service)
+    # 仓储缺失时仍用 None 占位构造，请求期由 db_session_scope 的 ContextVar 解析。
     daily_stock_repo = repos.get("product_daily_stock_repo")
-    product_daily_stock_service = (
-        ProductDailyStockService(daily_stock_repo)
-        if daily_stock_repo is not None
-        else None
-    )
+    if daily_stock_repo is None:
+        daily_stock_repo = ProductDailyStockRepo(None)
+    product_daily_stock_service = ProductDailyStockService(daily_stock_repo)
     order_service = OrderApplicationService(
         order_repo=repos["order_repo"],
         event_repo=repos["order_event_repo"],
@@ -231,6 +231,7 @@ def init_services(repos: dict[str, Any], vs: Any, bm25: Any = None) -> dict[str,
         "storefront_auth_service": storefront_auth_service,
         "catalog_service": catalog_service,
         "order_service": order_service,
+        "product_daily_stock_service": product_daily_stock_service,
         "stored_value_service": stored_value_service,
         "points_service": points_service,
         "coupon_service": coupon_service,

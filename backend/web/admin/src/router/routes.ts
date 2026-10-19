@@ -43,6 +43,15 @@ export const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: "/daily-stock",
+    name: "daily-stock",
+    component: () => import("@/pages/daily-stock/DailyStockPage.vue"),
+    meta: {
+      title: "每日库存",
+      navKey: "daily-stock",
+    },
+  },
+  {
     path: "/coupons",
     name: "coupons",
     component: () => import("@/pages/coupons/CouponsPage.vue"),

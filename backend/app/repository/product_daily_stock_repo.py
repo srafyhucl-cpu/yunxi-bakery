@@ -33,6 +33,31 @@ class ProductDailyStockRepo(BaseRepository):
         )
         return [dict(row) for row in rows]
 
+    async def list_products_with_stock(self, stock_date: str) -> list[dict]:
+        """左连接商品宽表，返回在售商品与已有当日库存记录的历史商品。
+
+        没有每日库存记录的在售商品也会返回（total_qty 归零），便于后台首次初始化。
+        已下架但当天已有记录的商品同样保留，避免历史数据在页面消失。
+        """
+        rows = await self._db.execute_fetchall(
+            "SELECT CAST(yp.item_id AS TEXT) AS product_id, yp.item_id, "
+            "yp.title, yp.price_fen, yp.is_active, yp.stock AS youzan_stock, "
+            "COALESCE(pds.total_qty, 0) AS total_qty, "
+            "COALESCE(pds.reserved_qty, 0) AS reserved_qty, "
+            "COALESCE(pds.total_qty, 0) - COALESCE(pds.reserved_qty, 0) "
+            "AS available_qty, "
+            "pds.updated_by, pds.updated_at, "
+            "CASE WHEN pds.product_id IS NULL THEN 0 ELSE 1 END AS configured "
+            "FROM youzan_products yp "
+            "LEFT JOIN product_daily_stock pds "
+            "ON pds.product_id = CAST(yp.item_id AS TEXT) "
+            "AND pds.stock_date = ? "
+            "WHERE yp.is_active = 1 OR pds.product_id IS NOT NULL "
+            "ORDER BY yp.is_active DESC, yp.item_id ASC",
+            (stock_date,),
+        )
+        return [dict(row) for row in rows]
+
     async def list_with_products(self, stock_date: str) -> list[dict]:
         """联表读取每日库存与商品展示字段，供后台页面使用。"""
         rows = await self._db.execute_fetchall(

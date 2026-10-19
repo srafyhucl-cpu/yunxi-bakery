@@ -35,9 +35,34 @@ class ProductDailyStockService:
         return await self._repo.get_for_date(product_id, stock_date)
 
     async def list_for_date(self, stock_date: str) -> list[dict]:
-        """先补齐当天库存，再返回带商品展示字段的库存列表。"""
+        """先补齐当天库存，再返回在售商品与已有库存记录商品的清单。
+
+        首次进入某天时也能看到全部在售商品（未配置的总量为 0），
+        避免后台必须逐条新增商品才能开始录入。
+        """
         await self.ensure_date(stock_date)
-        return await self._repo.list_with_products(stock_date)
+        rows = await self._repo.list_products_with_stock(stock_date)
+        return [self._normalize_stock_item(row) for row in rows]
+
+    @staticmethod
+    def _normalize_stock_item(row: dict) -> dict:
+        """统一库存数量类型与默认值，供 API 直接返回。"""
+        total_qty = int(row.get("total_qty") or 0)
+        reserved_qty = int(row.get("reserved_qty") or 0)
+        return {
+            "product_id": str(row.get("product_id") or ""),
+            "item_id": int(row.get("item_id") or 0),
+            "title": str(row.get("title") or ""),
+            "price_fen": int(row.get("price_fen") or 0),
+            "is_active": int(row.get("is_active") or 0),
+            "youzan_stock": int(row.get("youzan_stock") or 0),
+            "total_qty": total_qty,
+            "reserved_qty": reserved_qty,
+            "available_qty": max(total_qty - reserved_qty, 0),
+            "updated_by": str(row.get("updated_by") or ""),
+            "updated_at": row.get("updated_at"),
+            "configured": bool(row.get("configured")),
+        }
 
     async def set_total(
         self,

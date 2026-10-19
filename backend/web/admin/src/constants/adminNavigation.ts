@@ -1,5 +1,6 @@
 import type { Component } from "vue";
 import {
+  Calendar,
   ChatDotRound,
   DataAnalysis,
   Document,
@@ -27,6 +28,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   { label: "概览", shortLabel: "概览", to: "/overview", key: "overview", icon: Odometer, mobilePrimary: true },
   { label: "AI 对话", shortLabel: "AI", to: "/ai-dialog", key: "ai-dialog", icon: ChatDotRound, mobilePrimary: false },
   { label: "商品管理", shortLabel: "商品", to: "/products", key: "products", icon: Goods, mobilePrimary: true },
+  { label: "每日库存", shortLabel: "库存", to: "/daily-stock", key: "daily-stock", icon: Calendar, mobilePrimary: false },
   { label: "优惠券", shortLabel: "券", to: "/coupons", key: "coupons", icon: Ticket, mobilePrimary: false },
   { label: "发票管理", shortLabel: "发票", to: "/invoices", key: "invoices", icon: Document, mobilePrimary: false },
   { label: "店铺装修", shortLabel: "装修", to: "/decoration", key: "decoration", icon: MagicStick, mobilePrimary: false },

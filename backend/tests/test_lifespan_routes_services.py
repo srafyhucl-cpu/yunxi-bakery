@@ -87,6 +87,11 @@ def test_register_routes_starts_workers_and_includes_all_routers(
     )
     _install_module(
         monkeypatch,
+        "app.api.admin.daily_stock",
+        create_admin_daily_stock_router=lambda service: ("admin-daily-stock", service),
+    )
+    _install_module(
+        monkeypatch,
         "app.api.admin.frontend",
         create_admin_frontend_router=lambda: "frontend",
     )
@@ -299,6 +304,7 @@ def test_register_routes_starts_workers_and_includes_all_routers(
         "knowledge_retriever": "knowledge-retriever",
         "storefront_conversation_service": "storefront-conversation-service",
         "customer_group_service": "customer-group-service",
+        "product_daily_stock_service": "product-daily-stock-service",
         "customer_consent_service": "customer-consent-service",
         "wecom_bot_business_tool_service": "wecom-business-tool-service",
         "wecom_bot_ops_tool_service": "wecom-ops-tool-service",
@@ -311,7 +317,11 @@ def test_register_routes_starts_workers_and_includes_all_routers(
 
     assert wecom_queue.started_with == ["chat"]
     assert kf_queue.started_with == ["chat"]
-    assert len(app.included_routers) == 30
+    assert len(app.included_routers) == 31
+    assert (
+        "admin-daily-stock",
+        "product-daily-stock-service",
+    ) in app.included_routers
     assert ("miniapp-delivery", "delivery-service") in app.included_routers
     assert app.included_routers[0] == ("webhook", "chat")
     wecom_router = app.included_routers[-2]
@@ -590,6 +600,7 @@ def test_init_services_wires_core_services(monkeypatch) -> None:
         "catalog_service",
         "delivery_service",
         "order_service",
+        "product_daily_stock_service",
         "stored_value_service",
         "points_service",
         "coupon_service",
@@ -649,6 +660,10 @@ def test_init_services_wires_core_services(monkeypatch) -> None:
         == "conversation-summary-repo"
     )
     assert created["order_service"]["order_repo"] is guarded_order_repo
+    assert (
+        created["order_service"]["daily_stock_service"]
+        is services["product_daily_stock_service"]
+    )
     assert created["wecom_order_lookup_service"] == {
         "order_service": services["order_service"],
         "youzan_order_repo": "youzan-order-repo",

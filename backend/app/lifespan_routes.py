@@ -120,6 +120,7 @@ def _register_admin_shell_routes(app: FastAPI, services: dict[str, Any]) -> None
 def _register_admin_operations_routes(app: FastAPI, services: dict[str, Any]) -> None:
     """注册后台业务运营路由。"""
     from app.api.admin.customer_groups import create_admin_customer_groups_router
+    from app.api.admin.daily_stock import create_admin_daily_stock_router
     from app.api.admin.knowledge import create_admin_knowledge_router
     from app.api.admin.knowledge_retrieval_report import (
         create_admin_knowledge_retrieval_report_router,
@@ -135,6 +136,9 @@ def _register_admin_operations_routes(app: FastAPI, services: dict[str, Any]) ->
     app.include_router(create_admin_orders_router(services["order_service"]))
     app.include_router(
         create_admin_customer_groups_router(services["customer_group_service"])
+    )
+    app.include_router(
+        create_admin_daily_stock_router(services["product_daily_stock_service"])
     )
     app.include_router(
         create_admin_knowledge_router(services["knowledge_admin_service"])
