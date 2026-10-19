@@ -23,7 +23,7 @@ trace_id: `20260707-miniapp-page-api-coverage-local-contract`
 | `pages/orders/index` | `GET /api/v1/miniapp/orders` | 展示当前用户订单列表 |
 | `pages/order-detail/index` | `GET /api/v1/miniapp/orders/{orderId}`、`POST /api/v1/miniapp/orders/{orderId}/cancel`、`POST /api/v1/miniapp/orders/{orderId}/prepare-payment`、`POST /api/v1/miniapp/orders/{orderId}/mock-pay` | 展示订单详情、取消和支付入口 |
 | `pages/group-registration/index` | `POST /api/v1/miniapp/group-registrations`、`GET /api/v1/miniapp/group-registrations/me` | 承接客户群结构化登记，不解析企业微信群身份 |
-| `pages/chat/index` | `GET /api/v1/miniapp/chat/messages`、`POST /api/v1/miniapp/chat/messages`、`POST /api/v1/miniapp/chat/transfer` | 展示客服气泡消息、发送消息、临时输入态和请求转人工；真实会话未就绪时只展示登录引导 |
+| `pages/chat/index` | `GET /api/v1/miniapp/chat/messages`、`POST /api/v1/miniapp/chat/messages`、`POST /api/v1/miniapp/chat/transfer`、`POST /api/v1/miniapp/chat/customization-card` | 展示客服气泡消息、发送消息、临时输入态和请求转人工；定制需求卡只生成可复制摘要（不建单、不扣款），复杂定制走微信原生客服确认；真实会话未就绪时只展示登录引导 |
 | `pages/profile/index` | `GET /api/v1/miniapp/pages/profile`、`GET /api/v1/miniapp/balance`、`GET /api/v1/miniapp/points`、`GET /api/v1/miniapp/coupons`、`GET /api/v1/miniapp/shop-settings`、`POST /api/v1/miniapp/auth/login` | 展示会员中心装修、会员资产（余额/积分/可用券）、订单入口、店铺服务配置和登录刷新入口 |
 | `pages/points/index` | 积分余额与明细 | `GET /api/v1/miniapp/points` | 已有 API 契约 |
 | `pages/coupons/index` | 我的优惠券（tab 分组） | `GET /api/v1/miniapp/coupons` | 已有 API 契约 |
@@ -52,6 +52,7 @@ trace_id: `20260707-miniapp-page-api-coverage-local-contract`
 - `GET /api/v1/miniapp/chat/messages`
 - `POST /api/v1/miniapp/chat/messages`
 - `POST /api/v1/miniapp/chat/transfer`
+- `POST /api/v1/miniapp/chat/customization-card`
 - `POST /api/v1/miniapp/group-registrations`
 - `GET /api/v1/miniapp/group-registrations/me`
 - `GET /api/v1/miniapp/shop-settings`
@@ -69,6 +70,7 @@ trace_id: `20260707-miniapp-page-api-coverage-local-contract`
 - 订单状态：不在本仓实现订单状态机。
 - 支付闭环：不把 mock-pay 当作正式微信支付闭环。
 - 客户群归因：不在本仓解析企业微信群身份或生成活动归因真相。
+- 定制需求卡：不在本仓实现定制需求校验、报价与档期真相；只提交需求并展示 Platform 返回的结构化需求卡，复杂定制与报价由微信人工客服确认。
 
 如果页面需要新增上述能力，先回 `backend/`（Platform）定义 API 契约、数据来源和验证方式，再更新 `miniapp/` 服务调用和展示逻辑。接口缺口先回 Platform 定义 API 契约。
 

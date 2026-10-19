@@ -59,9 +59,25 @@
 
   <!-- 底部输入区与快捷问题面板 -->
   <view wx:if="{{canUseChat}}" class="chat-bottom-bar">
+    <!-- 客服入口：平台客服队列（后台工单）与微信原生客服是两套通道 -->
+    <view class="chat-service-row">
+      <button
+        class="chat-service-btn chat-service-btn--queue"
+        loading="{{transferring}}"
+        disabled="{{transferring || chatStatus.isHumanHandoff}}"
+        bindtap="requestHumanService"
+      >{{chatStatus.isHumanHandoff ? copy.handoffActiveButton : copy.platformHandoffButton}}</button>
+      <button class="chat-service-btn chat-service-btn--wechat" open-type="contact">{{copy.wechatContactButton}}</button>
+    </view>
+    <text class="chat-service-hint">{{copy.serviceEntryHint}}</text>
+
     <!-- 快捷问题横向滚动区 -->
     <scroll-view class="quick-questions-scroll" scroll-x enhanced show-scrollbar="{{false}}">
       <view class="quick-questions-wrapper">
+        <view
+          class="quick-question-pill quick-question-pill--card"
+          bindtap="openCustomizationCard"
+        >{{copy.customizationCardEntry}}</view>
         <view
           class="quick-question-pill"
           data-content="想了解配送范围、配送费用和可配送时间"
@@ -101,6 +117,158 @@
         disabled="{{sending || !canSendMessage}}"
         bindtap="sendMessage"
       >发送</button>
+    </view>
+  </view>
+
+  <!-- 定制需求卡抽屉：遮罩与面板是同级节点，点遮罩关闭，点面板不会冒泡到遮罩 -->
+  <view
+    wx:if="{{showCustomizationCard}}"
+    class="customization-mask"
+    bindtap="closeCustomizationCard"
+    aria-label="关闭定制需求卡"
+  ></view>
+  <view wx:if="{{showCustomizationCard}}" class="customization-panel">
+    <view class="customization-panel__head">
+      <view class="customization-panel__head-copy">
+        <text class="customization-panel__title">{{copy.customizationCardTitle}}</text>
+        <text class="customization-panel__desc">{{copy.customizationCardDesc}}</text>
+      </view>
+      <view class="customization-panel__close" bindtap="closeCustomizationCard" aria-label="关闭">×</view>
+    </view>
+
+    <scroll-view class="customization-panel__body" scroll-y enhanced show-scrollbar="{{false}}">
+      <view wx:if="{{cardErrorMessage}}" class="customization-error">{{cardErrorMessage}}</view>
+
+      <!-- 文本字段上限 200 字，与后端需求卡字段长度限制保持一致 -->
+      <view class="customization-field">
+        <text class="customization-field__label">尺寸规格</text>
+        <picker mode="selector" range="{{cardSizeOptions}}" value="{{cardSizeIndex}}" bindchange="onCardSizeChange">
+          <view class="customization-picker">
+            <text class="customization-picker__value">{{cardSizeOptions[cardSizeIndex]}}</text>
+            <text class="customization-picker__chevron"></text>
+          </view>
+        </picker>
+        <input
+          wx:if="{{cardSizeIsCustom}}"
+          class="customization-input"
+          placeholder="请输入其它尺寸，如 10 寸方形"
+          maxlength="200"
+          value="{{cardCustomSize}}"
+          data-field="cardCustomSize"
+          bindinput="updateCardField"
+        />
+      </view>
+
+      <view class="customization-field">
+        <text class="customization-field__label">甜度</text>
+        <picker mode="selector" range="{{cardSweetnessOptions}}" value="{{cardSweetnessIndex}}" bindchange="onCardSweetnessChange">
+          <view class="customization-picker">
+            <text class="customization-picker__value">{{cardSweetnessOptions[cardSweetnessIndex]}}</text>
+            <text class="customization-picker__chevron"></text>
+          </view>
+        </picker>
+      </view>
+
+      <view class="customization-field">
+        <text class="customization-field__label">夹心口味</text>
+        <input
+          class="customization-input"
+          placeholder="如：草莓奶油、芒果慕斯"
+          maxlength="200"
+          value="{{cardFilling}}"
+          data-field="cardFilling"
+          bindinput="updateCardField"
+        />
+      </view>
+
+      <view class="customization-field">
+        <text class="customization-field__label">祝福语</text>
+        <input
+          class="customization-input"
+          placeholder="没有请填无"
+          maxlength="200"
+          value="{{cardGreeting}}"
+          data-field="cardGreeting"
+          bindinput="updateCardField"
+        />
+      </view>
+
+      <view class="customization-field">
+        <text class="customization-field__label">配件</text>
+        <input
+          class="customization-input"
+          placeholder="如：餐具、蜡烛；没有请填无"
+          maxlength="200"
+          value="{{cardAccessories}}"
+          data-field="cardAccessories"
+          bindinput="updateCardField"
+        />
+      </view>
+
+      <view class="customization-field">
+        <text class="customization-field__label">预约时间（可不填）</text>
+        <view class="customization-time">
+          <picker
+            mode="date"
+            class="customization-time__item"
+            value="{{cardDateValue}}"
+            start="{{cardDateStart}}"
+            end="{{cardDateEnd}}"
+            bindchange="onCardDateChange"
+          >
+            <view class="customization-picker customization-picker--half">
+              <text class="customization-picker__value">{{cardDateValue || '选择日期'}}</text>
+              <text class="customization-picker__chevron"></text>
+            </view>
+          </picker>
+          <picker mode="time" class="customization-time__item" value="{{cardTimeValue}}" bindchange="onCardTimeChange">
+            <view class="customization-picker customization-picker--half">
+              <text class="customization-picker__value">{{cardTimeValue}}</text>
+              <text class="customization-picker__chevron"></text>
+            </view>
+          </picker>
+        </view>
+        <text class="customization-field__hint">预约需至少提前 4 小时，留空则由人工客服确认档期。</text>
+      </view>
+
+      <view class="customization-field">
+        <text class="customization-field__label">备注</text>
+        <textarea
+          class="customization-textarea"
+          placeholder="如：忌口、取货方式等"
+          maxlength="200"
+          value="{{cardRemark}}"
+          data-field="cardRemark"
+          bindinput="updateCardField"
+        />
+      </view>
+
+      <!-- 生成结果：结构化摘要 + 复制 + 微信客服确认 -->
+      <view wx:if="{{cardSubmitted}}" class="customization-result">
+        <text class="customization-result__title">需求卡摘要</text>
+        <view class="customization-result__rows">
+          <view wx:for="{{cardResultRows}}" wx:key="label" class="customization-result__row">
+            <text class="customization-result__label">{{item.label}}</text>
+            <text class="customization-result__value">{{item.value}}</text>
+          </view>
+        </view>
+        <text class="customization-result__summary">{{cardResult.summary}}</text>
+        <view class="customization-result__actions">
+          <button class="ghost-button customization-result__btn" bindtap="copyCustomizationCard">{{copy.customizationCardCopy}}</button>
+          <button class="primary-button customization-result__btn" open-type="contact">{{copy.customizationCardContact}}</button>
+        </view>
+        <text class="customization-result__hint">{{copy.customizationCardContactHint}}</text>
+      </view>
+    </scroll-view>
+
+    <view class="customization-panel__footer">
+      <button class="ghost-button customization-footer__btn" bindtap="resetCustomizationCard">{{copy.customizationCardReset}}</button>
+      <button
+        class="primary-button customization-footer__btn"
+        loading="{{cardSubmitting}}"
+        disabled="{{cardSubmitting}}"
+        bindtap="submitCustomizationCard"
+      >{{cardSubmitted ? copy.customizationCardResubmit : copy.customizationCardSubmit}}</button>
     </view>
   </view>
 </view>

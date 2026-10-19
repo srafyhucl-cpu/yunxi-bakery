@@ -7,10 +7,12 @@ import {
 import {
   ChatMessage,
   ChatStatus,
+  buildCustomizationCard,
   getChatPayload,
   requestHumanTransfer,
   sendChatMessage,
 } from "../../services/chat";
+import type { CustomizationCard, CustomizationCardRequest } from "../../types/chat";
 import { getErrorMessage } from "../../services/http";
 import { formatMsgTime } from "../../utils/time-format";
 import { ROUTES } from "../../constants/routes";
@@ -18,6 +20,23 @@ import { getMiniappSession } from "../../services/auth";
 import { getMiniappLayoutMetrics } from "../../utils/layout";
 import { syncCustomTabBar } from "../../utils/tab-bar";
 import { buildMiniappSessionView, isMiniappLoggedIn } from "../../utils/session";
+import { getCheckoutDateEnd, getCheckoutDateStart } from "../../utils/checkout-time";
+
+// 尺寸选项：最后一项是“其它”，选中后需要手填具体尺寸。
+const CARD_SIZE_OPTIONS = ["6寸", "8寸", "10寸", "12寸", "其他"];
+const CARD_CUSTOM_SIZE_INDEX = CARD_SIZE_OPTIONS.length - 1;
+// 甜度选项与门店口径一致，8分甜为默认甜度。
+const CARD_SWEETNESS_OPTIONS = ["8分甜", "5分甜", "3分甜", "木糖醇"];
+// 预约时间缺省时刻：门店常规取件时段内。
+const CARD_DEFAULT_TIME = "18:00";
+// 允许前端直接写入的文本字段白名单，防止 data-field 被篡改后污染其它表单状态。
+const CARD_TEXT_FIELDS = [
+  "cardCustomSize",
+  "cardFilling",
+  "cardGreeting",
+  "cardAccessories",
+  "cardRemark"
+];
 
 /** 将后端可能返回的各种非标准 role 归一化为 user | assistant */
 function normalizeRole(role: string): "user" | "assistant" {
@@ -32,6 +51,35 @@ function normalizeMessages(raw: ChatMessage[]): (ChatMessage & { timeText: strin
     role: normalizeRole(m.role),
     timeText: formatMsgTime(m.createdAt)
   }));
+}
+
+/** 空白需求卡占位，避免页面在未提交时读取到 undefined */
+function buildEmptyCustomizationCard(): CustomizationCard {
+  return {
+    size: "",
+    filling: "",
+    sweetness: "",
+    greeting: "",
+    accessories: "",
+    expectTime: "",
+    remark: "",
+    summary: ""
+  };
+}
+
+/** 把需求卡拆成逐行展示结构，缺省项显式标注，避免顾客误认为已确认 */
+function buildCustomizationCardRows(
+  card: CustomizationCard
+): Array<{ label: string; value: string }> {
+  return [
+    { label: "尺寸", value: card.size || "待确认" },
+    { label: "夹心", value: card.filling || "待确认" },
+    { label: "甜度", value: card.sweetness || "待确认" },
+    { label: "祝福语", value: card.greeting || "无" },
+    { label: "配件", value: card.accessories || "无" },
+    { label: "预约时间", value: card.expectTime || "待人工确认" },
+    { label: "备注", value: card.remark || "无" }
+  ];
 }
 
 Page({
@@ -53,10 +101,33 @@ Page({
     copy: CHAT_COPY,
     layoutStyle: getMiniappLayoutMetrics().pageShellStyle,
     lastMessageId: "",
-    isAssistantTyping: false
+    isAssistantTyping: false,
+    // 定制需求卡：只收集需求并生成可复制摘要，不建单、不扣款、不写聊天消息表。
+    showCustomizationCard: false,
+    cardSubmitting: false,
+    cardErrorMessage: "",
+    cardSizeOptions: CARD_SIZE_OPTIONS,
+    cardSizeIndex: 1,
+    cardSizeIsCustom: false,
+    cardCustomSize: "",
+    cardSweetnessOptions: CARD_SWEETNESS_OPTIONS,
+    cardSweetnessIndex: 0,
+    cardFilling: "",
+    cardGreeting: "",
+    cardAccessories: "",
+    cardRemark: "",
+    cardDateStart: getCheckoutDateStart(),
+    cardDateEnd: getCheckoutDateEnd(),
+    cardDateValue: "",
+    cardTimeValue: CARD_DEFAULT_TIME,
+    cardExpectTime: "",
+    cardSubmitted: false,
+    cardResult: buildEmptyCustomizationCard(),
+    cardResultRows: [] as Array<{ label: string; value: string }>
   },
   onShow() {
     syncCustomTabBar(ROUTES.chat);
+    this.refreshCustomizationSchedule();
     void this.loadMessages();
   },
   onHide() {
@@ -259,6 +330,188 @@ Page({
     } finally {
       this.setData({ transferring: false });
     }
+  },
+  // 打开定制需求卡抽屉：未登录先提示登录，保持与页面其它入口一致的会话门槛。
+  openCustomizationCard() {
+    if (!this.data.canUseChat) {
+      wx.showToast({ title: CHAT_COPY.customizationCardLoginToast, icon: "none" });
+      return;
+    }
+    this.setData({
+      showCustomizationCard: true,
+      cardErrorMessage: ""
+    });
+  },
+  closeCustomizationCard() {
+    if (this.data.cardSubmitting) {
+      wx.showToast({ title: CHAT_COPY.customizationCardSubmittingToast, icon: "none" });
+      return;
+    }
+    this.setData({ showCustomizationCard: false });
+  },
+  // 重置表单：清空已填字段与上一次的生成结果，但保留抽屉打开状态。
+  resetCustomizationCard() {
+    this.setData({
+      cardSizeIndex: 1,
+      cardSizeIsCustom: false,
+      cardCustomSize: "",
+      cardSweetnessIndex: 0,
+      cardFilling: "",
+      cardGreeting: "",
+      cardAccessories: "",
+      cardRemark: "",
+      cardDateValue: "",
+      cardTimeValue: CARD_DEFAULT_TIME,
+      cardExpectTime: "",
+      cardSubmitted: false,
+      cardResult: buildEmptyCustomizationCard(),
+      cardResultRows: [],
+      cardErrorMessage: ""
+    });
+  },
+  updateCardField(event: WechatMiniprogram.Input) {
+    const field = String(event.currentTarget.dataset.field || "");
+    if (!CARD_TEXT_FIELDS.includes(field)) {
+      return;
+    }
+    this.setData({
+      [field]: event.detail.value,
+      cardErrorMessage: ""
+    });
+  },
+  onCardSizeChange(event: WechatMiniprogram.PickerChange) {
+    const cardSizeIndex = Number(event.detail.value);
+    this.setData({
+      cardSizeIndex,
+      cardSizeIsCustom: cardSizeIndex === CARD_CUSTOM_SIZE_INDEX,
+      cardErrorMessage: ""
+    });
+  },
+  onCardSweetnessChange(event: WechatMiniprogram.PickerChange) {
+    this.setData({
+      cardSweetnessIndex: Number(event.detail.value),
+      cardErrorMessage: ""
+    });
+  },
+  onCardDateChange(event: WechatMiniprogram.PickerChange) {
+    const cardDateValue = String(event.detail.value);
+    this.setData({
+      cardDateValue,
+      cardExpectTime: this.buildCardExpectTime(cardDateValue, this.data.cardTimeValue),
+      cardErrorMessage: ""
+    });
+  },
+  onCardTimeChange(event: WechatMiniprogram.PickerChange) {
+    const cardTimeValue = String(event.detail.value);
+    this.setData({
+      cardTimeValue,
+      cardExpectTime: this.buildCardExpectTime(this.data.cardDateValue, cardTimeValue),
+      cardErrorMessage: ""
+    });
+  },
+  // 预约时间可留空：留空时由后端摘要标记为“待人工确认”，不阻塞需求卡生成。
+  buildCardExpectTime(dateValue: string, timeValue: string): string {
+    if (!dateValue || !timeValue) {
+      return "";
+    }
+    return `${dateValue} ${timeValue}`;
+  },
+  // 重新进入页面时刷新可选日期范围，避免跨天后仍展示过期日期。
+  refreshCustomizationSchedule() {
+    this.setData({
+      cardDateStart: getCheckoutDateStart(),
+      cardDateEnd: getCheckoutDateEnd()
+    });
+  },
+  showCardError(message: string) {
+    this.setData({ cardErrorMessage: message });
+    wx.showToast({ title: message, icon: "none" });
+  },
+  // 组装提交参数并做前端必填校验，校验不通过时不发起请求。
+  buildCustomizationCardPayload(): CustomizationCardRequest | null {
+    const size = this.data.cardSizeIsCustom
+      ? this.data.cardCustomSize.trim()
+      : (this.data.cardSizeOptions[this.data.cardSizeIndex] || "").trim();
+    const filling = this.data.cardFilling.trim();
+    const greeting = this.data.cardGreeting.trim();
+    const accessories = this.data.cardAccessories.trim();
+    if (!size) {
+      this.showCardError(
+        this.data.cardSizeIsCustom
+          ? CHAT_COPY.customizationCardRequiredCustomSize
+          : CHAT_COPY.customizationCardRequiredSize
+      );
+      return null;
+    }
+    if (!filling) {
+      this.showCardError(CHAT_COPY.customizationCardRequiredFilling);
+      return null;
+    }
+    if (!greeting) {
+      this.showCardError(CHAT_COPY.customizationCardRequiredGreeting);
+      return null;
+    }
+    if (!accessories) {
+      this.showCardError(CHAT_COPY.customizationCardRequiredAccessories);
+      return null;
+    }
+    return {
+      size,
+      filling,
+      sweetness: this.data.cardSweetnessOptions[this.data.cardSweetnessIndex] || "",
+      greeting,
+      accessories,
+      expectTime: this.data.cardExpectTime,
+      remark: this.data.cardRemark.trim()
+    };
+  },
+  async submitCustomizationCard() {
+    if (this.data.cardSubmitting) {
+      return;
+    }
+    if (!this.data.canUseChat) {
+      wx.showToast({ title: CHAT_COPY.customizationCardLoginToast, icon: "none" });
+      return;
+    }
+    const payload = this.buildCustomizationCardPayload();
+    if (!payload) {
+      return;
+    }
+    this.setData({ cardSubmitting: true, cardErrorMessage: "" });
+    try {
+      const card = await buildCustomizationCard(payload);
+      this.setData({
+        cardSubmitted: true,
+        cardResult: card,
+        cardResultRows: buildCustomizationCardRows(card),
+        cardErrorMessage: ""
+      });
+      wx.showToast({ title: CHAT_COPY.customizationCardCreatedToast, icon: "none" });
+    } catch (error) {
+      // 后端 400 校验信息（如预约时间不足 4 小时）直接展示给顾客，不做二次改写。
+      const message = getErrorMessage(error, CHAT_COPY.customizationCardFailed);
+      this.setData({ cardErrorMessage: message });
+      wx.showToast({ title: message, icon: "none" });
+    } finally {
+      this.setData({ cardSubmitting: false });
+    }
+  },
+  // 复制需求卡文本，方便顾客直接粘贴给微信客服或人工客服。
+  copyCustomizationCard() {
+    const summary = this.data.cardResult.summary;
+    if (!summary) {
+      wx.showToast({ title: CHAT_COPY.customizationCardNotReadyToast, icon: "none" });
+      return;
+    }
+    wx.setClipboardData({
+      data: summary,
+      success: () => {
+        wx.showToast({ title: CHAT_COPY.customizationCardCopyToast, icon: "none" });
+      },
+      fail: () => {
+        wx.showToast({ title: CHAT_COPY.customizationCardCopyFailedToast, icon: "none" });
+      }
+    });
   },
   async refreshMessages() {
     if (this.data.refreshing) {
