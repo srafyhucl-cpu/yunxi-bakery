@@ -67,7 +67,10 @@ def init_services(repos: dict[str, Any], vs: Any, bm25: Any = None) -> dict[str,
         ShopPageConfigurationService,
     )
     from app.service.order import OrderApplicationService
+    from app.repository.print_job_repo import PrintJobRepo
+    from app.service.integrations.printer import build_printer_gateway
     from app.service.order.cake_slots import CakeSlotCapacityService
+    from app.service.order.print_job_service import PrintJobService
     from app.service.order.schedule import OrderScheduleService
     from app.service.transfer_manager import TransferManager
     from app.service.wecom.employee_agent_service import EmployeeAgentService
@@ -127,6 +130,17 @@ def init_services(repos: dict[str, Any], vs: Any, bm25: Any = None) -> dict[str,
 
         cake_slot_repo = CakeSlotRepo(None)
     cake_slot_service = CakeSlotCapacityService(cake_slot_repo)
+    # 打印仓储同样用 None 占位，启动期不读取数据库连接；网关按配置在启动期定型。
+    print_job_repo = repos.get("print_job_repo")
+    if print_job_repo is None:
+        print_job_repo = PrintJobRepo(None)
+    print_job_service = PrintJobService(
+        repo=print_job_repo,
+        gateway=build_printer_gateway(settings),
+        provider_name=settings.PRINT_PROVIDER,
+        max_attempts=settings.PRINT_MAX_ATTEMPTS,
+        ticket_width=settings.PRINT_TICKET_WIDTH,
+    )
     order_service = OrderApplicationService(
         order_repo=repos["order_repo"],
         event_repo=repos["order_event_repo"],
@@ -240,6 +254,7 @@ def init_services(repos: dict[str, Any], vs: Any, bm25: Any = None) -> dict[str,
         "storefront_auth_service": storefront_auth_service,
         "catalog_service": catalog_service,
         "order_service": order_service,
+        "print_job_service": print_job_service,
         "product_daily_stock_service": product_daily_stock_service,
         "stored_value_service": stored_value_service,
         "points_service": points_service,

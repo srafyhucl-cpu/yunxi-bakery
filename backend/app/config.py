@@ -135,6 +135,17 @@ class Settings(BaseSettings):
     WECHAT_PAY_API_V3_KEY: str = ""
     MINIAPP_PAYMENT_TIMEOUT_SCAN_INTERVAL_SECONDS: int = 300
 
+    # ── 订单小票打印 ──
+    # mock 仅记录受理（MOCKED）；feieyun 需要完整凭证才能启动。
+    PRINT_PROVIDER: str = "mock"
+    PRINT_MAX_ATTEMPTS: int = 3
+    PRINT_TICKET_WIDTH: int = 32
+    FEIEYUN_USER: str = ""
+    FEIEYUN_UKEY: str = ""
+    FEIEYUN_SN: str = ""
+    FEIEYUN_API_URL: str = "https://api.feieyun.cn/Api/Open/"
+    FEIEYUN_TIMEOUT_SECONDS: float = 10.0
+
     # ── 管理后台 ──
     # 注意：生产环境必须在 .env 中设置强密码，不能使用默认值
     ADMIN_API_TOKEN: str = "CHANGE_ME_IN_PRODUCTION_ENV"
