@@ -19,10 +19,12 @@ class StorefrontAuthService:
         customer_repo: object = None,
         member_balance_repo: object = None,
         db: object = None,
+        youzan_order_repo: object = None,
     ) -> None:
         self._customer_repo = customer_repo
         self._member_balance_repo = member_balance_repo
         self._db = db
+        self._youzan_order_repo = youzan_order_repo
 
     async def login(self, code: str) -> dict:
         """使用 wx.login code 换取小程序用户标识；配置缺失时返回明确失败。"""
@@ -127,6 +129,7 @@ class StorefrontAuthService:
         )
         from app.repository.customer_master_repo import CustomerMasterRepo
         from app.repository.member_balance_repo import MemberBalanceRepo
+        from app.repository.youzan_order_repo import YouzanOrderRepo
 
         clean_phone = phone.strip()
         if (
@@ -247,66 +250,30 @@ class StorefrontAuthService:
         is_member = bool(balance.get("is_member", 0))
         card_alias = str(balance.get("card_alias", "") or "")
 
-        # 4. 获取历史有赞订单摘要
-        history_orders = []
-        if active_db is not None:
+        # 4. 获取历史有赞订单摘要（手机号 + 有赞 openid 双标识精确匹配）
+        # 真实有赞订单的 buyer_id 常为 yz_open_id，outer_user_id 可能是手机号；
+        # balance 无 yz_open_id 时退化为仅手机号匹配，保证老数据仍可回显。
+        history_orders: list[dict] = []
+        yz_open_id = str(balance.get("yz_open_id", "") or "").strip()
+        order_db = active_db
+        if order_db is None:
+            order_db = getattr(c_repo, "_db", None)
+        if order_db is None:
+            order_db = getattr(b_repo, "_db", None)
+        if order_db is not None:
+            order_repo = self._youzan_order_repo or YouzanOrderRepo(order_db)
             try:
-                sql = (
-                    "SELECT order_no, status, amount_fen, product_titles, total_quantity, "
-                    "pay_time, created_at FROM youzan_orders "
-                    "WHERE buyer_id = ? OR outer_user_id = ? "
-                    "ORDER BY created_at DESC LIMIT 10"
+                order_rows = await order_repo.list_recent_for_identity(
+                    phone=clean_phone,
+                    yz_open_id=yz_open_id,
+                    limit=10,
                 )
-                params = (clean_phone, clean_phone)
-                if hasattr(active_db, "execute_fetchall"):
-                    order_rows = await active_db.execute_fetchall(sql, params)
-                else:
-                    async with active_db.execute(sql, params) as cursor:
-                        order_rows = await cursor.fetchall()
-
-                for r in order_rows:
-                    if isinstance(r, dict):
-                        history_orders.append(
-                            {
-                                "orderNo": str(r.get("order_no", "")),
-                                "status": str(r.get("status", "")),
-                                "amountFen": int(r.get("amount_fen", 0) or 0),
-                                "productTitles": str(r.get("product_titles", "")),
-                                "totalQuantity": int(r.get("total_quantity", 0) or 0),
-                                "payTime": str(r.get("pay_time", "") or ""),
-                                "createdAt": str(r.get("created_at", "") or ""),
-                            }
-                        )
-                    else:
-                        history_orders.append(
-                            {
-                                "orderNo": str(
-                                    r[0] if len(r) > 0 and r[0] is not None else ""
-                                ),
-                                "status": str(
-                                    r[1] if len(r) > 1 and r[1] is not None else ""
-                                ),
-                                "amountFen": int(
-                                    r[2] if len(r) > 2 and r[2] is not None else 0
-                                ),
-                                "productTitles": str(
-                                    r[3] if len(r) > 3 and r[3] is not None else ""
-                                ),
-                                "totalQuantity": int(
-                                    r[4] if len(r) > 4 and r[4] is not None else 0
-                                ),
-                                "payTime": str(
-                                    r[5] if len(r) > 5 and r[5] is not None else ""
-                                ),
-                                "createdAt": str(
-                                    r[6] if len(r) > 6 and r[6] is not None else ""
-                                ),
-                            }
-                        )
+                history_orders = [_format_history_order(row) for row in order_rows]
             except Exception as exc:
                 logger.error(
-                    "Failed to query history orders for phone %s: %s",
+                    "Failed to query history orders for phone %s (yz_open_id=%s): %s",
                     clean_phone,
+                    yz_open_id,
                     exc,
                     exc_info=True,
                 )
@@ -323,6 +290,19 @@ class StorefrontAuthService:
             "bonusFen": bonus_fen,
             "historyOrders": history_orders,
         }
+
+
+def _format_history_order(row: dict) -> dict:
+    """把有赞订单宽表行转换为前台历史订单摘要（字段名转驼峰、数值兜底）。"""
+    return {
+        "orderNo": str(row.get("order_no", "") or ""),
+        "status": str(row.get("status", "") or ""),
+        "amountFen": int(row.get("amount_fen", 0) or 0),
+        "productTitles": str(row.get("product_titles", "") or ""),
+        "totalQuantity": int(row.get("total_quantity", 0) or 0),
+        "payTime": str(row.get("pay_time", "") or ""),
+        "createdAt": str(row.get("created_at", "") or ""),
+    }
 
 
 __all__ = ["StorefrontAuthService"]

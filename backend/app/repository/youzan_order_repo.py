@@ -15,6 +15,9 @@ ORDER_SELECT_FIELDS = (
     "delivery_district, delivery_time, outer_user_id, order_items_json, "
     "created_at, updated_at"
 )
+ORDER_HISTORY_FIELDS = (
+    "order_no, status, amount_fen, product_titles, total_quantity, pay_time, created_at"
+)
 ORDER_TIME_EXPR = "substr(COALESCE(NULLIF(pay_time, ''), created_at), 1, 10)"
 DELIVERY_TIME_EXPR = "substr(delivery_time, 1, 10)"
 ORDER_DATE_EXPR = "COALESCE(NULLIF(pay_time, ''), created_at, updated_at)"
@@ -115,6 +118,37 @@ class YouzanOrderRepo(BaseRepository):
             "ORDER BY COALESCE(pay_time, created_at, updated_at) DESC, order_no DESC "
             "LIMIT ?",
             (limit,),
+        )
+        return [dict(row) for row in rows]
+
+    async def list_recent_for_identity(
+        self,
+        *,
+        phone: str,
+        yz_open_id: str,
+        limit: int = 10,
+    ) -> list[dict]:
+        """按手机号与有赞 openid 双标识精确匹配最近订单摘要。
+
+        真实有赞订单的 `buyer_id` 常为 yz_open_id，`outer_user_id` 可能是
+        手机号或外部 ID。这里对两个标识都做精确等值匹配，且**跳过空字符串**：
+        空值不参与匹配，避免把 buyer_id/outer_user_id 为空的无关订单串进来
+        （串单）。两个标识都为空时直接返回空列表。
+        """
+        identities: list[str] = []
+        for raw_value in (yz_open_id, phone):
+            normalized = str(raw_value or "").strip()
+            if normalized and normalized not in identities:
+                identities.append(normalized)
+        if not identities:
+            return []
+        placeholders = ",".join("?" for _ in identities)
+        rows = await self._db.execute_fetchall(
+            "SELECT " + ORDER_HISTORY_FIELDS + " FROM youzan_orders "
+            "WHERE buyer_id IN (" + placeholders + ") "
+            "OR outer_user_id IN (" + placeholders + ") "
+            "ORDER BY created_at DESC, order_no DESC LIMIT ?",
+            (*identities, *identities, limit),
         )
         return [dict(row) for row in rows]
 

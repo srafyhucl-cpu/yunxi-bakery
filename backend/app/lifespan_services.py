@@ -131,10 +131,13 @@ def init_services(repos: dict[str, Any], vs: Any, bm25: Any = None) -> dict[str,
         repo=repos["customer_group_repo"],
         schedule_service=order_schedule_service,
     )
+    # 请求期由 db_session_scope 的 ContextVar 按需解析连接；
+    # 启动期不在会话上下文中，读取 repo._db 会抛 RuntimeError，
+    # 也不能在此打开全局连接，否则会破坏现有 per-request 事务模型。
     storefront_auth_service = StorefrontAuthService(
         customer_repo=repos.get("customer_master_repo"),
         member_balance_repo=repos.get("member_balance_repo"),
-        db=getattr(repos.get("order_repo"), "_db", None),
+        db=None,
     )
     customer_consent_service = CustomerConsentService(repos["customer_profile_repo"])
     privacy_lifecycle_service = PrivacyLifecycleService(
