@@ -8,6 +8,8 @@
 **最后更新**：2026-09-26（as_of_commit: `2cb4a2fd9074e02b429ee4924bfbcf3ef9599364`；version: `0.133.0-p2trial.3`）
 
 > 当前状态口径：P1 承接验证已于 2026-08-30 经项目负责人确认正式关闭；P2 准备段已完成，真人执行段已阻塞（blocked），尚未启动。Harness P0 与中文治理控制面已完成，版本号以 `backend/VERSION` 为准，代码快照以当前 `git rev-parse HEAD` 为准。
+>
+> **Stage 2.5–4 交付快照（2026-10-20，代码快照 `d6e3713`）**：储值迁移/账本、每日库存、蛋糕时段、打印作业/补打、店员账号/快捷开单、只读 AI/定制卡、30 条 FAQ、本地联调 runbook 已完成，按“合成数据 + Mock 打印/支付”验收，**不是生产上线**。机器快照字段保留上一轮审计口径；本轮验收与真实上线前置条件见 [docs/release/stage-2.5-4-acceptance.md](docs/release/stage-2.5-4-acceptance.md) 与 [docs/release/local-trial-runbook.md](docs/release/local-trial-runbook.md)。
 
 <!-- PROJECT_STATE_MACHINE_START -->
 ## 机器快照（当前事实）
