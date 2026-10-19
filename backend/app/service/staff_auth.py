@@ -140,6 +140,12 @@ class StaffAuthService:
                 ensure_ascii=False,
             ),
         )
+        # 登录状态与登录审计必须先落库：登录成功后 API 层还会调用
+        # clear_admin_login_failures，它会另开一条连接写同一个 SQLite 文件。
+        # 若此处不提交，请求连接会一直持有写锁，两条连接互等到 busy_timeout
+        # 耗尽后抛 "database is locked"，登录接口退化为 500。
+        # 这里只提交登录状态与审计，不引入任何额外业务写入。
+        await self._commit_login_state()
         return StaffPrincipal(
             id=staff.id,
             name=staff.name,
@@ -147,6 +153,16 @@ class StaffAuthService:
             role=staff.role,
             tenant_id=staff.tenant_id,
         )
+
+    async def _commit_login_state(self) -> None:
+        """提交登录状态与登录审计所在的事务，释放 SQLite 写锁。
+
+        账号仓储与审计仓储通常共享同一条连接，重复提交是空操作；
+        只有两者确实是不同连接时才需要分别提交，避免审计停留在未提交状态。
+        """
+        await self._staff_repo.commit()
+        if self._audit_repo is not self._staff_repo:
+            await self._audit_repo.commit()
 
     async def list_staff(self, active_only: bool = True) -> list[StaffAccount]:
         """列出当前租户店员账号。"""

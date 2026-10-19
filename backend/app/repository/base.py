@@ -70,6 +70,14 @@ class BaseRepository:
     def __init__(self, db: DatabaseHandle | None = None) -> None:
         self._injected_db = db
 
+    async def commit(self) -> None:
+        """提交当前连接上的事务。
+
+        供服务层在「本次写入必须先落库、随后还要用另一条连接写同一个库文件」
+        的场景显式提交，避免未提交事务长期持有 SQLite 写锁导致 database is locked。
+        """
+        await self._db.commit()
+
     @property
     def _db(self) -> DatabaseHandle:
         if self._injected_db is not None:

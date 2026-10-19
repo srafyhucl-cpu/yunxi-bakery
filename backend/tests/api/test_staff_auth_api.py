@@ -146,6 +146,74 @@ async def test_staff_login_rate_limit_counts_each_failure_once_and_clears_on_suc
 
 
 @pytest.mark.asyncio
+async def test_staff_login_succeeds_with_real_rate_limit_on_same_sqlite_file(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """真实限流函数 + 真实 SQLite 文件库：登录成功必须返回 200，不得出现写锁互锁。
+
+    回归场景：请求连接写完「最后登录时间 + 登录审计」后未提交，仍持有 SQLite 写锁；
+    随后的 clear_admin_login_failures 另开连接写同一个库文件，等满 busy_timeout
+    后抛 "database is locked"，登录接口退化为 500。
+    """
+    db_path = tmp_path / "staff_login_write_lock.db"
+    monkeypatch.setattr(settings, "DB_PATH", str(db_path))
+    monkeypatch.setattr(settings, "EDGE_PROTECTION_BACKEND", "sqlite")
+    monkeypatch.setattr(settings, "ADMIN_LOGIN_MAX_ATTEMPTS", 5)
+    monkeypatch.setattr(settings, "ADMIN_LOGIN_WINDOW_SECONDS", 300)
+
+    # 请求级连接与限流连接指向同一个库文件，才能真实复现写锁互锁。
+    request_conn = await init_db(str(db_path))
+    service = StaffAuthService(
+        staff_repo=StaffRepo(request_conn),
+        audit_repo=StaffAuditRepo(request_conn),
+    )
+    await service.create_staff("小赵", "13800000010", "cashier", "2468")
+    await request_conn.commit()
+
+    test_app = FastAPI()
+    test_app.include_router(create_staff_auth_router(service))
+    # 与生产一致：未预期异常统一转 500，而不是直接抛给调用方。
+    transport = httpx.ASGITransport(app=test_app, raise_app_exceptions=False)
+    try:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
+            response = await client.post(
+                "/api/v1/staff/auth/login",
+                json={"phone": "13800000010", "pin": "2468"},
+            )
+    finally:
+        await close_db(request_conn)
+
+    assert response.status_code == 200, response.text
+    assert "database is locked" not in response.text
+    assert response.json()["data"]["name"] == "小赵"
+    assert response.cookies.get("staff_session")
+
+    # 登录状态必须已经落库（证明写锁已释放，别的连接能立刻读到）。
+    verify_conn = await init_db(str(db_path))
+    try:
+        account_rows = await verify_conn.execute_fetchall(
+            "SELECT last_login_at FROM staff_accounts WHERE phone = ?",
+            ("13800000010",),
+        )
+        attempt_rows = await verify_conn.execute_fetchall(
+            "SELECT client_key FROM admin_login_attempts",
+        )
+        audit_rows = await verify_conn.execute_fetchall(
+            "SELECT action FROM staff_audit_logs WHERE action = ?",
+            ("login",),
+        )
+    finally:
+        await close_db(verify_conn)
+
+    assert account_rows and account_rows[0][0]
+    assert attempt_rows == []
+    assert len(audit_rows) == 1
+
+
+@pytest.mark.asyncio
 async def test_staff_login_rate_limit_returns_429(
     app: FastAPI,
     monkeypatch: pytest.MonkeyPatch,
