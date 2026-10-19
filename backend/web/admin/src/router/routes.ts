@@ -11,6 +11,17 @@ export const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: "/quick-order",
+    name: "quick-order",
+    component: () => import("@/pages/quick-order/QuickOrderPage.vue"),
+    meta: {
+      layout: "auth",
+      title: "快捷开单",
+      // 店员页面使用独立的 staff_session，不依赖 admin 会话，路由守卫直接放行。
+      public: true,
+    },
+  },
+  {
     path: "/",
     redirect: "/overview",
   },

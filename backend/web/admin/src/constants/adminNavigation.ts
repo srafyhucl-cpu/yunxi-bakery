@@ -11,6 +11,7 @@ import {
   Printer,
   Service,
   Setting,
+  ShoppingCart,
   Ticket,
   Tickets,
   UserFilled,
@@ -28,6 +29,7 @@ export interface AdminNavItem {
 export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   { label: "概览", shortLabel: "概览", to: "/overview", key: "overview", icon: Odometer, mobilePrimary: true },
   { label: "AI 对话", shortLabel: "AI", to: "/ai-dialog", key: "ai-dialog", icon: ChatDotRound, mobilePrimary: false },
+  { label: "快捷开单", shortLabel: "开单", to: "/quick-order", key: "quick-order", icon: ShoppingCart, mobilePrimary: false },
   { label: "商品管理", shortLabel: "商品", to: "/products", key: "products", icon: Goods, mobilePrimary: true },
   { label: "每日库存", shortLabel: "库存", to: "/daily-stock", key: "daily-stock", icon: Calendar, mobilePrimary: false },
   { label: "优惠券", shortLabel: "券", to: "/coupons", key: "coupons", icon: Ticket, mobilePrimary: false },

@@ -15,6 +15,11 @@ const router = createRouter({
 });
 
 router.beforeEach(async (to) => {
+  // 店员快捷开单使用 staff_session，不参与 admin 登录态判定。
+  if (to.meta.public === true) {
+    return true;
+  }
+
   const authStore = useAuthStore(pinia);
   const isLoginPage = to.name === "login";
 
