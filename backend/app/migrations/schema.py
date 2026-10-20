@@ -259,7 +259,7 @@ SCHEMA_STATEMENTS: list[str] = [
         trace_id TEXT DEFAULT '',
         event_type TEXT DEFAULT '',
         business_type TEXT NOT NULL
-            CHECK(business_type IN ('trade','item','chat','unknown')),
+            CHECK(business_type IN ('trade','item','chat','member','unknown')),
         business_key TEXT DEFAULT '',
         status TEXT NOT NULL
             CHECK(status IN ('received','processing','processed','skipped','failed','duplicate')),
