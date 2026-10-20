@@ -4,6 +4,8 @@ import aiosqlite
 import pytest
 
 from app.config import settings
+from app.database import db_conn_var
+from app.repository.base import DatabaseHandle
 from app.repository.customer_master_repo import CustomerMasterRepo
 from app.repository.member_balance_repo import MemberBalanceRepo
 from app.service.channels.storefront import StorefrontAuthService
@@ -240,6 +242,43 @@ async def test_event_handler_routes_member_events(db: aiosqlite.Connection) -> N
         "SELECT unique_id FROM points_ledger WHERE unique_id = ?", ("h1",)
     )
     assert len(rows) == 1
+
+
+@pytest.mark.asyncio
+async def test_event_handler_resolves_request_context_db(
+    db: aiosqlite.Connection,
+) -> None:
+    """组装根以 db=None 构造时，事件处理器应使用当前上下文连接。"""
+    handler = YouzanEventHandler(
+        db=None,
+        knowledge_retriever=None,
+        youzan_client=FakeMemberClient(),
+        audit_repo=None,
+    )
+    token = db_conn_var.set(DatabaseHandle(db))
+    try:
+        await handler.handle_system_event(
+            payload={
+                "msg": {
+                    "mobile": "13900000001",
+                    "name": "上下文会员",
+                    "is_member": 1,
+                }
+            },
+            event_type="SCRM_CUSTOMER_EVENT",
+            updated_at_str="2026-08-12 13:10:00",
+            msg_id="msg-context-1",
+        )
+    finally:
+        db_conn_var.reset(token)
+
+    rows = await db.execute_fetchall(
+        "SELECT mobile, display_name, is_member FROM member_balance WHERE mobile = ?",
+        ("13900000001",),
+    )
+    assert len(rows) == 1
+    assert rows[0]["display_name"] == "上下文会员"
+    assert rows[0]["is_member"] == 1
 
 
 @pytest.mark.asyncio

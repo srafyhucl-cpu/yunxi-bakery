@@ -44,6 +44,25 @@ class YouzanEventHandler:
         self._youzan_client = youzan_client
         self._audit_repo = audit_repo
 
+    def _get_db(self):
+        """取当前请求/worker 的数据库连接。
+
+        组装根在启动期没有请求上下文，因此以 ``db=None`` 构造事件处理器；
+        真正的连接由 worker 或请求的 ``db_session_scope`` 写入 ContextVar。
+        这里在调用时解析，避免把 None 继续传给仓储层，导致
+        ``'NoneType' object has no attribute 'in_transaction'``。
+        """
+        if self._db is not None:
+            return self._db
+        from app.database import db_conn_var
+
+        try:
+            return db_conn_var.get()
+        except LookupError as exc:
+            raise RuntimeError(
+                "有赞系统事件处理未在 db_session_scope 上下文管理器中执行！"
+            ) from exc
+
     async def handle_system_event(
         self,
         payload: dict,
@@ -93,10 +112,11 @@ class YouzanEventHandler:
                 )
                 msg_obj = {}
 
+        db = self._get_db()
         event_type_lower = event_type.lower()
         if event_type_lower.startswith("trade_"):
             await handle_trade_event(
-                db=self._db,
+                db=db,
                 youzan_client=self._youzan_client,
                 event_type=event_type,
                 msg_obj=msg_obj,
@@ -120,7 +140,7 @@ class YouzanEventHandler:
             if not msg_obj.get("item_id"):
                 msg_obj = {**msg_obj, "item_id": item_id}
             await handle_item_event(
-                db=self._db,
+                db=db,
                 youzan_client=self._youzan_client,
                 knowledge_retriever=self._knowledge,
                 event_type=event_type,
@@ -132,7 +152,7 @@ class YouzanEventHandler:
             )
         elif event_type_lower in MEMBER_EVENT_TYPES:
             await handle_member_event(
-                db=self._db,
+                db=db,
                 youzan_client=self._youzan_client,
                 event_type=event_type,
                 msg_obj=msg_obj,
@@ -145,7 +165,7 @@ class YouzanEventHandler:
             item_id = parse_item_id(payload)
             if item_id:
                 await handle_item_event(
-                    db=self._db,
+                    db=db,
                     youzan_client=self._youzan_client,
                     knowledge_retriever=self._knowledge,
                     event_type=event_type,
