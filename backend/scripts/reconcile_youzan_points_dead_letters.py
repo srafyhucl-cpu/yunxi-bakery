@@ -51,10 +51,11 @@
 `youzan.crm.customer.points.get/1.0.0`（`user.account_type=2` 即手机号，
 响应取 `data.point`）。**没有**走
 `app/service/youzan/member_api.py` 的 `YouzanMemberApi.query_points`：
-该方法的 `POINTS_QUERY_API_VERSION = "3.0.0"` 会被有赞网关以
-4005「非法的API」拒绝（2026-10-20 生产实测），返回值恒为空字典。
-service 层这处版本错误必须单独修复——它同时会让
-`scripts/import_member_loyalty.py` 把每个会员的积分锚点写成 0。
+本脚本需要原始响应体与网关错误明细，service 层只透出业务数据。
+service 层的 `POINTS_QUERY_API_VERSION` 曾写成 `3.0.0`，会被有赞网关以
+4005「非法的API」拒绝（2026-10-20 生产实测），返回值恒为空字典，
+进而让 `scripts/import_member_loyalty.py` 把每个会员的积分锚点写成 0；
+该版本已按本脚本的实测口径修正为 `1.0.0`。
 
 用法
 ----
@@ -131,10 +132,11 @@ CATEGORY_BLOCKED = "blocked"
 
 # 有赞「查询客户当前积分」API。
 # 版本必须是 1.0.0：3.0.0 会被网关以 4005「非法的API」拒绝
-# （2026-10-20 生产实测），`app/service/youzan/member_api.py` 里的
-# POINTS_QUERY_API_VERSION 目前正是 3.0.0，调用结果恒为空字典。
+# （2026-10-20 生产实测），调用结果恒为空字典。
+# `app/service/youzan/member_api.py` 的同名常量原先正是 3.0.0，现已按本
+# 脚本的实测口径修正为 1.0.0（取数请求体同为 user.account_type=2）。
 # 本脚本按有赞开放平台 API 文档（doc 0/884）直接经 YouzanClient 调用，
-# service 层的那处版本错误需要单独修复，不能带着它做积分核对。
+# 以便拿到原始响应体与网关错误明细。
 POINTS_QUERY_API_NAME = "youzan.crm.customer.points.get"
 POINTS_QUERY_API_VERSION = "1.0.0"
 # account_type：2=手机号（同上文档）

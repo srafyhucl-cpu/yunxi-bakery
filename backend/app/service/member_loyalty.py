@@ -20,9 +20,27 @@ from app.service.coupon.template_sync import (
     upsert_template_from_youzan,
 )
 from app.service.youzan.member_api import YouzanMemberApi
-from app.service.youzan.member_helpers import to_fen, to_int
+from app.service.youzan.member_helpers import is_usable_int, to_fen, to_int
 
 logger = setup_logger()
+
+# 有赞「查询客户当前积分」响应里的积分数值字段，按可信度排序。
+# `point` 是官方响应形状（`data.point`，2026-10-20 生产实测），
+# 其余为历史兼容字段名，顺序与生产实测脚本保持一致。
+POINTS_FIELD_CANDIDATES = (
+    "point",
+    "points",
+    "total_points",
+    "total",
+    "balance",
+    "current_points",
+    "points_total",
+    "available_points",
+)
+# 有赞侧查不到积分数据时的稳定错误标记：调用方可据此区分「未知」与「0 分」。
+POINTS_UNAVAILABLE_ERROR = (
+    "youzan_points_unavailable: 有赞侧查不到积分数据，已跳过积分镜像"
+)
 
 
 class MemberLoyaltyImportService:
@@ -49,20 +67,9 @@ class MemberLoyaltyImportService:
             "errors": [],
         }
         try:
-            points_total = _extract_points_total(
-                await self._member_api.query_points(mobile)
+            await self._sync_points(
+                mobile, customer_id, stats, should_apply=should_apply
             )
-            stats["points_total"] = points_total
-            if should_apply:
-                async with self._balance_repo.transaction():
-                    # r79（`M-20260926-030`）：导入同样只表达**外部权威总额**，
-                    # 改走锚点口径。此前用 `upsert_identity(points=...)` 绝对覆盖
-                    # 会抹掉小程序订单已发的本地积分净额。
-                    await self._balance_repo.mirror_youzan_points(
-                        mobile=mobile,
-                        customer_id=customer_id,
-                        youzan_total=points_total,
-                    )
 
             cards = await self._member_api.list_customer_cards(mobile)
             stats["cards"] = len(cards)
@@ -90,6 +97,38 @@ class MemberLoyaltyImportService:
             stats["errors"].append(f"{type(exc).__name__}: {exc}")
             logger.error("会员账务导入失败 mobile=%s err=%s", mobile, exc)
         return stats
+
+    async def _sync_points(
+        self,
+        mobile: str,
+        customer_id: str,
+        stats: dict,
+        *,
+        should_apply: bool,
+    ) -> None:
+        """拉取有赞积分并按锚点口径镜像到本地。
+
+        有赞侧查不到积分数据时**不写库**：把「未知」当成 0 会把会员已有的
+        积分锚点清零，属于凭空造数据；此时只在统计里留下稳定错误标记。
+        """
+        payload = await self._member_api.query_points(mobile)
+        points_total = _extract_points_total(payload)
+        if points_total is None:
+            stats["errors"].append(POINTS_UNAVAILABLE_ERROR)
+            logger.error("有赞侧查不到积分数据，跳过积分镜像 mobile=%s", mobile)
+            return
+        stats["points_total"] = points_total
+        if not should_apply:
+            return
+        async with self._balance_repo.transaction():
+            # r79（`M-20260926-030`）：导入同样只表达**外部权威总额**，
+            # 改走锚点口径。此前用 `upsert_identity(points=...)` 绝对覆盖
+            # 会抹掉小程序订单已发的本地积分净额。
+            await self._balance_repo.mirror_youzan_points(
+                mobile=mobile,
+                customer_id=customer_id,
+                youzan_total=points_total,
+            )
 
     async def _upsert_coupon(self, coupon: dict, mobile: str, customer_id: str) -> None:
         """幂等写入一条优惠券库存记录。"""
@@ -133,10 +172,18 @@ class MemberLoyaltyImportService:
         )
 
 
-def _extract_points_total(payload: dict) -> int:
-    """从积分查询响应中提取积分余额，兼容常见字段名。"""
-    for key in ("points", "total", "balance", "current_points"):
+def _extract_points_total(payload: dict) -> int | None:
+    """从积分查询响应中提取积分余额；查不到数据时返回 None。
+
+    权威写入路径必须区分「确实是 0 分」与「查不到」：字段缺失、空串与
+    非数值一律返回 None，由调用方跳过积分镜像。把「未知」折成 0 会把会员
+    已有的积分锚点清零。
+    """
+    for key in POINTS_FIELD_CANDIDATES:
+        if key not in payload:
+            continue
         raw = payload.get(key)
-        if raw is not None:
-            return to_int(raw)
-    return 0
+        if not is_usable_int(raw):
+            continue
+        return to_int(raw)
+    return None

@@ -5,6 +5,10 @@
 
 from app.config import settings
 from app.logger import setup_logger
+from app.service.youzan.client import (
+    build_gateway_error_message,
+    extract_gateway_error,
+)
 
 logger = setup_logger()
 
@@ -12,7 +16,12 @@ logger = setup_logger()
 # 说明：API 名称与版本来自有赞开放平台公开文档；真实店铺联调前需按实际开通的
 # 应用权限验证，mock 模式下全部短路返回空数据。
 POINTS_QUERY_API_NAME = "youzan.crm.customer.points.get"
-POINTS_QUERY_API_VERSION = "3.0.0"
+# 版本必须是 1.0.0：3.0.0 会被有赞网关以 4005「非法的API」拒绝
+# （2026-10-20 生产实测），调用结果恒为空字典，会让会员导入把积分锚点写成 0。
+# 取数口径与生产实测脚本 `scripts/reconcile_youzan_points_dead_letters.py` 一致。
+POINTS_QUERY_API_VERSION = "1.0.0"
+# 有赞「查询客户当前积分」的 account_type：2 = 手机号。
+POINTS_ACCOUNT_TYPE_MOBILE = 2
 COUPON_LIST_API_NAME = "youzan.ump.coupon.user.coupons"
 COUPON_LIST_API_VERSION = "3.0.0"
 COUPON_GROUP_DETAIL_API_NAME = "youzan.ump.coupon.detail.get"
@@ -30,15 +39,24 @@ class YouzanMemberApi:
         self._client = youzan_client
 
     async def query_points(self, mobile: str) -> dict:
-        """查询客户积分余额，返回原始响应 data/response 字典。"""
+        """查询客户积分余额，返回原始响应 data/response 字典。
+
+        查不到数据（空响应或接口报错）时返回空字典，**不得**伪造 0 积分：
+        调用方据此判定「有赞侧未知」并跳过积分镜像，避免把「未知」写成 0
+        清空会员已有的积分锚点。
+        """
         if settings.YOUZAN_MOCK_MODE or not mobile:
             return {}
         result = await self._client.call_api(
             POINTS_QUERY_API_NAME,
             POINTS_QUERY_API_VERSION,
-            {"kdt_id": settings.YOUZAN_KDT_ID, "mobile": mobile},
+            _build_points_query_params(mobile),
         )
-        return _pick_dict(result)
+        data = _pick_dict(result)
+        if not data:
+            _log_points_query_miss(result)
+            return {}
+        return data
 
     async def list_customer_coupons(self, mobile: str) -> list[dict]:
         """分页拉取客户优惠券列表。"""
@@ -111,6 +129,41 @@ class YouzanMemberApi:
             or []
         )
         return cards if isinstance(cards, list) else []
+
+
+def _build_points_query_params(mobile: str) -> dict:
+    """构造「查询客户当前积分」的请求体。
+
+    形状与生产实测脚本（`scripts/reconcile_youzan_points_dead_letters.py`）
+    完全一致：手机号放在 `user.account_id`，`user.account_type=2` 表示手机号；
+    积分余额从响应的 `data.point` 读取。店铺身份由 access_token 绑定，
+    因此请求体不再额外携带 `kdt_id`（与实测脚本保持一致，避免多传字段
+    被有赞判为非法参数）。
+    """
+    return {
+        "user": {
+            "account_type": POINTS_ACCOUNT_TYPE_MOBILE,
+            "account_id": mobile,
+        },
+        "is_do_extpoint": False,
+        "is_query_points_account_version": False,
+        "need_expired_but_not_executed": False,
+    }
+
+
+def _log_points_query_miss(result: dict) -> None:
+    """积分查询没拿到业务数据时记录原因，区分「查不到」与「确实是 0 分」。"""
+    gateway = extract_gateway_error(result)
+    if gateway is not None:
+        logger.error(
+            "有赞积分查询被网关拒绝: %s",
+            build_gateway_error_message(POINTS_QUERY_API_NAME, gateway),
+        )
+        return
+    logger.error(
+        "有赞积分查询未返回业务数据: keys=%s",
+        sorted(result.keys()) if isinstance(result, dict) else "not_object",
+    )
 
 
 def _pick_dict(result: dict) -> dict:
