@@ -55,18 +55,26 @@
 
 ## 五、已知问题（未清零）
 
-1. **审计状态回写滞后**：17 条 `received` 审计行全部有对应 `processed` inbox，未发现业务事件丢失；需要补写审计终态并排查重复回调导致的 received 状态。
-2. **`database is locked` 曾偶发**：积压清理期间约每分钟 1–2 次事务回滚；队列清空后最近未见新增。仍需定位长事务/并发审计写入，确认没有静默丢事件。
-3. **dead_letter 74 条、webhook failed 12 条**：多数为切换前遗留；需逐条查看后回放或标记。
+1. **审计状态回写滞后**：仍有约 1,668 条历史 `received` 审计行；近期行已确认对应 processed inbox，未发现业务事件丢失，但终态回写仍未清零。
+2. **`database is locked` 曾偶发**：积压清理期间约每分钟 1–2 次事务回滚；队列清空、清理完成后最近未见新增。仍需持续观察，确认没有静默丢事件。
+3. **53 条 POINTS dead_letter**：已确认直接回放会让 26 个会员合计减少 10,925 分；先按有赞当前积分对账，再决定回放/标记 skipped。
 4. **`/ready` 仍为 503**：因为微信支付配置为空；在未接入微信支付前，这是预期的 degraded，不是进程故障。
 5. 旧服务已 disabled；回退需手动 `systemctl stop yunxi-bakery && systemctl start yunxibakebot`，且会丢失切换后新库写入。
 6. 切换前 staging 真向量并行启动曾导致服务器 OOM/失联；已由重启恢复，并改为串行切换。后续禁止再并行启动两套真向量服务。
 
-## 六、下一步
+## 六、死信与审计失败清理结果（2026-10-20 15:00）
 
-1. 补写 17 条滞后审计终态，并核对会员积分/身份与有赞侧一致。
-2. 统计并处理 74 条 dead_letter 与 12 条 audit failed。
-3. 处理 `database is locked`：定位长事务与并发审计写入，必要时增加重试/缩短事务。
+- 74 条 dead_letter：POINTS 53、SCRM_CUSTOMER_EVENT 21。
+- 已回放 **21 条 SCRM_CUSTOMER_EVENT**，worker 处理完成，inbox 只剩 **53 条 POINTS** dead_letter。
+- 已把 **12 条历史 audit failed** 标记为 `skipped`（`historical_invalid_payload`），原错误信息保留、无删除。
+- POINTS 53 条**未回放**：28 条会把 26 个会员的积分余额改小，合计 **−10,925 分**；旧事件的 `total` 会覆盖 10 月的新锚点。必须先按有赞当前积分对账，不能直接回放。
+- 回放工具：`backend/scripts/resolve_youzan_dead_letters.py`，提交 `2214a04`；支持 dry-run、生产路径防呆、单事务、审计-only `--skip-inbox`。
+
+## 七、下一步
+
+1. 对 53 条 POINTS 死信涉及的 26 个会员逐户查询有赞当前积分，确认后再决定回放或标记 skipped。
+2. 补写历史审计终态，并核对会员积分/身份与有赞侧一致。
+3. 继续观察 `database is locked`，必要时定位长事务与并发审计写入。
 4. 配置微信支付/小程序正式参数后，重新检查 `/ready`。
 5. 在切换后的生产库上重新跑数据覆盖审计，确认订单/商品/会员/积分与有赞侧一致。
 6. 旧库保留为回滚快照；确认稳定后再安排清理。
