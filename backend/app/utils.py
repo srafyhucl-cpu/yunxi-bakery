@@ -101,6 +101,39 @@ def now_str() -> str:
     return now_beijing().strftime("%Y-%m-%d %H:%M:%S")
 
 
+def format_millis_datetime(value: object) -> str:
+    """把毫秒时间戳格式化为北京时间字符串（%Y-%m-%d %H:%M:%S）。
+
+    有赞券域的时间字段（`valid_start_time` / `valid_end_time` / `take_at` /
+    `expire_at`）都是**毫秒**时间戳（2026-10-20 生产实测：1727341443000），
+    直接按字符串截断会得到无意义数字。非数字输入按文本时间原样返回，
+    兼容历史文本形状。
+    """
+    text = str(value if value is not None else "").strip()
+    if not text:
+        return ""
+    if not text.isdigit():
+        return text
+    return datetime.datetime.fromtimestamp(
+        int(text) / 1000, tz=BEIJING_TIMEZONE
+    ).strftime("%Y-%m-%d %H:%M:%S")
+
+
+def format_millis_date(value: object) -> str:
+    """把毫秒时间戳格式化为北京时间日期（%Y-%m-%d）。
+
+    非数字输入取文本时间的前 10 位日期，兼容历史文本形状。
+    """
+    text = str(value if value is not None else "").strip()
+    if not text:
+        return ""
+    if text.isdigit():
+        return datetime.datetime.fromtimestamp(
+            int(text) / 1000, tz=BEIJING_TIMEZONE
+        ).strftime("%Y-%m-%d")
+    return text[:10]
+
+
 async def convert_amr_to_wav(amr_bytes: bytes) -> bytes:
     """使用系统 ffmpeg 将 AMR 格式字节流转换为 WAV 格式。"""
     import asyncio

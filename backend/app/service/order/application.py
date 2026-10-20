@@ -11,6 +11,8 @@ from app.repository.session_repo import SessionRepo
 from app.repository.config_repo import ConfigRepo
 from app.repository.youzan_inventory_repo import YouzanInventoryRepo
 from app.repository.youzan_repo import YouzanProductRepo
+from app.service.catalog.daily_stock import ProductDailyStockService
+from app.service.order.cake_slots import CakeSlotCapacityService
 from app.service.order.cancellation import OrderCancellationService
 from app.service.order.creation import OrderCreationService
 from app.service.order.expiration import OrderExpirationService
@@ -52,10 +54,16 @@ class OrderApplicationService:
         event_repo: OrderEventRepo | None = None,
         stored_value_service: StoredValueService | None = None,
         delivery_service: DeliveryApplicationService | None = None,
+        daily_stock_service: ProductDailyStockService | None = None,
+        slot_service: CakeSlotCapacityService | None = None,
     ) -> None:
         self._order_repo = order_repo
         self._serialization_service = OrderSerializationService()
-        inventory_service = OrderInventoryService(product_repo, inventory_repo)
+        inventory_service = OrderInventoryService(
+            product_repo,
+            inventory_repo,
+            daily_stock_service=daily_stock_service,
+        )
         resolved_schedule_service = schedule_service or OrderScheduleService(
             ShopOperationsService(config_repo)
         )
@@ -74,6 +82,7 @@ class OrderApplicationService:
             schedule_service=resolved_schedule_service,
             timeline_service=self._timeline_service,
             delivery_service=delivery_service,
+            slot_service=slot_service,
         )
         self._payment_service = OrderPaymentService(payment_service)
         self._cancellation_service = OrderCancellationService(
@@ -81,18 +90,21 @@ class OrderApplicationService:
             inventory_service=inventory_service,
             timeline_service=self._timeline_service,
             stored_value_service=stored_value_service,
+            slot_service=slot_service,
         )
         self._admin_status_service = OrderAdminStatusService(
             order_repo=order_repo,
             inventory_service=inventory_service,
             timeline_service=self._timeline_service,
             stored_value_service=stored_value_service,
+            slot_service=slot_service,
         )
         self._expiration_service = OrderExpirationService(
             order_repo=order_repo,
             inventory_service=inventory_service,
             timeline_service=self._timeline_service,
             stored_value_service=stored_value_service,
+            slot_service=slot_service,
         )
 
     async def create_order(

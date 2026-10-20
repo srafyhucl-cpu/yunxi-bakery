@@ -75,6 +75,160 @@ async def test_member_claim_by_phone_with_history_orders(
 
 
 @pytest.mark.asyncio
+async def test_member_claim_matches_youzan_openid_and_phone_dual_identity(
+    db: aiosqlite.Connection,
+) -> None:
+    """认领按 yz_open_id + 手机号双标识精确匹配：查到本人订单，且不串到其他会员。"""
+    c_repo = CustomerMasterRepo(db)
+    b_repo = MemberBalanceRepo(db)
+    auth_service = StorefrontAuthService(
+        customer_repo=c_repo, member_balance_repo=b_repo, db=db
+    )
+
+    phone_a = "13911110001"
+    phone_b = "13911110002"
+
+    # 会员 A：余额快照带真实有赞 openid
+    await b_repo.upsert_identity(
+        mobile=phone_a, yz_open_id="o_a", display_name="会员A", is_member=1
+    )
+    # 会员 B：另一个有赞 openid，手机号不同
+    await b_repo.upsert_identity(
+        mobile=phone_b, yz_open_id="o_b", display_name="会员B", is_member=1
+    )
+
+    # A1：buyer_id 为有赞 openid，outer_user_id 为手机号
+    await db.execute(
+        "INSERT INTO youzan_orders (order_no, buyer_id, outer_user_id, status, amount_fen, "
+        "product_titles, total_quantity, pay_time, created_at, updated_at) "
+        "VALUES ('EOA0001', 'o_a', ?, 'TRADE_SUCCESS', 9900, '会员A蛋糕', 1, "
+        "'2026-08-01 12:00:00', '2026-08-01 11:50:00', '2026-08-01 12:00:00')",
+        (phone_a,),
+    )
+    # A2：手机号只落在外层 ID，buyer_id 为空串
+    await db.execute(
+        "INSERT INTO youzan_orders (order_no, buyer_id, outer_user_id, status, amount_fen, "
+        "product_titles, total_quantity, pay_time, created_at, updated_at) "
+        "VALUES ('EOA0002', '', ?, 'TRADE_SUCCESS', 8800, '外层手机号单', 1, "
+        "'2026-08-02 12:00:00', '2026-08-02 11:50:00', '2026-08-02 12:00:00')",
+        (phone_a,),
+    )
+    # A3：手机号落在外层 ID，buyer_id 是其他无关值
+    await db.execute(
+        "INSERT INTO youzan_orders (order_no, buyer_id, outer_user_id, status, amount_fen, "
+        "product_titles, total_quantity, pay_time, created_at, updated_at) "
+        "VALUES ('EOA0003', 'legacy_external_id', ?, 'TRADE_SUCCESS', 7700, '外层手机号单2', 1, "
+        "'2026-08-03 12:00:00', '2026-08-03 11:50:00', '2026-08-03 12:00:00')",
+        (phone_a,),
+    )
+    # B1：会员 B 的订单，认领 A 绝不能查到
+    await db.execute(
+        "INSERT INTO youzan_orders (order_no, buyer_id, outer_user_id, status, amount_fen, "
+        "product_titles, total_quantity, pay_time, created_at, updated_at) "
+        "VALUES ('EOB0001', 'o_b', ?, 'TRADE_SUCCESS', 6600, '会员B蛋糕', 1, "
+        "'2026-08-04 12:00:00', '2026-08-04 11:50:00', '2026-08-04 12:00:00')",
+        (phone_b,),
+    )
+    await db.commit()
+
+    claimed = await auth_service.claim_member_by_phone(
+        user_id="wx_claim_a", phone=phone_a
+    )
+    order_nos = [order["orderNo"] for order in claimed["historyOrders"]]
+
+    assert set(order_nos) == {"EOA0001", "EOA0002", "EOA0003"}
+    assert "EOB0001" not in order_nos
+    # 倒序：created_at DESC
+    assert order_nos == ["EOA0003", "EOA0002", "EOA0001"]
+    first = claimed["historyOrders"][0]
+    assert first["amountFen"] == 7700
+    assert first["productTitles"] == "外层手机号单2"
+    assert first["totalQuantity"] == 1
+
+
+@pytest.mark.asyncio
+async def test_member_claim_history_orders_limited_and_sorted(
+    db: aiosqlite.Connection,
+) -> None:
+    """同一会员 12 笔订单只回显最近 10 笔，并按 created_at/order_no 倒序。"""
+    c_repo = CustomerMasterRepo(db)
+    b_repo = MemberBalanceRepo(db)
+    auth_service = StorefrontAuthService(
+        customer_repo=c_repo, member_balance_repo=b_repo, db=db
+    )
+
+    phone = "13911110003"
+    await b_repo.upsert_identity(
+        mobile=phone, yz_open_id="o_c", display_name="会员C", is_member=1
+    )
+
+    for index in range(12):
+        order_no = f"EOC{index:04d}"
+        created_at = f"2026-08-{index + 1:02d} 10:00:00"
+        await db.execute(
+            "INSERT INTO youzan_orders (order_no, buyer_id, outer_user_id, status, amount_fen, "
+            "product_titles, total_quantity, pay_time, created_at, updated_at) "
+            "VALUES (?, 'o_c', ?, 'TRADE_SUCCESS', 1000, '批量订单', 1, ?, ?, ?)",
+            (order_no, phone, created_at, created_at, created_at),
+        )
+    await db.commit()
+
+    claimed = await auth_service.claim_member_by_phone(
+        user_id="wx_claim_c", phone=phone
+    )
+    orders = claimed["historyOrders"]
+
+    assert len(orders) == 10
+    assert [order["orderNo"] for order in orders] == [
+        f"EOC{index:04d}" for index in range(11, 1, -1)
+    ]
+    created_ats = [order["createdAt"] for order in orders]
+    assert created_ats == sorted(created_ats, reverse=True)
+
+
+@pytest.mark.asyncio
+async def test_member_claim_without_openid_falls_back_to_phone(
+    db: aiosqlite.Connection,
+) -> None:
+    """余额快照无 yz_open_id 时仍按手机号匹配，且空标识订单不参与匹配。"""
+    c_repo = CustomerMasterRepo(db)
+    b_repo = MemberBalanceRepo(db)
+    auth_service = StorefrontAuthService(
+        customer_repo=c_repo, member_balance_repo=b_repo, db=db
+    )
+
+    phone = "13911110004"
+    # 老会员快照没有 yz_open_id
+    await b_repo.upsert_identity(
+        mobile=phone, display_name="无openid老会员", is_member=1
+    )
+
+    # 手机号落在外层 ID
+    await db.execute(
+        "INSERT INTO youzan_orders (order_no, buyer_id, outer_user_id, status, amount_fen, "
+        "product_titles, total_quantity, pay_time, created_at, updated_at) "
+        "VALUES ('EOD0001', 'legacy_external_id', ?, 'TRADE_SUCCESS', 5500, '老会员订单', 1, "
+        "'2026-08-05 12:00:00', '2026-08-05 11:50:00', '2026-08-05 12:00:00')",
+        (phone,),
+    )
+    # 两个标识都为空的历史脏数据，绝不能误匹配进来
+    await db.execute(
+        "INSERT INTO youzan_orders (order_no, buyer_id, outer_user_id, status, amount_fen, "
+        "product_titles, total_quantity, pay_time, created_at, updated_at) "
+        "VALUES ('EOD9999', '', '', 'TRADE_SUCCESS', 100, '空标识脏数据', 1, "
+        "'2026-08-06 12:00:00', '2026-08-06 11:50:00', '2026-08-06 12:00:00')"
+    )
+    await db.commit()
+
+    claimed = await auth_service.claim_member_by_phone(
+        user_id="wx_claim_d", phone=phone
+    )
+    order_nos = [order["orderNo"] for order in claimed["historyOrders"]]
+
+    assert order_nos == ["EOD0001"]
+
+
+@pytest.mark.asyncio
 async def test_stored_value_payment_and_refund_idempotency(
     db: aiosqlite.Connection,
 ) -> None:

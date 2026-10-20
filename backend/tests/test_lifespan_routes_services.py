@@ -35,7 +35,11 @@ class FakeStatusToolService:
 
 def _install_module(monkeypatch: Any, name: str, **attrs: Any) -> None:
     module = types.ModuleType(name)
-    if name in {"app.api.admin", "app.api.integrations"}:
+    existing_module = sys.modules.get(name)
+    if existing_module is not None and hasattr(existing_module, "__path__"):
+        # 保留真实包的子模块搜索路径，避免替换父包后影响惰性导入。
+        module.__path__ = list(existing_module.__path__)
+    elif name in {"app.api.admin", "app.api.integrations"}:
         module.__path__ = []
     for key, value in attrs.items():
         setattr(module, key, value)
@@ -84,6 +88,11 @@ def test_register_routes_starts_workers_and_includes_all_routers(
             "admin-customer-groups",
             service,
         ),
+    )
+    _install_module(
+        monkeypatch,
+        "app.api.admin.daily_stock",
+        create_admin_daily_stock_router=lambda service: ("admin-daily-stock", service),
     )
     _install_module(
         monkeypatch,
@@ -144,6 +153,11 @@ def test_register_routes_starts_workers_and_includes_all_routers(
     )
     _install_module(
         monkeypatch,
+        "app.api.admin.print_jobs",
+        create_admin_print_jobs_router=lambda service: ("admin-print-jobs", service),
+    )
+    _install_module(
+        monkeypatch,
         "app.api.admin.shop_pages",
         create_shop_page_config_router=lambda service: ("shop-pages", service),
     )
@@ -151,6 +165,20 @@ def test_register_routes_starts_workers_and_includes_all_routers(
         monkeypatch,
         "app.api.channels.storefront.auth",
         create_storefront_auth_router=lambda service: ("miniapp-auth", service),
+    )
+    _install_module(
+        monkeypatch,
+        "app.api.staff.auth",
+        create_staff_auth_router=lambda service: ("staff-auth", service),
+    )
+    _install_module(
+        monkeypatch,
+        "app.api.staff.quick_order",
+        create_staff_quick_order_router=lambda service, auth_service: (
+            "staff-quick-order",
+            service,
+            auth_service,
+        ),
     )
     _install_module(
         monkeypatch,
@@ -176,7 +204,10 @@ def test_register_routes_starts_workers_and_includes_all_routers(
     _install_module(
         monkeypatch,
         "app.api.channels.storefront.chat",
-        create_storefront_chat_router=lambda service: ("miniapp-chat", service),
+        create_storefront_chat_router=lambda service, card_service=None: (
+            "miniapp-chat",
+            service,
+        ),
     )
     _install_module(
         monkeypatch,
@@ -289,16 +320,21 @@ def test_register_routes_starts_workers_and_includes_all_routers(
         "knowledge_sync_service": "knowledge-sync",
         "shop_page_configuration_service": "shop-pages-service",
         "storefront_auth_service": "storefront-auth-service",
+        "staff_auth_service": "staff-auth-service",
+        "staff_quick_order_service": "staff-quick-order-service",
         "customer_address_service": "customer-address-service",
         "catalog_service": "catalog-service",
         "delivery_service": "delivery-service",
         "order_service": "order-service",
+        "print_job_service": "print-job-service",
         "stored_value_service": "stored-value-service",
         "points_service": "points-service",
         "coupon_service": "coupon-service",
         "knowledge_retriever": "knowledge-retriever",
         "storefront_conversation_service": "storefront-conversation-service",
+        "customization_card_service": "customization-card-service",
         "customer_group_service": "customer-group-service",
+        "product_daily_stock_service": "product-daily-stock-service",
         "customer_consent_service": "customer-consent-service",
         "wecom_bot_business_tool_service": "wecom-business-tool-service",
         "wecom_bot_ops_tool_service": "wecom-ops-tool-service",
@@ -311,8 +347,19 @@ def test_register_routes_starts_workers_and_includes_all_routers(
 
     assert wecom_queue.started_with == ["chat"]
     assert kf_queue.started_with == ["chat"]
-    assert len(app.included_routers) == 30
+    assert len(app.included_routers) == 34
+    assert (
+        "admin-daily-stock",
+        "product-daily-stock-service",
+    ) in app.included_routers
+    assert ("admin-print-jobs", "print-job-service") in app.included_routers
     assert ("miniapp-delivery", "delivery-service") in app.included_routers
+    assert ("staff-auth", "staff-auth-service") in app.included_routers
+    assert (
+        "staff-quick-order",
+        "staff-quick-order-service",
+        "staff-auth-service",
+    ) in app.included_routers
     assert app.included_routers[0] == ("webhook", "chat")
     wecom_router = app.included_routers[-2]
     assert wecom_router[0] == "wecom-intelligent-bot-router"
@@ -386,8 +433,15 @@ def test_init_services_wires_core_services(monkeypatch) -> None:
             created["transfer_mgr"] = repo
 
     class FakeStorefrontAuthService:
-        def __init__(self) -> None:
-            created["storefront_auth_service"] = True
+        def __init__(self, **kwargs: Any) -> None:
+            created["storefront_auth_service"] = kwargs
+
+    class RaisingOrderRepo:
+        """模拟真实有赞订单仓储：启动期一旦读取 _db 就抛会话缺失异常。"""
+
+        @property
+        def _db(self) -> Any:
+            raise RuntimeError("数据库操作未在 db_session_scope 上下文管理器中执行！")
 
     class FakeCustomerAddressService:
         def __init__(self, **kwargs: Any) -> None:
@@ -538,6 +592,7 @@ def test_init_services_wires_core_services(monkeypatch) -> None:
         "app.service.wecom.employee_agent_service",
         EmployeeAgentService=FakeEmployeeAgentService,
     )
+    guarded_order_repo = RaisingOrderRepo()
     repos = {
         "session_repo": "session-repo",
         "message_repo": "message-repo",
@@ -550,7 +605,7 @@ def test_init_services_wires_core_services(monkeypatch) -> None:
         "youzan_product_repo": "youzan-product-repo",
         "youzan_order_repo": "youzan-order-repo",
         "youzan_inventory_repo": "youzan-inventory-repo",
-        "order_repo": "order-repo",
+        "order_repo": guarded_order_repo,
         "order_event_repo": "order-event-repo",
         "customer_address_repo": "customer-address-repo",
         "customer_address_audit_repo": "customer-address-audit-repo",
@@ -582,14 +637,19 @@ def test_init_services_wires_core_services(monkeypatch) -> None:
         "catalog_service",
         "delivery_service",
         "order_service",
+        "print_job_service",
+        "product_daily_stock_service",
         "stored_value_service",
         "points_service",
         "coupon_service",
         "storefront_conversation_service",
+        "customization_card_service",
         "wecom_order_lookup_service",
         "transfer_mgr",
         "shop_page_configuration_service",
         "shop_configuration_service",
+        "staff_auth_service",
+        "staff_quick_order_service",
         "wecom_bot_business_tool_service",
         "wecom_bot_ops_tool_service",
         "wecom_bot_status_tool_service",
@@ -640,7 +700,11 @@ def test_init_services_wires_core_services(monkeypatch) -> None:
         created["chat_service"]["conversation_summary_repo"]
         == "conversation-summary-repo"
     )
-    assert created["order_service"]["order_repo"] == "order-repo"
+    assert created["order_service"]["order_repo"] is guarded_order_repo
+    assert (
+        created["order_service"]["daily_stock_service"]
+        is services["product_daily_stock_service"]
+    )
     assert created["wecom_order_lookup_service"] == {
         "order_service": services["order_service"],
         "youzan_order_repo": "youzan-order-repo",
@@ -673,6 +737,8 @@ def test_init_services_wires_core_services(monkeypatch) -> None:
         is services["transfer_mgr"]
     )
     assert services["miniapp_auth_service"] is services["storefront_auth_service"]
+    # 启动期不得读取仓储的真实连接，请求期由 db_session_scope 解析
+    assert created["storefront_auth_service"]["db"] is None
     assert services["miniapp_catalog_service"] is services["catalog_service"]
     assert services["miniapp_order_service"] is services["order_service"]
     assert services["miniapp_address_service"] is services["customer_address_service"]

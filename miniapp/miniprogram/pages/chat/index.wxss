@@ -4,6 +4,8 @@
 
 .chat-page {
   background: var(--yunxi-page-bg);
+  /* 底部常驻区高度：客服入口行 + 提示 + 快捷问题 + 输入框 */
+  --chat-bottom-bar-height: 348rpx;
 }
 
 .message-list {
@@ -11,7 +13,7 @@
   top: var(--yunxi-custom-nav-space);
   left: 0;
   right: 0;
-  bottom: calc(var(--yunxi-tabbar-occupied-height) + 174rpx);
+  bottom: calc(var(--yunxi-tabbar-occupied-height) + var(--chat-bottom-bar-height));
   padding: 0;
   overflow: hidden;
 }
@@ -226,6 +228,77 @@
   transform: scale(0.96);
 }
 
+/* 定制需求卡入口：与快捷问题同规格，只用底色区分“开抽屉”而不是“发消息” */
+.quick-question-pill--card {
+  color: var(--yunxi-brand);
+  background: var(--yunxi-brand-soft);
+  border-color: var(--yunxi-border-medium);
+  font-weight: 800;
+}
+
+/* 客服入口行：平台客服队列（后台工单）与微信原生客服 */
+.chat-service-row {
+  display: flex;
+  gap: 16rpx;
+  padding: 16rpx 28rpx 0;
+}
+
+button.chat-service-btn,
+.chat-service-btn {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex: 1;
+  min-width: 0;
+  min-height: 88rpx;
+  height: 88rpx;
+  padding: 0 16rpx;
+  margin: 0;
+  box-sizing: border-box;
+  font-size: 26rpx;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-radius: var(--yunxi-radius-sm);
+}
+
+button.chat-service-btn--queue {
+  color: var(--yunxi-brand);
+  background: #ffffff;
+  border: 1rpx solid var(--yunxi-border-medium);
+}
+
+button.chat-service-btn--wechat {
+  color: #ffffff;
+  background: var(--yunxi-brand);
+  border: 1rpx solid var(--yunxi-brand);
+  box-shadow: 0 6rpx 14rpx rgba(61, 51, 45, 0.16);
+}
+
+.chat-service-btn:active {
+  transform: scale(0.97);
+  opacity: 0.92;
+}
+
+.chat-service-btn[disabled] {
+  /* 微信原生 disabled 样式带 !important，必须显式提升优先级。 */
+  color: var(--yunxi-text-secondary) !important;
+  background: var(--yunxi-surface-alt) !important;
+  border: 1rpx solid var(--yunxi-border-medium) !important;
+  box-shadow: none;
+}
+
+.chat-service-hint {
+  display: block;
+  padding: 10rpx 28rpx 0;
+  font-size: 22rpx;
+  line-height: 1.4;
+  color: var(--yunxi-text-muted);
+}
+
 /* 输入框与发送 */
 .composer {
   display: flex;
@@ -336,4 +409,283 @@
     opacity: .2;
     transform: scale(0.8);
   }
+}
+
+/* ==========================================================================
+   定制需求卡抽屉
+   遮罩与面板是同级节点：点遮罩关闭，点面板不会冒泡到遮罩。
+   ========================================================================== */
+
+.customization-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1000;
+  background: rgba(43, 35, 31, 0.45);
+}
+
+.customization-mask:active {
+  background: rgba(43, 35, 31, 0.55);
+}
+
+.customization-panel {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1001;
+  display: flex;
+  flex-direction: column;
+  max-height: 86vh;
+  background: #ffffff;
+  border-radius: 28rpx 28rpx 0 0;
+  box-shadow: 0 -12rpx 32rpx rgba(43, 35, 31, 0.18);
+}
+
+.customization-panel__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16rpx;
+  padding: 28rpx 28rpx 18rpx;
+  border-bottom: 1rpx solid var(--yunxi-border);
+}
+
+.customization-panel__head-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  flex: 1;
+  min-width: 0;
+}
+
+.customization-panel__title {
+  font-size: 32rpx;
+  font-weight: 800;
+  color: var(--yunxi-text-primary);
+}
+
+.customization-panel__desc {
+  font-size: 22rpx;
+  line-height: 1.5;
+  color: var(--yunxi-text-muted);
+}
+
+.customization-panel__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 88rpx;
+  height: 88rpx;
+  font-size: 34rpx;
+  line-height: 1;
+  color: var(--yunxi-text-secondary);
+  background: var(--yunxi-surface-alt);
+  border-radius: 50%;
+}
+
+.customization-panel__close:active {
+  background: var(--yunxi-brand-soft);
+  transform: scale(0.94);
+}
+
+.customization-panel__body {
+  flex: 1;
+  min-height: 0;
+  max-height: 56vh;
+  padding: 20rpx 28rpx 8rpx;
+  box-sizing: border-box;
+}
+
+.customization-field {
+  margin-bottom: 24rpx;
+}
+
+.customization-field__label {
+  display: block;
+  margin-bottom: 12rpx;
+  font-size: 24rpx;
+  font-weight: 700;
+  color: var(--yunxi-text-secondary);
+}
+
+.customization-field__hint {
+  display: block;
+  margin-top: 10rpx;
+  font-size: 22rpx;
+  line-height: 1.5;
+  color: var(--yunxi-text-muted);
+}
+
+.customization-picker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 88rpx;
+  padding: 0 24rpx;
+  background: var(--yunxi-surface-alt);
+  border: 1rpx solid var(--yunxi-border);
+  border-radius: var(--yunxi-radius-md);
+}
+
+.customization-picker--half {
+  flex: 1;
+  min-width: 0;
+}
+
+.customization-picker__value {
+  font-size: 26rpx;
+  color: var(--yunxi-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.customization-picker__chevron {
+  flex-shrink: 0;
+  width: 14rpx;
+  height: 14rpx;
+  margin-left: 12rpx;
+  border-right: 3rpx solid var(--yunxi-text-muted);
+  border-bottom: 3rpx solid var(--yunxi-text-muted);
+  transform: rotate(45deg) translateY(-4rpx);
+}
+
+.customization-time {
+  display: flex;
+  gap: 16rpx;
+}
+
+.customization-time__item {
+  flex: 1;
+  min-width: 0;
+}
+
+.customization-input {
+  display: block;
+  width: 100%;
+  height: 88rpx;
+  margin-top: 12rpx;
+  padding: 0 24rpx;
+  font-size: 26rpx;
+  color: var(--yunxi-text-primary);
+  background: var(--yunxi-surface-alt);
+  border: 1rpx solid var(--yunxi-border);
+  border-radius: var(--yunxi-radius-md);
+}
+
+.customization-textarea {
+  display: block;
+  width: 100%;
+  height: 168rpx;
+  padding: 20rpx 24rpx;
+  font-size: 26rpx;
+  line-height: 1.5;
+  color: var(--yunxi-text-primary);
+  background: var(--yunxi-surface-alt);
+  border: 1rpx solid var(--yunxi-border);
+  border-radius: var(--yunxi-radius-md);
+}
+
+.customization-error {
+  margin-bottom: 20rpx;
+  padding: 16rpx 22rpx;
+  font-size: 24rpx;
+  line-height: 1.5;
+  color: #BA4E3D;
+  background: #FDF1EE;
+  border: 1rpx solid rgba(186, 78, 61, 0.15);
+  border-radius: var(--yunxi-radius-md);
+}
+
+.customization-result {
+  margin: 8rpx 0 24rpx;
+  padding: 24rpx;
+  background: var(--yunxi-brand-soft);
+  border: 1rpx solid var(--yunxi-border);
+  border-radius: var(--yunxi-radius-md);
+}
+
+.customization-result__title {
+  display: block;
+  margin-bottom: 12rpx;
+  font-size: 28rpx;
+  font-weight: 800;
+  color: var(--yunxi-text-primary);
+}
+
+.customization-result__row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16rpx;
+  padding: 10rpx 0;
+  border-bottom: 1rpx dashed var(--yunxi-border);
+}
+
+.customization-result__label {
+  flex-shrink: 0;
+  font-size: 24rpx;
+  color: var(--yunxi-text-muted);
+}
+
+.customization-result__value {
+  flex: 1;
+  min-width: 0;
+  font-size: 24rpx;
+  color: var(--yunxi-text-primary);
+  text-align: right;
+  word-break: break-all;
+}
+
+.customization-result__summary {
+  display: block;
+  margin-top: 16rpx;
+  padding: 16rpx;
+  font-size: 22rpx;
+  line-height: 1.6;
+  color: var(--yunxi-text-secondary);
+  background: #ffffff;
+  border: 1rpx solid var(--yunxi-border);
+  border-radius: var(--yunxi-radius-sm);
+  white-space: pre-wrap;
+}
+
+.customization-result__actions {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 20rpx;
+}
+
+.customization-result__btn {
+  flex: 1;
+  min-width: 0;
+  font-size: 26rpx;
+}
+
+.customization-result__hint {
+  display: block;
+  margin-top: 14rpx;
+  font-size: 22rpx;
+  line-height: 1.5;
+  color: var(--yunxi-text-muted);
+}
+
+.customization-panel__footer {
+  display: flex;
+  gap: 16rpx;
+  padding: 16rpx 28rpx calc(env(safe-area-inset-bottom) + 20rpx);
+  background: #ffffff;
+  border-top: 1rpx solid var(--yunxi-border);
+}
+
+.customization-footer__btn {
+  flex: 1;
+  min-width: 0;
+  font-size: 28rpx;
 }

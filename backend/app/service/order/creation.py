@@ -6,6 +6,7 @@ import json
 from datetime import datetime
 from typing import TYPE_CHECKING
 from uuid import uuid4
+from zoneinfo import ZoneInfo
 
 from app.constants.storefront import STOREFRONT_CHANNEL, STOREFRONT_DEMO_USER_ID
 from app.models.delivery import DeliveryQuote
@@ -13,7 +14,9 @@ from app.models.order import Order, OrderStatus
 from app.models.session import SessionCreate
 from app.repository.order_repo import OrderRepo
 from app.repository.session_repo import SessionRepo
+from app.service.order.cake_slots import CakeSlotCapacityService
 from app.service.order.fulfillment_dual_track import OrderFulfillmentDualTrackService
+from app.service.order.fulfillment_types import FULFILLMENT_PREORDER_CAKE
 from app.service.order.inventory import NormalizedOrderItem, OrderInventoryService
 from app.service.order.payment_runtime import build_initial_payment
 from app.service.order.schedule import BEIJING_DELIVERY_TYPE, OrderScheduleService
@@ -31,7 +34,9 @@ if TYPE_CHECKING:
     from app.service.delivery.application import DeliveryApplicationService
 
 TIME_FORMAT = "%Y-%m-%d %H:%M:%S"
+EXPECT_TIME_FORMAT = "%Y-%m-%d %H:%M"
 ORDER_ID_PREFIX = "mp"
+BEIJING_TIME_ZONE = ZoneInfo("Asia/Shanghai")
 
 
 class OrderCreationService:
@@ -46,6 +51,7 @@ class OrderCreationService:
         timeline_service: OrderTimelineService,
         delivery_service: DeliveryApplicationService | None = None,
         dual_track_service: OrderFulfillmentDualTrackService | None = None,
+        slot_service: CakeSlotCapacityService | None = None,
     ) -> None:
         self._order_repo = order_repo
         self._session_repo = session_repo
@@ -57,6 +63,7 @@ class OrderCreationService:
             dual_track_service
             or OrderFulfillmentDualTrackService(order_repo=order_repo)
         )
+        self._slot_service = slot_service
 
     async def create_order(
         self,
@@ -72,34 +79,57 @@ class OrderCreationService:
             raise ValueError("订单商品不能为空")
         goods_total_fen = self._goods_total_fen(order_items)
         delivery = await self._schedule_service.build_delivery(payload)
+        expect_time = str(delivery.get("expectTime", ""))
         await self._dual_track_service.validate_fulfillment(
             items=payload.get("items", []),
             normalized_items=order_items,
             delivery=delivery,
-            expect_time=delivery.get("expectTime", ""),
+            expect_time=expect_time,
+            check_capacity=self._slot_service is None,
         )
-        payable_fen = await self._apply_delivery_quote(
-            delivery,
-            goods_total_fen=goods_total_fen,
-            order_items=order_items,
-            user_id=user_id,
+
+        has_cake = any(
+            item.fulfillment_type == FULFILLMENT_PREORDER_CAKE for item in order_items
         )
-        await self._inventory_service.reserve_inventory(order_items)
-        order = await self._build_order(
-            order_items,
-            delivery=delivery,
-            payload=payload,
-            user_id=user_id,
-            payable_fen=payable_fen,
-        )
-        await self._order_repo.create_order(order)
-        await self._timeline_service.record_event(
-            order_id=order.id,
-            status=OrderStatus.PENDING.value,
-            operator=f"miniapp:{user_id}",
-            note="用户提交订单",
-            created_at=order.created_at,
-        )
+        order_id = self._build_order_id()
+        slot_reserved = False
+        if has_cake and self._slot_service is not None:
+            slot_reserved = await self._slot_service.reserve(order_id, expect_time)
+            if not slot_reserved:
+                raise ValueError("该预约时段定制蛋糕已满，请选择其他时段")
+
+        try:
+            payable_fen = await self._apply_delivery_quote(
+                delivery,
+                goods_total_fen=goods_total_fen,
+                order_items=order_items,
+                user_id=user_id,
+            )
+            await self._inventory_service.reserve_inventory(
+                order_items,
+                stock_date=self._resolve_stock_date(delivery),
+            )
+            order = await self._build_order(
+                order_items,
+                delivery=delivery,
+                payload=payload,
+                user_id=user_id,
+                payable_fen=payable_fen,
+                order_id=order_id,
+            )
+            await self._order_repo.create_order(order)
+            await self._timeline_service.record_event(
+                order_id=order.id,
+                status=OrderStatus.PENDING.value,
+                operator=f"miniapp:{user_id}",
+                note="用户提交订单",
+                created_at=order.created_at,
+            )
+        except Exception:
+            # 下单链路任一步失败都必须归还已预占的时段名额。
+            if slot_reserved and self._slot_service is not None:
+                await self._slot_service.release(order_id)
+            raise
         return {
             "orderId": order.id,
             "status": OrderStatus.PENDING.value,
@@ -109,6 +139,18 @@ class OrderCreationService:
             "payableFen": payable_fen,
         }
 
+    def _resolve_stock_date(self, delivery: dict) -> str:
+        """从预约时间取库存日期；没有有效预约时间时按北京时间今天。"""
+        expect_time = str(delivery.get("expectTime", "")).strip()
+        if expect_time:
+            try:
+                return datetime.strptime(expect_time, EXPECT_TIME_FORMAT).strftime(
+                    "%Y-%m-%d"
+                )
+            except ValueError:
+                pass
+        return datetime.now(BEIJING_TIME_ZONE).strftime("%Y-%m-%d")
+
     async def _build_order(
         self,
         order_items: list[NormalizedOrderItem],
@@ -117,6 +159,7 @@ class OrderCreationService:
         payload: dict,
         user_id: str,
         payable_fen: int,
+        order_id: str | None = None,
     ) -> Order:
         session = await self._session_repo.get_or_create(
             SessionCreate(id="", channel=STOREFRONT_CHANNEL, user_id=user_id)
@@ -139,7 +182,7 @@ class OrderCreationService:
             product_dicts.append(d)
 
         return Order(
-            id=self._build_order_id(),
+            id=order_id or self._build_order_id(),
             session_id=session.id,
             channel=STOREFRONT_CHANNEL,
             user_id=user_id,

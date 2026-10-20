@@ -11,6 +11,17 @@ export const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: "/quick-order",
+    name: "quick-order",
+    component: () => import("@/pages/quick-order/QuickOrderPage.vue"),
+    meta: {
+      layout: "auth",
+      title: "快捷开单",
+      // 店员页面使用独立的 staff_session，不依赖 admin 会话，路由守卫直接放行。
+      public: true,
+    },
+  },
+  {
     path: "/",
     redirect: "/overview",
   },
@@ -40,6 +51,15 @@ export const routes: RouteRecordRaw[] = [
     meta: {
       title: "商品管理",
       navKey: "products",
+    },
+  },
+  {
+    path: "/daily-stock",
+    name: "daily-stock",
+    component: () => import("@/pages/daily-stock/DailyStockPage.vue"),
+    meta: {
+      title: "每日库存",
+      navKey: "daily-stock",
     },
   },
   {
@@ -85,6 +105,15 @@ export const routes: RouteRecordRaw[] = [
     meta: {
       title: "订单管理",
       navKey: "orders",
+    },
+  },
+  {
+    path: "/print-jobs",
+    name: "print-jobs",
+    component: () => import("@/pages/print-jobs/PrintJobsPage.vue"),
+    meta: {
+      title: "打印队列",
+      navKey: "print-jobs",
     },
   },
   {

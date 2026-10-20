@@ -1,6 +1,10 @@
 """券规则纯函数测试：可用性、抵扣、最新态。"""
 
-from app.service.coupon.rules import calc_discount, is_coupon_available
+from app.service.coupon.rules import (
+    apply_row_validity,
+    calc_discount,
+    is_coupon_available,
+)
 
 
 def _tpl(**overrides: object) -> dict:
@@ -47,3 +51,33 @@ def test_validity_range() -> None:
     assert not is_coupon_available(
         _tpl(status="disabled"), total_fen=4000, now_text="2026-08-10 12:00:00"
     )
+
+
+def test_row_validity_overrides_template_validity() -> None:
+    """券自身有效期必须覆盖模板有效期（防已过期券被当成可用券）。
+
+    有赞「领券后 N 天有效」型券模板的有效期描述的是活动有效期
+    （2026-10-20 生产实测：2024-09-26 ~ 2100-01-01），只看模板会让已过期
+    券继续可用（资损）。
+    """
+    template = _tpl(valid_from="2024-09-26", valid_until="2100-01-01")
+    row = {"valid_from": "2026-09-17", "valid_until": "2026-09-23"}
+
+    merged = apply_row_validity(dict(template), row)
+
+    assert merged["valid_from"] == "2026-09-17"
+    assert merged["valid_until"] == "2026-09-23"
+    assert not is_coupon_available(
+        merged, total_fen=4000, now_text="2026-09-24 00:00:01"
+    )
+    assert is_coupon_available(merged, total_fen=4000, now_text="2026-09-20 00:00:00")
+
+
+def test_row_validity_keeps_template_when_row_has_no_validity() -> None:
+    """券没有有效期时保留模板口径，不做推断。"""
+    template = _tpl(valid_from="2026-08-01", valid_until="2026-09-30")
+
+    merged = apply_row_validity(dict(template), {"valid_from": "", "valid_until": ""})
+
+    assert merged["valid_from"] == "2026-08-01"
+    assert merged["valid_until"] == "2026-09-30"

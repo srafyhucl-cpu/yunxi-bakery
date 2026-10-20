@@ -1,6 +1,7 @@
 """订单储值支付与组合支付服务。"""
 
 from app.config import settings
+from app.logger import setup_logger
 from app.models.order import Order, OrderStatus
 from app.models.stored_value import BalanceBizType, BalanceSource
 from app.repository.order_repo import OrderRepo
@@ -24,6 +25,8 @@ from app.service.order.payment_state import (
 )
 from app.service.stored_value.member import MemberBalanceService
 from app.utils import yuan_to_fen
+
+logger = setup_logger()
 
 
 class StoredValueOrderPaymentService:
@@ -233,20 +236,66 @@ class StoredValueOrderPaymentService:
         }
 
     async def refund_order_balance(self, order: Order) -> None:
-        """按订单支付 JSON 中的余额部分原路退回（组合支付取消/超时）。"""
+        """按订单支付 JSON 中的余额部分原路退回，并还原本金/赠送金结构。
+
+        优先读取原支付流水（order_pay / combined_pay）的拆分：本金退回本金、
+        赠送金退回赠送金；历史订单缺少拆分流水时按 payment.balanceFen 全额
+        记本金并记录告警。幂等键 order_refund:{order_id} 保证不重复退款，
+        余额变更仍由 MemberBalanceService.credit 在事务内完成。
+        """
         payment = loads_payment(order.payment)
         balance_fen = int(payment.get("balanceFen", 0) or 0)
         if balance_fen <= 0:
             return
         mobile = await self._member_service.resolve_mobile(order.user_id)
+        bonus_refund_fen = await self._resolve_refund_bonus_fen(order, balance_fen)
         await self._member_service.credit(
             user_id=order.user_id,
             mobile=mobile,
             amount_fen=balance_fen,
+            bonus_fen=bonus_refund_fen,
             biz_type=BalanceBizType.ORDER_REFUND,
             biz_id=order.id,
             unique_id=f"order_refund:{order.id}",
             source=BalanceSource.ORDER,
+        )
+
+    async def _resolve_refund_bonus_fen(self, order: Order, balance_fen: int) -> int:
+        """返回本次应退回的赠送金金额，本金部分由总额相减得出。
+
+        原支付流水的拆分必须与订单余额腿金额自洽才可采用；否则说明是历史
+        订单或旧库写入的未拆分流水，回退为全额本金并告警，不猜测赠送金比例。
+        """
+        ledger = await self._find_pay_ledger(order)
+        if ledger is not None and self._split_matches_balance(ledger, balance_fen):
+            return -int(ledger.get("bonus_delta_fen", 0) or 0)
+        logger.warning(
+            "订单储值退款缺少可用的本金/赠送金拆分流水，按全额本金退回 "
+            "order_id=%s balance_fen=%s ledger_amount_fen=%s",
+            order.id,
+            balance_fen,
+            int(ledger.get("amount_fen", 0) or 0) if ledger else None,
+        )
+        return 0
+
+    async def _find_pay_ledger(self, order: Order) -> dict | None:
+        """定位订单余额腿的支付流水：全额余额支付与组合支付使用不同幂等键。"""
+        for unique_id in (f"order_pay:{order.id}", f"combined_pay:{order.id}"):
+            ledger = await self._member_service.get_ledger_entry(unique_id)
+            if ledger is not None:
+                return ledger
+        return None
+
+    @staticmethod
+    def _split_matches_balance(ledger: dict, balance_fen: int) -> bool:
+        """校验支付流水拆分与订单余额腿金额自洽（三者同号且合计为总额）。"""
+        principal_delta_fen = int(ledger.get("principal_delta_fen", 0) or 0)
+        bonus_delta_fen = int(ledger.get("bonus_delta_fen", 0) or 0)
+        return (
+            int(ledger.get("amount_fen", 0) or 0) == -balance_fen
+            and principal_delta_fen <= 0
+            and bonus_delta_fen <= 0
+            and principal_delta_fen + bonus_delta_fen == -balance_fen
         )
 
     async def _owned_order(self, order_id: str, user_id: str) -> Order:

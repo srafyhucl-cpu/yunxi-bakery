@@ -8,7 +8,11 @@ from app.repository.coupon_template_repo import CouponTemplateRepo
 from app.repository.customer_master_repo import CustomerMasterRepo
 from app.repository.order_repo import OrderRepo
 from app.service.coupon.inventory import CouponInventoryService
-from app.service.coupon.rules import calc_discount, is_coupon_available
+from app.service.coupon.rules import (
+    apply_row_validity,
+    calc_discount,
+    is_coupon_available,
+)
 from app.service.order.payment_state import (
     PAYMENT_STATUS_PAID,
     PAYMENT_STATUS_UNPAID,
@@ -139,6 +143,9 @@ class CouponService:
                     "valid_until": row.get("valid_until", ""),
                     "status": "active",
                 }
+            # 券自身有效期优先于模板有效期：模板的有效期描述的是活动有效期
+            # （实测 2024-09-26 ~ 2100-01-01），只看模板会让已过期券继续可用。
+            apply_row_validity(template, row)
             if not is_coupon_available(template, total_fen, now):
                 continue
             discount_fen = calc_discount(template, total_fen)

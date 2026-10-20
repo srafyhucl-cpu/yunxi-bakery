@@ -35,6 +35,8 @@ def register_routes(app: FastAPI, services: dict[str, Any]) -> None:
         create_wecom_intelligent_bot_router,
     )
     from app.api.integrations.youzan_webhook import create_webhook_router
+    from app.api.staff.auth import create_staff_auth_router
+    from app.api.staff.quick_order import create_staff_quick_order_router
     from app.service.wecom.kf_message_queue import kf_queue
     from app.service.wecom.message_queue import wecom_queue
 
@@ -45,6 +47,13 @@ def register_routes(app: FastAPI, services: dict[str, Any]) -> None:
     _register_admin_shell_routes(app, services)
     app.include_router(
         create_storefront_auth_router(services["storefront_auth_service"])
+    )
+    app.include_router(create_staff_auth_router(services["staff_auth_service"]))
+    app.include_router(
+        create_staff_quick_order_router(
+            services["staff_quick_order_service"],
+            services["staff_auth_service"],
+        )
     )
     app.include_router(
         create_storefront_addresses_router(services["customer_address_service"])
@@ -73,7 +82,10 @@ def register_routes(app: FastAPI, services: dict[str, Any]) -> None:
     app.include_router(create_storefront_points_router(services["points_service"]))
     app.include_router(create_storefront_coupons_router(services["coupon_service"]))
     app.include_router(
-        create_storefront_chat_router(services["storefront_conversation_service"])
+        create_storefront_chat_router(
+            services["storefront_conversation_service"],
+            services.get("customization_card_service"),
+        )
     )
     app.include_router(
         create_storefront_group_registrations_router(services["customer_group_service"])
@@ -120,6 +132,7 @@ def _register_admin_shell_routes(app: FastAPI, services: dict[str, Any]) -> None
 def _register_admin_operations_routes(app: FastAPI, services: dict[str, Any]) -> None:
     """注册后台业务运营路由。"""
     from app.api.admin.customer_groups import create_admin_customer_groups_router
+    from app.api.admin.daily_stock import create_admin_daily_stock_router
     from app.api.admin.knowledge import create_admin_knowledge_router
     from app.api.admin.knowledge_retrieval_report import (
         create_admin_knowledge_retrieval_report_router,
@@ -128,13 +141,18 @@ def _register_admin_operations_routes(app: FastAPI, services: dict[str, Any]) ->
     from app.api.admin.coupons import create_admin_coupons_router
     from app.api.admin.invoices import create_admin_invoices_router
     from app.api.admin.orders import create_admin_orders_router
+    from app.api.admin.print_jobs import create_admin_print_jobs_router
     from app.api.admin.products import create_admin_products_router
     from app.service.coupon.admin import AdminCouponService
     from app.service.invoice.admin import AdminInvoiceService
 
     app.include_router(create_admin_orders_router(services["order_service"]))
+    app.include_router(create_admin_print_jobs_router(services["print_job_service"]))
     app.include_router(
         create_admin_customer_groups_router(services["customer_group_service"])
+    )
+    app.include_router(
+        create_admin_daily_stock_router(services["product_daily_stock_service"])
     )
     app.include_router(
         create_admin_knowledge_router(services["knowledge_admin_service"])

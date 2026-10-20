@@ -21,6 +21,7 @@ os.environ.setdefault("ALLOW_MOCK_PAYMENT", "1")
 os.environ.setdefault("ADMIN_SESSION_SECRET", "test-admin-session-secret")
 os.environ.setdefault("ADMIN_ALLOW_LEGACY_BEARER", "1")
 os.environ.setdefault("ADMIN_COOKIE_SECURE", "0")
+os.environ.setdefault("STAFF_SESSION_SECRET", "test-staff-session-secret")
 
 from app.database import close_db, init_db
 

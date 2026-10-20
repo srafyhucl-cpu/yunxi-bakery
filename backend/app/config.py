@@ -135,6 +135,25 @@ class Settings(BaseSettings):
     WECHAT_PAY_API_V3_KEY: str = ""
     MINIAPP_PAYMENT_TIMEOUT_SCAN_INTERVAL_SECONDS: int = 300
 
+    # ── 订单小票打印 ──
+    # mock 仅记录受理（MOCKED）；feieyun 需要完整凭证才能启动。
+    PRINT_PROVIDER: str = "mock"
+    PRINT_MAX_ATTEMPTS: int = 3
+    PRINT_TICKET_WIDTH: int = 32
+    # 已支付订单打印调度：持久游标扫描 + 幂等入队，默认每 5 秒一轮。
+    PRINT_DISPATCH_ENABLED: bool = True
+    PRINT_DISPATCH_INTERVAL_SECONDS: float = 5.0
+    PRINT_DISPATCH_BATCH_SIZE: int = 200
+    # 打印消费 worker：定时把 PENDING 作业交给网关，绝不伪造真实出纸。
+    PRINT_WORKER_ENABLED: bool = True
+    PRINT_WORKER_INTERVAL_SECONDS: float = 2.0
+    PRINT_WORKER_BATCH_SIZE: int = 20
+    FEIEYUN_USER: str = ""
+    FEIEYUN_UKEY: str = ""
+    FEIEYUN_SN: str = ""
+    FEIEYUN_API_URL: str = "https://api.feieyun.cn/Api/Open/"
+    FEIEYUN_TIMEOUT_SECONDS: float = 10.0
+
     # ── 管理后台 ──
     # 注意：生产环境必须在 .env 中设置强密码，不能使用默认值
     ADMIN_API_TOKEN: str = "CHANGE_ME_IN_PRODUCTION_ENV"
@@ -143,6 +162,9 @@ class Settings(BaseSettings):
     ADMIN_ALLOW_LEGACY_BEARER: bool = False
     ADMIN_COOKIE_SECURE: bool = True
     ADMIN_ALLOWED_ORIGINS: str = ""
+    # ── 店员会话（与后台管理员完全隔离） ──
+    STAFF_SESSION_SECRET: str = ""
+    STAFF_SESSION_TTL_SECONDS: int = 28800
     ENABLE_API_DOCS: bool = False
     MAX_REQUEST_BODY_BYTES: int = 1_048_576
     MAX_CONCURRENT_REQUESTS: int = 100

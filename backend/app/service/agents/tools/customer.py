@@ -23,6 +23,11 @@ SEARCH_KNOWLEDGE_DESCRIPTION = (
     "搜索知识库，查找店铺政策、常见问题（如退换货规则、配送说明等）；"
     "不适用于查询特定商品的实时库存和价格"
 )
+CUSTOMIZATION_CARD_DESCRIPTION = (
+    "生成定制蛋糕的结构化需求卡（尺寸、夹心、甜度、祝福语、配件、预约时间、备注）。"
+    "只生成需求卡文本，不创建订单、不扣款、不占用预约时段；"
+    "生成后必须引导顾客转人工客服确认尺寸、价格与档期"
+)
 
 
 @dataclass(frozen=True)
@@ -71,6 +76,23 @@ class SearchKnowledgeArgs(BaseModel):
     query: str = Field(description="搜索关键词")
 
 
+class BuildCustomizationCardArgs(BaseModel):
+    size: str = Field(default="", description="蛋糕尺寸规格，如 6寸/8寸")
+    filling: str = Field(default="", description="夹心口味，如 芒果慕斯/草莓奶油")
+    sweetness: str = Field(
+        default="",
+        description="甜度偏好，如 3分甜/5分甜/8分甜/木糖醇，留空默认 8分甜",
+    )
+    greeting: str = Field(default="", description="祝福牌写字内容，没有则填“无”")
+    accessories: str = Field(
+        default="", description="配件需求，如 蜡烛/餐具/刀叉，没有则填“无”"
+    )
+    expectTime: str = Field(
+        default="", description="期望取货或配送时间，格式 YYYY-MM-DD HH:MM"
+    )
+    remark: str = Field(default="", description="其他备注，最多 200 字")
+
+
 def build_customer_tools(context: CustomerToolContext) -> list[Any]:
     """构造客户机器人 LangChain 工具列表。"""
     from langchain_core.tools import StructuredTool
@@ -81,6 +103,7 @@ def build_customer_tools(context: CustomerToolContext) -> list[Any]:
         _build_logistics_info_tool(context, StructuredTool),
         _build_transfer_tool(context, StructuredTool),
         _build_search_knowledge_tool(context, StructuredTool),
+        _build_customization_card_tool(context, StructuredTool),
     ]
 
 
@@ -111,6 +134,11 @@ def build_customer_openai_tool_definitions() -> list[dict]:
             "search_knowledge",
             SEARCH_KNOWLEDGE_DESCRIPTION,
             SearchKnowledgeArgs,
+        ),
+        _openai_tool_schema(
+            "build_customization_card",
+            CUSTOMIZATION_CARD_DESCRIPTION,
+            BuildCustomizationCardArgs,
         ),
     ]
 
@@ -279,6 +307,43 @@ def _build_search_knowledge_tool(
         name="search_knowledge",
         description=SEARCH_KNOWLEDGE_DESCRIPTION,
         args_schema=SearchKnowledgeArgs,
+    )
+
+
+def _build_customization_card_tool(
+    context: CustomerToolContext,
+    structured_tool: Any,
+) -> Any:
+    async def build_customization_card_tool(
+        size: str = "",
+        filling: str = "",
+        sweetness: str = "",
+        greeting: str = "",
+        accessories: str = "",
+        expectTime: str = "",
+        remark: str = "",
+    ) -> str:
+        # 惰性导入需求卡服务：它会连带订单履约模块，避免污染机器人冷启动路径。
+        from app.service.customization_card import CustomizationCardService
+
+        card = CustomizationCardService().build_card(
+            {
+                "size": size,
+                "filling": filling,
+                "sweetness": sweetness,
+                "greeting": greeting,
+                "accessories": accessories,
+                "expectTime": expectTime,
+                "remark": remark,
+            }
+        )
+        return json.dumps(card, ensure_ascii=False)
+
+    return structured_tool.from_function(
+        coroutine=build_customization_card_tool,
+        name="build_customization_card",
+        description=CUSTOMIZATION_CARD_DESCRIPTION,
+        args_schema=BuildCustomizationCardArgs,
     )
 
 

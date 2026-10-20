@@ -103,8 +103,8 @@ class MemberBalanceRepo(BaseRepository):
             await self._db.execute(
                 "INSERT INTO member_balance (customer_id, mobile, yz_open_id, "
                 "display_name, is_member, card_alias, card_no, card_status, points, "
-                "stored_value_fen, created_at, updated_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "stored_value_fen, principal_fen, created_at, updated_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     customer_id,
                     mobile,
@@ -116,11 +116,14 @@ class MemberBalanceRepo(BaseRepository):
                     card_status,
                     0,
                     stored_value_fen if stored_value_fen is not None else 0,
+                    # 新建行赠送金为 0，故本金等于总额，保持拆分自洽
+                    stored_value_fen if stored_value_fen is not None else 0,
                     now,
                     now,
                 ),
             )
         else:
+            self._warn_unsplit_override(mobile, stored_value_fen, existing)
             await self._db.execute(
                 "UPDATE member_balance SET "
                 "customer_id = CASE WHEN ? != '' THEN ? ELSE customer_id END, "
@@ -132,6 +135,8 @@ class MemberBalanceRepo(BaseRepository):
                 "card_status = CASE WHEN ? != '' THEN ? ELSE card_status END, "
                 "stored_value_fen = CASE WHEN ? IS NOT NULL THEN ? ELSE "
                 "stored_value_fen END, "
+                "principal_fen = CASE WHEN ? IS NULL THEN principal_fen "
+                "WHEN ? >= bonus_fen THEN ? - bonus_fen ELSE principal_fen END, "
                 "updated_at = ? WHERE id = ?",
                 (
                     customer_id,
@@ -150,9 +155,33 @@ class MemberBalanceRepo(BaseRepository):
                     card_status,
                     stored_value_fen,
                     stored_value_fen,
+                    stored_value_fen,
+                    stored_value_fen,
+                    stored_value_fen,
                     now,
                     int(existing["id"]),
                 ),
+            )
+
+    @staticmethod
+    def _warn_unsplit_override(
+        mobile: str, stored_value_fen: int | None, existing: dict
+    ) -> None:
+        """外部绝对覆盖总额低于赠送金时保持原本金结构并告警。
+
+        正常拆分下总额必然不低于赠送金；出现该情况说明外部数据异常，
+        不得据此写出自相矛盾的拆分，保留原本金并留下可追溯告警。
+        """
+        if stored_value_fen is None:
+            return
+        existing_bonus_fen = int(existing.get("bonus_fen", 0) or 0)
+        if stored_value_fen < existing_bonus_fen:
+            logger.warning(
+                "会员余额覆盖总额低于赠送金，保留原本金结构 mobile=%s "
+                "stored_value_fen=%s bonus_fen=%s",
+                mobile,
+                stored_value_fen,
+                existing_bonus_fen,
             )
 
     async def mirror_youzan_points(
@@ -182,8 +211,14 @@ class MemberBalanceRepo(BaseRepository):
         if existing is None and yz_open_id:
             existing = await self.get_by_openid(yz_open_id)
         if existing is None:
-            if not mobile and not yz_open_id:
-                logger.warning("会员余额快照缺少 mobile 与 yz_open_id，跳过积分镜像")
+            if not mobile:
+                # member_balance.mobile 有唯一索引，空手机号只能存在一行；
+                # 仅有 openid 的新会员不能再用空字符串建档，否则会与既有
+                # 空手机号账户冲突并让整条 POINTS 事件反复失败。
+                logger.warning(
+                    "会员余额缺少手机号，跳过积分镜像: yz_open_id=%s",
+                    yz_open_id,
+                )
                 return 0
             # 首次建档：外部总额即锚点，本地净额为 0。
             await self._db.execute(
@@ -276,6 +311,9 @@ class MemberBalanceRepo(BaseRepository):
         now = now_str()
         principal_addition = amount_fen - bonus_fen
         try:
+            # 历史或外部写入的余额可能只有总额而没有本金结构，先补齐再累加，
+            # 保证 principal_fen + bonus_fen == stored_value_fen 始终自洽。
+            await self._normalize_split(mobile)
             cursor = await self._db.execute(
                 "UPDATE member_balance SET stored_value_fen = stored_value_fen + ?, "
                 "principal_fen = principal_fen + ?, bonus_fen = bonus_fen + ?, "
@@ -289,49 +327,89 @@ class MemberBalanceRepo(BaseRepository):
                     "VALUES (?, ?, ?, ?, ?, ?)",
                     (mobile, amount_fen, principal_addition, bonus_fen, now, now),
                 )
-        except Exception:
-            cursor = await self._db.execute(
-                "UPDATE member_balance SET stored_value_fen = stored_value_fen + ?, "
-                "updated_at = ? WHERE mobile = ?",
-                (amount_fen, now, mobile),
+        except Exception as exc:
+            # 拆分账本要求本金/赠送金结构必须真实落库：缺列或写入失败一律
+            # fail-closed，绝不退化为“只加总额”冒充成功（否则结构静默丢失）。
+            logger.error(
+                "会员储值加款拆分写入失败，拒绝退化为只写总额 mobile=%s "
+                "amount_fen=%s bonus_fen=%s err=%s",
+                mobile,
+                amount_fen,
+                bonus_fen,
+                exc,
             )
-            if cursor.rowcount != 1:
-                await self._db.execute(
-                    "INSERT INTO member_balance (mobile, stored_value_fen, created_at, "
-                    "updated_at) VALUES (?, ?, ?, ?)",
-                    (mobile, amount_fen, now, now),
-                )
+            raise
         rows = await self._db.execute_fetchall(
             "SELECT stored_value_fen FROM member_balance WHERE mobile = ? LIMIT 1",
             (mobile,),
         )
         return int(rows[0]["stored_value_fen"]) if rows else amount_fen
 
+    async def _normalize_split(self, mobile: str) -> None:
+        """把结构未初始化的余额按“总额减赠送金”补齐本金，使拆分自洽。
+
+        历史导入或外部镜像可能只写入 stored_value_fen 而未维护 principal_fen，
+        此时把差额计为本金，避免后续按拆分扣款时被误判为本金不足。
+        """
+        await self._db.execute(
+            "UPDATE member_balance SET principal_fen = stored_value_fen - bonus_fen "
+            "WHERE mobile = ? AND stored_value_fen >= bonus_fen "
+            "AND principal_fen + bonus_fen != stored_value_fen",
+            (mobile,),
+        )
+
+    async def deduct_stored_value_with_split(
+        self,
+        mobile: str,
+        amount_fen: int,
+        principal_delta_fen: int,
+        bonus_delta_fen: int,
+    ) -> bool:
+        """按显式本金/赠送金拆分原子扣款，余额或结构不足时不扣款。
+
+        调用方先算好“优先扣赠送金、不足再扣本金”的拆分后显式传入；
+        这里条件同时校验总额、赠送金与本金，避免把本金/赠送金结构扣穿。
+        """
+        if amount_fen < 0 or principal_delta_fen < 0 or bonus_delta_fen < 0:
+            return False
+        if principal_delta_fen + bonus_delta_fen != amount_fen:
+            return False
+        await self._normalize_split(mobile)
+        cursor = await self._db.execute(
+            "UPDATE member_balance SET stored_value_fen = stored_value_fen - ?, "
+            "bonus_fen = bonus_fen - ?, principal_fen = principal_fen - ?, "
+            "updated_at = ? WHERE mobile = ? AND stored_value_fen >= ? "
+            "AND bonus_fen >= ? AND principal_fen >= ?",
+            (
+                amount_fen,
+                bonus_delta_fen,
+                principal_delta_fen,
+                now_str(),
+                mobile,
+                amount_fen,
+                bonus_delta_fen,
+                principal_delta_fen,
+            ),
+        )
+        return bool(cursor.rowcount == 1)
+
     async def deduct_stored_value_if_sufficient(
         self,
         mobile: str,
         amount_fen: int,
     ) -> bool:
-        """原子扣减储值余额，余额不足时不扣减。优先扣减赠送金，不足部分扣减本金。"""
-        now = now_str()
-        try:
-            row = await self.get_by_mobile(mobile)
-            if not row or int(row.get("stored_value_fen", 0)) < amount_fen:
-                return False
-            curr_bonus = int(row.get("bonus_fen", 0) or 0)
-            deduct_bonus = min(curr_bonus, amount_fen)
-            deduct_principal = amount_fen - deduct_bonus
-            cursor = await self._db.execute(
-                "UPDATE member_balance SET stored_value_fen = stored_value_fen - ?, "
-                "bonus_fen = bonus_fen - ?, principal_fen = principal_fen - ?, "
-                "updated_at = ? WHERE mobile = ? AND stored_value_fen >= ?",
-                (amount_fen, deduct_bonus, deduct_principal, now, mobile, amount_fen),
-            )
-            return bool(cursor.rowcount == 1)
-        except Exception:
-            cursor = await self._db.execute(
-                "UPDATE member_balance SET stored_value_fen = stored_value_fen - ?, "
-                "updated_at = ? WHERE mobile = ? AND stored_value_fen >= ?",
-                (amount_fen, now, mobile, amount_fen),
-            )
-            return bool(cursor.rowcount == 1)
+        """原子扣减储值余额，余额不足时不扣减（优先扣赠送金，不足再扣本金）。
+
+        保留原签名与 bool 返回以兼容未知调用方；实际拆分与结构校验统一
+        委托给 deduct_stored_value_with_split，避免本金/赠送金结构被扣穿。
+        """
+        row = await self.get_by_mobile(mobile)
+        current_bonus_fen = int(row.get("bonus_fen", 0) or 0) if row else 0
+        deduct_bonus_fen = min(current_bonus_fen, amount_fen)
+        deduct_principal_fen = amount_fen - deduct_bonus_fen
+        return await self.deduct_stored_value_with_split(
+            mobile,
+            amount_fen,
+            deduct_principal_fen,
+            deduct_bonus_fen,
+        )

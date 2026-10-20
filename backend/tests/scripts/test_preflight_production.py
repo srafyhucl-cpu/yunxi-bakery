@@ -74,6 +74,42 @@ def _write_embedding_cache(index_path: Path) -> None:
     )
 
 
+def _write_app_file(app_dir: Path, rel_path: str, content: str) -> Path:
+    """在临时 app 目录写入一个待检查文件。"""
+    file_path = app_dir / rel_path
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+    file_path.write_text(content, encoding="utf-8")
+    return file_path
+
+
+def _find_rule_result(module: ModuleType, results, rule_name: str):
+    """按规则名取出检查结果，缺失时直接失败。"""
+    for rule in results:
+        if rule.name == rule_name:
+            return rule
+    raise AssertionError(f"未找到规则检查结果: {rule_name}")
+
+
+class _StubCheckResult:
+    """模拟 check_project 的合约检查结果。"""
+
+    def __init__(self, name: str, passed: bool) -> None:
+        self.name = name
+        self.passed = passed
+
+
+class _StubCheckProject:
+    """模拟已归档的统一质量门禁模块（仅用于验证兼容路径）。"""
+
+    CheckResult = _StubCheckResult
+
+    def __init__(self, results) -> None:
+        self._results = list(results)
+
+    def run_contract_checks(self):
+        return list(self._results)
+
+
 def test_get_missing_database_tables_reports_only_missing_tables(
     tmp_path: Path,
 ) -> None:
@@ -238,47 +274,25 @@ def test_build_preflight_checks_uses_path_overrides(
     assert checks_by_key["knowledge.active_rows"].detail == "active_rows=1"
     assert checks_by_key["embedding_index_path_exists"].passed is True
     assert checks_by_key["embedding.cache_files"].passed is True
-    assert checks_by_key["business_contracts.static_checks"].passed is True
-    assert (
-        "employee_agent_capability_contracts:passed"
-        in checks_by_key["business_contracts.static_checks"].detail
-    )
-    assert (
-        "customer_rag_golden_cases:passed"
-        in checks_by_key["business_contracts.static_checks"].detail
-    )
-    assert (
-        "knowledge_governance_plan:passed"
-        in checks_by_key["business_contracts.static_checks"].detail
-    )
-    assert (
-        "customer_memory_governance_plan:passed"
-        in checks_by_key["business_contracts.static_checks"].detail
-    )
-    assert (
-        "customer_observability_contract:passed"
-        in checks_by_key["business_contracts.static_checks"].detail
-    )
-    assert (
-        "miniapp_page_api_contract:passed"
-        in checks_by_key["business_contracts.static_checks"].detail
-    )
-    assert (
-        "github_reference_implementation_plan:passed"
-        in checks_by_key["business_contracts.static_checks"].detail
-    )
+    business_contract_check = checks_by_key["business_contracts.static_checks"]
+    assert business_contract_check.passed is True
+    # 统一质量门禁脚本已归档，预检必须回退到内联最小红线，而不是空跑假绿。
+    assert "mode=inline_minimal" in business_contract_check.detail
+    assert "violations=0" in business_contract_check.detail
 
 
 def test_build_business_contract_check_reports_failures(monkeypatch) -> None:
     preflight = load_preflight_module()
 
     monkeypatch.setattr(
-        preflight.check_project,
-        "run_contract_checks",
-        lambda: [
-            preflight.check_project.CheckResult("customer-rag", True, []),
-            preflight.check_project.CheckResult("knowledge-plan", False, []),
-        ],
+        preflight,
+        "check_project",
+        _StubCheckProject(
+            [
+                _StubCheckResult("check_customer_rag_golden_cases.py", True),
+                _StubCheckResult("check_knowledge_governance_plan.py", False),
+            ]
+        ),
     )
 
     check = preflight.build_business_contract_check()
@@ -287,8 +301,8 @@ def test_build_business_contract_check_reports_failures(monkeypatch) -> None:
     assert check.passed is False
     assert "total=2" in check.detail
     assert "failed=1" in check.detail
-    assert "checks=customer-rag:passed, knowledge-plan:failed" in check.detail
-    assert "knowledge-plan" in check.detail
+    assert "checks=customer_rag_golden_cases:passed" in check.detail
+    assert "knowledge_governance_plan:failed" in check.detail
     assert "check_project.py --skip-tests" in check.action
 
 
@@ -727,9 +741,41 @@ def test_build_recovery_plan_includes_business_contract_step(
     assert [step.title for step in plan] == ["修复业务合约门禁", "最终上线验证"]
     assert plan[0].key == "business_contracts"
     assert plan[0].severity == "critical"
-    assert plan[0].command == "python scripts/check_project.py --skip-tests"
+    # 统一质量门禁脚本已归档时，恢复步骤必须指向真实可执行的预检命令。
+    assert plan[0].command == "python scripts/preflight_production.py"
+    assert "preflight_production.py" in plan[0].apply_command
     assert plan[0].apply_mutates_state is False
     assert plan[0].related_keys == ("business_contracts.static_checks",)
+
+
+def test_build_recovery_plan_uses_check_project_command_when_available(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    preflight = load_preflight_module()
+    monkeypatch.setattr(
+        preflight,
+        "check_project",
+        _StubCheckProject(
+            [_StubCheckResult("check_knowledge_governance_plan.py", True)]
+        ),
+    )
+    db_path = tmp_path / "prod" / "bot.db"
+    index_path = tmp_path / "prod" / "embeddings"
+    checks = [
+        preflight.PreflightCheck(
+            "business_contracts.static_checks",
+            "business contracts",
+            False,
+            "failed=1",
+            "run contract checks",
+        )
+    ]
+
+    plan = preflight.build_recovery_plan(checks, str(db_path), str(index_path))
+
+    assert plan[0].command == "python scripts/check_project.py --skip-tests"
+    assert plan[0].apply_mutates_state is False
 
 
 def test_build_json_report_includes_recovery_plan_with_overrides(
@@ -847,3 +893,284 @@ def test_print_report_marks_apply_mutation_state(
     assert "[critical] final_validation" in output
     assert "apply(mutates_state=yes):" in output
     assert "apply(mutates_state=no):" in output
+
+
+# ── 最小商用安全红线（内联实现） ──────────────────────────────────────────────
+
+
+def test_minimal_red_line_checks_pass_on_clean_app_tree(tmp_path: Path) -> None:
+    preflight = load_preflight_module()
+    app_dir = tmp_path / "app"
+    _write_app_file(
+        app_dir,
+        "service/order/creation.py",
+        "def create_order(order_id: str) -> str:\n    return order_id\n",
+    )
+    _write_app_file(
+        app_dir,
+        "repository/order_repo.py",
+        'QUERY = "SELECT id, status FROM orders WHERE id = ?"\n',
+    )
+
+    results = preflight._run_minimal_red_line_checks(app_dir)
+
+    assert results
+    assert all(rule.passed for rule in results)
+    assert all(rule.violation_count == 0 for rule in results)
+
+
+def test_minimal_red_line_checks_fail_closed_on_missing_scan_scope(
+    tmp_path: Path,
+) -> None:
+    preflight = load_preflight_module()
+    app_dir = tmp_path / "missing-app"
+
+    results = preflight._run_minimal_red_line_checks(app_dir)
+
+    assert results
+    assert all(rule.passed is False for rule in results)
+    assert all(rule.violation_count == 1 for rule in results)
+
+
+def test_minimal_red_line_check_flags_select_star(tmp_path: Path) -> None:
+    preflight = load_preflight_module()
+    app_dir = tmp_path / "app"
+    _write_app_file(
+        app_dir,
+        "repository/order_repo.py",
+        'QUERY = "SELECT * FROM orders"\n',
+    )
+
+    results = preflight._run_minimal_red_line_checks(app_dir)
+
+    select_star_rule = _find_rule_result(preflight, results, "禁止 SELECT 星号")
+    assert select_star_rule.passed is False
+    assert select_star_rule.hits == ("repository/order_repo.py:1",)
+    assert all(rule.passed for rule in results if rule.name != "禁止 SELECT 星号")
+
+
+def test_minimal_red_line_check_flags_api_importing_repository(tmp_path: Path) -> None:
+    preflight = load_preflight_module()
+    app_dir = tmp_path / "app"
+    _write_app_file(
+        app_dir,
+        "api/orders.py",
+        "from app.repository import order_repo\n",
+    )
+
+    results = preflight._run_minimal_red_line_checks(app_dir)
+
+    rule = _find_rule_result(preflight, results, "禁止 api 层直接导入 repository")
+    assert rule.passed is False
+    assert rule.hits == ("api/orders.py:1",)
+
+
+def test_minimal_red_line_check_flags_service_importing_aiosqlite(
+    tmp_path: Path,
+) -> None:
+    preflight = load_preflight_module()
+    app_dir = tmp_path / "app"
+    _write_app_file(
+        app_dir,
+        "service/order/creation.py",
+        "import aiosqlite\n",
+    )
+
+    results = preflight._run_minimal_red_line_checks(app_dir)
+
+    rule = _find_rule_result(preflight, results, "禁止 service 层直连 aiosqlite")
+    assert rule.passed is False
+    assert rule.hits == ("service/order/creation.py:1",)
+
+
+def test_minimal_red_line_check_flags_models_reverse_import(tmp_path: Path) -> None:
+    preflight = load_preflight_module()
+    app_dir = tmp_path / "app"
+    _write_app_file(
+        app_dir,
+        "models/order_model.py",
+        "from app.service.order import application\n",
+    )
+
+    results = preflight._run_minimal_red_line_checks(app_dir)
+
+    rule = _find_rule_result(preflight, results, "禁止 models 层反向引用上层模块")
+    assert rule.passed is False
+    assert rule.hits == ("models/order_model.py:1",)
+
+
+def test_minimal_red_line_check_flags_sql_fstring(tmp_path: Path) -> None:
+    preflight = load_preflight_module()
+    app_dir = tmp_path / "app"
+    _write_app_file(
+        app_dir,
+        "repository/order_repo.py",
+        'QUERY = f"SELECT id FROM orders WHERE id = {order_id}"\n',
+    )
+
+    results = preflight._run_minimal_red_line_checks(app_dir)
+
+    rule = _find_rule_result(preflight, results, "禁止 SQL f-string 拼接")
+    assert rule.passed is False
+    assert rule.hits == ("repository/order_repo.py:1",)
+
+
+def test_minimal_red_line_check_allows_parameterized_sql_fragments(
+    tmp_path: Path,
+) -> None:
+    preflight = load_preflight_module()
+    app_dir = tmp_path / "app"
+    _write_app_file(
+        app_dir,
+        "repository/order_repo.py",
+        'QUERY = (\n    "SELECT id FROM orders "\n    f"WHERE id = {order_id}"\n)\n',
+    )
+
+    results = preflight._run_minimal_red_line_checks(app_dir)
+
+    rule = _find_rule_result(preflight, results, "禁止 SQL f-string 拼接")
+    assert rule.passed is True
+
+
+def test_minimal_red_line_check_flags_silent_except(tmp_path: Path) -> None:
+    preflight = load_preflight_module()
+    app_dir = tmp_path / "app"
+    _write_app_file(
+        app_dir,
+        "service/order/creation.py",
+        "try:\n    load_order()\nexcept Exception: pass\n",
+    )
+
+    results = preflight._run_minimal_red_line_checks(app_dir)
+
+    rule = _find_rule_result(preflight, results, "禁止静默吞异常")
+    assert rule.passed is False
+    assert rule.hits == ("service/order/creation.py:3",)
+
+
+def test_minimal_red_line_check_flags_print_debug(tmp_path: Path) -> None:
+    preflight = load_preflight_module()
+    app_dir = tmp_path / "app"
+    _write_app_file(
+        app_dir,
+        "service/order/creation.py",
+        'def create_order() -> None:\n    print("debug")\n',
+    )
+
+    results = preflight._run_minimal_red_line_checks(app_dir)
+
+    rule = _find_rule_result(preflight, results, "禁止生产代码 print 调试")
+    assert rule.passed is False
+    assert rule.hits == ("service/order/creation.py:2",)
+
+
+def test_minimal_red_line_check_flags_optional_annotation(tmp_path: Path) -> None:
+    preflight = load_preflight_module()
+    app_dir = tmp_path / "app"
+    _write_app_file(
+        app_dir,
+        "models/order_model.py",
+        "from typing import Optional\n\n\ndef load(value: Optional[int]) -> int:\n    return value or 0\n",
+    )
+
+    results = preflight._run_minimal_red_line_checks(app_dir)
+
+    rule = _find_rule_result(preflight, results, "禁止 Optional/Union 注解")
+    assert rule.passed is False
+    assert rule.hits == ("models/order_model.py:4",)
+
+
+def test_minimal_red_line_check_flags_root_api_compat_router(tmp_path: Path) -> None:
+    preflight = load_preflight_module()
+    app_dir = tmp_path / "app"
+    _write_app_file(
+        app_dir,
+        "api/admin_orders.py",
+        "from fastapi import APIRouter\n\nrouter = APIRouter()\n",
+    )
+
+    results = preflight._run_minimal_red_line_checks(app_dir)
+
+    rule = _find_rule_result(preflight, results, "根 API 兼容文件不得承载真实 Router")
+    assert rule.passed is False
+    assert rule.hits
+    assert all(hit.startswith("api/admin_orders.py:") for hit in rule.hits)
+
+
+def test_build_business_contract_check_fails_closed_without_check_project(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    preflight = load_preflight_module()
+    monkeypatch.setattr(preflight, "check_project", None)
+    app_dir = tmp_path / "app"
+    _write_app_file(
+        app_dir,
+        "repository/order_repo.py",
+        'QUERY = "SELECT * FROM orders"\n',
+    )
+    monkeypatch.setattr(preflight, "APP_DIR", app_dir)
+
+    check = preflight.build_business_contract_check()
+
+    assert check.passed is False
+    assert "mode=inline_minimal" in check.detail
+    assert "violations=1" in check.detail
+    assert "禁止 SELECT 星号:failed" in check.detail
+    assert "repository/order_repo.py:1" in check.detail
+    # 旧的假绿口径（total=0 failed=0）必须彻底消失。
+    assert "total=0" not in check.detail
+    assert "failed=0" not in check.detail
+    assert "修复" in check.action
+    assert "python scripts/preflight_production.py" in check.action
+
+
+def test_build_business_contract_check_passes_inline_minimal_checks(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    preflight = load_preflight_module()
+    monkeypatch.setattr(preflight, "check_project", None)
+    app_dir = tmp_path / "app"
+    _write_app_file(
+        app_dir,
+        "repository/order_repo.py",
+        'QUERY = "SELECT id, status FROM orders WHERE id = ?"\n',
+    )
+    monkeypatch.setattr(preflight, "APP_DIR", app_dir)
+
+    check = preflight.build_business_contract_check()
+
+    assert check.passed is True
+    assert "mode=inline_minimal" in check.detail
+    assert "violations=0" in check.detail
+    assert check.action == ""
+
+
+def test_build_business_contract_check_prefers_check_project_when_available(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    preflight = load_preflight_module()
+    monkeypatch.setattr(
+        preflight,
+        "check_project",
+        _StubCheckProject(
+            [_StubCheckResult("check_customer_rag_golden_cases.py", False)]
+        ),
+    )
+    app_dir = tmp_path / "app"
+    _write_app_file(
+        app_dir,
+        "repository/order_repo.py",
+        'QUERY = "SELECT * FROM orders"\n',
+    )
+    monkeypatch.setattr(preflight, "APP_DIR", app_dir)
+
+    check = preflight.build_business_contract_check()
+
+    assert check.passed is False
+    assert "total=1" in check.detail
+    assert "failed=1" in check.detail
+    assert "customer_rag_golden_cases:failed" in check.detail
+    assert "check_project.py --skip-tests" in check.action

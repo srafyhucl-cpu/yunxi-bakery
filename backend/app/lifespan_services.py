@@ -15,6 +15,8 @@ from app.service.youzan.event_handler import YouzanEventHandler
 from app.service.youzan.product_reconciler import ProductReconcileService
 from app.service.agents.trace_sink import build_local_agent_trace_sink
 from app.repository.privacy_repo import PrivacyRepo
+from app.repository.product_daily_stock_repo import ProductDailyStockRepo
+from app.repository.staff_repo import StaffAuditRepo, StaffRepo
 
 LEGACY_SERVICE_ALIASES = {
     "miniapp_auth_service": "storefront_auth_service",
@@ -51,8 +53,10 @@ def init_services(repos: dict[str, Any], vs: Any, bm25: Any = None) -> dict[str,
 
     from app.service.admin import AdminService
     from app.service.catalog import CatalogApplicationService
+    from app.service.catalog.daily_stock import ProductDailyStockService
     from app.service.channels.storefront import StorefrontAuthService
     from app.service.conversation import StorefrontConversationService
+    from app.service.customization_card import CustomizationCardService
     from app.service.customer import CustomerAddressService
     from app.service.customer import CustomerGroupOperationsService
     from app.service.customer_consent import CustomerConsentService
@@ -65,7 +69,13 @@ def init_services(repos: dict[str, Any], vs: Any, bm25: Any = None) -> dict[str,
         ShopPageConfigurationService,
     )
     from app.service.order import OrderApplicationService
+    from app.repository.print_job_repo import PrintJobRepo
+    from app.service.integrations.printer import build_printer_gateway
+    from app.service.order.cake_slots import CakeSlotCapacityService
+    from app.service.order.print_job_service import PrintJobService
     from app.service.order.schedule import OrderScheduleService
+    from app.service.staff_auth import StaffAuthService
+    from app.service.staff_quick_order import StaffQuickOrderService
     from app.service.transfer_manager import TransferManager
     from app.service.wecom.employee_agent_service import EmployeeAgentService
     from app.service.wecom.intelligent_bot_ops_tools import WeComBotOpsToolService
@@ -97,6 +107,17 @@ def init_services(repos: dict[str, Any], vs: Any, bm25: Any = None) -> dict[str,
         config_repo=repos["config_repo"],
         youzan_product_repo=repos["youzan_product_repo"],
     )
+    # 店员仓储缺失时仍用 None 占位，请求期由 db_session_scope 的 ContextVar 解析。
+    staff_repo = repos.get("staff_repo")
+    if staff_repo is None:
+        staff_repo = StaffRepo(None)
+    staff_audit_repo = repos.get("staff_audit_repo")
+    if staff_audit_repo is None:
+        staff_audit_repo = StaffAuditRepo(None)
+    staff_auth_service = StaffAuthService(
+        staff_repo=staff_repo,
+        audit_repo=staff_audit_repo,
+    )
     from app.service.stored_value import StoredValueService
 
     stored_value_service = StoredValueService()
@@ -112,6 +133,29 @@ def init_services(repos: dict[str, Any], vs: Any, bm25: Any = None) -> dict[str,
     )
     shop_configuration_service = ShopConfigurationService(repos["config_repo"])
     order_schedule_service = OrderScheduleService(shop_configuration_service)
+    # 仓储缺失时仍用 None 占位构造，请求期由 db_session_scope 的 ContextVar 解析。
+    daily_stock_repo = repos.get("product_daily_stock_repo")
+    if daily_stock_repo is None:
+        daily_stock_repo = ProductDailyStockRepo(None)
+    product_daily_stock_service = ProductDailyStockService(daily_stock_repo)
+    # 时段容量仓储同样用 None 占位，请求期由 db_session_scope 的 ContextVar 解析。
+    cake_slot_repo = repos.get("cake_slot_repo")
+    if cake_slot_repo is None:
+        from app.repository.cake_slot_repo import CakeSlotRepo
+
+        cake_slot_repo = CakeSlotRepo(None)
+    cake_slot_service = CakeSlotCapacityService(cake_slot_repo)
+    # 打印仓储同样用 None 占位，启动期不读取数据库连接；网关按配置在启动期定型。
+    print_job_repo = repos.get("print_job_repo")
+    if print_job_repo is None:
+        print_job_repo = PrintJobRepo(None)
+    print_job_service = PrintJobService(
+        repo=print_job_repo,
+        gateway=build_printer_gateway(settings),
+        provider_name=settings.PRINT_PROVIDER,
+        max_attempts=settings.PRINT_MAX_ATTEMPTS,
+        ticket_width=settings.PRINT_TICKET_WIDTH,
+    )
     order_service = OrderApplicationService(
         order_repo=repos["order_repo"],
         event_repo=repos["order_event_repo"],
@@ -122,6 +166,26 @@ def init_services(repos: dict[str, Any], vs: Any, bm25: Any = None) -> dict[str,
         schedule_service=order_schedule_service,
         stored_value_service=stored_value_service,
         delivery_service=delivery_service,
+        daily_stock_service=product_daily_stock_service,
+        slot_service=cake_slot_service,
+    )
+    # 快捷开单请求仓储同样用 None 占位，启动期不读取数据库连接。
+    from app.repository.staff_quick_order_repo import StaffQuickOrderRequestRepo
+
+    staff_quick_order_request_repo = repos.get("staff_quick_order_request_repo")
+    if staff_quick_order_request_repo is None:
+        staff_quick_order_request_repo = StaffQuickOrderRequestRepo(None)
+    staff_quick_order_service = StaffQuickOrderService(
+        customer_repo=repos.get("customer_master_repo"),
+        member_balance_repo=repos.get("member_balance_repo"),
+        youzan_order_repo=repos.get("youzan_order_repo"),
+        catalog_service=catalog_service,
+        audit_repo=staff_audit_repo,
+        order_service=order_service,
+        stored_value_service=stored_value_service,
+        order_repo=repos["order_repo"],
+        request_repo=staff_quick_order_request_repo,
+        staff_audit_repo=staff_audit_repo,
     )
     customer_address_service = CustomerAddressService(
         address_repo=repos["customer_address_repo"],
@@ -131,10 +195,13 @@ def init_services(repos: dict[str, Any], vs: Any, bm25: Any = None) -> dict[str,
         repo=repos["customer_group_repo"],
         schedule_service=order_schedule_service,
     )
+    # 请求期由 db_session_scope 的 ContextVar 按需解析连接；
+    # 启动期不在会话上下文中，读取 repo._db 会抛 RuntimeError，
+    # 也不能在此打开全局连接，否则会破坏现有 per-request 事务模型。
     storefront_auth_service = StorefrontAuthService(
         customer_repo=repos.get("customer_master_repo"),
         member_balance_repo=repos.get("member_balance_repo"),
-        db=getattr(repos.get("order_repo"), "_db", None),
+        db=None,
     )
     customer_consent_service = CustomerConsentService(repos["customer_profile_repo"])
     privacy_lifecycle_service = PrivacyLifecycleService(
@@ -182,6 +249,8 @@ def init_services(repos: dict[str, Any], vs: Any, bm25: Any = None) -> dict[str,
         message_repo=repos["message_repo"],
         transfer_mgr=transfer_mgr,
     )
+    # 定制需求卡服务无数据库依赖，只做校验与文本化，不建单不写库。
+    customization_card_service = CustomizationCardService()
     wecom_order_lookup_service = WeComOrderLookupService(
         order_service=order_service,
         youzan_order_repo=repos.get("youzan_order_repo"),
@@ -219,7 +288,11 @@ def init_services(repos: dict[str, Any], vs: Any, bm25: Any = None) -> dict[str,
         **knowledge_services,
         "storefront_auth_service": storefront_auth_service,
         "catalog_service": catalog_service,
+        "staff_auth_service": staff_auth_service,
+        "staff_quick_order_service": staff_quick_order_service,
         "order_service": order_service,
+        "print_job_service": print_job_service,
+        "product_daily_stock_service": product_daily_stock_service,
         "stored_value_service": stored_value_service,
         "points_service": points_service,
         "coupon_service": coupon_service,
@@ -236,6 +309,7 @@ def init_services(repos: dict[str, Any], vs: Any, bm25: Any = None) -> dict[str,
         "reconcile_service": reconcile_service,
         "chat_service": chat_service,
         "storefront_conversation_service": storefront_conversation_service,
+        "customization_card_service": customization_card_service,
         "wecom_order_lookup_service": wecom_order_lookup_service,
         "wecom_bot_business_tool_service": wecom_bot_business_tool_service,
         "wecom_bot_ops_tool_service": wecom_bot_ops_tool_service,

@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import json
+import re
 import sqlite3
 import sys
+from collections.abc import Callable
 from contextlib import closing
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -181,6 +184,372 @@ class PreflightPlanStep:
             "related_keys": list(self.related_keys),
             "apply_mutates_state": self.apply_mutates_state,
         }
+
+
+# ── 最小商用安全红线（内联实现） ──────────────────────────────────────────────
+# 背景：统一质量门禁脚本归档后，生产预检曾在“门禁脚本缺失”时直接判定无违规，
+# 形成假绿。这里内联实现一组最小商用红线规则：任一命中即判失败，
+# 保证预检永远 fail-closed，不再出现“检查缺失 => 通过”。
+# 规则只覆盖会直接影响商用交易闭环、账目准确与分层架构的硬红线，
+# 不恢复整套已归档的元治理脚本体系。
+
+APP_DIR = ROOT_DIR / "app"
+MINIMAL_RED_LINE_SELECT_STAR = re.compile(r"SELECT\s+\*", re.IGNORECASE)
+# 只匹配 f-string 片段自身以 SQL 关键字开头的情况（与归档门禁口径一致）。
+MINIMAL_RED_LINE_SQL_FSTRING_LITERAL = re.compile(
+    r"f[\"'](?:SELECT|INSERT|UPDATE|DELETE)\b",
+    re.IGNORECASE,
+)
+MINIMAL_RED_LINE_HIT_LIMIT = 20
+INLINE_RED_LINE_MODE = "inline_minimal"
+CHECK_PROJECT_MODE = "check_project"
+
+
+@dataclass(frozen=True)
+class MinimalRedLineRule:
+    """最小商用红线规则定义。"""
+
+    name: str
+    scope: str
+    detector: Callable[["_RedLineFileContext"], list[str]]
+
+
+@dataclass(frozen=True)
+class MinimalRedLineCheck:
+    """单条商用红线的检查结果。"""
+
+    name: str
+    passed: bool
+    hits: tuple[str, ...]
+
+    @property
+    def violation_count(self) -> int:
+        return len(self.hits)
+
+
+@dataclass(frozen=True)
+class _RedLineFileContext:
+    """单个待检查文件的上下文。"""
+
+    rel_path: str
+    source: str
+    tree: ast.AST
+
+
+def _iter_app_python_files(app_dir: Path) -> list[Path]:
+    """收集 app 目录下的 Python 文件，跳过 __pycache__。"""
+    return sorted(
+        path for path in app_dir.rglob("*.py") if "__pycache__" not in path.parts
+    )
+
+
+def _relative_app_path(file_path: Path, app_dir: Path) -> str:
+    """把文件路径转成相对 app 根目录的 posix 路径，便于报告定位。"""
+    try:
+        return file_path.relative_to(app_dir).as_posix()
+    except ValueError:
+        return file_path.as_posix()
+
+
+def _is_root_api_compat_file(rel_path: str) -> bool:
+    """判断是否为根 API 兼容文件（只允许做兼容转发，不得承载真实 Router）。"""
+    parts = rel_path.split("/")
+    if len(parts) != 2 or parts[0] != "api":
+        return False
+    file_name = parts[1]
+    if not file_name.endswith(".py"):
+        return False
+    stem = file_name[:-3]
+    if stem == "__init__":
+        return False
+    return (
+        stem.startswith("admin_")
+        or stem.startswith("miniapp_")
+        or stem.startswith("webhook")
+        or stem in {"wecom", "channel_router"}
+    )
+
+
+def _scope_matches(scope: str, rel_path: str) -> bool:
+    """判断文件是否落在规则作用域内。"""
+    if scope == "app":
+        return True
+    if scope == "api":
+        return rel_path.startswith("api/")
+    if scope == "service":
+        return rel_path.startswith("service/")
+    if scope == "models":
+        return rel_path.startswith("models/")
+    if scope == "root_api_compat":
+        return _is_root_api_compat_file(rel_path)
+    return False
+
+
+def _docstring_constant_ids(tree: ast.AST) -> frozenset[int]:
+    """收集文档字符串常量节点，避免把说明文字误判成 SQL 违规。"""
+    docstring_ids: set[int] = set()
+    for node in ast.walk(tree):
+        if not isinstance(
+            node,
+            (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef),
+        ):
+            continue
+        body = getattr(node, "body", [])
+        if not body:
+            continue
+        first = body[0]
+        if (
+            isinstance(first, ast.Expr)
+            and isinstance(first.value, ast.Constant)
+            and isinstance(first.value.value, str)
+        ):
+            docstring_ids.add(id(first.value))
+    return frozenset(docstring_ids)
+
+
+def _detect_select_star(context: _RedLineFileContext) -> list[str]:
+    """禁止 SELECT *：只检查真实 SQL 字符串常量，忽略注释与文档字符串。"""
+    docstring_ids = _docstring_constant_ids(context.tree)
+    hits: list[str] = []
+    for node in ast.walk(context.tree):
+        if not isinstance(node, ast.Constant) or not isinstance(node.value, str):
+            continue
+        if id(node) in docstring_ids:
+            continue
+        if MINIMAL_RED_LINE_SELECT_STAR.search(node.value):
+            hits.append(f"{context.rel_path}:{node.lineno}")
+    return hits
+
+
+def _detect_sql_fstring(context: _RedLineFileContext) -> list[str]:
+    """禁止 SQL f-string 拼接：必须使用 ? 参数化绑定。
+
+    只判定 f-string 片段自身以 SQL 关键字开头的情况，与归档门禁口径一致；
+    隐式拼接的普通 SQL 片段（例如 "SELECT ..." f"WHERE {...}"）不算违规。
+    """
+    hits: list[str] = []
+    for node in ast.walk(context.tree):
+        if not isinstance(node, ast.JoinedStr):
+            continue
+        segment = ast.get_source_segment(context.source, node) or ""
+        if MINIMAL_RED_LINE_SQL_FSTRING_LITERAL.search(segment):
+            hits.append(f"{context.rel_path}:{node.lineno}")
+    return hits
+
+
+def _detect_silent_except(context: _RedLineFileContext) -> list[str]:
+    """禁止静默吞异常：except 分支必须记录 logger.error 而不是静默 pass。
+
+    与归档门禁口径一致，判定同一行内出现的 except ...: pass 形式。
+    """
+    hits: list[str] = []
+    for node in ast.walk(context.tree):
+        if not isinstance(node, ast.ExceptHandler) or not node.body:
+            continue
+        statements = node.body
+        if len(statements) != 1 or not isinstance(statements[0], ast.Pass):
+            continue
+        if statements[0].lineno == node.lineno:
+            hits.append(f"{context.rel_path}:{node.lineno}")
+    return hits
+
+
+def _detect_print_call(context: _RedLineFileContext) -> list[str]:
+    """禁止生产代码 print 调试：统一使用 logger.debug / logger.info。"""
+    hits: list[str] = []
+    for node in ast.walk(context.tree):
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "print"
+        ):
+            hits.append(f"{context.rel_path}:{node.lineno}")
+    return hits
+
+
+def _detect_optional_union(context: _RedLineFileContext) -> list[str]:
+    """禁止 Optional/Union 注解：改用 X | None 与 X | Y。"""
+    hits: list[str] = []
+    for node in ast.walk(context.tree):
+        if not isinstance(node, ast.Subscript):
+            continue
+        target = node.value
+        if isinstance(target, ast.Name) and target.id in {"Optional", "Union"}:
+            hits.append(f"{context.rel_path}:{node.lineno}")
+        elif isinstance(target, ast.Attribute) and target.attr in {"Optional", "Union"}:
+            hits.append(f"{context.rel_path}:{node.lineno}")
+    return hits
+
+
+def _detect_api_repository_import(context: _RedLineFileContext) -> list[str]:
+    """api 层禁止绕过 service 层直接访问 repository 层。"""
+    hits: list[str] = []
+    for node in ast.walk(context.tree):
+        if isinstance(node, ast.ImportFrom):
+            if node.module and node.module.startswith("app.repository"):
+                hits.append(f"{context.rel_path}:{node.lineno}")
+        elif isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name.startswith("app.repository"):
+                    hits.append(f"{context.rel_path}:{node.lineno}")
+    return hits
+
+
+def _detect_service_aiosqlite_import(context: _RedLineFileContext) -> list[str]:
+    """service 层禁止直连 aiosqlite：数据库访问必须统一经过 repository 层。"""
+    hits: list[str] = []
+    for node in ast.walk(context.tree):
+        if isinstance(node, ast.ImportFrom):
+            if node.module and node.module.split(".")[0] == "aiosqlite":
+                hits.append(f"{context.rel_path}:{node.lineno}")
+        elif isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name.split(".")[0] == "aiosqlite":
+                    hits.append(f"{context.rel_path}:{node.lineno}")
+    return hits
+
+
+def _detect_models_reverse_import(context: _RedLineFileContext) -> list[str]:
+    """models 层禁止反向引用 api / service / repository 上层模块。"""
+    hits: list[str] = []
+    for node in ast.walk(context.tree):
+        if isinstance(node, ast.ImportFrom):
+            module = node.module or ""
+            if module.startswith(("app.api", "app.service", "app.repository")):
+                hits.append(f"{context.rel_path}:{node.lineno}")
+        elif isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name.startswith(("app.api", "app.service", "app.repository")):
+                    hits.append(f"{context.rel_path}:{node.lineno}")
+    return hits
+
+
+def _detect_root_api_router(context: _RedLineFileContext) -> list[str]:
+    """根 API 兼容文件只做转发，不得承载真实 Router 实现。"""
+    hits: list[str] = []
+    for node in ast.walk(context.tree):
+        if isinstance(node, ast.ImportFrom):
+            if node.module and node.module.split(".")[0] == "fastapi":
+                hits.append(f"{context.rel_path}:{node.lineno}")
+        elif isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name.split(".")[0] == "fastapi":
+                    hits.append(f"{context.rel_path}:{node.lineno}")
+        elif isinstance(node, ast.Call):
+            func = node.func
+            if isinstance(func, ast.Name) and func.id == "APIRouter":
+                hits.append(f"{context.rel_path}:{node.lineno}")
+            elif isinstance(func, ast.Attribute) and func.attr == "APIRouter":
+                hits.append(f"{context.rel_path}:{node.lineno}")
+        elif (
+            isinstance(node, ast.Attribute)
+            and isinstance(node.value, ast.Name)
+            and node.value.id == "router"
+        ):
+            hits.append(f"{context.rel_path}:{node.lineno}")
+    return hits
+
+
+MINIMAL_RED_LINE_RULES: tuple[MinimalRedLineRule, ...] = (
+    MinimalRedLineRule("禁止 SELECT 星号", "app", _detect_select_star),
+    MinimalRedLineRule(
+        "禁止 api 层直接导入 repository",
+        "api",
+        _detect_api_repository_import,
+    ),
+    MinimalRedLineRule(
+        "禁止 service 层直连 aiosqlite",
+        "service",
+        _detect_service_aiosqlite_import,
+    ),
+    MinimalRedLineRule(
+        "禁止 models 层反向引用上层模块",
+        "models",
+        _detect_models_reverse_import,
+    ),
+    MinimalRedLineRule("禁止 SQL f-string 拼接", "app", _detect_sql_fstring),
+    MinimalRedLineRule("禁止静默吞异常", "app", _detect_silent_except),
+    MinimalRedLineRule("禁止生产代码 print 调试", "app", _detect_print_call),
+    MinimalRedLineRule("禁止 Optional/Union 注解", "app", _detect_optional_union),
+    MinimalRedLineRule(
+        "根 API 兼容文件不得承载真实 Router",
+        "root_api_compat",
+        _detect_root_api_router,
+    ),
+)
+
+INLINE_RED_LINE_ACTION = (
+    "按预检 detail 中的规则名与文件行修复商用红线："
+    "SQL 必须显式列出字段并使用 ? 参数化绑定；"
+    "api 层必须经 service 层、service 层必须经 repository 层、"
+    "models 层不得反向引用上层模块；"
+    "异常必须记录 logger.error 而不是静默 pass；"
+    "生产代码不得使用 print()；"
+    "类型注解使用 X | None 与 X | Y；"
+    "根 API 兼容文件只做转发不得承载真实 Router。"
+    "修复后重新运行 python scripts/preflight_production.py；"
+    "如需恢复更完整的业务合约覆盖，请恢复仓库既有的专门合约检查入口，"
+    "不要为此新建元治理脚本。"
+)
+
+
+def _run_minimal_red_line_checks(app_dir: Path) -> list[MinimalRedLineCheck]:
+    """内联执行最小商用安全红线静态检查，命中任一规则即失败。
+
+    每个文件只解析一次 AST，再逐条规则判定，避免重复解析拖慢生产预检。
+    """
+    hits_by_rule: dict[str, list[str]] = {
+        rule.name: [] for rule in MINIMAL_RED_LINE_RULES
+    }
+    file_paths = _iter_app_python_files(app_dir)
+    if not file_paths:
+        # 扫描范围缺失时必须判失败，避免“扫不到文件 => 全部通过”的假绿。
+        missing_hit = f"{app_dir.as_posix()}:0:未找到可检查的 Python 文件"
+        return [
+            MinimalRedLineCheck(
+                name=rule.name,
+                passed=False,
+                hits=(missing_hit,),
+            )
+            for rule in MINIMAL_RED_LINE_RULES
+        ]
+    for file_path in file_paths:
+        rel_path = _relative_app_path(file_path, app_dir)
+        applicable_rules = [
+            rule
+            for rule in MINIMAL_RED_LINE_RULES
+            if _scope_matches(rule.scope, rel_path)
+        ]
+        if not applicable_rules:
+            continue
+        source = file_path.read_text(encoding="utf-8", errors="replace")
+        try:
+            tree = ast.parse(source, filename=str(file_path))
+        except SyntaxError:
+            # 无法解析说明文件本身已损坏，按 fail-closed 处理。
+            for rule in applicable_rules:
+                hits_by_rule[rule.name].append(
+                    f"{rel_path}:1:语法错误，无法执行红线检查"
+                )
+            continue
+        context = _RedLineFileContext(rel_path=rel_path, source=source, tree=tree)
+        for rule in applicable_rules:
+            hits_by_rule[rule.name].extend(rule.detector(context))
+    return [
+        MinimalRedLineCheck(
+            name=rule.name,
+            passed=not hits_by_rule[rule.name],
+            hits=tuple(hits_by_rule[rule.name]),
+        )
+        for rule in MINIMAL_RED_LINE_RULES
+    ]
+
+
+def _business_contract_mode() -> str:
+    """返回业务合约静态检查的运行模式。"""
+    if check_project is not None and hasattr(check_project, "run_contract_checks"):
+        return CHECK_PROJECT_MODE
+    return INLINE_RED_LINE_MODE
 
 
 def resolve_project_path(path_value: str) -> Path:
@@ -382,39 +751,63 @@ def build_embedding_detail_check(index_path_value: str | None = None) -> Preflig
 
 
 def build_business_contract_check() -> PreflightCheck:
-    if check_project is None or not hasattr(check_project, "run_contract_checks"):
+    """构建业务合约静态检查结果；门禁脚本缺失时回退到内联最小红线，仍然 fail-closed。"""
+    if _business_contract_mode() == CHECK_PROJECT_MODE:
+        contract_results = check_project.run_contract_checks()
+        failed_results = [result for result in contract_results if not result.passed]
+        detail_parts = [
+            f"total={len(contract_results)}",
+            f"failed={len(failed_results)}",
+            "checks=" + _format_business_contract_results(contract_results),
+        ]
+        if failed_results:
+            failed_names = ", ".join(
+                _business_contract_label(result.name) for result in failed_results
+            )
+            detail_parts.append(f"failed_names={failed_names}")
         return PreflightCheck(
             key="business_contracts.static_checks",
             title="业务合约静态检查",
-            passed=True,
-            detail="total=0 failed=0 checks=",
-            action="",
+            passed=not failed_results,
+            detail=" ".join(detail_parts),
+            action=""
+            if not failed_results
+            else (
+                "运行 python scripts/check_project.py --skip-tests；修复员工助手能力合约、"
+                "客户 RAG golden cases、知识治理计划、客户长期记忆治理计划或"
+                "客户机器人可观测合约、MiniApp 页面 API 覆盖合约或"
+                "GitHub 参考实施计划后再预检。"
+            ),
         )
-    contract_results = check_project.run_contract_checks()
-    failed_results = [result for result in contract_results if not result.passed]
+
+    inline_results = _run_minimal_red_line_checks(APP_DIR)
+    failed_rules = [rule for rule in inline_results if not rule.passed]
+    violation_count = sum(rule.violation_count for rule in failed_rules)
     detail_parts = [
-        f"total={len(contract_results)}",
-        f"failed={len(failed_results)}",
-        "checks=" + _format_business_contract_results(contract_results),
+        f"mode={INLINE_RED_LINE_MODE}",
+        f"violations={violation_count}",
+        "checks="
+        + ", ".join(
+            f"{rule.name}:{'passed' if rule.passed else 'failed'}"
+            for rule in inline_results
+        ),
     ]
-    if failed_results:
-        failed_names = ", ".join(
-            _business_contract_label(result.name) for result in failed_results
-        )
-        detail_parts.append(f"failed_names={failed_names}")
+    if failed_rules:
+        hit_texts = [
+            hit
+            for rule in failed_rules
+            for hit in rule.hits[:MINIMAL_RED_LINE_HIT_LIMIT]
+        ]
+        truncated = violation_count > len(hit_texts)
+        detail_parts.append("hits=" + "; ".join(hit_texts))
+        if truncated:
+            detail_parts.append(f"hits_truncated={violation_count - len(hit_texts)}")
     return PreflightCheck(
         key="business_contracts.static_checks",
         title="业务合约静态检查",
-        passed=not failed_results,
+        passed=not failed_rules,
         detail=" ".join(detail_parts),
-        action=""
-        if not failed_results
-        else (
-            "运行 python scripts/check_project.py --skip-tests；修复员工助手能力合约、"
-            "客户 RAG golden cases、知识治理计划、客户长期记忆治理计划或"
-            "客户机器人可观测合约、MiniApp 页面 API 覆盖合约或"
-            "GitHub 参考实施计划后再预检。"
-        ),
+        action="" if not failed_rules else INLINE_RED_LINE_ACTION,
     )
 
 
@@ -704,15 +1097,37 @@ def build_recovery_plan(
         BUSINESS_CONTRACT_PLAN_KEYS,
     )
     if business_contract_keys:
+        if _business_contract_mode() == CHECK_PROJECT_MODE:
+            business_command = "python scripts/check_project.py --skip-tests"
+            business_reason = (
+                "客户 RAG、知识治理、长期记忆治理、客户机器人可观测、"
+                "MiniApp 页面 API 覆盖或员工助手能力合约静态检查失败，"
+                "发布会绕过已冻结边界。"
+            )
+            business_apply = (
+                "修复失败合约对应的 fixture、治理计划或能力合约后，"
+                "重新运行统一质量门禁。"
+            )
+        else:
+            business_command = "python scripts/preflight_production.py"
+            business_reason = (
+                "最小商用安全红线静态检查失败：SQL 写法、分层依赖、异常处理、"
+                "调试输出、类型注解或根 API 兼容入口存在越线，"
+                "发布会绕过已冻结的商用边界。"
+            )
+            business_apply = (
+                "按预检 detail 中的规则名与文件行修复商用红线后，"
+                "重新运行 python scripts/preflight_production.py。"
+            )
         steps.append(
             PreflightPlanStep(
                 order=len(steps) + 1,
                 key="business_contracts",
                 severity="critical",
                 title="修复业务合约门禁",
-                reason="客户 RAG、知识治理、长期记忆治理、客户机器人可观测、MiniApp 页面 API 覆盖或员工助手能力合约静态检查失败，发布会绕过已冻结边界。",
-                command="python scripts/check_project.py --skip-tests",
-                apply_command="修复失败合约对应的 fixture、治理计划或能力合约后，重新运行统一质量门禁。",
+                reason=business_reason,
+                command=business_command,
+                apply_command=business_apply,
                 verify_command=verify_command,
                 related_keys=business_contract_keys,
                 apply_mutates_state=False,

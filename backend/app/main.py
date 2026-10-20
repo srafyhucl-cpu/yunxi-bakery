@@ -48,8 +48,14 @@ from app.repository.customer_group_repo import CustomerGroupRepo
 from app.repository.delivery_quote_repo import DeliveryQuoteRepo
 from app.repository.offline_session_repo import OfflineSessionRepo
 from app.repository.order_event_repo import OrderEventRepo
+from app.repository.cake_slot_repo import CakeSlotRepo
 from app.repository.order_repo import OrderRepo
+from app.repository.print_dispatch_state_repo import PrintDispatchStateRepo
+from app.repository.print_job_repo import PrintJobRepo
+from app.repository.product_daily_stock_repo import ProductDailyStockRepo
 from app.repository.session_repo import SessionRepo
+from app.repository.staff_quick_order_repo import StaffQuickOrderRequestRepo
+from app.repository.staff_repo import StaffAuditRepo, StaffRepo
 from app.repository.transfer_repo import TransferRepo
 from app.repository.youzan_inventory_repo import YouzanInventoryRepo
 from app.repository.youzan_order_repo import YouzanOrderRepo
@@ -215,6 +221,7 @@ def _init_repositories() -> dict[str, object]:
         "youzan_product_repo": YouzanProductRepo(None),
         "youzan_order_repo": YouzanOrderRepo(None),
         "youzan_inventory_repo": YouzanInventoryRepo(None),
+        "product_daily_stock_repo": ProductDailyStockRepo(None),
         "webhook_event_repo": YouzanWebhookEventRepo(None),
         "analytics_repo": AnalyticsRepo(None),
         "customer_profile_repo": CustomerProfileRepo(None),
@@ -225,10 +232,16 @@ def _init_repositories() -> dict[str, object]:
         "offline_session_repo": OfflineSessionRepo(None),
         "order_repo": OrderRepo(None),
         "order_event_repo": OrderEventRepo(None),
+        "print_job_repo": PrintJobRepo(None),
+        "print_dispatch_state_repo": PrintDispatchStateRepo(None),
+        "cake_slot_repo": CakeSlotRepo(None),
         "customer_address_repo": CustomerAddressRepo(None),
         "customer_address_audit_repo": CustomerAddressAuditRepo(None),
         "customer_group_repo": CustomerGroupRepo(None),
         "delivery_quote_repo": DeliveryQuoteRepo(None),
+        "staff_repo": StaffRepo(None),
+        "staff_audit_repo": StaffAuditRepo(None),
+        "staff_quick_order_request_repo": StaffQuickOrderRequestRepo(None),
     }
     return _with_legacy_repository_aliases(repos)
 
@@ -280,6 +293,27 @@ def _start_background_tasks(
     register_order_timeout_scheduler(
         app,
         services["order_service"],
+        bg_tasks,
+        db_session_scope,
+    )
+    from app.service.order.print_dispatch import register_print_dispatch_scheduler
+
+    print_dispatch_state_repo = repos.get("print_dispatch_state_repo")
+    if print_dispatch_state_repo is None:
+        print_dispatch_state_repo = PrintDispatchStateRepo(None)
+    register_print_dispatch_scheduler(
+        app,
+        repos["order_repo"],
+        services["print_job_service"],
+        print_dispatch_state_repo,
+        bg_tasks,
+        db_session_scope,
+    )
+    from app.service.order.print_worker import register_print_worker
+
+    register_print_worker(
+        app,
+        services["print_job_service"],
         bg_tasks,
         db_session_scope,
     )
@@ -340,6 +374,14 @@ async def _shutdown_lifespan_services(
     from app.service.ops import stop_order_timeout_scheduler
 
     await stop_order_timeout_scheduler(app)
+
+    from app.service.order.print_dispatch import stop_print_dispatch_scheduler
+
+    await stop_print_dispatch_scheduler(app)
+
+    from app.service.order.print_worker import stop_print_worker
+
+    await stop_print_worker(app)
 
     # 关闭企微客户端
     from app.service.wecom.client import close_wecom_client

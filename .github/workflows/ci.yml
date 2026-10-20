@@ -45,3 +45,47 @@ jobs:
       - name: Run Code Syntax Check
         run: |
           python -m ruff check backend/app/ backend/tests/
+
+      - name: Run Production Preflight Guard Tests
+        run: |
+          python -m pytest backend/tests/scripts/test_preflight_production.py --tb=short -ra
+
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # 只做类型检查，不需要 Playwright 浏览器二进制，避免安装阶段拉取大体积产物。
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            backend/web/admin/package-lock.json
+            miniapp/package-lock.json
+
+      - name: Install Admin Frontend Dependencies
+        working-directory: backend/web/admin
+        run: npm ci || npm install
+
+      - name: Typecheck Admin Frontend
+        working-directory: backend/web/admin
+        run: npm run typecheck
+
+      - name: Install MiniApp Dependencies
+        working-directory: miniapp
+        run: npm ci || npm install
+
+      - name: Typecheck MiniApp
+        working-directory: miniapp
+        run: npm run typecheck
+
+      - name: Check MiniApp Static Contracts
+        working-directory: miniapp
+        run: npm run check:miniapp
