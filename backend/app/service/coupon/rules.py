@@ -36,6 +36,23 @@ def is_coupon_available(template: dict, total_fen: int, now_text: str) -> bool:
     return True
 
 
+def apply_row_validity(template: dict, row: dict) -> dict:
+    """把券自身的有效期覆盖到模板上（券级有效期比模板更严格）。
+
+    有赞「领券后 N 天有效」型券模板的有效期描述的是**活动**有效期
+    （2026-10-20 生产实测：2024-09-26 ~ 2100-01-01），只看模板会让已过期
+    券继续可用（资损）。券自身带有效期时必须以券为准；券没有有效期时
+    保留模板口径，不做推断。
+    """
+    valid_from = str(row.get("valid_from", "") or "")
+    valid_until = str(row.get("valid_until", "") or "")
+    if valid_from:
+        template["valid_from"] = valid_from
+    if valid_until:
+        template["valid_until"] = valid_until
+    return template
+
+
 def calc_discount(template: dict, total_fen: int) -> int:
     """计算券可抵扣金额（分），不超过订单应付。"""
     total = max(0, int(total_fen or 0))

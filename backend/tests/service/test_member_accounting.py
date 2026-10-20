@@ -13,6 +13,7 @@ from app.service.member_loyalty import MemberLoyaltyImportService
 from app.service.youzan.event_member import handle_member_event
 from app.service.youzan.event_handler import YouzanEventHandler
 from app.service.youzan.member_api import (
+    COUPON_CODE_LIST_API_NAME,
     COUPON_GROUP_DETAIL_API_NAME,
     COUPON_LIST_API_NAME,
     MEMBER_CARD_LIST_API_NAME,
@@ -21,7 +22,11 @@ from app.service.youzan.member_api import (
 
 
 class FakeMemberClient:
-    """模拟有赞会员账务域 API 响应。"""
+    """模拟有赞会员账务域 API 响应。
+
+    响应形状按 **2026-10-20 生产实测** 固定：买家券接口的 `data` 直接是数组，
+    会员卡列表在 `items`，券模板详情是扁平 CouponGroup。
+    """
 
     def __init__(
         self,
@@ -42,11 +47,22 @@ class FakeMemberClient:
         if api_name == POINTS_QUERY_API_NAME:
             return {"data": self._points}
         if api_name == COUPON_LIST_API_NAME:
-            return {"data": {"coupons": self._coupons, "total": len(self._coupons)}}
+            return {"code": 200, "success": True, "data": list(self._coupons)}
+        if api_name == COUPON_CODE_LIST_API_NAME:
+            return {"code": 200, "success": True, "data": []}
         if api_name == COUPON_GROUP_DETAIL_API_NAME:
-            return {"data": self._coupon_detail}
+            return {"code": 200, "success": True, "data": dict(self._coupon_detail)}
         if api_name == MEMBER_CARD_LIST_API_NAME:
-            return {"data": {"cards": self._cards}}
+            return {
+                "code": 200,
+                "success": True,
+                "data": {
+                    "total": len(self._cards),
+                    "page": 1,
+                    "page_size": 30,
+                    "items": list(self._cards),
+                },
+            }
         return {"data": {}}
 
 
@@ -146,7 +162,15 @@ async def test_coupon_event_with_detail_and_dedup(
     """优惠券事件应反查券详情补全标题面额，并按组合键去重。"""
     monkeypatch.setattr(settings, "YOUZAN_MOCK_MODE", False)
     client = FakeMemberClient(
-        coupon_detail={"coupon_group": {"title": "满100减10", "value": 1000}}
+        coupon_detail={
+            "id": 32035241,
+            "title": "20元优惠卷",
+            "preferential_type": 1,
+            "denominations": 2000,
+            "condition": 5000,
+            "valid_start_time": 1727340981000,
+            "valid_end_time": 4102416000000,
+        }
     )
     payload = {
         "id": "c1",
@@ -171,10 +195,75 @@ async def test_coupon_event_with_detail_and_dedup(
     assert len(rows) == 1
     assert rows[0]["coupon_id"] == "c1"
     assert rows[0]["status"] == "TAKE"
-    assert rows[0]["title"] == "满100减10"
-    assert rows[0]["value_fen"] == 1000
+    assert rows[0]["title"] == "20元优惠卷"
+    assert rows[0]["value_fen"] == 2000
     assert rows[0]["source"] == "webhook"
     assert rows[0]["occurred_at"] == "2026-08-12 11:00:00"
+
+
+@pytest.mark.asyncio
+async def test_coupon_event_maps_youzan_card_take_to_local_take(
+    db: aiosqlite.Connection, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """有赞推送的 CARD_TAKE 必须映射成本地 TAKE。
+
+    本地券引擎只认 TAKE/CONSUME/BACK：上游词表原样落库会让券永远匹配不上
+    TAKE 判断（券在「我的券」里看得见却无法核销，等同漏券）。
+    2026-10-20 生产实测：有赞推送的状态词表是 CARD_TAKE / CARD_CONSUME。
+    """
+    monkeypatch.setattr(settings, "YOUZAN_MOCK_MODE", False)
+    client = FakeMemberClient(
+        coupon_detail={
+            "id": 32035241,
+            "title": "20元优惠卷",
+            "preferential_type": 1,
+            "denominations": 2000,
+            "condition": 5000,
+        }
+    )
+    await handle_member_event(
+        db=db,
+        youzan_client=client,
+        event_type="COUPON_CUSTOMER_PROMOTION",
+        msg_obj={
+            "id": "c2",
+            "status": "CARD_TAKE",
+            "mobile": "13800000000",
+            "coupon_group_id": "32035241",
+        },
+        updated_at_str="2026-08-12 11:05:00",
+    )
+
+    rows = await db.execute_fetchall(
+        "SELECT status, title, value_fen FROM coupon_inventory WHERE coupon_id = ?",
+        ("c2",),
+    )
+    assert len(rows) == 1
+    assert rows[0]["status"] == "TAKE"
+    assert rows[0]["value_fen"] == 2000
+
+
+@pytest.mark.asyncio
+async def test_coupon_event_skips_unmappable_status(
+    db: aiosqlite.Connection, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """无法映射的状态（已失效/已过期）必须跳过，不得退化成可用券。"""
+    monkeypatch.setattr(settings, "YOUZAN_MOCK_MODE", False)
+    await handle_member_event(
+        db=db,
+        youzan_client=FakeMemberClient(),
+        event_type="COUPON_CUSTOMER_PROMOTION",
+        msg_obj={
+            "id": "c3",
+            "status": "CARD_INVALID",
+            "mobile": "13800000000",
+            "coupon_group_id": "32035241",
+        },
+        updated_at_str="2026-08-12 11:06:00",
+    )
+
+    rows = await db.execute_fetchall("SELECT coupon_id FROM coupon_inventory")
+    assert rows == []
 
 
 @pytest.mark.asyncio

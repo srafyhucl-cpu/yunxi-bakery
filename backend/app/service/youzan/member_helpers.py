@@ -1,6 +1,23 @@
 """会员账务域共享解析助手。"""
 
+from app.models.member import CouponStatus
 from app.utils import yuan_to_fen
+
+# 有赞券状态 → 本地券账本状态（app.models.member.CouponStatus）的映射。
+# 有赞买家券查询接口用 VALID/USED/INVALID，Webhook 推送用 CARD_TAKE/CARD_CONSUME，
+# 本地账本只有 TAKE/CONSUME/BACK：不做映射时上游词表会原样落库，券永远匹配不上
+# 本地引擎的 TAKE 判断（券看得见却无法核销，等同漏券）。
+# 「已失效/已过期」没有本地对应状态，不做映射——写成 TAKE 会让过期券可用。
+COUPON_STATUS_MAP = {
+    "VALID": CouponStatus.TAKE,
+    "USED": CouponStatus.CONSUME,
+    "CARD_TAKE": CouponStatus.TAKE,
+    "CARD_CONSUME": CouponStatus.CONSUME,
+    "CARD_BACK": CouponStatus.BACK,
+    "TAKE": CouponStatus.TAKE,
+    "CONSUME": CouponStatus.CONSUME,
+    "BACK": CouponStatus.BACK,
+}
 
 
 def to_int(value) -> int:
@@ -58,3 +75,12 @@ def to_fen(value) -> int:
     if numeric == int(numeric):
         return int(numeric)
     return yuan_to_fen(str(value))
+
+
+def map_coupon_status(raw: object) -> str:
+    """把有赞券状态映射到本地券账本状态；无法映射时返回空字符串。
+
+    空字符串表示「该状态在本地没有对应事实」，调用方必须跳过写入，
+    不能退化成某个默认状态（把过期/未知券写成可用券会直接造成资损）。
+    """
+    return COUPON_STATUS_MAP.get(str(raw or "").strip().upper(), "")

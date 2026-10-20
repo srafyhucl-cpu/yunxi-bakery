@@ -33,7 +33,12 @@ from app.service.coupon.template_sync import (
 )
 from app.service.youzan.audit_helper import mark_audit
 from app.service.youzan.member_api import YouzanMemberApi
-from app.service.youzan.member_helpers import is_usable_int, to_bool, to_fen, to_int
+from app.service.youzan.member_helpers import (
+    is_usable_int,
+    map_coupon_status,
+    to_bool,
+    to_int,
+)
 
 logger = setup_logger()
 
@@ -200,14 +205,26 @@ async def _handle_points_event(
 async def _handle_coupon_event(
     db, balance_repo, customer_repo, youzan_client, msg_obj: dict, updated_at_str: str
 ) -> None:
-    """处理 COUPON_CUSTOMER_PROMOTION 事件：写优惠券库存记录并反查券详情。"""
+    """处理 COUPON_CUSTOMER_PROMOTION 事件：写优惠券库存记录并反查券详情。
+
+    有赞推送的券状态词表（CARD_TAKE / CARD_CONSUME）必须映射成本地
+    `CouponStatus`（TAKE / CONSUME）：本地券引擎（库存核销、结算选券）只认
+    本地词表，上游词表原样落库会让券永远匹配不上 TAKE 判断——券在「我的券」
+    里看得见却永远无法核销，等同漏券。无法映射的状态（已失效/已过期）直接
+    跳过，不退化成默认状态。
+    """
     coupon_id = str(_first(msg_obj, "id", "coupon_id") or "")
-    status = str(_first(msg_obj, "status") or "").upper()
+    raw_status = str(_first(msg_obj, "status") or "").upper()
+    status = map_coupon_status(raw_status)
     mobile = str(_first(msg_obj, "mobile") or "")
     coupon_group_id = str(_first(msg_obj, "coupon_group_id") or "")
     order_no = str(_first(msg_obj, "order_no") or "")
     if not coupon_id or not status:
-        logger.warning("优惠券事件缺少 id 或 status，跳过写入")
+        logger.warning(
+            "优惠券事件缺少 id 或状态不可映射，跳过写入: coupon_id=%s status=%s",
+            coupon_id,
+            raw_status,
+        )
         return
     inventory_repo = CouponInventoryRepo(db)
     if await inventory_repo.get_by_dedup_key(coupon_id, status, mobile):
@@ -216,8 +233,9 @@ async def _handle_coupon_event(
     detail = await YouzanMemberApi(youzan_client).get_coupon_group_detail(
         coupon_group_id
     )
-    title, value_fen = _extract_coupon_detail(detail)
     tpl = parse_youzan_template(detail)
+    title = tpl.name
+    value_fen = tpl.value_fen
     await upsert_template_from_youzan(db, tpl)
     fields = extract_template_fields(msg_obj, detail)
     customer_id = await _resolve_customer_id(customer_repo, mobile, "")
@@ -285,18 +303,6 @@ async def _resolve_customer_id(customer_repo, mobile: str, yz_open_id: str) -> s
         if link is not None:
             return link.customer_id
     return ""
-
-
-def _extract_coupon_detail(detail: dict) -> tuple[str, int]:
-    """从优惠券模板详情中提取券名与面额（分）。"""
-    if not detail:
-        return "", 0
-    group = detail.get("coupon_group")
-    if not isinstance(group, dict):
-        group = detail
-    title = str(group.get("title") or group.get("name") or "")
-    value = group.get("value") or group.get("amount") or group.get("coupon_value")
-    return title, to_fen(value)
 
 
 def _business_key(msg_obj: dict) -> str:
