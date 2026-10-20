@@ -78,7 +78,17 @@
 - 回放工具：`backend/scripts/resolve_youzan_dead_letters.py`，提交 `2214a04`；支持 dry-run、生产路径防呆、单事务、审计-only `--skip-inbox`。
 - 积分核对工具：`backend/scripts/reconcile_youzan_points_dead_letters.py`，提交 `af6f485`；直接调用 `youzan.crm.customer.points.get/1.0.0`。**注意**：`app/service/youzan/member_api.py` 的 `POINTS_QUERY_API_VERSION` 仍是错误的 `3.0.0`，会让会员导入的积分锚点写 0，需单独立项修复。
 
-## 七、下一步
+## 七、券/会员卡接口修复（2026-10-20 18:38）
+
+- 生产只读探针确认：旧券列表 API `youzan.ump.coupon.user.coupons` **名称不存在**，任何版本都返回 4005；已改为 `youzan.ump.promocard.buyer.search` / `promocode.buyer.search` 3.0.0，并按 VALID/USED/INVALID 三状态合并去重。
+- 券详情参数从 `coupon_group_id` 改为 `id`；会员卡分页从 `page_no/page_size` 改为 `page`，列表字段改为 `items`。
+- 券状态映射：`VALID/CARD_TAKE → TAKE`，`USED/CARD_CONSUME → CONSUME`；无法映射的失效券不写入。
+- 券模板面额/门槛按分解析，毫秒时间戳按北京时间转换；券级有效期优先于模板有效期。
+- 代码提交 `60cd100`，已部署并重启；服务健康。
+- 生产 69 条旧券状态已归一：`CARD_TAKE 66 → TAKE`、`CARD_CONSUME 3 → CONSUME`；`coupon_templates` 仍为 0。
+- **遗留**：69 条旧券行的 title/value/template/有效期仍为空；需要按当前有赞数据做一次定向回填，否则这些旧券仍不可核销。20 个会员 dry-run 未发现当前券，不能据此证明全量。
+
+## 八、下一步
 
 1. 对券/会员卡 API（当前 3.0.0）做一次性只读探针，确认版本与响应字段，避免静默漏数据。
 2. 补写历史审计终态，并核对会员积分/身份与有赞侧一致。
