@@ -57,7 +57,8 @@
 
 1. **审计状态回写滞后**：仍有约 1,668 条历史 `received` 审计行；近期行已确认对应 processed inbox，未发现业务事件丢失，但终态回写仍未清零。
 2. **`database is locked` 曾偶发**：积压清理期间约每分钟 1–2 次事务回滚；队列清空、清理完成后最近未见新增。仍需持续观察，确认没有静默丢事件。
-3. **53 条 POINTS dead_letter**：已确认直接回放会让 26 个会员合计减少 10,925 分；先按有赞当前积分对账，再决定回放/标记 skipped。
+3. **积分查询 API 版本错误**：`app/service/youzan/member_api.py` 的 `POINTS_QUERY_API_VERSION="3.0.0"` 会被有赞网关拒绝；清理脚本已绕开为 `1.0.0`，但会员导入服务仍需修复。
+4. **53 条 POINTS 死信已归档**：未回放，会员积分未变；其中 130****6825 是过期快照（旧 1,891 / 当前 941 / 本地 941），按有赞当前归档。
 4. **`/ready` 仍为 503**：因为微信支付配置为空；在未接入微信支付前，这是预期的 degraded，不是进程故障。
 5. 旧服务已 disabled；回退需手动 `systemctl stop yunxi-bakery && systemctl start yunxibakebot`，且会丢失切换后新库写入。
 6. 切换前 staging 真向量并行启动曾导致服务器 OOM/失联；已由重启恢复，并改为串行切换。后续禁止再并行启动两套真向量服务。
@@ -67,12 +68,18 @@
 - 74 条 dead_letter：POINTS 53、SCRM_CUSTOMER_EVENT 21。
 - 已回放 **21 条 SCRM_CUSTOMER_EVENT**，worker 处理完成，inbox 只剩 **53 条 POINTS** dead_letter。
 - 已把 **12 条历史 audit failed** 标记为 `skipped`（`historical_invalid_payload`），原错误信息保留、无删除。
-- POINTS 53 条**未回放**：28 条会把 26 个会员的积分余额改小，合计 **−10,925 分**；旧事件的 `total` 会覆盖 10 月的新锚点。必须先按有赞当前积分对账，不能直接回放。
+- POINTS 53 条**已核对后归档，未回放**：
+  - 44 个手机号逐个查询有赞当前积分，53/53 confirmed，0 blocked；
+  - 33 superseded、14 无本地账户、5 空手机号、1 过期快照（130****6825）；
+  - 全部标记 `processed`，`last_error` 写稳定原因码；
+  - 归档前后 `member_balance` 1,385 行 / 2,338,480 分、`points_ledger` 4,216 条 / 197,573 分**完全不变**；
+  - inbox dead_letter 从 53 降到 **0**。
 - 回放工具：`backend/scripts/resolve_youzan_dead_letters.py`，提交 `2214a04`；支持 dry-run、生产路径防呆、单事务、审计-only `--skip-inbox`。
+- 积分核对工具：`backend/scripts/reconcile_youzan_points_dead_letters.py`，提交 `af6f485`；直接调用 `youzan.crm.customer.points.get/1.0.0`。**注意**：`app/service/youzan/member_api.py` 的 `POINTS_QUERY_API_VERSION` 仍是错误的 `3.0.0`，会让会员导入的积分锚点写 0，需单独立项修复。
 
 ## 七、下一步
 
-1. 对 53 条 POINTS 死信涉及的 26 个会员逐户查询有赞当前积分，确认后再决定回放或标记 skipped。
+1. 修复 `POINTS_QUERY_API_VERSION`（3.0.0 → 1.0.0）并补测试，避免会员导入把积分锚点写 0。
 2. 补写历史审计终态，并核对会员积分/身份与有赞侧一致。
 3. 继续观察 `database is locked`，必要时定位长事务与并发审计写入。
 4. 配置微信支付/小程序正式参数后，重新检查 `/ready`。
