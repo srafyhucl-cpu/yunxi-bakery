@@ -142,6 +142,15 @@ def test_installer_uses_interactive_task_and_d_drive() -> None:
     assert "-LogonType Interactive" in content
     assert "D:\\Backups\\YunxiBakeBot" in content
     assert "local_production_backup.py" in content
+    assert "--remote-db" in content
+
+
+def test_default_remote_database_is_v2_production() -> None:
+    """默认远端库必须指向 v2 生产目录，不能回退到旧 yunxibakebot。"""
+    assert (
+        local_production_backup.DEFAULT_REMOTE_DB
+        == "/opt/apps/yunxi-bakery/backend/data/bot.db"
+    )
 
 
 @pytest.mark.skipif(
