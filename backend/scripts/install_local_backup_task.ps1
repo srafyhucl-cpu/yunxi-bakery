@@ -3,6 +3,7 @@ param(
     [string]$BackupDir = "D:\Backups\YunxiBakeBot",
     [string]$KeyFile = "D:\Backups\YunxiBakeBot\keys\backup.key",
     [string]$SshKey = "$env:USERPROFILE\.ssh\id_ed25519",
+    [string]$RemoteDb = "/opt/apps/yunxi-bakery/backend/data/bot.db",
     [string]$DailyAt = "03:30"
 )
 
@@ -25,7 +26,8 @@ $arguments = @(
     ('"{0}"' -f $script),
     "--backup-dir", ('"{0}"' -f $BackupDir),
     "--key-file", ('"{0}"' -f $KeyFile),
-    "--ssh-key", ('"{0}"' -f $SshKey)
+    "--ssh-key", ('"{0}"' -f $SshKey),
+    "--remote-db", ('"{0}"' -f $RemoteDb)
 ) -join " "
 $action = New-ScheduledTaskAction -Execute $python -Argument $arguments -WorkingDirectory $projectDir
 $trigger = New-ScheduledTaskTrigger -Daily -At $DailyAt

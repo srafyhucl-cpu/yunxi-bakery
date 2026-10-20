@@ -19,7 +19,7 @@ from scripts.encrypted_backup import create_encrypted_backup  # noqa: E402
 DEFAULT_HOST = "47.94.102.250"
 DEFAULT_USER = "root"
 DEFAULT_PORT = 22
-DEFAULT_REMOTE_DB = "/opt/apps/yunxibakebot/data/bot.db"
+DEFAULT_REMOTE_DB = "/opt/apps/yunxi-bakery/backend/data/bot.db"
 DEFAULT_REMOTE_TEMP_DIR = "/dev/shm"
 DEFAULT_RETENTION_DAYS = 30
 DEFAULT_MINIMUM_BACKUPS = 3
