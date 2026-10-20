@@ -282,6 +282,28 @@ async def test_event_handler_resolves_request_context_db(
 
 
 @pytest.mark.asyncio
+async def test_mirror_skips_openid_only_when_empty_mobile_exists(
+    db: aiosqlite.Connection,
+) -> None:
+    """空手机号唯一约束下，openid-only 新账户不得重复插入空 mobile。"""
+    await db.execute(
+        "INSERT INTO member_balance (mobile, points, stored_value_fen, principal_fen) "
+        "VALUES ('', 0, 0, 0)"
+    )
+    await db.commit()
+
+    result = await MemberBalanceRepo(db).mirror_youzan_points(
+        mobile="",
+        yz_open_id="openid-without-mobile",
+        youzan_total=10,
+    )
+
+    assert result == 0
+    rows = await db.execute_fetchall("SELECT COUNT(*) AS count FROM member_balance")
+    assert rows[0]["count"] == 1
+
+
+@pytest.mark.asyncio
 async def test_import_service_dry_run_and_apply(
     db: aiosqlite.Connection, monkeypatch: pytest.MonkeyPatch
 ) -> None:

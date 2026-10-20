@@ -211,8 +211,14 @@ class MemberBalanceRepo(BaseRepository):
         if existing is None and yz_open_id:
             existing = await self.get_by_openid(yz_open_id)
         if existing is None:
-            if not mobile and not yz_open_id:
-                logger.warning("会员余额快照缺少 mobile 与 yz_open_id，跳过积分镜像")
+            if not mobile:
+                # member_balance.mobile 有唯一索引，空手机号只能存在一行；
+                # 仅有 openid 的新会员不能再用空字符串建档，否则会与既有
+                # 空手机号账户冲突并让整条 POINTS 事件反复失败。
+                logger.warning(
+                    "会员余额缺少手机号，跳过积分镜像: yz_open_id=%s",
+                    yz_open_id,
+                )
                 return 0
             # 首次建档：外部总额即锚点，本地净额为 0。
             await self._db.execute(
