@@ -50,6 +50,7 @@
 
         <!-- 履约与预订服务卡 -->
         <view wx:if="{{canPurchase}}" class="detail-section detail-fulfillment-card">
+          <text class="detail-section-label">预订与履约</text>
           <view class="fulfillment-row">
             <text class="fulfillment-tag">履约方式</text>
             <text class="fulfillment-val">支持 门店自提 · 北京闪送</text>
@@ -73,7 +74,7 @@
           <text class="detail-display-only-card__desc">此商品用于说明门店使用的原料或展示产品，不提供直接购买。</text>
         </view>
 
-        <view class="detail-section">
+        <view class="detail-section detail-description-section">
           <text class="detail-card-title">图文详情</text>
           <view class="detail-description">
             <block wx:for="{{product.descriptionBlocks}}" wx:key="index" wx:for-item="block">
@@ -83,14 +84,14 @@
           </view>
         </view>
 
-        <view class="detail-section">
+        <view class="detail-section detail-notes-section">
           <text class="detail-card-title">购买须知</text>
           <view class="notice-list">
             <text wx:for="{{product.notices}}" wx:key="*this" wx:for-item="notice" class="notice-item">{{notice}}</text>
           </view>
         </view>
 
-        <view wx:if="{{relatedProducts.length > 0}}" class="detail-section">
+        <view wx:if="{{relatedProducts.length > 0}}" class="detail-section detail-related-section">
           <text class="detail-card-title">搭配推荐</text>
           <scroll-view class="related-strip" scroll-x enhanced show-scrollbar="{{false}}">
             <view

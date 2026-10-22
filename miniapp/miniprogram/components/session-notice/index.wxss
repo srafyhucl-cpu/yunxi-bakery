@@ -6,33 +6,35 @@
   display: flex;
   align-items: center;
   gap: 18rpx;
-  padding: 22rpx 28rpx;
-  background: #FFFFFF;
-  border: 1rpx solid var(--yunxi-border);
-  border-radius: var(--yunxi-radius-md);
-  box-shadow: var(--yunxi-card-shadow);
-  margin-bottom: 16rpx;
+  padding: 20rpx var(--yunxi-page-gutter);
+  background: var(--yunxi-surface);
+  border: 0;
+  border-bottom: 1rpx solid var(--yunxi-border);
+  border-radius: 0;
+  box-shadow: none;
+  margin-bottom: 0;
 }
 
 /* 身份徽标用标准线性图标，禁止用“我/登”等单汉字充当入口图标。 */
 .session-notice__icon {
   flex: 0 0 auto;
-  width: 60rpx;
-  height: 60rpx;
-  background-color: var(--yunxi-brand);
+  width: 52rpx;
+  height: 52rpx;
+  background-color: transparent;
   background-position: center;
   background-repeat: no-repeat;
-  background-size: 34rpx 34rpx;
-  border-radius: var(--yunxi-radius-sm);
-  box-shadow: 0 4rpx 12rpx rgba(61, 51, 45, 0.16);
+  background-size: 28rpx 28rpx;
+  border: 1rpx solid var(--yunxi-border-medium);
+  border-radius: 50%;
+  box-shadow: none;
 }
 
 .session-notice__icon--log-in {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23FFFFFF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4'/%3E%3Cpath d='m10 17 5-5-5-5'/%3E%3Cpath d='M15 12H3'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232E4638' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4'/%3E%3Cpath d='m10 17 5-5-5-5'/%3E%3Cpath d='M15 12H3'/%3E%3C/svg%3E");
 }
 
 .session-notice__icon--user-check {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23FFFFFF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='9' cy='7' r='4'/%3E%3Cpath d='m16 11 2 2 4-4'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232E4638' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='9' cy='7' r='4'/%3E%3Cpath d='m16 11 2 2 4-4'/%3E%3C/svg%3E");
 }
 
 .session-notice__copy {
@@ -46,7 +48,7 @@
 .session-notice__title {
   color: var(--yunxi-text-primary);
   font-size: 26rpx;
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .session-notice__desc {
@@ -60,26 +62,26 @@ button.session-notice__button {
   flex: 0 0 auto;
   width: auto !important;
   min-width: 120rpx !important;
-  height: 88rpx !important;
-  min-height: 88rpx !important;
+  height: 96rpx !important;
+  min-height: 96rpx !important;
   padding: 0 28rpx !important;
   margin: 0 !important;
-  border-radius: var(--yunxi-radius-sm);
-  color: #FFFFFF;
+  border-radius: 2rpx;
+  color: #F7F4EC;
   background: var(--yunxi-brand);
   font-size: 24rpx;
-  font-weight: 600;
+  font-weight: 400;
+  letter-spacing: 0.08em;
   line-height: 1.2 !important;
   white-space: nowrap;
   text-align: center;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4rpx 12rpx rgba(61, 51, 45, 0.16);
-  transition: all 0.2s ease;
+  box-shadow: none;
+  transition: opacity 0.15s ease;
 }
 
 .session-notice__button:active {
-  transform: scale(0.96);
-  opacity: 0.92;
+  opacity: 0.75;
 }

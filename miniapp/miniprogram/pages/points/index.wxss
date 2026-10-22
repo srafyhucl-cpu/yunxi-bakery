@@ -1,126 +1,153 @@
 /* ==========================================================================
-   积分中心页 (Points Page) - 现代自然轻食风格重塑
+   积分明细 —— 画册式排版（纸色余额带 / 细线流水）
+   顶部余额：纸色带 + overline 小标 + 64rpx 大数字。
+   流水行：1rpx 细线 + 40rpx 留白，正负号用墨色与黄铜，不使用大红大绿。
    ========================================================================== */
 
 .points-page {
-  padding: 24rpx;
+  padding: 0 0 var(--yunxi-page-bottom-space);
+  background: var(--yunxi-page-bg);
 }
 
+/* 积分余额：纸色带 + overline + 大数字 */
 .balance-panel {
-  padding: 48rpx 32rpx;
-  margin-bottom: 24rpx;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  background: #FFFFFF;
-  border-radius: var(--yunxi-radius-lg);
-  border: 1rpx solid var(--yunxi-border);
-  box-shadow: var(--yunxi-card-shadow);
+  align-items: flex-start;
+  gap: 14rpx;
+  padding: 40rpx var(--yunxi-page-gutter) 44rpx;
+  background: var(--yunxi-surface-cream);
+  border: 0;
+  border-bottom: 1rpx solid var(--yunxi-border);
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .balance-label {
-  font-size: 26rpx;
-  color: var(--yunxi-text-muted);
+  color: var(--yunxi-text-secondary);
+  font-size: 20rpx;
+  font-weight: 400;
+  line-height: 1.2;
+  letter-spacing: 0.16em;
 }
 
 .balance-value {
-  margin-top: 12rpx;
-  font-size: 68rpx;
-  font-weight: 900;
-  color: var(--yunxi-text-primary);
-  letter-spacing: 0;
+  color: var(--yunxi-price);
+  font-size: 64rpx;
+  font-weight: 400;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
 }
 
+/* 积分流水：柔白连续行，1rpx 细线分隔 */
 .ledger-list {
   display: flex;
   flex-direction: column;
-  background: #FFFFFF;
-  border-radius: var(--yunxi-radius-lg);
-  border: 1rpx solid var(--yunxi-border);
-  box-shadow: var(--yunxi-card-shadow);
-  padding: 12rpx 28rpx;
+  background: var(--yunxi-surface);
+  border-bottom: 1rpx solid var(--yunxi-border);
 }
 
 .ledger-row {
   display: flex;
   align-items: center;
-  padding: 24rpx 0;
+  justify-content: space-between;
+  gap: 24rpx;
+  min-height: 112rpx;
+  padding: 40rpx var(--yunxi-page-gutter);
   border-bottom: 1rpx solid var(--yunxi-border);
 }
 
 .ledger-row:last-child {
-  border-bottom: none;
+  border-bottom: 0;
 }
 
 .ledger-main {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
+  gap: 8rpx;
 }
 
 .ledger-label {
-  font-size: 28rpx;
-  font-weight: 700;
+  min-width: 0;
+  overflow: hidden;
   color: var(--yunxi-text-primary);
+  font-size: 26rpx;
+  font-weight: 400;
+  line-height: 1.7;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ledger-time {
-  margin-top: 6rpx;
-  font-size: 22rpx;
   color: var(--yunxi-text-muted);
+  font-size: 20rpx;
+  font-weight: 400;
+  line-height: 1.4;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.ledger-side {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8rpx;
 }
 
 .ledger-amount {
-  font-size: 32rpx;
-  font-weight: 900;
+  font-size: 28rpx;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
+/* 正负号靠墨色与黄铜区分，不使用大红大绿 */
 .ledger-amount.positive {
-  color: var(--yunxi-brand);
+  color: var(--yunxi-text-primary);
 }
 
 .ledger-amount.negative {
-  color: var(--yunxi-deal);
+  color: var(--yunxi-gold);
 }
 
 .ledger-total {
-  margin-left: 20rpx;
-  font-size: 22rpx;
   color: var(--yunxi-text-muted);
+  font-size: 20rpx;
+  font-weight: 400;
+  line-height: 1.4;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
+/* 加载中：纸白平面分区，不做卡片 */
 .empty-panel {
-  padding: 80rpx 32rpx;
-  align-items: center;
   display: flex;
   flex-direction: column;
+  align-items: center;
+  padding: 80rpx 32rpx;
+  background: var(--yunxi-surface);
+  border: 0;
+  border-bottom: 1rpx solid var(--yunxi-border);
+  border-radius: 0;
 }
 
 .empty-title {
-  font-size: 30rpx;
-  font-weight: 800;
   color: var(--yunxi-text-primary);
+  font-size: 28rpx;
+  font-weight: 500;
+  line-height: 1.5;
 }
 
 .empty-subtitle {
   margin-top: 12rpx;
-  font-size: 24rpx;
   color: var(--yunxi-text-muted);
-}
-
-/* 需要带页面作用域压过 app.wxss 的 button:not([size="mini"]) 重置，否则背景透明而文字为白色。 */
-.points-page button.primary-btn {
-  margin-top: 24rpx;
-  min-width: 200rpx;
-  height: 88rpx;
-  min-height: 88rpx;
-  line-height: 88rpx;
-  padding: 0 40rpx;
-  box-sizing: border-box;
-  color: #FFFFFF;
-  background: var(--yunxi-brand);
-  border-radius: var(--yunxi-radius-sm);
-  font-size: 26rpx;
-  font-weight: 700;
-  box-shadow: 0 8rpx 20rpx rgba(61, 51, 45, 0.16);
+  font-size: 24rpx;
+  line-height: 1.6;
 }

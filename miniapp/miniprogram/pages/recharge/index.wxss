@@ -1,165 +1,209 @@
 /* ==========================================================================
-   储值充值页 (Recharge Page) - 现代自然轻食风格重塑
+   余额充值 —— 画册式排版（纸色余额带 / 细线方格 / 裸字段）
+   余额：纸色带 + overline + 56rpx 数字。
+   档位：2×2 细线方格，1rpx 边框、2rpx 圆角、无阴影，选中为深林绿 2rpx 描边。
+   自定义金额：裸字段，只有 1rpx 底边；确认充值为深林绿主按钮。
    ========================================================================== */
 
 .recharge-page {
-  padding: 24rpx;
   display: flex;
   flex-direction: column;
-  gap: 24rpx;
+  gap: 0;
+  padding: 0 0 var(--yunxi-page-bottom-space);
+  background: var(--yunxi-page-bg);
 }
 
-.recharge-page .empty-panel {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 80rpx 32rpx;
-  border-radius: var(--yunxi-radius-md);
-  text-align: center;
-}
-
-.recharge-page .empty-title {
-  color: var(--yunxi-text-primary);
-  font-size: 32rpx;
-  font-weight: 800;
-}
-
-.recharge-page .empty-subtitle {
-  margin-top: 12rpx;
-  color: var(--yunxi-text-muted);
-  font-size: 25rpx;
-}
-
+/* 余额信息：纸色带 + overline + 大数字 */
 .balance-panel {
-  padding: 48rpx 32rpx;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  background: #FFFFFF;
-  border-radius: var(--yunxi-radius-lg);
-  border: 1rpx solid var(--yunxi-border);
-  box-shadow: var(--yunxi-card-shadow);
+  align-items: flex-start;
+  gap: 14rpx;
+  padding: 40rpx var(--yunxi-page-gutter) 44rpx;
+  background: var(--yunxi-surface-cream);
+  border: 0;
+  border-bottom: 1rpx solid var(--yunxi-border);
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .balance-label {
-  font-size: 26rpx;
-  color: var(--yunxi-text-muted);
+  color: var(--yunxi-text-secondary);
+  font-size: 20rpx;
+  font-weight: 400;
+  line-height: 1.2;
+  letter-spacing: 0.16em;
 }
 
 .balance-value {
-  margin-top: 12rpx;
-  font-size: 68rpx;
-  font-weight: 900;
-  color: var(--yunxi-text-primary);
-  letter-spacing: 0;
+  color: var(--yunxi-price);
+  font-size: 56rpx;
+  font-weight: 400;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
 }
 
+/* 充值档位与记录：纸白分区 */
 .tier-panel,
 .records-panel {
-  padding: 32rpx 28rpx;
-  background: #FFFFFF;
-  border-radius: var(--yunxi-radius-lg);
-  border: 1rpx solid var(--yunxi-border);
-  box-shadow: var(--yunxi-card-shadow);
+  padding: 36rpx var(--yunxi-page-gutter) 40rpx;
+  background: var(--yunxi-surface);
+  border: 0;
+  border-bottom: 1rpx solid var(--yunxi-border);
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .section-title {
-  font-size: 30rpx;
-  font-weight: 800;
+  margin: 0 0 24rpx;
   color: var(--yunxi-text-primary);
-  margin-bottom: 24rpx;
+  font-size: 30rpx;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0.04em;
 }
 
+/* 档位方格：2×2 细线格 */
 .tier-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 18rpx;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20rpx;
 }
 
 .tier-cell {
-  padding: 28rpx 0;
-  text-align: center;
-  border-radius: var(--yunxi-radius-md);
-  border: 2rpx solid var(--yunxi-border);
-  background: #FFFFFF;
+  position: relative;
+  flex: 0 0 calc(50% - 10rpx);
+  width: calc(50% - 10rpx);
+  min-width: 0;
+  min-height: 148rpx;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 8rpx;
-  line-height: 1.25;
+  padding: 20rpx 12rpx;
+  text-align: center;
+  background: var(--yunxi-surface);
+  border: 1rpx solid var(--yunxi-border);
+  border-radius: 2rpx;
+  line-height: 1.3;
   overflow: hidden;
-  transition: all 0.2s ease;
 }
 
 .tier-cell:active {
-  opacity: 0.78;
+  background: var(--yunxi-surface-cream);
 }
 
+/* 选中态：深林绿 2rpx 描边，内边距同步补偿避免跳动 */
 .tier-cell.active {
-  border-color: var(--yunxi-brand);
-  background: var(--yunxi-brand-soft);
+  background: var(--yunxi-surface);
+  border: 2rpx solid var(--yunxi-brand);
+  padding: 19rpx 11rpx;
 }
 
 .tier-amount {
-  font-size: 36rpx;
-  font-weight: 900;
-  color: var(--yunxi-text-primary);
+  color: var(--yunxi-price);
+  font-size: 34rpx;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .tier-bonus {
-  font-size: 22rpx;
-  font-weight: 700;
-  color: var(--yunxi-deal);
+  color: var(--yunxi-gold);
+  font-size: 20rpx;
+  font-weight: 400;
+  line-height: 1.4;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
 }
 
+/* 选中角标：右上角小字 */
+.tier-selected {
+  position: absolute;
+  top: 12rpx;
+  right: 14rpx;
+  color: var(--yunxi-brand);
+  font-size: 18rpx;
+  font-weight: 400;
+  line-height: 1.2;
+  letter-spacing: 0.12em;
+}
+
+/* 自定义金额：裸字段，只保留 1rpx 底边 */
 .custom-row {
   display: flex;
-  align-items: center;
-  gap: 16rpx;
-  margin-top: 24rpx;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10rpx;
+  margin-top: 40rpx;
 }
 
 .custom-label {
-  font-size: 28rpx;
-  font-weight: 700;
-  color: var(--yunxi-text-primary);
+  flex-shrink: 0;
+  color: var(--yunxi-text-muted);
+  font-size: 20rpx;
+  font-weight: 400;
+  letter-spacing: 0.16em;
+  line-height: 1.5;
 }
 
 .custom-input-wrap {
   flex: 1;
   min-width: 0;
-  height: 88rpx;
   display: flex;
   align-items: center;
-  padding: 0 20rpx;
-  border: 1rpx solid var(--yunxi-border-medium);
-  border-radius: var(--yunxi-radius-sm);
-  background: var(--yunxi-surface-alt);
+  justify-content: flex-start;
+  gap: 8rpx;
+  min-height: 88rpx;
+  padding: 0;
+  background: var(--yunxi-surface);
+  border: 0;
+  border-top: 1rpx solid var(--yunxi-border);
+  border-bottom: 1rpx solid var(--yunxi-border-medium);
+  border-radius: 0;
 }
 
 .custom-input {
   flex: 1;
   min-width: 0;
   height: 88rpx;
+  min-height: 88rpx;
   padding: 0;
-  font-size: 32rpx;
+  font-size: 30rpx;
+  font-weight: 400;
   line-height: 88rpx;
   color: var(--yunxi-text-primary);
+  font-variant-numeric: tabular-nums;
+  text-align: left;
 }
 
 .custom-input-placeholder {
-  color: var(--yunxi-text-muted);
+  color: var(--yunxi-text-subtle);
 }
 
 .custom-unit {
-  font-size: 26rpx;
+  flex-shrink: 0;
   color: var(--yunxi-text-muted);
+  font-size: 24rpx;
+  line-height: 1.4;
 }
 
 .bonus-note {
-  margin-top: 16rpx;
-  font-size: 22rpx;
+  display: block;
+  margin-top: 24rpx;
   color: var(--yunxi-text-muted);
+  font-size: 22rpx;
+  font-weight: 400;
+  line-height: 1.6;
+}
+
+/* 充值记录：纸白连续行 */
+.records-panel {
+  padding-bottom: 32rpx;
 }
 
 .records-empty {
@@ -170,61 +214,116 @@
 .record-row {
   display: flex;
   align-items: center;
-  padding: 20rpx 0;
+  gap: 20rpx;
+  min-height: 112rpx;
+  padding: 28rpx 0;
   border-bottom: 1rpx solid var(--yunxi-border);
 }
 
 .record-row:last-child {
-  border-bottom: none;
+  border-bottom: 0;
 }
 
 .record-main {
   flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
 }
 
 .record-amount {
-  font-size: 32rpx;
-  font-weight: 900;
-  color: var(--yunxi-text-primary);
+  color: var(--yunxi-price);
+  font-size: 28rpx;
+  font-weight: 500;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
 }
 
-.recharge-page button.primary-btn {
-  margin-top: 24rpx;
-  width: 100%;
+.record-time {
+  color: var(--yunxi-text-muted);
+  font-size: 20rpx;
+  font-weight: 400;
+  line-height: 1.4;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.record-status {
+  flex-shrink: 0;
+  color: var(--yunxi-text-secondary);
+  font-size: 20rpx;
+  font-weight: 400;
+  line-height: 1.4;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+}
+
+/* 取消入口：纯文字，触控高度 44px */
+.record-cancel {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 88rpx;
   min-height: 88rpx;
-  height: 88rpx;
-  line-height: 88rpx;
-  color: #FFFFFF;
+  padding: 0 12rpx;
+  color: var(--yunxi-text-secondary);
+  font-size: 24rpx;
+  font-weight: 400;
+}
+
+.record-cancel:active {
+  opacity: 0.65;
+}
+
+/* 确认充值：深林绿主按钮，随内容流，不做浮层 */
+.recharge-page button.primary-btn {
+  margin-top: 36rpx;
+  width: 100%;
+  min-height: 96rpx;
+  height: 96rpx;
+  line-height: 96rpx;
+  color: #F7F4EC;
   background: var(--yunxi-brand);
-  border-radius: var(--yunxi-radius-sm);
+  border: 1rpx solid var(--yunxi-brand);
+  border-radius: 2rpx;
   font-size: 28rpx;
-  font-weight: 700;
-  box-shadow: 0 8rpx 20rpx rgba(61, 51, 45, 0.16);
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  box-shadow: none;
 }
 
 .recharge-page button.primary-btn[disabled] {
   color: var(--yunxi-text-secondary) !important;
   background: var(--yunxi-surface-alt) !important;
-  border: 1rpx solid var(--yunxi-border-medium) !important;
+  border: 1rpx solid var(--yunxi-border) !important;
   box-shadow: none;
 }
 
-.recharge-page button.primary-btn:active {
-  transform: scale(0.97);
-  opacity: 0.94;
-}
-
-.record-cancel {
-  display: inline-flex;
+/* 功能未开放：纸白平面分区 */
+.recharge-page .empty-panel {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 8rpx 18rpx;
-  min-height: 48rpx;
-  font-size: 24rpx;
-  font-weight: 700;
-  color: var(--yunxi-deal);
+  padding: 80rpx 32rpx;
+  background: var(--yunxi-surface);
+  border: 0;
+  border-bottom: 1rpx solid var(--yunxi-border);
+  border-radius: 0;
+  text-align: center;
 }
 
-.record-cancel:active {
-  opacity: 0.65;
+.recharge-page .empty-title {
+  color: var(--yunxi-text-primary);
+  font-size: 28rpx;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.recharge-page .empty-subtitle {
+  margin-top: 12rpx;
+  color: var(--yunxi-text-muted);
+  font-size: 24rpx;
+  line-height: 1.6;
 }

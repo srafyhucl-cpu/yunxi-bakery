@@ -1,71 +1,99 @@
 /* ==========================================================================
-   商品详情页 (Product Detail Page) - 现代自然轻食风格重塑
+   商品详情 —— 画册式商品页
+   大图 → 标题/价格 → 数量与规格 → 履约 → 图文详情 → 购买须知 → 搭配推荐
+   页面分区无卡片框；只有固定交易栏允许阴影。
    ========================================================================== */
 
 .detail-page {
-  padding-top: 0;
-  /* 底部操作栏=100rpx 内容高 + 安全区，额外保留 40rpx 呼吸间距；不写死可避免全面屏机型留下大片空白 */
-  padding-bottom: calc(env(safe-area-inset-bottom) + 140rpx);
+  padding: 0;
+  padding-bottom: calc(env(safe-area-inset-bottom) + 180rpx);
+  background: var(--yunxi-page-bg);
 }
 
 .detail-empty-state {
-  padding-top: 160rpx;
+  padding-top: 180rpx;
 }
 
 .detail-content {
   display: flex;
   flex-direction: column;
-  gap: 20rpx;
 }
 
-/* 顶部悬浮返回胶囊 */
+/* 顶部悬浮栏 */
 .detail-nav {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   z-index: 100;
-  box-shadow: none;
   background: transparent;
-  /* 背景色必须立即切换：过渡中间值会让 DevTools 与低端机都读到半透明错误态。 */
-  transition: box-shadow 0.18s ease;
-  border-bottom: 0;
+  border: 0;
+  box-shadow: none;
 }
 
-
-/* 首屏压在商品大图上时保持透明；滚动后必须实底，避免正文与状态栏、返回控件重叠 */
 .detail-nav.detail-nav--solid {
-  background: #FFFFFF;
+  background: #FBF9F4;
   border-bottom: 1rpx solid var(--yunxi-border);
-  box-shadow: 0 8rpx 20rpx rgba(61, 51, 45, 0.05);
+  box-shadow: none;
 }
 
-/* 商品大图由商家上传，明暗不可控：深色标题直接压深色图会失去可读性。
-   沉浸态给标题一层半透明白底胶囊（叠在纯黑图上仍保持足够对比度），
-   滚动切实底后胶囊隐去，避免白底叠白底；胶囊中心与返回按钮垂直居中对齐。 */
+/* 大图上的返回键：半透明白盘，克制但可辨认 */
+.detail-nav .page-nav-back {
+  left: 12rpx;
+  background: transparent;
+}
+
+.detail-nav .page-nav-back::before {
+  content: "";
+  position: absolute;
+  top: 10rpx;
+  right: 10rpx;
+  bottom: 10rpx;
+  left: 10rpx;
+  border-radius: 50%;
+  background: rgba(251, 249, 244, 0.82);
+}
+
+.detail-nav.detail-nav--solid .page-nav-back::before {
+  background: transparent;
+}
+
+.detail-nav .page-nav-back__icon {
+  position: relative;
+  z-index: 1;
+}
+
+/* 沉浸态标题保留白色底衬（深色商品图上可读），做成极简页签 */
 .detail-nav .page-fixed-safe__title {
-  left: 50%;
+  left: 112rpx;
   right: auto;
-  bottom: 26rpx;
-  height: 60rpx;
-  padding: 0 28rpx;
-  border: 1rpx solid rgba(61, 51, 45, 0.06);
-  border-radius: 999rpx;
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 4rpx 14rpx rgba(61, 51, 45, 0.08);
-  transform: translateX(-50%);
+  bottom: 30rpx;
+  height: 48rpx;
+  padding: 0 16rpx;
+  border: 0;
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: none;
+  transform: none;
+  font-size: 20rpx;
+  font-weight: 400;
+  letter-spacing: 0.18em;
+  color: var(--yunxi-text-secondary);
+  opacity: 0;
 }
 
 .detail-nav.detail-nav--solid .page-fixed-safe__title {
   border-color: transparent;
   background: transparent;
   box-shadow: none;
+  opacity: 1;
+  color: var(--yunxi-text-primary);
 }
 
-/* 沉浸式大图展示 */
+/* 商品大图：全宽、直角 */
 .detail-hero {
   position: relative;
-  margin: 0 calc(var(--yunxi-page-gutter) * -1);
+  width: 100%;
   overflow: hidden;
   background: var(--yunxi-surface-alt);
 }
@@ -75,11 +103,11 @@
   align-items: center;
   justify-content: center;
   width: 100%;
+  height: 750rpx;
   aspect-ratio: 1 / 1;
   background: var(--yunxi-surface-alt);
   overflow: hidden;
 }
-
 
 .detail-cover {
   display: block;
@@ -87,213 +115,318 @@
   height: 100%;
 }
 
-/* 核心信息卡片 */
+/* 标题与价格区 */
 .detail-main {
   position: relative;
   z-index: 1;
   display: flex;
   flex-direction: column;
-  gap: 16rpx;
-  padding: 32rpx 28rpx;
-  border-radius: var(--yunxi-radius-lg);
-  background: #FFFFFF;
-  border: 1rpx solid var(--yunxi-border);
-  box-shadow: var(--yunxi-card-shadow);
-}
-
-.detail-section {
-  display: flex;
-  flex-direction: column;
-  gap: 16rpx;
-  padding: 32rpx 28rpx;
-  border-radius: var(--yunxi-radius-lg);
-  background: #FFFFFF;
-  border: 1rpx solid var(--yunxi-border);
-  box-shadow: var(--yunxi-card-shadow);
+  gap: 18rpx;
+  padding: 44rpx var(--yunxi-page-gutter) 12rpx;
+  background: var(--yunxi-surface);
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .detail-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 12rpx;
+  align-items: center;
+  gap: 0;
+}
+
+.detail-tags .yunxi-chip + .yunxi-chip::before {
+  content: "·";
+  margin: 0 10rpx;
+  color: var(--yunxi-text-subtle);
 }
 
 .detail-title-row {
   display: flex;
   align-items: flex-start;
-  gap: 16rpx;
+  gap: 18rpx;
 }
 
 .detail-title {
   flex: 1;
   min-width: 0;
-  font-size: 40rpx;
-  line-height: 1.28;
-  font-weight: 900;
+  font-size: 42rpx;
+  line-height: 1.36;
+  font-weight: 400;
+  letter-spacing: 0.02em;
   color: var(--yunxi-text-primary);
 }
 
 .detail-status {
   flex: 0 0 auto;
-  margin-top: 4rpx;
-  padding: 6rpx 16rpx;
-  color: #FFFFFF;
-  background: var(--yunxi-brand);
-  border-radius: var(--yunxi-radius-full);
-  font-size: 22rpx;
-  font-weight: 700;
-  line-height: 1.35;
+  margin-top: 8rpx;
+  padding: 4rpx 10rpx;
+  color: var(--yunxi-text-muted);
+  background: transparent;
+  border: 1rpx solid var(--yunxi-border-medium);
+  border-radius: 0;
+  font-size: 18rpx;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  line-height: 1.4;
 }
 
 .detail-subtitle {
-  color: var(--yunxi-text-secondary);
+  color: var(--yunxi-text-muted);
   font-size: 26rpx;
-  line-height: 1.55;
+  line-height: 1.65;
+  letter-spacing: 0.01em;
 }
 
+/* 价格行：一个安静而明确的数字焦点 */
 .detail-meta {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 20rpx;
-  padding-top: 8rpx;
+  margin-top: 10rpx;
+  padding: 0 0 32rpx;
   border-bottom: 1rpx solid var(--yunxi-border);
-  padding-bottom: 24rpx;
 }
 
 .detail-price-wrap {
   display: flex;
   align-items: baseline;
-  gap: 12rpx;
+  gap: 14rpx;
+  min-width: 0;
 }
 
 .detail-price-label {
-  font-size: 22rpx;
-  font-weight: 700;
-  color: #8A5A36;
-  background: rgba(138, 90, 54, 0.08);
-  padding: 4rpx 12rpx;
-  border-radius: 6rpx;
+  flex-shrink: 0;
+  padding: 0;
+  color: var(--yunxi-text-muted);
+  background: transparent;
+  font-size: 18rpx;
+  font-weight: 400;
+  letter-spacing: 0.14em;
 }
 
 .detail-price {
   color: var(--yunxi-price);
-  font-size: 48rpx;
-  font-weight: 900;
-  line-height: 1.15;
+  font-size: 52rpx;
+  font-weight: 500;
+  line-height: 1.1;
   letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
 }
 
 .detail-sold {
+  flex-shrink: 0;
   color: var(--yunxi-text-muted);
-  font-size: 24rpx;
+  font-size: 20rpx;
+  letter-spacing: 0.04em;
   white-space: nowrap;
 }
 
-/* 履约时效服务卡 */
-.detail-fulfillment-card {
-  display: flex;
-  flex-direction: column;
-  gap: 16rpx;
-  background: #FFFFFF;
-}
-
-.fulfillment-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 16rpx;
-  font-size: 24rpx;
-  line-height: 1.45;
-}
-
-.fulfillment-tag {
-  flex-shrink: 0;
-  width: 110rpx;
-  color: var(--yunxi-text-muted);
-  font-size: 22rpx;
-  font-weight: 600;
-}
-
-.fulfillment-val {
-  flex: 1;
-  color: var(--yunxi-text-primary);
-  font-size: 23rpx;
-}
-
+/* 数量与规格 */
 .detail-qty-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: 12rpx;
+  min-height: 104rpx;
+  padding: 6rpx 0;
 }
 
 .detail-qty-label {
   color: var(--yunxi-text-secondary);
-  font-size: 28rpx;
-  font-weight: 700;
+  font-size: 20rpx;
+  font-weight: 400;
+  letter-spacing: 0.16em;
 }
 
 .detail-specs {
   display: flex;
   flex-wrap: wrap;
-  gap: 12rpx;
-  padding-top: 8rpx;
+  align-items: center;
+  padding: 0 0 30rpx;
 }
 
-/* 分区标题 */
-.detail-card-title {
+.detail-specs .yunxi-chip {
+  font-size: 22rpx;
+  color: var(--yunxi-text-secondary);
+}
+
+.detail-specs .yunxi-chip + .yunxi-chip::before {
+  content: "/";
+  margin: 0 12rpx;
+  color: var(--yunxi-text-subtle);
+}
+
+/* 履约信息：柔白平面 + 稀疏细线 */
+.detail-section {
+  display: flex;
+  flex-direction: column;
+  padding: 0 var(--yunxi-page-gutter);
+  background: var(--yunxi-surface);
+  border: 0;
+  border-top: 1rpx solid var(--yunxi-border);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.detail-fulfillment-card {
+  gap: 0;
+  padding-top: 28rpx;
+  padding-bottom: 10rpx;
+}
+
+.detail-section-label {
+  display: block;
+  padding-bottom: 6rpx;
+  color: var(--yunxi-gold);
+  font-size: 18rpx;
+  font-weight: 400;
+  letter-spacing: 0.28em;
+  line-height: 1.4;
+}
+
+.fulfillment-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 24rpx;
+  padding: 24rpx 0;
+  font-size: 24rpx;
+  line-height: 1.65;
+  border-bottom: 1rpx solid var(--yunxi-border);
+}
+
+.fulfillment-row:last-child {
+  border-bottom: 0;
+}
+
+.fulfillment-tag {
+  flex-shrink: 0;
+  width: 132rpx;
+  color: var(--yunxi-text-muted);
+  font-size: 22rpx;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+}
+
+.fulfillment-val {
+  flex: 1;
+  min-width: 0;
   color: var(--yunxi-text-primary);
-  font-size: 30rpx;
-  font-weight: 800;
-  line-height: 1.3;
+  font-size: 24rpx;
+}
+
+/* 仅供展示 */
+.detail-display-only-card {
+  gap: 10rpx;
+  padding-top: 32rpx;
+  padding-bottom: 32rpx;
+  background: var(--yunxi-surface-cream);
+}
+
+.detail-display-only-card__title {
+  color: var(--yunxi-text-primary);
+  font-size: 28rpx;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+}
+
+.detail-display-only-card__desc {
+  color: var(--yunxi-text-secondary);
+  font-size: 24rpx;
+  line-height: 1.7;
+}
+
+/* 图文 / 须知 / 推荐：统一编辑式分区 */
+.detail-description-section,
+.detail-notes-section,
+.detail-related-section {
+  padding-top: 44rpx;
+  padding-bottom: 48rpx;
+  gap: 24rpx;
+}
+
+.detail-notes-section {
+  background: var(--yunxi-surface-cream);
+}
+
+.detail-card-title {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+  color: var(--yunxi-text-primary);
+  font-size: 28rpx;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0.1em;
+}
+
+.detail-card-title::before {
+  content: "";
+  width: 20rpx;
+  height: 2rpx;
+  background: var(--yunxi-gold);
 }
 
 .detail-description {
   display: flex;
   flex-direction: column;
-  gap: 12rpx;
+  gap: 16rpx;
   color: var(--yunxi-text-secondary);
   font-size: 26rpx;
-  line-height: 1.7;
+  line-height: 1.9;
+  letter-spacing: 0.01em;
 }
 
 .detail-description__heading {
   display: block;
-  margin-top: 8rpx;
+  margin-top: 12rpx;
   color: var(--yunxi-text-primary);
-  font-size: 28rpx;
-  font-weight: 800;
+  font-size: 26rpx;
+  font-weight: 500;
 }
 
-/* 搭配推荐横滑列表 */
+/* 图文详情正文：纯段落，不套“须知”短横线 */
+.detail-description .notice-item {
+  padding-left: 0;
+}
+
+.detail-description .notice-item::before {
+  display: none;
+}
+
+/* 搭配推荐：内容单元，横向图版 */
+.detail-section .related-strip {
+  margin: 6rpx calc(var(--yunxi-page-gutter) * -1) 0;
+  padding: 0 var(--yunxi-page-gutter) 4rpx;
+  box-sizing: border-box;
+}
+
 .related-strip {
   width: 100%;
   white-space: nowrap;
-  padding-top: 4rpx;
 }
 
 .related-card {
   display: inline-flex;
   flex-direction: column;
-  gap: 8rpx;
-  width: 200rpx;
-  min-height: 280rpx;
-  margin-right: 18rpx;
+  gap: 10rpx;
+  width: 224rpx;
+  min-height: 88rpx;
+  margin-right: 20rpx;
   vertical-align: top;
-  overflow: hidden;
   white-space: normal;
 }
 
-.related-card:active,
-.detail-service:active {
-  opacity: 0.72;
+.related-card:active {
+  opacity: 0.65;
 }
 
 .related-image {
-  width: 200rpx;
-  height: 200rpx;
+  width: 224rpx;
+  height: 224rpx;
   overflow: hidden;
-  border-radius: var(--yunxi-radius-sm);
+  border-radius: 2rpx;
   background: var(--yunxi-surface-alt);
 }
 
@@ -310,42 +443,44 @@
   overflow: hidden;
   color: var(--yunxi-text-primary);
   font-size: 24rpx;
-  font-weight: 700;
+  font-weight: 400;
+  letter-spacing: 0.01em;
 }
 
 .related-price {
   color: var(--yunxi-price);
-  font-size: 28rpx;
-  font-weight: 900;
+  font-size: 26rpx;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
 }
 
-/* 购买须知列表 */
+/* 购买须知：黄铜短横线代替圆点 */
 .notice-list {
   display: flex;
   flex-direction: column;
-  gap: 14rpx;
+  gap: 18rpx;
 }
 
 .notice-item {
   position: relative;
-  padding-left: 24rpx;
+  padding-left: 28rpx;
   color: var(--yunxi-text-secondary);
   font-size: 26rpx;
-  line-height: 1.6;
+  line-height: 1.8;
 }
 
 .notice-item::before {
   content: "";
   position: absolute;
-  left: 4rpx;
-  top: 16rpx;
-  width: 10rpx;
-  height: 10rpx;
-  background: var(--yunxi-brand);
-  border-radius: 50%;
+  left: 0;
+  top: 21rpx;
+  width: 12rpx;
+  height: 1rpx;
+  background: var(--yunxi-gold);
+  border-radius: 0;
 }
 
-/* 底部常驻交互栏 */
+/* 固定交易栏 */
 .detail-actions {
   position: fixed;
   right: 0;
@@ -354,12 +489,11 @@
   z-index: 100;
   display: flex;
   align-items: center;
-  gap: 16rpx;
-  padding: 18rpx 28rpx calc(env(safe-area-inset-bottom) + 18rpx);
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: none;
+  gap: 18rpx;
+  padding: 16rpx var(--yunxi-page-gutter) calc(env(safe-area-inset-bottom) + 16rpx);
+  background: var(--yunxi-surface);
   border-top: 1rpx solid var(--yunxi-border);
-  box-shadow: 0 -8rpx 24rpx rgba(35, 50, 42, 0.04);
+  box-shadow: var(--yunxi-floating-shadow);
 }
 
 .detail-service {
@@ -373,113 +507,39 @@
   min-height: 88rpx;
 }
 
+.detail-service:active {
+  opacity: 0.6;
+}
+
 .detail-service__icon {
-  width: 38rpx;
-  height: 38rpx;
+  width: 36rpx;
+  height: 36rpx;
   background-position: center;
   background-repeat: no-repeat;
   background-size: contain;
+  opacity: 0.8;
 }
 
 .detail-service__icon--chat {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233D332D' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232E4638' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'/%3E%3C/svg%3E");
 }
 
 .detail-service__icon--cart {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233D332D' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='8' cy='21' r='1' fill='%233D332D'/%3E%3Ccircle cx='19' cy='21' r='1' fill='%233D332D'/%3E%3Cpath d='M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232E4638' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='8' cy='21' r='1'/%3E%3Ccircle cx='19' cy='21' r='1'/%3E%3Cpath d='M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12'/%3E%3C/svg%3E");
 }
 
 .detail-service__label {
-  color: var(--yunxi-text-secondary);
-  font-size: 20rpx;
-  font-weight: 700;
+  color: var(--yunxi-text-muted);
+  font-size: 18rpx;
+  font-weight: 400;
+  letter-spacing: 0.04em;
 }
 
 .detail-actions button {
   flex: 1;
   width: auto !important;
   min-width: 0;
-  height: 88rpx;
-  line-height: 88rpx;
-  font-size: 28rpx;
-}
-
-/* 详情页按商品信息、履约条件、交易动作分层 */
-.detail-content {
-  gap: 12rpx;
-}
-
-
-.detail-main,
-.detail-section {
-  gap: 14rpx;
-  padding: 24rpx 20rpx;
-  border-radius: var(--yunxi-radius-md);
-  box-shadow: none;
-}
-
-.detail-title {
-  font-size: 36rpx;
-}
-
-.detail-status {
-  border-radius: 6rpx;
-}
-
-.detail-price-label {
-  border-radius: 4rpx;
-}
-
-.detail-fulfillment-card {
-  gap: 0;
-  padding-top: 8rpx;
-  padding-bottom: 8rpx;
-}
-
-.detail-display-only-card {
-  gap: 8rpx;
-  background: var(--yunxi-surface-alt);
-}
-
-.detail-display-only-card__title {
-  color: var(--yunxi-text-primary);
-  font-size: 30rpx;
-  font-weight: 800;
-}
-
-.detail-display-only-card__desc {
-  color: var(--yunxi-text-secondary);
-  font-size: 24rpx;
-  line-height: 1.6;
-}
-
-.fulfillment-row {
-  padding: 14rpx 0;
-  border-bottom: 1rpx solid var(--yunxi-border);
-}
-
-.fulfillment-row:last-child {
-  border-bottom: 0;
-}
-
-.detail-actions {
-  padding: 12rpx 20rpx calc(env(safe-area-inset-bottom) + 12rpx);
-  background: #FFFFFF;
-  backdrop-filter: none;
-  box-shadow: 0 -4rpx 16rpx rgba(61, 51, 45, 0.06);
-}
-
-.detail-service {
-  width: 88rpx;
-  min-height: 88rpx;
-}
-
-.detail-service__label {
-  font-size: 24rpx;
-}
-
-.detail-actions button {
-  height: 88rpx;
-  line-height: 88rpx;
-  border-radius: 6rpx;
+  height: 96rpx;
+  border-radius: 2rpx;
+  font-size: 26rpx;
 }

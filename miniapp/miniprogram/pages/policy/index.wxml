@@ -8,13 +8,16 @@
   <view class="page-pinned page-pinned--empty"></view>
   <scroll-view class="page-scroll" scroll-y enhanced show-scrollbar="{{false}}">
     <view class="page policy-page">
-      <view class="policy-header bakery-panel">
-        <text class="policy-subtitle">芸熙烘焙服务与合规政策声明</text>
+      <view class="policy-card policy-masthead">
+        <text class="policy-title">{{policyTitle}}</text>
+        <view class="policy-header">
+          <text class="policy-subtitle">芸熙烘焙服务与合规政策声明</text>
+        </view>
       </view>
-      <view wx:if="{{loading}}" class="policy-card bakery-panel">
+      <view wx:if="{{loading}}" class="policy-body policy-card--loading">
         <text class="policy-content">加载中...</text>
       </view>
-      <view wx:else class="policy-card bakery-panel">
+      <view wx:else class="policy-body">
         <text class="policy-content">{{policyContent}}</text>
       </view>
     </view>

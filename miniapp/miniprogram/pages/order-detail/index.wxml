@@ -22,7 +22,7 @@
       <view wx:elif="{{loading && !order}}" class="empty">订单加载中...</view>
 
       <block wx:elif="{{order}}">
-        <view class="order-card order-card--status yunxi-card">
+        <view class="order-card order-card--status">
           <view>
             <text class="order-label">订单状态</text>
             <text class="order-status">{{order.statusText}}</text>
@@ -36,7 +36,7 @@
           >刷新</button>
         </view>
 
-        <view class="order-card yunxi-card">
+        <view class="order-card order-card--progress">
           <text class="section-title">订单进度</text>
           <text class="progress-hint">{{order.progressText}}</text>
           <view class="progress-list">
@@ -56,7 +56,7 @@
           </view>
         </view>
 
-        <view class="order-card yunxi-card">
+        <view class="order-card order-card--meta">
           <view class="order-row">
             <text class="order-label">订单号</text>
             <text>{{order.id}}</text>
@@ -83,7 +83,7 @@
           </view>
         </view>
 
-        <view class="order-card yunxi-card">
+        <view class="order-card order-card--items">
           <text class="section-title">商品明细</text>
           <view wx:for="{{order.itemsView}}" wx:key="productId" class="product-row">
             <view>
@@ -92,7 +92,7 @@
             </view>
             <text class="product-subtotal">{{item.subtotalText}}</text>
           </view>
-          <text class="section-title">金额明细</text>
+          <text class="section-title section-title--divider">金额明细</text>
           <view class="order-total-row">
             <text>商品金额</text>
             <text>{{order.goodsTotalText}}</text>
@@ -107,7 +107,7 @@
           </view>
         </view>
 
-        <view class="order-card yunxi-card">
+        <view class="order-card order-card--fulfillment">
           <text class="section-title">履约信息</text>
           <view class="order-row">
             <text class="order-label">方式</text>

@@ -27,7 +27,7 @@
             <text class="coupon-tab-count">{{groups[item.key].length}}</text>
           </view>
         </view>
-        <view wx:if="{{loading}}" class="empty-panel glass-panel">
+        <view wx:if="{{loading}}" class="empty-panel">
           <text class="empty-title">加载中...</text>
         </view>
         <view wx:elif="{{loadFailed}}" class="yunxi-state yunxi-state--page">

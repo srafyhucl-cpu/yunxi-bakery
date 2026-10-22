@@ -1,43 +1,80 @@
 /* ==========================================================================
-   政策与协议页 (Policy Page) - 现代自然轻食风格重塑
+   政策与协议页 —— 长文编辑排版（v2）
+   报头（柔白通栏）→ 正文（纸色通栏）。不做卡片、不用阴影、不描四边框；
+   标题 40/500，导语 20rpx overline 配黄铜竖线，正文 28rpx / 行高 2.0。
    ========================================================================== */
 
 .policy-page {
   display: flex;
   flex-direction: column;
-  gap: 24rpx;
-  padding: 24rpx 28rpx 80rpx;
+  gap: 0;
+  padding: 0 0 calc(env(safe-area-inset-bottom) + 80rpx);
+  background: var(--yunxi-page-bg);
 }
 
+/* ---------- 报头：柔白通栏，标题 40/500 ---------- */
+.policy-masthead {
+  padding: 44rpx var(--yunxi-page-gutter) 34rpx;
+  background: var(--yunxi-surface);
+  border-bottom: 1rpx solid var(--yunxi-border);
+}
+
+.policy-title {
+  display: block;
+  color: var(--yunxi-text-primary);
+  font-size: 40rpx;
+  line-height: 1.35;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+/* ---------- 导语：黄铜竖线 + overline，标出文档层级 ---------- */
 .policy-header {
   display: flex;
-  flex-direction: column;
-  gap: 12rpx;
-  padding: 36rpx 32rpx;
-  background: #FFFFFF;
-  border-radius: var(--yunxi-radius-md);
-  border: 1rpx solid var(--yunxi-border);
-  box-shadow: var(--yunxi-card-shadow);
+  align-items: flex-start;
+  gap: 16rpx;
+  margin-top: 24rpx;
+  padding-top: 22rpx;
+  border-top: 1rpx solid var(--yunxi-border);
+}
+
+.policy-header::before {
+  content: "";
+  flex: 0 0 auto;
+  align-self: stretch;
+  width: 2rpx;
+  min-height: 26rpx;
+  background: var(--yunxi-gold);
+  border-radius: 0;
 }
 
 .policy-subtitle {
-  color: var(--yunxi-text-muted);
-  font-size: 24rpx;
-  letter-spacing: 0.04em;
-}
-
-.policy-card {
-  padding: 36rpx 32rpx;
-  background: #FFFFFF;
-  border-radius: var(--yunxi-radius-md);
-  border: 1rpx solid var(--yunxi-border);
-  box-shadow: var(--yunxi-card-shadow);
-}
-
-.policy-content {
+  flex: 1;
+  min-width: 0;
   color: var(--yunxi-text-secondary);
+  font-size: 20rpx;
+  line-height: 1.6;
+  letter-spacing: 0.18em;
+}
+
+/* ---------- 正文：纸色通栏，靠行距与留白分层 ---------- */
+.policy-body {
+  padding: 40rpx var(--yunxi-page-gutter) 64rpx;
+  background: var(--yunxi-page-bg);
+}
+
+.policy-card--loading .policy-content {
+  color: var(--yunxi-text-muted);
+}
+
+/* 正文：宽松行距保证长文可读，段落之间保留原始空行 */
+.policy-content {
+  display: block;
+  color: var(--yunxi-text-primary);
   font-size: 28rpx;
-  line-height: 1.85;
+  font-weight: 400;
+  line-height: 2;
   letter-spacing: 0.02em;
   white-space: pre-wrap;
+  word-break: break-word;
 }

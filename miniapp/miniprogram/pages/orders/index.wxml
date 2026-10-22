@@ -12,7 +12,7 @@
   </view>
   <view class="page-pinned page-pinned--empty"></view>
   <scroll-view class="page-scroll" scroll-y enhanced show-scrollbar="{{false}}" bindscrolltolower="loadMore" lower-threshold="120">
-    <view class="page">
+    <view class="page orders-page">
       <view wx:if="{{!sessionView.loggedIn}}" class="yunxi-state yunxi-state--page">
         <view class="yunxi-state__icon yunxi-state__icon--package" aria-hidden="true"></view>
         <text class="yunxi-state__title">登录后查看订单</text>
@@ -47,24 +47,27 @@
         <button wx:if="{{!loading}}" class="primary-button yunxi-state__action" bindtap="goProducts">去选购</button>
       </view>
       <view wx:elif="{{sessionView.loggedIn}}" class="order-list">
-        <view wx:for="{{filteredOrders}}" wx:key="id" class="order-card yunxi-card" data-id="{{item.id}}" bindtap="openOrder">
+        <view wx:for="{{filteredOrders}}" wx:key="id" class="order-card" data-id="{{item.id}}" bindtap="openOrder">
           <view class="order-header">
             <view class="order-id-block">
               <text class="order-id-label">订单号</text>
               <text class="order-id">{{item.orderNoText}}</text>
             </view>
             <view class="order-status-group">
+              <view class="order-status-dot" aria-hidden="true"></view>
               <text class="payment-status">{{item.paymentStatusText}}</text>
               <text class="order-status">{{item.statusText}}</text>
             </view>
           </view>
-          <text class="order-title">{{item.itemTitle || '未命名商品'}} × {{item.itemCount || 1}}</text>
-          <view class="order-meta">
-            <text class="order-meta__line">{{item.fulfillmentTypeText}} · {{item.receiverLabel}}：{{item.receiverContactText}}</text>
-            <text class="order-meta__line">{{item.expectTimeLabel}}：{{item.expectTimeText}}</text>
+          <view class="order-body">
+            <text class="order-title">{{item.itemTitle || '未命名商品'}} × {{item.itemCount || 1}}</text>
+            <view class="order-meta">
+              <text class="order-meta__line">{{item.fulfillmentTypeText}} · {{item.receiverLabel}}：{{item.receiverContactText}}</text>
+              <text class="order-meta__line">{{item.expectTimeLabel}}：{{item.expectTimeText}}</text>
+            </view>
           </view>
           <view class="order-footer">
-            <text>{{item.createdAt}}</text>
+            <text class="order-created">{{item.createdAt}}</text>
             <view class="order-footer-right">
               <text class="order-total">{{item.totalText}}</text>
               <text class="order-link">详情</text>
