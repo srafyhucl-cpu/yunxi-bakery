@@ -320,7 +320,7 @@ Write-Host "    $py backend\scripts\import_youzan_stored_value.py --source backe
 Write-Host "    注意: 该合成夹具故意含 4 行脏数据，dry-run/apply 都会以退出码 1 拒绝入账（预期行为）"
 Write-Host ""
 Write-Host "完整试点手册（含 Mock 打印、快捷开单、常见问题）:" -ForegroundColor Green
-Write-Host "    backend\docs\release\local-trial-runbook.md" -ForegroundColor Green
+Write-Host "    docs\release\local-trial-runbook.md" -ForegroundColor Green
 Write-Host ""
 Write-Host "红线提醒: 只用合成数据；不接真实会员、真实支付、实体打印机、生产库。" -ForegroundColor Yellow
 Write-Host ""
