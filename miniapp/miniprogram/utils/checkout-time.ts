@@ -3,7 +3,8 @@ const DEFAULT_PICKUP_MINUTE = "00";
 const DEFAULT_BUSINESS_HOURS = "09:00-19:30";
 const DATE_PICKER_DAYS = 7;
 const SAME_DAY_ORDER_CUTOFF_HOUR = 17;
-const BEIJING_TIME_ZONE = "Asia/Shanghai";
+// 北京时区固定为 UTC+8（中国无夏令时）；部分真机小程序 JS 引擎不提供 Intl，故用固定偏移手动换算。
+const BEIJING_UTC_OFFSET_MINUTES = 8 * 60;
 const BUSINESS_HOURS_PATTERN = /(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/;
 
 export const CHECKOUT_MINUTE_OPTIONS = ["00", "30"];
@@ -43,26 +44,16 @@ export function padDateNumber(value: number): string {
 }
 
 function getBeijingDateTimeParts(now = new Date()): BeijingDateTimeParts {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: BEIJING_TIME_ZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23"
-  }).formatToParts(now);
-  const values = Object.fromEntries(
-    parts
-      .filter((part) => ["year", "month", "day", "hour", "minute"].includes(part.type))
-      .map((part) => [part.type, Number(part.value)])
-  );
+  // 部分真机（尤其 Android）的小程序 JS 引擎不提供 Intl，Intl.DateTimeFormat 会在
+  // 结算页模块加载期抛 ReferenceError 导致白屏；改用固定 UTC+8 偏移手动换算北京时间
+  // （中国无夏令时，与 timeZone: "Asia/Shanghai" 等价）。
+  const beijing = new Date(now.getTime() + BEIJING_UTC_OFFSET_MINUTES * 60 * 1000);
   return {
-    year: values.year || 0,
-    month: values.month || 0,
-    day: values.day || 0,
-    hour: values.hour || 0,
-    minute: values.minute || 0
+    year: beijing.getUTCFullYear(),
+    month: beijing.getUTCMonth() + 1,
+    day: beijing.getUTCDate(),
+    hour: beijing.getUTCHours(),
+    minute: beijing.getUTCMinutes()
   };
 }
 
