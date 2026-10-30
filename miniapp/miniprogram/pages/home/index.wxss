@@ -221,6 +221,14 @@
   letter-spacing: 0;
 }
 
+.product-price__unit {
+  margin-right: 8rpx;
+  color: var(--yunxi-text-muted);
+  font-size: 20rpx;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+}
+
 .product-price.is-display-only {
   color: var(--yunxi-text-muted);
   font-size: 22rpx;

@@ -612,7 +612,8 @@ button.ghost-button,
 .yunxi-state__title {
   color: var(--yunxi-text-primary);
   font-size: 32rpx;
-  font-weight: 600;
+  font-weight: 500;
+  letter-spacing: 0.02em;
 }
 
 .yunxi-state__hint {

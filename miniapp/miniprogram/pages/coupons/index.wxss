@@ -134,6 +134,7 @@
 
 /* 券面信息：与金额之间是 1rpx 虚线齿孔 */
 .coupon-info {
+  position: relative;
   flex: 1;
   min-width: 0;
   display: flex;
@@ -141,6 +142,26 @@
   gap: 10rpx;
   padding: 30rpx 24rpx;
   border-left: 1rpx dashed var(--yunxi-border-medium);
+}
+
+/* 票券齿孔：在虚线两端切出半圆缺口 */
+.coupon-info::before,
+.coupon-info::after {
+  content: "";
+  position: absolute;
+  left: -9rpx;
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 50%;
+  background: var(--yunxi-page-bg);
+}
+
+.coupon-info::before {
+  top: -9rpx;
+}
+
+.coupon-info::after {
+  bottom: -9rpx;
 }
 
 .coupon-title {

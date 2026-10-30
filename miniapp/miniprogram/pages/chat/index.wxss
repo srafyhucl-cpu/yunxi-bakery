@@ -287,10 +287,12 @@
 .chat-page button.chat-service-btn--queue {
   color: var(--yunxi-text-primary);
   background: transparent;
-  border: 1rpx solid var(--yunxi-border-medium);
+  border: 0;
+  border-bottom: 1rpx solid var(--yunxi-border-medium);
+  border-radius: 0;
 }
 
-/* 微信原生客服是次级入口，只用一条下划线暗示可点 */
+/* 微信原生客服同为次级入口，用同一种下划线语言 */
 .chat-page button.chat-service-btn--wechat {
   color: var(--yunxi-text-secondary);
   background: transparent;

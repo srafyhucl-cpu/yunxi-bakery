@@ -264,6 +264,13 @@ textarea {
   letter-spacing: 0.04em;
 }
 
+.address-card-phone::before {
+  content: "·";
+  margin-right: 10rpx;
+  color: var(--yunxi-text-subtle);
+  font-weight: 400;
+}
+
 /* 默认标记：文字 overline，不做色块 */
 .address-badge {
   flex: 0 0 auto;

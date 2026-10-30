@@ -39,7 +39,7 @@
 
 .checkout-summary__hint {
   margin-top: 8rpx;
-  color: var(--yunxi-text-secondary);
+  color: var(--yunxi-text-muted);
   font-size: 24rpx;
   line-height: 1.5;
 }
@@ -113,7 +113,7 @@
   gap: 44rpx;
   padding: 24rpx var(--yunxi-page-gutter) 0;
   background: var(--yunxi-surface);
-  border-bottom: 0;
+  border-bottom: 1rpx solid var(--yunxi-border);
 }
 
 button.delivery-tab,

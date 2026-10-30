@@ -119,7 +119,7 @@
                 <text class="product-title">{{product.title}}</text>
                 <text wx:if="{{product.deliveryTip}}" class="product-tip">{{product.deliveryTip}}</text>
                 <view class="product-bottom-row">
-                  <text class="product-price{{product.isDisplayOnly ? ' is-display-only' : ''}}">{{product.priceText}}</text>
+                  <text class="product-price{{product.isDisplayOnly ? ' is-display-only' : ''}}"><text wx:if="{{!product.isDisplayOnly}}" class="product-price__unit">自提价</text>{{product.priceText}}</text>
                   <view
                     wx:if="{{!product.isDisplayOnly}}"
                     class="product-action {{product.isUnavailable ? 'is-muted' : ''}}"
