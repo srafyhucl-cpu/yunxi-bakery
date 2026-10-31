@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -72,10 +73,19 @@ class OrderFulfillmentDualTrackService:
 
         for norm_item in normalized_items:
             raw_item = item_map.get(str(norm_item.product_id), {})
-            fulfillment_type = self.classify_fulfillment_type(raw_item, norm_item.title)
+            fulfillment_type = (
+                norm_item.fulfillment_type
+                or self.classify_fulfillment_type(raw_item, norm_item.title)
+            )
             if fulfillment_type == FULFILLMENT_PREORDER_CAKE:
                 has_cake = True
-                self.validate_cake_customization(raw_item, norm_item.title)
+                self.validate_cake_customization(
+                    {
+                        "customization": norm_item.customization
+                        or raw_item.get("customization")
+                    },
+                    norm_item.title,
+                )
                 item_advance = raw_item.get("min_advance_hours") or raw_item.get(
                     "minAdvanceHours"
                 )
@@ -198,14 +208,33 @@ class OrderFulfillmentDualTrackService:
                 logger.debug("跳过非法预约时间订单容量统计: %s", exc)
                 order_slot_key = ""
             if order_slot_key and order_slot_key == slot_key:
-                # 检查该订单是否包含定制蛋糕（含定制信息、PREORDER_CAKE标识或定制关键词）
-                if (
-                    "customization" in products_json
-                    or "PREORDER_CAKE" in products_json
-                    or any(kw in products_json for kw in CAKE_KEYWORDS)
-                ):
+                if self._is_cake_order(products_json):
                     count += 1
         return count
+
+    @staticmethod
+    def _is_cake_order(products_json: str) -> bool:
+        """判断订单是否含定制蛋糕。
+
+        不能再用「products_json 里出现 customization 键」判断：现货订单也会带
+        空的 customization 字段，会把自己算成蛋糕订单、提前占满时段容量。
+        """
+        if "PREORDER_CAKE" in products_json:
+            return True
+        try:
+            items = json.loads(products_json or "[]")
+        except json.JSONDecodeError:
+            items = []
+        if isinstance(items, list):
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                if item.get("fulfillment_type") == FULFILLMENT_PREORDER_CAKE:
+                    return True
+                customization = item.get("customization")
+                if isinstance(customization, dict) and customization:
+                    return True
+        return any(keyword in products_json for keyword in CAKE_KEYWORDS)
 
 
 __all__ = [

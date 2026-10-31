@@ -9,7 +9,7 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  padding: 0 0 calc(env(safe-area-inset-bottom) + 200rpx);
+  padding: 0 0 calc(env(safe-area-inset-bottom) + 220rpx);
   background: var(--yunxi-page-bg);
 }
 
@@ -96,6 +96,14 @@
   color: var(--yunxi-text-muted);
   font-size: 22rpx;
   font-variant-numeric: tabular-nums;
+}
+
+/* 规格与定制摘要：让顾客在结算页确认尺寸、夹心与祝福语 */
+.checkout-item__option {
+  margin-top: 2rpx;
+  color: var(--yunxi-text-secondary);
+  font-size: 22rpx;
+  line-height: 1.4;
 }
 
 .checkout-item__price {
@@ -632,64 +640,7 @@ button.delivery-guidance__action {
   opacity: 0.65;
 }
 
-/* 协议：纸色行，链接保留 88rpx 触控区 */
-.agreement-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 14rpx;
-  margin-top: 26rpx;
-  padding: 22rpx var(--yunxi-page-gutter);
-  background: var(--yunxi-surface-cream);
-  border-bottom: 0;
-}
-
-.agreement-check {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28rpx;
-  height: 28rpx;
-  margin-top: 6rpx;
-  flex-shrink: 0;
-  color: #FFFFFF;
-  background: transparent;
-  border: 1rpx solid var(--yunxi-border-medium);
-  border-radius: var(--yunxi-radius-sm);
-  font-size: 18rpx;
-  font-weight: 500;
-}
-
-.agreement-check.is-checked {
-  background: var(--yunxi-brand);
-  border-color: var(--yunxi-brand);
-}
-
-.agreement-copy {
-  flex: 1;
-  min-width: 0;
-  color: var(--yunxi-text-secondary);
-  font-size: 22rpx;
-  line-height: 1.6;
-}
-
-.agreement-copy__intro {
-  display: block;
-}
-
-.agreement-links {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 4rpx;
-}
-
-.agreement-links__join {
-  display: inline-flex;
-  align-items: center;
-  min-height: 88rpx;
-  color: var(--yunxi-text-secondary);
-}
-
+/* 协议：不再要求顾客在页面里找勾选框，改为提交时弹窗确认，这里只保留入口说明 */
 .agreement-link {
   display: inline-flex;
   align-items: center;
@@ -712,12 +663,18 @@ button.delivery-guidance__action {
   left: 0;
   z-index: 100;
   display: flex;
-  align-items: center;
-  gap: 20rpx;
-  padding: 16rpx var(--yunxi-page-gutter) calc(env(safe-area-inset-bottom) + 16rpx);
+  flex-direction: column;
+  gap: 4rpx;
+  padding: 14rpx var(--yunxi-page-gutter) calc(env(safe-area-inset-bottom) + 14rpx);
   background: var(--yunxi-surface);
   border-top: 1rpx solid var(--yunxi-border);
   box-shadow: var(--yunxi-floating-shadow);
+}
+
+.checkout-footer__row {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
 }
 
 .checkout-footer__total {
@@ -763,4 +720,20 @@ button.delivery-guidance__action {
   font-size: 28rpx;
   font-weight: 500;
   letter-spacing: 0.08em;
+}
+
+.checkout-footer__agreement {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 2rpx;
+  color: var(--yunxi-text-muted);
+  font-size: 20rpx;
+  line-height: 1.4;
+}
+
+.checkout-footer__agreement .agreement-link {
+  min-height: 60rpx;
+  font-size: 20rpx;
 }

@@ -5,6 +5,14 @@ interface CartItem {
   priceFen: number;
   quantity: number;
   stock?: number;
+  /** 规格与定制：同一商品不同规格必须分行，lineKey 为唯一标识 */
+  lineKey?: string;
+  skuId?: string;
+  skuName?: string;
+  optionChoiceIds?: string[];
+  optionText?: string;
+  greeting?: string;
+  accessories?: string;
 }
 
 interface AddressBookItem {

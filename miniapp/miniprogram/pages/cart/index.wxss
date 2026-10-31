@@ -158,6 +158,15 @@
   opacity: 0.7;
 }
 
+/* 规格与定制：同款不同规格必须在购物车里一眼区分 */
+.cart-option {
+  display: block;
+  margin-top: 4rpx;
+  color: var(--yunxi-text-secondary);
+  font-size: 22rpx;
+  line-height: 1.4;
+}
+
 /* 库存事实：标题下方的独立注记行，不做底色胶囊也不挤在价格旁边 */
 .tag {
   display: block;

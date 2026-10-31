@@ -543,3 +543,81 @@
   border-radius: 2rpx;
   font-size: 26rpx;
 }
+
+/* 规格与定制：选项片可换行，选中态用品牌色描边，售罄规格置灰划线 */
+.detail-options-section {
+  gap: 0;
+  padding-top: 28rpx;
+  padding-bottom: 8rpx;
+}
+
+.option-block {
+  padding: 18rpx 0 22rpx;
+  border-bottom: 1rpx solid var(--yunxi-border);
+}
+
+.option-block:last-child {
+  border-bottom: 0;
+}
+
+.option-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin-bottom: 14rpx;
+}
+
+.option-head__hint {
+  color: var(--yunxi-text-muted);
+  font-size: 20rpx;
+}
+
+.option-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.option-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8rpx;
+  min-height: 72rpx;
+  padding: 0 24rpx;
+  color: var(--yunxi-text-primary);
+  background: var(--yunxi-surface-cream);
+  border: 1rpx solid transparent;
+  border-radius: var(--yunxi-radius-sm);
+  font-size: 24rpx;
+}
+
+.option-chip.is-active {
+  color: var(--yunxi-brand);
+  background: #FFFFFF;
+  border-color: var(--yunxi-brand);
+}
+
+.option-chip.is-disabled {
+  color: var(--yunxi-text-muted);
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+.option-chip__price {
+  color: var(--yunxi-text-secondary);
+  font-size: 20rpx;
+}
+
+.option-input {
+  min-height: 72rpx;
+  padding: 0 24rpx;
+  color: var(--yunxi-text-primary);
+  background: var(--yunxi-surface-cream);
+  border-radius: var(--yunxi-radius-sm);
+  font-size: 24rpx;
+}
+
+.option-input__placeholder {
+  color: var(--yunxi-text-muted);
+}

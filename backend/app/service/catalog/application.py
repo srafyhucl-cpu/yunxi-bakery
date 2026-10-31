@@ -1,6 +1,7 @@
 """商品目录领域应用服务。"""
 
 from dataclasses import dataclass
+from pathlib import Path
 from urllib.parse import urlparse
 
 from httpx import AsyncClient
@@ -16,7 +17,15 @@ from app.service.catalog.serialization import (
     CatalogProductSerializer,
     parse_youzan_category_id,
 )
+from app.service.catalog.product_options import (
+    ORDER_MODE_DIRECT,
+    build_product_options,
+)
 from app.service.security.url_policy import fetch_limited_remote_image
+from app.service.order.fulfillment_types import (
+    FULFILLMENT_PREORDER_CAKE,
+    classify_fulfillment_type,
+)
 
 DEFAULT_PRODUCT_LIMIT = 50
 MAX_PRODUCT_LIMIT = 100
@@ -199,10 +208,15 @@ class CatalogApplicationService:
         entry = await self._get_product_entry(product_id)
         if entry is None:
             return None
-        return await self._serializer.serialize_product(entry)
+        product = await self._serializer.serialize_product(entry)
+        enriched = await self._with_product_options([product])
+        return enriched[0]
 
     async def fetch_product_image(self, product_id: str) -> ProductImagePayload | None:
-        """通过商品 ID 受控拉取原始商品图。"""
+        """通过商品 ID 返回商品图：优先本地文件，未迁移时回源有赞。"""
+        local_image = await self._local_image_payload(product_id)
+        if local_image is not None:
+            return local_image
         entry = await self._get_product_entry(product_id)
         if entry is None:
             return None
@@ -234,6 +248,31 @@ class CatalogApplicationService:
         content, content_type = result
         if not content:
             return None
+        return ProductImagePayload(content=content, content_type=content_type)
+
+    async def _local_image_payload(self, product_id: str) -> ProductImagePayload | None:
+        """读取已迁移到服务器的商品图；路径越界或文件缺失时回退远程。"""
+        if self._youzan_product_repo is None:
+            return None
+        rows = await self._youzan_product_repo.get_option_rows([product_id])
+        relative = str(
+            (rows.get(str(product_id)) or {}).get("image_local") or ""
+        ).strip()
+        if not relative:
+            return None
+        base = Path(settings.DB_PATH).resolve().parent
+        file_path = (base / relative).resolve()
+        if base != file_path.parent and base not in file_path.parents:
+            return None
+        if not file_path.is_file():
+            return None
+        content = file_path.read_bytes()
+        if not content or len(content) > MAX_IMAGE_BYTES:
+            return None
+        content_type = {
+            ".png": "image/png",
+            ".webp": "image/webp",
+        }.get(file_path.suffix.lower(), "image/jpeg")
         return ProductImagePayload(content=content, content_type=content_type)
 
     def _is_remote_image_url(self, image_url: str) -> bool:
@@ -283,12 +322,64 @@ class CatalogApplicationService:
         *,
         preferred_category_id: str = "",
     ) -> list[dict]:
-        return [
+        products = [
             await self._serializer.serialize_product(
                 entry, preferred_category_id=preferred_category_id
             )
             for entry in entries
         ]
+        return await self._with_product_options(products)
+
+    async def _with_product_options(self, products: list[dict]) -> list[dict]:
+        """为商品读模型补上规格与选项，让前台按真实数据决定下单方式。
+
+        有尺寸 SKU 或定制属性即提前预订；纯现货商品保持直接下单。
+        没有有赞商品行时按直接下单处理，避免历史/异常数据把商品变成不可售。
+        """
+        if not products:
+            return products
+        rows: dict[str, dict] = {}
+        if self._youzan_product_repo is not None:
+            rows = await self._youzan_product_repo.get_option_rows(
+                [str(product.get("id") or "") for product in products]
+            )
+        for product in products:
+            row = rows.get(str(product.get("id") or ""))
+            if row is None:
+                product.update(
+                    {"orderMode": ORDER_MODE_DIRECT, "variants": [], "options": []}
+                )
+                continue
+            product.update(
+                build_product_options(
+                    str(row.get("skus_json") or ""),
+                    str(row.get("item_props_json") or ""),
+                    base_price_fen=int(row.get("price_fen") or 0),
+                )
+            )
+            # 后台按商品覆盖履约方式：固定尺寸蛋糕等无规格数据的商品也能正确判为预订
+            override = str(row.get("fulfillment_mode") or "").strip()
+            if override in ("preorder", "direct"):
+                product["orderMode"] = override
+            elif product["orderMode"] == "direct" and self._is_preorder_title(
+                str(product.get("title") or "")
+            ):
+                # 标题命中定制关键词的历史商品与下单判定保持一致，避免商品页说现货、下单却要预订
+                product["orderMode"] = "preorder"
+            # 图片已迁到服务器时优先走本地代理，避免有赞 CDN 停服后裂图
+            if str(row.get("image_local") or "").strip():
+                product["imageUrl"] = (
+                    f"/api/v1/miniapp/products/{product.get('id')}/image"
+                )
+        return products
+
+    @staticmethod
+    def _is_preorder_title(title: str) -> bool:
+        """标题命中定制关键词时按预订处理，与订单履约判定保持一致。"""
+        return (
+            classify_fulfillment_type({"title": title}, title)
+            == FULFILLMENT_PREORDER_CAKE
+        )
 
     def _normalize_product_pagination(self, limit: int, offset: int) -> tuple[int, int]:
         """限制公开列表分页范围，避免单请求拉取整库。"""

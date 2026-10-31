@@ -6,6 +6,10 @@ export interface CreateOrderPayload {
     quantity: number;
     title?: string;
     priceFen?: number;
+    skuId?: string;
+    optionChoiceIds?: string[];
+    greeting?: string;
+    accessories?: string;
   }>;
   receiverName: string;
   receiverPhone: string;

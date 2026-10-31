@@ -15,16 +15,32 @@ export function clearCartItems(): void {
   saveCartItems([]);
 }
 
+/** 购物车行标识：商品 + 规格 + 选项 + 定制文字，任一不同都必须单独成行。 */
+export function buildCartLineKey(
+  item: Pick<CartItem, "productId" | "skuId" | "optionChoiceIds" | "greeting" | "accessories">
+): string {
+  return [
+    item.productId,
+    item.skuId || "",
+    (item.optionChoiceIds || []).slice().sort().join(","),
+    (item.greeting || "").trim(),
+    (item.accessories || "").trim()
+  ].join("|");
+}
+
 export function addCartItem(item: CartItem): void {
   const items = getCartItems();
-  const existingItem = items.find((cartItem) => cartItem.productId === item.productId);
+  const lineKey = item.lineKey || buildCartLineKey(item);
+  const existingItem = items.find(
+    (cartItem) => (cartItem.lineKey || buildCartLineKey(cartItem)) === lineKey
+  );
   if (existingItem) {
     existingItem.quantity += item.quantity;
     if (typeof item.stock === "number") {
       existingItem.stock = item.stock;
     }
   } else {
-    items.push(item);
+    items.push({ ...item, lineKey });
   }
   saveCartItems(items);
 }

@@ -165,20 +165,10 @@ class OrderCreationService:
             SessionCreate(id="", channel=STOREFRONT_CHANNEL, user_id=user_id)
         )
         now = datetime.now().strftime(TIME_FORMAT)
-        raw_items_map = {
-            str(item.get("product_id") or item.get("productId")): item
-            for item in payload.get("items", [])
-        }
         product_dicts = []
         for item in order_items:
             d = dict(item.__dict__)
-            raw = raw_items_map.get(str(item.product_id), {})
-            if "customization" in raw:
-                d["customization"] = raw["customization"]
-            if "fulfillment_type" in raw or "fulfillmentType" in raw:
-                d["fulfillment_type"] = raw.get("fulfillment_type") or raw.get(
-                    "fulfillmentType"
-                )
+            d.pop("line_key", None)
             product_dicts.append(d)
 
         return Order(

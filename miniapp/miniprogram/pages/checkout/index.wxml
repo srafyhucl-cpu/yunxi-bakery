@@ -26,6 +26,7 @@
           <view class="checkout-item__copy">
             <text class="checkout-item__title">{{item.title}}</text>
             <text class="checkout-item__meta">数量 × {{item.quantity}}</text>
+            <text wx:if="{{item.skuName || item.optionText}}" class="checkout-item__option">{{item.skuName}}{{item.optionText ? ' · ' + item.optionText : ''}}{{item.greeting ? ' · 祝福：' + item.greeting : ''}}</text>
           </view>
           <text class="checkout-item__price">{{item.priceText}}</text>
         </view>
@@ -194,30 +195,27 @@
           <text class="pending-action danger" bindtap="cancelPendingOrder">取消订单</text>
         </view>
       </view>
-      <view wx:if="{{isLoggedIn && checkoutItems.length}}" class="agreement-row hover-scale fade-in" bindtap="toggleAgreementAccepted">
-        <text class="agreement-check {{agreementAccepted ? 'is-checked' : ''}}">{{agreementAccepted ? '✓' : ''}}</text>
-        <view class="agreement-copy">
-          <text class="agreement-copy__intro">我已阅读并同意</text>
-          <view class="agreement-links">
-            <text class="agreement-link" data-type="agreement" catchtap="openPolicy">《用户协议》</text>
-            <text class="agreement-links__join">和</text>
-            <text class="agreement-link" data-type="privacy" catchtap="openPolicy">《隐私政策》</text>
-          </view>
-        </view>
-      </view>
     </view>
   </scroll-view>
   <view wx:if="{{isLoggedIn && checkoutItems.length}}" class="checkout-footer">
-    <view class="checkout-footer__total">
-      <text class="muted">实付（估算）</text>
-      <text class="checkout-footer__amount">{{estimateRemainFenText}}</text>
-      <text class="checkout-footer__note">{{footerAmountNote}}</text>
+    <view class="checkout-footer__row">
+      <view class="checkout-footer__total">
+        <text class="muted">实付（估算）</text>
+        <text class="checkout-footer__amount">{{estimateRemainFenText}}</text>
+        <text class="checkout-footer__note">{{footerAmountNote}}</text>
+      </view>
+      <button
+        class="primary-button checkout-footer__submit hover-scale"
+        loading="{{submitting}}"
+        disabled="{{submitting || !canSubmitOrder}}"
+        bindtap="submitOrder"
+      >{{submitButtonText}}</button>
     </view>
-    <button
-      class="primary-button checkout-footer__submit hover-scale"
-      loading="{{submitting}}"
-      disabled="{{submitting || !canSubmitOrder}}"
-      bindtap="submitOrder"
-    >{{submitButtonText}}</button>
+    <view class="checkout-footer__agreement">
+      <text class="checkout-footer__agreement-text">提交订单即表示同意</text>
+      <text class="agreement-link" data-type="agreement" catchtap="openPolicy">《用户协议》</text>
+      <text class="checkout-footer__agreement-text">与</text>
+      <text class="agreement-link" data-type="privacy" catchtap="openPolicy">《隐私政策》</text>
+    </view>
   </view>
 </view>

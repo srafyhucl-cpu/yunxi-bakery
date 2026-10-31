@@ -383,10 +383,46 @@ Query：
     "tags": ["生日蛋糕"],
     "description": "适合生日与家庭聚会",
     "specs": ["6寸", "8寸"],
-    "notices": ["需提前24小时预订"]
+    "notices": ["需提前24小时预订"],
+    "orderMode": "preorder",
+    "variants": [
+      { "id": "26165975146", "property": "尺寸", "name": "6寸", "priceFen": 25800, "stock": 1 }
+    ],
+    "options": [
+      {
+        "name": "夹心",
+        "required": true,
+        "multiple": true,
+        "choices": [
+          { "id": "11381184", "name": "芒果", "priceDeltaFen": 0 }
+        ]
+      }
+    ]
   }
 }
 ```
+
+`orderMode` 由有赞数据推导：SKU 带「尺寸」或商品带定制属性（蛋糕胚/夹心/甜度）为 `preorder`，其余为 `direct`。
+`variants` 为可选规格（尺寸决定价格），`options` 为定制属性组（`required` 必选、`multiple` 可多选、选项自带加价）。
+
+下单时 `items[]` 需回传所选规格与选项，服务端按「SKU 价 + 选项加价」重算价格，不采用前端报价：
+
+```json
+{
+  "items": [
+    {
+      "productId": "5893479921",
+      "quantity": 1,
+      "skuId": "26165975147",
+      "optionChoiceIds": ["11582016", "11381184"],
+      "greeting": "生日快乐",
+      "accessories": "餐具、蜡烛"
+    }
+  ]
+}
+```
+
+必选项缺失、规格失效、规格售罄均返回 `400`，`detail` 为中文提示（如“请选择夹心”“该规格已售罄”）。
 
 ### GET `/api/v1/miniapp/products/{productId}/image`
 
