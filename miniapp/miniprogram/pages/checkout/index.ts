@@ -30,6 +30,7 @@ import {
   getCheckoutDateEnd,
   getCheckoutDateStart,
   isCheckoutDateToday,
+  PREORDER_MIN_ADVANCE_HOURS,
   resolveCheckoutSchedule,
 } from "../../utils/checkout-time";
 import { formatDeductionFen, formatFen } from "../../utils/money";
@@ -167,6 +168,8 @@ Page({
     selectedHourIndex: getDefaultCheckoutHourIndex(buildCheckoutHourOptions("09:00-19:30")),
     selectedMinuteIndex: 0,
     businessHours: "09:00-19:30",
+    hasPreorderItems: false,
+    preorderAdvanceHours: 0,
     isSameDayOrder: isCheckoutDateToday(buildDefaultExpectTime().slice(0, 10)),
     totalText: "¥0.00",
     errorMessage: "",
@@ -221,6 +224,20 @@ Page({
     // 会话提示仅在未登录时提供动作，已登录身份说明不再展示返回按钮。
     wx.switchTab({ url: ROUTES.profile });
   },
+  /** 判断购物车是否含预订商品：老购物车没有 orderMode 时回查商品详情。 */
+  async resolvePreorderItems(items: CartItem[]): Promise<boolean> {
+    if (items.some((item) => item.orderMode === "preorder")) {
+      return true;
+    }
+    const unknown = items.filter((item) => !item.orderMode).slice(0, 5);
+    if (!unknown.length) {
+      return false;
+    }
+    const details = await Promise.all(
+      unknown.map((item) => getProductDetail(item.productId).catch(() => null))
+    );
+    return details.some((product) => product?.orderMode === "preorder");
+  },
   async loadCheckout() {
     const session = getMiniappSession();
     if (!isMiniappLoggedIn(session)) {
@@ -238,7 +255,14 @@ Page({
     const shopSettings = await getShopSettings();
     await syncAddressBookFromBackend();
     const selectedAddress = getSelectedAddress();
-    const defaultExpectTime = buildDefaultExpectTime(shopSettings.businessHours);
+    // 购物车含预订商品时，可选时间必须整体抬高至少 4 小时，避免下单才被拒
+    const hasPreorderItems = await this.resolvePreorderItems(checkoutItems);
+    const preorderAdvanceHours = hasPreorderItems ? PREORDER_MIN_ADVANCE_HOURS : 0;
+    const defaultExpectTime = buildDefaultExpectTime(
+      shopSettings.businessHours,
+      new Date(),
+      preorderAdvanceHours
+    );
     const shouldApplySelectedAddress =
       Boolean(selectedAddress) &&
       (this.data.selectedAddressId !== selectedAddress?.id ||
@@ -267,6 +291,8 @@ Page({
       dateStartValue: getCheckoutDateStart(),
       dateEndValue: getCheckoutDateEnd(),
       businessHours: shopSettings.businessHours,
+      hasPreorderItems,
+      preorderAdvanceHours,
     });
     // 选择器显示值由提交值反推：重新进入结算页时不会出现控件与实际下单时间不一致。
     this.syncExpectTimeSchedule(
@@ -399,7 +425,9 @@ Page({
     const schedule = resolveCheckoutSchedule(
       resolvedBusinessHours,
       resolvedExpectTime,
-      this.data.minuteOptions
+      this.data.minuteOptions,
+      new Date(),
+      this.data.preorderAdvanceHours
     );
     this.setData({
       hourOptions: schedule.hourOptions,
@@ -412,7 +440,12 @@ Page({
   },
   selectExpectDate(event: WechatMiniprogram.PickerChange) {
     const selectedDateValue = String(event.detail.value);
-    const hourOptions = buildCheckoutHourOptions(this.data.businessHours, selectedDateValue);
+    const hourOptions = buildCheckoutHourOptions(
+      this.data.businessHours,
+      selectedDateValue,
+      new Date(),
+      this.data.preorderAdvanceHours
+    );
     const selectedHourIndex = getDefaultCheckoutHourIndex(hourOptions);
     this.setData({
       selectedDateValue,

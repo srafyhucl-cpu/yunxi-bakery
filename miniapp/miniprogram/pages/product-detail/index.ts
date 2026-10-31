@@ -530,7 +530,8 @@ Page({
         optionChoiceIds: this.data.selectedChoiceIds,
         optionText: this.buildOptionText(),
         greeting: this.data.greeting.trim(),
-        accessories
+        accessories,
+        orderMode: product.orderMode
       });
       wx.showToast({
         title: "已加入购物车",

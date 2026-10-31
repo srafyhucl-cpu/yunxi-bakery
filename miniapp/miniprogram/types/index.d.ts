@@ -13,6 +13,8 @@ interface CartItem {
   optionText?: string;
   greeting?: string;
   accessories?: string;
+  /** 下单方式：预订商品需要提前量，结算页据此抬高可选时间 */
+  orderMode?: "direct" | "preorder";
 }
 
 interface AddressBookItem {

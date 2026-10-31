@@ -18,7 +18,12 @@ export function getProductImageClass(product: CatalogProduct, index = 0): string
 }
 
 type PurchaseHintProduct = Pick<CatalogProduct, "title"> &
-  Partial<Pick<CatalogProduct, "categoryName" | "tags" | "stock" | "isActive" | "isPurchasable">>;
+  Partial<
+    Pick<
+      CatalogProduct,
+      "categoryName" | "tags" | "stock" | "isActive" | "isPurchasable"
+    > & { variants: CatalogProduct["variants"] }
+  >;
 
 export function isProductPurchasable(product: PurchaseHintProduct): boolean {
   return product.isPurchasable !== false;
@@ -83,8 +88,13 @@ export function getProductAvailabilityLabel(product: PurchaseHintProduct): strin
 }
 
 // 非卖品没有真实售价：同步数据里的虚拟占位价与库存数会把展示条目伪装成可售商品。
+// 有多个规格时展示的是最低价，必须加「起」，避免顾客以为是整单价格。
 export function getProductPriceText(product: PurchaseHintProduct, priceText: string): string {
-  return isProductPurchasable(product) ? priceText : "非卖品";
+  if (!isProductPurchasable(product)) {
+    return "非卖品";
+  }
+  const variants = product.variants || [];
+  return variants.length > 1 ? `${priceText} 起` : priceText;
 }
 
 // 按钮动作必须与履约口径一致：现货配件当场加购，现做商品走预订。

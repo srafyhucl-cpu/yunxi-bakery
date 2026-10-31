@@ -133,3 +133,13 @@ test("带现货标签的商品仍展示现货事实", () => {
     "现货"
   );
 });
+
+test("多规格商品列表价带「起」字，单规格与现货保持原价", () => {
+  const multi = { title: "年轻妈妈生日蛋糕", variants: [{}, {}] };
+  const single = { title: "固定款蛋糕", variants: [{}] };
+  const direct = { title: "招牌牛奶吐司" };
+
+  assert.equal(getProductPriceText(multi, "¥258.00"), "¥258.00 起");
+  assert.equal(getProductPriceText(single, "¥258.00"), "¥258.00");
+  assert.equal(getProductPriceText(direct, "¥18.00"), "¥18.00");
+});

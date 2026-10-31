@@ -302,6 +302,15 @@ button.delivery-tab:active,
 }
 
 /* 时间选择：与输入框同款的裸字段 */
+/* 预订提前量提示：只在含预订商品时出现，说明时间为什么整体后移 */
+.time-advance-hint {
+  padding: 16rpx var(--yunxi-page-gutter);
+  color: var(--yunxi-warning, #B45309);
+  background: var(--yunxi-surface-cream);
+  font-size: 22rpx;
+  line-height: 1.5;
+}
+
 .time-grid {
   display: flex;
   flex-wrap: wrap;

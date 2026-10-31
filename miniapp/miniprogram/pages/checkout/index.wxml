@@ -89,6 +89,7 @@
             bindinput="updateField"
           />
         </view>
+        <view wx:if="{{hasPreorderItems}}" class="time-advance-hint">预订蛋糕需至少提前 4 小时，可选时间已自动顺延</view>
         <view class="time-grid">
           <picker
             mode="date"
