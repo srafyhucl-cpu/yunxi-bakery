@@ -1,0 +1,1 @@
+import{w as s}from"./index-BprwxzqU.js";import{a as e}from"./products-DqcO_9rD.js";const c={async getFeaturedProducts(){return(await s.get("/shop-config/featured-products")).data.data},async saveFeaturedProducts(t){return(await s.post("/shop-config/featured-products",{products:t})).data},async searchCandidates(t){return(await e.listProducts(1,t)).items}};export{c as f};

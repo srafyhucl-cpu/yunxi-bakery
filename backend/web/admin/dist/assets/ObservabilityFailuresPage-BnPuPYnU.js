@@ -1,0 +1,1 @@
+import{O as e}from"./ObservabilityWorkbench-B0qoO8Dq.js";import{q as r,k as a,G as o}from"./index-BprwxzqU.js";import"./observability-DOzEbx-B.js";const p=r({__name:"ObservabilityFailuresPage",setup(t){return(s,i)=>(o(),a(e,{mode:"failures"}))}});export{p as default};

@@ -3,6 +3,8 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 dist/
+# 后台前端构建产物随仓库分发：部署服务器资源有限，不再在服务器上执行 npm 编译
+!web/admin/dist/
 build/
 node_modules/
 
