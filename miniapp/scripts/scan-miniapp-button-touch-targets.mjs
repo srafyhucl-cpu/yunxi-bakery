@@ -336,7 +336,7 @@ const states = [
       [".page-nav-back", 1, { allowEmptyText: true }],
       [".delivery-tab", 2],
       [".address-picker", 1],
-      [".agreement-row", 1],
+      [".checkout-footer__agreement", 1],
       [".agreement-link", 2],
       [".checkout-footer__submit", 1],
     ],

@@ -14,7 +14,7 @@
         <text class="yunxi-state__hint">登录后可自提、闪送并提交订单</text>
         <button class="primary-button yunxi-state__action" bindtap="handleSessionAction">去登录</button>
       </view>
-      <view wx:if="{{isLoggedIn && checkoutItems.length}}" class="checkout-summary yunxi-card hover-scale fade-in">
+      <view wx:if="{{isLoggedIn && checkoutItems.length}}" class="checkout-summary fade-in">
         <view>
           <text class="checkout-summary__eyebrow">本次购买</text>
           <text class="checkout-summary__hint">{{checkoutItems.length}} 件商品 · 商品小计（自提价）</text>
@@ -26,11 +26,12 @@
           <view class="checkout-item__copy">
             <text class="checkout-item__title">{{item.title}}</text>
             <text class="checkout-item__meta">数量 × {{item.quantity}}</text>
+            <text wx:if="{{item.skuName || item.optionText}}" class="checkout-item__option">{{item.skuName}}{{item.optionText ? ' · ' + item.optionText : ''}}{{item.greeting ? ' · 祝福：' + item.greeting : ''}}</text>
           </view>
           <text class="checkout-item__price">{{item.priceText}}</text>
         </view>
       </view>
-      <view wx:if="{{isLoggedIn && !checkoutItems.length}}" class="yunxi-state checkout-empty-state">
+      <view wx:if="{{isLoggedIn && !checkoutItems.length}}" class="yunxi-state yunxi-state--page checkout-empty-state">
         <view class="yunxi-state__icon yunxi-state__icon--shopping-bag" aria-hidden="true"></view>
         <text class="yunxi-state__title">还没有选择商品</text>
         <text class="yunxi-state__hint">先从商品列表选择蛋糕或点心，再确认自提或北京闪送</text>
@@ -88,6 +89,7 @@
             bindinput="updateField"
           />
         </view>
+        <view wx:if="{{hasPreorderItems}}" class="time-advance-hint">预订蛋糕需至少提前 4 小时，可选时间已自动顺延</view>
         <view class="time-grid">
           <picker
             mode="date"
@@ -98,20 +100,29 @@
             bindchange="selectExpectDate"
           >
             <view class="time-picker">
-              <text class="time-picker__value">日期：{{selectedDateValue || '请选择'}}</text>
-              <text class="time-picker__chevron"></text>
+              <text class="time-picker__label">日期：</text>
+              <view class="time-picker__row">
+                <text class="time-picker__value">{{selectedDateValue || '请选择'}}</text>
+                <text class="time-picker__chevron"></text>
+              </view>
             </view>
           </picker>
           <picker mode="selector" value="{{selectedHourIndex}}" range="{{hourOptions}}" bindchange="selectExpectHour">
             <view class="time-picker">
-              <text class="time-picker__value">小时：{{hourOptions[selectedHourIndex] || '18'}}</text>
-              <text class="time-picker__chevron"></text>
+              <text class="time-picker__label">小时：</text>
+              <view class="time-picker__row">
+                <text class="time-picker__value">{{hourOptions[selectedHourIndex] || '18'}}</text>
+                <text class="time-picker__chevron"></text>
+              </view>
             </view>
           </picker>
           <picker mode="selector" value="{{selectedMinuteIndex}}" range="{{minuteOptions}}" bindchange="selectExpectMinute">
             <view class="time-picker">
-              <text class="time-picker__value">分钟：{{minuteOptions[selectedMinuteIndex] || '00'}}</text>
-              <text class="time-picker__chevron"></text>
+              <text class="time-picker__label">分钟：</text>
+              <view class="time-picker__row">
+                <text class="time-picker__value">{{minuteOptions[selectedMinuteIndex] || '00'}}</text>
+                <text class="time-picker__chevron"></text>
+              </view>
             </view>
           </picker>
         </view>
@@ -185,30 +196,27 @@
           <text class="pending-action danger" bindtap="cancelPendingOrder">取消订单</text>
         </view>
       </view>
-      <view wx:if="{{isLoggedIn && checkoutItems.length}}" class="agreement-row hover-scale fade-in" bindtap="toggleAgreementAccepted">
-        <text class="agreement-check {{agreementAccepted ? 'is-checked' : ''}}">{{agreementAccepted ? '✓' : ''}}</text>
-        <view class="agreement-copy">
-          <text class="agreement-copy__intro">我已阅读并同意</text>
-          <view class="agreement-links">
-            <text class="agreement-link" data-type="agreement" catchtap="openPolicy">《用户协议》</text>
-            <text class="agreement-links__join">和</text>
-            <text class="agreement-link" data-type="privacy" catchtap="openPolicy">《隐私政策》</text>
-          </view>
-        </view>
-      </view>
     </view>
   </scroll-view>
   <view wx:if="{{isLoggedIn && checkoutItems.length}}" class="checkout-footer">
-    <view class="checkout-footer__total">
-      <text class="muted">实付（估算）</text>
-      <text class="checkout-footer__amount">{{estimateRemainFenText}}</text>
-      <text class="checkout-footer__note">{{footerAmountNote}}</text>
+    <view class="checkout-footer__row">
+      <view class="checkout-footer__total">
+        <text class="muted">实付（估算）</text>
+        <text class="checkout-footer__amount">{{estimateRemainFenText}}</text>
+        <text class="checkout-footer__note">{{footerAmountNote}}</text>
+      </view>
+      <button
+        class="primary-button checkout-footer__submit hover-scale"
+        loading="{{submitting}}"
+        disabled="{{submitting || !canSubmitOrder}}"
+        bindtap="submitOrder"
+      >{{submitButtonText}}</button>
     </view>
-    <button
-      class="primary-button checkout-footer__submit hover-scale"
-      loading="{{submitting}}"
-      disabled="{{submitting || !canSubmitOrder}}"
-      bindtap="submitOrder"
-    >{{submitButtonText}}</button>
+    <view class="checkout-footer__agreement">
+      <text class="checkout-footer__agreement-text">提交订单即表示同意</text>
+      <text class="agreement-link" data-type="agreement" catchtap="openPolicy">《用户协议》</text>
+      <text class="checkout-footer__agreement-text">与</text>
+      <text class="agreement-link" data-type="privacy" catchtap="openPolicy">《隐私政策》</text>
+    </view>
   </view>
 </view>

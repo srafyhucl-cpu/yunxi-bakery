@@ -2,6 +2,7 @@ import { ROUTES } from "../../constants/routes";
 import { SHOP_CONFIG, resolvePickupAddress } from "../../config/shop";
 import { getMiniappLayoutMetrics } from "../../utils/layout";
 import { getErrorMessage } from "../../services/http";
+import { toCustomerOrderError } from "../../utils/order-error";
 import {
   cancelOrder,
   createOrder,
@@ -29,6 +30,7 @@ import {
   getCheckoutDateEnd,
   getCheckoutDateStart,
   isCheckoutDateToday,
+  PREORDER_MIN_ADVANCE_HOURS,
   resolveCheckoutSchedule,
 } from "../../utils/checkout-time";
 import { formatDeductionFen, formatFen } from "../../utils/money";
@@ -80,7 +82,8 @@ type PendingOrderForm = {
 };
 
 function getCartSignature(items: CartItem[]): string {
-  return items.map((item) => `${item.productId}:${item.quantity}`).join(",");
+  // 规格/选项也是订单的一部分：同款不同尺寸必须视为不同订单
+  return items.map((item) => `${item.lineKey || item.productId}:${item.quantity}`).join(",");
 }
 
 function getCartItemLabel(item: CartItem): string {
@@ -140,6 +143,10 @@ function getDeliveryGuidance(status: string, calculating: boolean): {
 
 let deliveryQuoteRequestSerial = 0;
 
+// 协议同意状态按版本记录：协议内容更新后版本号递增，顾客需要重新确认一次。
+const AGREEMENT_ACCEPTED_VERSION_KEY = "yunxiAgreementAcceptedVersion";
+const AGREEMENT_VERSION = "2026-10";
+
 Page({
   data: {
     receiverName: "",
@@ -161,11 +168,13 @@ Page({
     selectedHourIndex: getDefaultCheckoutHourIndex(buildCheckoutHourOptions("09:00-19:30")),
     selectedMinuteIndex: 0,
     businessHours: "09:00-19:30",
+    hasPreorderItems: false,
+    preorderAdvanceHours: 0,
     isSameDayOrder: isCheckoutDateToday(buildDefaultExpectTime().slice(0, 10)),
     totalText: "¥0.00",
     errorMessage: "",
     submitting: false,
-    agreementAccepted: false,
+    agreementAccepted: wx.getStorageSync(AGREEMENT_ACCEPTED_VERSION_KEY) === AGREEMENT_VERSION,
     isLoggedIn: isMiniappLoggedIn(getMiniappSession()),
     layoutStyle: getMiniappLayoutMetrics().pageShellStyle,
     availableCoupons: [] as Array<MemberCoupon & { disabled: boolean }>,
@@ -215,6 +224,20 @@ Page({
     // 会话提示仅在未登录时提供动作，已登录身份说明不再展示返回按钮。
     wx.switchTab({ url: ROUTES.profile });
   },
+  /** 判断购物车是否含预订商品：老购物车没有 orderMode 时回查商品详情。 */
+  async resolvePreorderItems(items: CartItem[]): Promise<boolean> {
+    if (items.some((item) => item.orderMode === "preorder")) {
+      return true;
+    }
+    const unknown = items.filter((item) => !item.orderMode).slice(0, 5);
+    if (!unknown.length) {
+      return false;
+    }
+    const details = await Promise.all(
+      unknown.map((item) => getProductDetail(item.productId).catch(() => null))
+    );
+    return details.some((product) => product?.orderMode === "preorder");
+  },
   async loadCheckout() {
     const session = getMiniappSession();
     if (!isMiniappLoggedIn(session)) {
@@ -232,7 +255,14 @@ Page({
     const shopSettings = await getShopSettings();
     await syncAddressBookFromBackend();
     const selectedAddress = getSelectedAddress();
-    const defaultExpectTime = buildDefaultExpectTime(shopSettings.businessHours);
+    // 购物车含预订商品时，可选时间必须整体抬高至少 4 小时，避免下单才被拒
+    const hasPreorderItems = await this.resolvePreorderItems(checkoutItems);
+    const preorderAdvanceHours = hasPreorderItems ? PREORDER_MIN_ADVANCE_HOURS : 0;
+    const defaultExpectTime = buildDefaultExpectTime(
+      shopSettings.businessHours,
+      new Date(),
+      preorderAdvanceHours
+    );
     const shouldApplySelectedAddress =
       Boolean(selectedAddress) &&
       (this.data.selectedAddressId !== selectedAddress?.id ||
@@ -261,6 +291,8 @@ Page({
       dateStartValue: getCheckoutDateStart(),
       dateEndValue: getCheckoutDateEnd(),
       businessHours: shopSettings.businessHours,
+      hasPreorderItems,
+      preorderAdvanceHours,
     });
     // 选择器显示值由提交值反推：重新进入结算页时不会出现控件与实际下单时间不一致。
     this.syncExpectTimeSchedule(
@@ -393,7 +425,9 @@ Page({
     const schedule = resolveCheckoutSchedule(
       resolvedBusinessHours,
       resolvedExpectTime,
-      this.data.minuteOptions
+      this.data.minuteOptions,
+      new Date(),
+      this.data.preorderAdvanceHours
     );
     this.setData({
       hourOptions: schedule.hourOptions,
@@ -406,7 +440,12 @@ Page({
   },
   selectExpectDate(event: WechatMiniprogram.PickerChange) {
     const selectedDateValue = String(event.detail.value);
-    const hourOptions = buildCheckoutHourOptions(this.data.businessHours, selectedDateValue);
+    const hourOptions = buildCheckoutHourOptions(
+      this.data.businessHours,
+      selectedDateValue,
+      new Date(),
+      this.data.preorderAdvanceHours
+    );
     const selectedHourIndex = getDefaultCheckoutHourIndex(hourOptions);
     this.setData({
       selectedDateValue,
@@ -472,12 +511,10 @@ Page({
       submitButtonText = "先去选购";
     } else if (deliveryBlocked) {
       submitButtonText = "先确认运费";
-    } else if (!this.data.agreementAccepted) {
-      submitButtonText = "请先同意协议";
     }
     const deliveryGuidance = getDeliveryGuidance(this.data.deliveryQuoteStatus, this.data.deliveryCalculating);
     this.setData({
-      canSubmitOrder: hasItems && !deliveryBlocked && this.data.agreementAccepted,
+      canSubmitOrder: hasItems && !deliveryBlocked,
       submitButtonText,
       deliveryGuidanceTitle: deliveryGuidance.title,
       deliveryGuidanceText: deliveryGuidance.text,
@@ -906,7 +943,9 @@ Page({
           invalidItems.push(cartItem ? getCartItemLabel(cartItem) : "未知商品");
           return;
         }
-        if (!product.isActive || product.stock < cartItem.quantity) {
+        const variant = (product.variants || []).find((item) => item.id === cartItem.skuId);
+        const availableStock = variant ? variant.stock : product.stock;
+        if (!product.isActive || availableStock < cartItem.quantity) {
           unavailableItems.push(getCartItemLabel(cartItem));
         }
       });
@@ -924,9 +963,33 @@ Page({
       return false;
     }
   },
-  toggleAgreementAccepted() {
+  /** 点提交时确认协议：未同意则弹窗，同意后记住版本并继续下单。 */
+  ensureAgreementAccepted(): Promise<boolean> {
+    if (this.data.agreementAccepted) {
+      return Promise.resolve(true);
+    }
+    return new Promise((resolve) => {
+      wx.showModal({
+        title: "请阅读并同意协议",
+        content: "提交订单前，请阅读并同意《用户协议》和《隐私政策》。同意后将直接提交本次订单。",
+        confirmText: "同意",
+        cancelText: "取消",
+        success: (res) => {
+          if (!res.confirm) {
+            resolve(false);
+            return;
+          }
+          this.acceptAgreement();
+          resolve(true);
+        },
+        fail: () => resolve(false)
+      });
+    });
+  },
+  acceptAgreement() {
+    wx.setStorageSync(AGREEMENT_ACCEPTED_VERSION_KEY, AGREEMENT_VERSION);
     this.setData({
-      agreementAccepted: !this.data.agreementAccepted,
+      agreementAccepted: true,
       errorMessage: ""
     }, () => {
       this.refreshSubmitState();
@@ -951,6 +1014,10 @@ Page({
     const cartItems = getCartItems();
     if (!cartItems.length) {
       this.showValidationError("购物车为空，请先选择商品");
+      return;
+    }
+    // 协议不再让顾客去页面底部找勾选框：点提交时弹窗确认，同意后继续下单。
+    if (!(await this.ensureAgreementAccepted())) {
       return;
     }
     if (!this.validateOrderForm()) {
@@ -999,7 +1066,11 @@ Page({
             productId: item.productId,
             quantity: item.quantity,
             title: item.title,
-            priceFen: item.priceFen
+            priceFen: item.priceFen,
+            skuId: item.skuId,
+            optionChoiceIds: item.optionChoiceIds,
+            greeting: item.greeting,
+            accessories: item.accessories
           })),
           receiverName: this.data.receiverName,
           receiverPhone: this.data.receiverPhone,
@@ -1071,7 +1142,7 @@ Page({
         resumePartialRemainder: pendingIsPartial
       });
     } catch (error) {
-      const message = getErrorMessage(error, "提交失败，请稍后重试");
+      const message = toCustomerOrderError(getErrorMessage(error, ""));
       this.setData({ errorMessage: message });
       wx.showToast({ title: message, icon: "none" });
     } finally {

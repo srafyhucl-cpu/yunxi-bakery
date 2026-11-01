@@ -1,20 +1,27 @@
 /* ==========================================================================
-   收货地址管理页 (Address Management Page) - 现代自然轻食风格重塑
+   收货地址管理页 —— 编辑式分区（v2）
+   顶部动作行 → 裸字段表单 → 柔白连续地址分区（1rpx 行分隔）。
+   列表项不再是卡片：靠留白与细线分层；操作改成文字链接，不再有描边小按钮。
+   版面规则：标题 400-500 字重，正文 26/1.7，小标签 20rpx overline。
    ========================================================================== */
 
 .address-page {
   display: flex;
   flex-direction: column;
-  gap: 20rpx;
-  padding: 24rpx 28rpx 80rpx;
+  gap: 0;
+  padding: 0 0 var(--yunxi-page-bottom-space);
+  background: var(--yunxi-page-bg);
 }
 
+/* ---------- 顶部动作行：左说明 + 右文字动作 ---------- */
 .address-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 24rpx;
-  margin-bottom: 8rpx;
+  padding: 24rpx var(--yunxi-page-gutter);
+  background: var(--yunxi-surface);
+  border-bottom: 1rpx solid var(--yunxi-border);
 }
 
 .address-header__info {
@@ -23,196 +30,319 @@
 }
 
 .address-subtitle {
+  display: block;
   color: var(--yunxi-text-muted);
   font-size: 24rpx;
+  line-height: 1.6;
 }
 
-button.address-add,
+/* 新增地址：文字动作，去掉描边盒子 */
+.address-header button.address-add,
 .address-add {
   flex: 0 0 auto;
   width: auto !important;
-  min-width: 144rpx;
+  min-width: 0;
   height: 88rpx;
   min-height: 88rpx;
-  padding: 0 28rpx !important;
+  padding: 0 0 0 24rpx !important;
   margin: 0 !important;
-  border-radius: var(--yunxi-radius-sm);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--yunxi-brand);
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 26rpx;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: 0.1em;
 }
 
+.address-add:active {
+  opacity: 0.65;
+}
+
+.address-add[disabled] {
+  color: var(--yunxi-text-subtle);
+  background: transparent;
+}
+
+/* ---------- 错误提示：整行警示，不做卡片 ---------- */
 .address-error {
-  padding: 18rpx 24rpx;
+  padding: 20rpx var(--yunxi-page-gutter);
   color: var(--yunxi-deal);
-  background: #FDF1EE;
-  border: 1rpx solid rgba(186, 78, 61, 0.2);
-  border-radius: var(--yunxi-radius-md);
+  background: var(--yunxi-surface-cream);
+  border-bottom: 1rpx solid var(--yunxi-border);
   font-size: 24rpx;
-  line-height: 1.45;
+  line-height: 1.6;
 }
 
-.address-form,
-.address-list {
+/* ---------- 表单分区：裸字段 ---------- */
+.address-form {
   display: flex;
   flex-direction: column;
-  gap: 20rpx;
+  gap: 32rpx;
+  padding: 32rpx var(--yunxi-page-gutter) 28rpx;
+  background: var(--yunxi-surface);
+  border-bottom: 1rpx solid var(--yunxi-border);
 }
 
-.address-form {
-  padding: 28rpx;
-  background: #FFFFFF;
-  border-radius: var(--yunxi-radius-md);
-  border: 1rpx solid var(--yunxi-border);
-  box-shadow: var(--yunxi-card-shadow);
+.address-form__fields {
+  display: flex;
+  flex-direction: column;
 }
 
+/* 字段之间用留白分层，字段自身的底边线承担分隔 */
+.address-form__fields .form-field {
+  gap: 10rpx;
+  padding-bottom: 28rpx;
+}
+
+.address-form__fields .form-field + .form-field {
+  padding-top: 28rpx;
+}
+
+/* 字段标签：20rpx overline */
+.address-form .form-field__label {
+  color: var(--yunxi-text-muted);
+  font-size: 20rpx;
+  font-weight: 400;
+  line-height: 1.4;
+  letter-spacing: 0.18em;
+}
+
+/* 输入控件：透明底 + 1rpx 底边线，触控高度 96rpx */
 input,
 textarea {
   width: 100%;
-  min-height: 88rpx;
-  padding: 0 24rpx;
-  background: var(--yunxi-surface-alt);
-  border: 1rpx solid var(--yunxi-border);
-  border-radius: var(--yunxi-radius-md);
-  font-size: 28rpx;
+  height: 96rpx;
+  min-height: 96rpx;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-bottom: 1rpx solid var(--yunxi-border-medium);
+  border-radius: 0;
   color: var(--yunxi-text-primary);
+  font-size: 28rpx;
+  font-weight: 400;
+  line-height: 1.4;
+  box-sizing: border-box;
 }
 
 textarea {
-  height: 180rpx;
-  min-height: 180rpx;
-  padding-top: 24rpx;
+  height: 168rpx;
+  min-height: 168rpx;
+  padding: 16rpx 0;
+  line-height: 1.7;
 }
 
+/* 设为默认：细线分隔的开关行 */
 .address-switch {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 84rpx;
-  padding: 0 24rpx;
-  background: var(--yunxi-surface-alt);
-  border: 1rpx solid var(--yunxi-border);
-  border-radius: var(--yunxi-radius-md);
+  gap: 20rpx;
+  min-height: 96rpx;
+  padding-top: 24rpx;
+  border-top: 1rpx solid var(--yunxi-border);
   color: var(--yunxi-text-primary);
-  font-size: 28rpx;
-  font-weight: 600;
+  font-size: 26rpx;
+  font-weight: 400;
 }
 
-.address-actions,
-.address-card-actions {
+/* ---------- 表单操作：取消是文字链接，保存是主 CTA ---------- */
+.address-actions {
   display: flex;
   align-items: center;
-  gap: 16rpx;
+  gap: 32rpx;
 }
 
 .address-actions button {
   flex: 1;
+  width: auto !important;
+  min-width: 0;
+  height: 96rpx;
+  min-height: 96rpx;
+  border-radius: 2rpx;
+  font-size: 26rpx;
 }
 
+/* 取消：去框文字动作 */
+.address-actions .ghost-button {
+  flex: 0 0 auto;
+  min-width: 160rpx;
+  border: 0;
+  background: transparent;
+  color: var(--yunxi-text-secondary);
+  letter-spacing: 0.12em;
+}
+
+/* ---------- 空态：柔白平面提示区 ---------- */
 .address-empty {
   display: flex;
   flex-direction: column;
-  gap: 16rpx;
-  padding: 80rpx 40rpx;
+  align-items: center;
+  gap: 12rpx;
+  padding: 88rpx var(--yunxi-page-gutter);
   text-align: center;
-  background: #FFFFFF;
-  border-radius: var(--yunxi-radius-md);
-  border: 1rpx solid var(--yunxi-border);
-  box-shadow: var(--yunxi-card-shadow);
+  background: var(--yunxi-surface);
+  border-bottom: 1rpx solid var(--yunxi-border);
 }
 
 .address-empty-title {
   color: var(--yunxi-text-primary);
-  font-size: 32rpx;
-  font-weight: 800;
+  font-size: 30rpx;
+  font-weight: 500;
+  letter-spacing: 0.04em;
 }
 
 .address-empty-text {
+  max-width: 480rpx;
   color: var(--yunxi-text-muted);
   font-size: 24rpx;
-  line-height: 1.5;
+  line-height: 1.7;
+}
+
+/* ---------- 地址列表：柔白连续分区，行间 1rpx 细线 ---------- */
+.address-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
+  background: var(--yunxi-surface);
 }
 
 .address-card {
-  padding: 28rpx;
-  background: #FFFFFF;
-  border-radius: var(--yunxi-radius-lg);
-  border: 1rpx solid var(--yunxi-border);
-  box-shadow: var(--yunxi-card-shadow);
+  padding: 40rpx var(--yunxi-page-gutter);
+  background: var(--yunxi-surface);
+  border: 0;
+  border-bottom: 1rpx solid var(--yunxi-border);
+  border-radius: 0;
+  box-shadow: none;
   overflow: hidden;
-  transition: background 0.2s ease;
+}
+
+.address-card:last-child {
+  border-bottom: 0;
 }
 
 .address-card:active {
-  background: var(--yunxi-surface-alt);
+  background: var(--yunxi-page-bg);
+}
+
+.address-card-main {
+  min-width: 0;
 }
 
 .address-card-title {
   display: flex;
-  align-items: center;
-  gap: 18rpx;
+  align-items: baseline;
+  gap: 16rpx;
+  min-width: 0;
+  overflow: hidden;
   color: var(--yunxi-text-primary);
-  font-size: 30rpx;
-  font-weight: 800;
 }
 
+.address-card-name {
+  flex: 0 1 auto;
+  max-width: 320rpx;
+  overflow: hidden;
+  font-size: 30rpx;
+  font-weight: 500;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.address-card-phone {
+  flex: 0 0 auto;
+  color: var(--yunxi-text-secondary);
+  font-size: 26rpx;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
+.address-card-phone::before {
+  content: "·";
+  margin-right: 10rpx;
+  color: var(--yunxi-text-subtle);
+  font-weight: 400;
+}
+
+/* 默认标记：文字 overline，不做色块 */
 .address-badge {
-  padding: 4rpx 14rpx;
-  color: #FFFFFF;
-  background: var(--yunxi-brand);
-  border-radius: var(--yunxi-radius-sm);
+  flex: 0 0 auto;
+  padding: 0;
+  color: var(--yunxi-gold);
+  background: transparent;
+  border-radius: 0;
   font-size: 20rpx;
-  font-weight: 700;
+  font-weight: 500;
+  letter-spacing: 0.16em;
 }
 
 .address-card-detail {
   display: block;
-  margin: 14rpx 0 24rpx;
+  margin-top: 12rpx;
   color: var(--yunxi-text-secondary);
   font-size: 26rpx;
-  line-height: 1.5;
+  font-weight: 400;
+  line-height: 1.7;
 }
 
 .address-card-warning {
   display: block;
-  margin: -10rpx 0 24rpx;
-  color: #A14D36;
+  margin-top: 10rpx;
+  color: var(--yunxi-deal);
   font-size: 22rpx;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
-button.text-button,
-.text-button {
+/* ---------- 操作行：文字链接，热区 88rpx ---------- */
+.address-card-actions {
   display: flex;
   align-items: center;
+  gap: 40rpx;
+  margin-top: 24rpx;
+  padding-top: 4rpx;
+}
+
+/* 行内操作：文字链接，不描边 */
+button.text-button,
+.text-button {
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
+  min-width: 88rpx;
   min-height: 88rpx !important;
   height: 88rpx !important;
-  padding: 0 24rpx;
+  padding: 0 8rpx;
   color: var(--yunxi-brand);
-  background: var(--yunxi-surface-alt);
-  border-radius: var(--yunxi-radius-full);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
   font-size: 24rpx;
-  font-weight: 700;
-  transition: all 0.2s ease;
+  font-weight: 400;
+  line-height: 1.2;
+  letter-spacing: 0.1em;
 }
 
 .text-button:active {
-  transform: scale(0.96);
+  opacity: 0.65;
 }
 
 .text-button.danger {
   color: var(--yunxi-deal);
-  background: #FDF1EE;
 }
 
 .text-button[disabled] {
   color: var(--yunxi-text-subtle);
-  background: var(--yunxi-surface-alt);
+  background: transparent;
+  border: 0;
 }
 
 .text-button.danger[disabled] {
   color: var(--yunxi-text-subtle);
-  background: var(--yunxi-surface-alt);
 }

@@ -7,7 +7,8 @@ import secrets
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
-from jose import JWTError, jwt
+import jwt
+from jwt import InvalidTokenError as JWTError
 
 from app.config import settings
 from app.models.staff import StaffAccount, StaffPrincipal, StaffRole

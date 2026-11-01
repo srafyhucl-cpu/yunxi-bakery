@@ -114,3 +114,93 @@ export const productsService = {
     return response.data.data;
   },
 };
+
+export interface ProductAdminVariant {
+  id?: string;
+  property?: string;
+  name: string;
+  priceFen: number;
+  stock: number;
+}
+
+export interface ProductAdminChoice {
+  id?: string;
+  name: string;
+  priceDeltaFen: number;
+}
+
+export interface ProductAdminOptionGroup {
+  name: string;
+  required: boolean;
+  multiple: boolean;
+  choices: ProductAdminChoice[];
+}
+
+export interface ProductAdminDetail {
+  itemId: string;
+  title: string;
+  priceFen: number;
+  stock: number;
+  isActive: boolean;
+  image: string;
+  imageLocal: string;
+  desc: string;
+  tags: string;
+  fulfillmentMode: "auto" | "preorder" | "direct";
+  effectiveOrderMode: "preorder" | "direct";
+  variants: ProductAdminVariant[];
+  options: ProductAdminOptionGroup[];
+}
+
+export interface ProductAdminSavePayload {
+  title?: string;
+  priceFen?: number;
+  stock?: number;
+  isActive?: boolean;
+  desc?: string;
+  tags?: string;
+  fulfillmentMode?: "auto" | "preorder" | "direct";
+  variants?: Array<Pick<ProductAdminVariant, "name" | "priceFen" | "stock">>;
+  options?: Array<{
+    name: string;
+    required: boolean;
+    multiple: boolean;
+    choices: Array<Pick<ProductAdminChoice, "name" | "priceDeltaFen">>;
+  }>;
+}
+
+export const productAdminService = {
+  async detail(itemId: string): Promise<ProductAdminDetail> {
+    const response = await http.get<{ code: number; data: ProductAdminDetail }>(
+      `/products/${itemId}`,
+    );
+    return response.data.data;
+  },
+
+  async save(itemId: string, payload: ProductAdminSavePayload): Promise<ProductAdminDetail> {
+    const response = await http.put<{ code: number; data: ProductAdminDetail }>(
+      `/products/${itemId}`,
+      payload,
+    );
+    return response.data.data;
+  },
+
+  async create(payload: ProductAdminSavePayload): Promise<ProductAdminDetail> {
+    const response = await http.post<{ code: number; data: ProductAdminDetail }>(
+      "/products",
+      payload,
+    );
+    return response.data.data;
+  },
+
+  async uploadImage(itemId: string, file: File): Promise<{ imageLocal: string }> {
+    const form = new FormData();
+    form.append("file", file);
+    const response = await http.post<{ code: number; data: { imageLocal: string } }>(
+      `/products/${itemId}/image`,
+      form,
+      { headers: { "Content-Type": "multipart/form-data" } },
+    );
+    return response.data.data;
+  },
+};

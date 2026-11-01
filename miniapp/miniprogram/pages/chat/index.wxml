@@ -8,11 +8,11 @@
       <view wx:if="{{loading}}" class="loading-text">{{copy.loading}}</view>
       <view wx:if="{{errorMessage}}" class="error-text">{{errorMessage}}</view>
 
-      <view wx:if="{{!canUseChat}}" class="empty-login">
+      <view wx:if="{{!canUseChat}}" class="empty-login yunxi-state yunxi-state--page">
         <view class="empty-login__icon empty-login__icon--support" aria-hidden="true"></view>
-        <text class="empty-login__title">登录后联系客服</text>
-        <text class="muted">请在个人中心登录后与客服在线沟通</text>
-        <button class="primary-button empty-login__action" bindtap="goProfile">去登录</button>
+        <text class="empty-login__title yunxi-state__title">登录后联系客服</text>
+        <text class="muted yunxi-state__hint">请在个人中心登录后与客服在线沟通</text>
+        <button class="primary-button empty-login__action yunxi-state__action" bindtap="goProfile">去登录</button>
       </view>
 
       <!-- 带头像和气泡的聊天消息 -->
@@ -58,7 +58,7 @@
   </scroll-view>
 
   <!-- 底部输入区与快捷问题面板 -->
-  <view wx:if="{{canUseChat}}" class="chat-bottom-bar">
+  <view wx:if="{{canUseChat}}" class="chat-bottom-bar fixed-bar">
     <!-- 客服入口：平台客服队列（后台工单）与微信原生客服是两套通道 -->
     <view class="chat-service-row">
       <button

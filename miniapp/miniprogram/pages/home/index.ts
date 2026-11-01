@@ -239,7 +239,7 @@ async function buildHomeBlocks(config: ShopPageConfig): Promise<HomeBlockView[]>
       }
       const products = sourceProducts.map((product) => ({
         ...product,
-        priceText: getProductPriceText(product, `自提价 ${formatFen(product.priceFen)}`),
+        priceText: getProductPriceText(product, formatFen(product.priceFen)),
         imageClass: getProductImageClass(product),
         imageFailed: false,
         badgeText: getProductAvailabilityLabel(product),

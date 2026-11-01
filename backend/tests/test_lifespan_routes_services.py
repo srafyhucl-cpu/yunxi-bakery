@@ -120,10 +120,11 @@ def test_register_routes_starts_workers_and_includes_all_routers(
     _install_module(
         monkeypatch,
         "app.api.admin.products",
-        create_admin_products_router=lambda reconcile, sync: (
+        create_admin_products_router=lambda reconcile, sync, product_admin: (
             "products",
             reconcile,
             sync,
+            product_admin,
         ),
     )
     _install_module(
@@ -317,6 +318,7 @@ def test_register_routes_starts_workers_and_includes_all_routers(
         "knowledge_retrieval_report_service": "knowledge-retrieval-report-service",
         "observability_service": "observability",
         "reconcile_service": "reconcile",
+        "product_admin_service": "product-admin",
         "knowledge_sync_service": "knowledge-sync",
         "shop_page_configuration_service": "shop-pages-service",
         "storefront_auth_service": "storefront-auth-service",
@@ -657,6 +659,7 @@ def test_init_services_wires_core_services(monkeypatch) -> None:
         "youzan_client",
         "youzan_event_handler",
         "reconcile_service",
+        "product_admin_service",
         "chat_service",
         "miniapp_auth_service",
         "miniapp_address_service",

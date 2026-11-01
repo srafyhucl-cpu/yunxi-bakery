@@ -31,7 +31,7 @@
           <view wx:if="{{!isDisplayOnly}}" class="detail-meta">
             <view class="detail-price-wrap">
               <text class="detail-price-label">门店自提价</text>
-              <text class="detail-price">{{product.priceText}}</text>
+              <text class="detail-price">{{currentPriceText || product.priceText}}</text>
             </view>
             <text class="detail-sold">{{product.soldText}}</text>
           </view>
@@ -48,8 +48,83 @@
           </view>
         </view>
 
+        <!-- 规格与定制：来自有赞 SKU/属性，选完才能加购，价格实时联动 -->
+        <view wx:if="{{canPurchase && needsOptions}}" class="detail-section detail-options-section">
+          <view wx:if="{{variantViews.length > 0}}" class="option-block">
+            <view class="option-head">
+              <text class="detail-section-label">{{variantProperty}}</text>
+              <text class="option-head__hint">选择后价格随之变化</text>
+            </view>
+            <view class="option-chips">
+              <view
+                wx:for="{{variantViews}}"
+                wx:key="id"
+                wx:for-item="variant"
+                class="option-chip {{variant.selected ? 'is-active' : ''}} {{variant.disabled ? 'is-disabled' : ''}}"
+                data-id="{{variant.id}}"
+                bindtap="selectVariant"
+              >
+                <text class="option-chip__name">{{variant.name}}</text>
+                <text class="option-chip__price">{{variant.disabled ? '已售罄' : variant.priceText}}</text>
+              </view>
+            </view>
+          </view>
+
+          <view wx:for="{{optionGroups}}" wx:key="name" wx:for-item="group" class="option-block">
+            <view class="option-head">
+              <text class="detail-section-label">{{group.name}}</text>
+              <text class="option-head__hint">{{group.required ? '必选' : '可选'}}{{group.multiple ? ' · 可多选' : ''}}</text>
+            </view>
+            <view class="option-chips">
+              <view
+                wx:for="{{group.choices}}"
+                wx:key="id"
+                wx:for-item="choice"
+                class="option-chip {{choice.selected ? 'is-active' : ''}}"
+                data-group="{{group.name}}"
+                data-id="{{choice.id}}"
+                bindtap="toggleChoice"
+              >
+                <text class="option-chip__name">{{choice.name}}</text>
+                <text wx:if="{{choice.priceText}}" class="option-chip__price">{{choice.priceText}}</text>
+              </view>
+            </view>
+          </view>
+
+          <view class="option-block">
+            <view class="option-head">
+              <text class="detail-section-label">祝福牌</text>
+              <text class="option-head__hint">选填，不写可留空</text>
+            </view>
+            <input
+              class="option-input"
+              placeholder="如：生日快乐"
+              placeholder-class="option-input__placeholder"
+              value="{{greeting}}"
+              maxlength="20"
+              bindinput="onGreetingInput"
+            />
+          </view>
+
+          <view class="option-block">
+            <view class="option-head">
+              <text class="detail-section-label">配件</text>
+              <text class="option-head__hint">选填</text>
+            </view>
+            <view class="option-chips">
+              <view class="option-chip {{hasTableware ? 'is-active' : ''}}" data-key="tableware" bindtap="toggleAccessory">
+                <text class="option-chip__name">餐具</text>
+              </view>
+              <view class="option-chip {{hasCandle ? 'is-active' : ''}}" data-key="candle" bindtap="toggleAccessory">
+                <text class="option-chip__name">蜡烛</text>
+              </view>
+            </view>
+          </view>
+        </view>
+
         <!-- 履约与预订服务卡 -->
         <view wx:if="{{canPurchase}}" class="detail-section detail-fulfillment-card">
+          <text class="detail-section-label">预订与履约</text>
           <view class="fulfillment-row">
             <text class="fulfillment-tag">履约方式</text>
             <text class="fulfillment-val">支持 门店自提 · 北京闪送</text>
@@ -73,7 +148,7 @@
           <text class="detail-display-only-card__desc">此商品用于说明门店使用的原料或展示产品，不提供直接购买。</text>
         </view>
 
-        <view class="detail-section">
+        <view class="detail-section detail-description-section">
           <text class="detail-card-title">图文详情</text>
           <view class="detail-description">
             <block wx:for="{{product.descriptionBlocks}}" wx:key="index" wx:for-item="block">
@@ -83,14 +158,14 @@
           </view>
         </view>
 
-        <view class="detail-section">
+        <view class="detail-section detail-notes-section">
           <text class="detail-card-title">购买须知</text>
           <view class="notice-list">
             <text wx:for="{{product.notices}}" wx:key="*this" wx:for-item="notice" class="notice-item">{{notice}}</text>
           </view>
         </view>
 
-        <view wx:if="{{relatedProducts.length > 0}}" class="detail-section">
+        <view wx:if="{{relatedProducts.length > 0}}" class="detail-section detail-related-section">
           <text class="detail-card-title">搭配推荐</text>
           <scroll-view class="related-strip" scroll-x enhanced show-scrollbar="{{false}}">
             <view

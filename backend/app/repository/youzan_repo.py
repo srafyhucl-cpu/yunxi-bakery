@@ -13,7 +13,8 @@ class YouzanProductRepo(BaseRepository):
     async def get_by_id(self, item_id: int) -> dict | None:
         """根据商品唯一 ID 获取商品数据。"""
         rows = await self._db.execute_fetchall(
-            "SELECT item_id, title, alias, price_fen, stock, image, is_active, "
+            "SELECT item_id, title, alias, price_fen, stock, image, image_local, "
+            "is_active, fulfillment_mode, "
             "skus_json, item_props_json, desc, tags, tag_ids_json, "
             "classification_ids_json, group_ids_json, second_group_ids_json, leaf_category_ids_json, "
             "last_sync_source, last_sync_ref, updated_at "
@@ -21,6 +22,76 @@ class YouzanProductRepo(BaseRepository):
             (item_id,),
         )
         return dict(rows[0]) if rows else None
+
+    async def get_option_rows(self, item_ids: list[str]) -> dict[str, dict]:
+        """批量读取商品的规格与属性原始 JSON，供前台读模型组装选项。
+
+        用 json_each 绑定参数数组，避免按数量拼接 IN 占位符。
+        """
+        normalized = sorted(
+            {int(item_id) for item_id in item_ids if str(item_id).isdigit()}
+        )
+        if not normalized:
+            return {}
+        rows = await self._db.execute_fetchall(
+            "SELECT item_id, price_fen, skus_json, item_props_json, image_local, "
+            "fulfillment_mode "
+            "FROM youzan_products WHERE item_id IN (SELECT value FROM json_each(?))",
+            (json.dumps(normalized),),
+        )
+        return {str(row["item_id"]): dict(row) for row in rows}
+
+    async def update_fulfillment_mode(self, item_id: int, mode: str) -> bool:
+        """按商品覆盖履约方式：空串=自动推导，preorder=强制预订，direct=强制现货。"""
+        if mode not in ("", "preorder", "direct"):
+            raise ValueError("履约方式只能是 auto/preorder/direct")
+        cursor = await self._db.execute(
+            "UPDATE youzan_products SET fulfillment_mode = ?, "
+            "updated_at = datetime('now', '+8 hours') WHERE item_id = ?",
+            (mode, item_id),
+        )
+        return bool(cursor.rowcount == 1)
+
+    async def next_item_id(self) -> int:
+        """生成自有商品编号：沿用整数 item_id，取当前最大值 + 1。"""
+        rows = await self._db.execute_fetchall(
+            "SELECT COALESCE(MAX(item_id), 0) + 1 AS next_id FROM youzan_products"
+        )
+        return int(rows[0]["next_id"]) if rows else 1
+
+    async def update_admin_fields(self, item_id: int, fields: dict) -> bool:
+        """按白名单更新商品字段，未提供的字段保持原值。"""
+        allowed = (
+            "title",
+            "price_fen",
+            "stock",
+            "is_active",
+            "desc",
+            "tags",
+            "skus_json",
+            "item_props_json",
+            "fulfillment_mode",
+            "image",
+            "image_local",
+        )
+        assignments: list[str] = []
+        params: list[object] = []
+        for key in allowed:
+            if key not in fields:
+                continue
+            assignments.append(f"{key} = ?")
+            params.append(fields[key])
+        if not assignments:
+            return False
+        assignments.append("updated_at = datetime('now', '+8 hours')")
+        params.append(item_id)
+        cursor = await self._db.execute(
+            "UPDATE youzan_products SET "
+            + ", ".join(assignments)
+            + " WHERE item_id = ?",
+            tuple(params),
+        )
+        return bool(cursor.rowcount == 1)
 
     async def get_by_alias(self, alias: str) -> dict | None:
         """根据有赞商品别名获取商品数据。"""

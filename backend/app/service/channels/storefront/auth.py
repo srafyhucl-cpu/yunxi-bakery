@@ -4,7 +4,8 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 import httpx
-from jose import JWTError, jwt
+import jwt
+from jwt import InvalidTokenError as JWTError
 
 from app.config import settings
 

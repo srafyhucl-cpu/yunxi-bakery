@@ -1,0 +1,1 @@
+import{r as e}from"./index-D9ZMe9V8.js";var t={async getPage(t){return(await e.get(`/shop-config/pages/${t}`)).data.data},async saveDraft(t,n){return(await e.put(`/shop-config/pages/${t}/draft`,n)).data.data},async publish(t){return(await e.post(`/shop-config/pages/${t}/publish`)).data.data}};export{t};

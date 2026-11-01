@@ -3,10 +3,13 @@ const DEFAULT_PICKUP_MINUTE = "00";
 const DEFAULT_BUSINESS_HOURS = "09:00-19:30";
 const DATE_PICKER_DAYS = 7;
 const SAME_DAY_ORDER_CUTOFF_HOUR = 17;
-const BEIJING_TIME_ZONE = "Asia/Shanghai";
+// 北京时区固定为 UTC+8（中国无夏令时）；部分真机小程序 JS 引擎不提供 Intl，故用固定偏移手动换算。
+const BEIJING_UTC_OFFSET_MINUTES = 8 * 60;
 const BUSINESS_HOURS_PATTERN = /(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/;
 
 export const CHECKOUT_MINUTE_OPTIONS = ["00", "30"];
+// 预订蛋糕后端硬性要求至少提前 4 小时，前端可选时间必须跟着抬起来，避免选完再被拒单。
+export const PREORDER_MIN_ADVANCE_HOURS = 4;
 
 interface BusinessHourRange {
   startHour: number;
@@ -43,26 +46,16 @@ export function padDateNumber(value: number): string {
 }
 
 function getBeijingDateTimeParts(now = new Date()): BeijingDateTimeParts {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: BEIJING_TIME_ZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23"
-  }).formatToParts(now);
-  const values = Object.fromEntries(
-    parts
-      .filter((part) => ["year", "month", "day", "hour", "minute"].includes(part.type))
-      .map((part) => [part.type, Number(part.value)])
-  );
+  // 部分真机（尤其 Android）的小程序 JS 引擎不提供 Intl，Intl.DateTimeFormat 会在
+  // 结算页模块加载期抛 ReferenceError 导致白屏；改用固定 UTC+8 偏移手动换算北京时间
+  // （中国无夏令时，与 timeZone: "Asia/Shanghai" 等价）。
+  const beijing = new Date(now.getTime() + BEIJING_UTC_OFFSET_MINUTES * 60 * 1000);
   return {
-    year: values.year || 0,
-    month: values.month || 0,
-    day: values.day || 0,
-    hour: values.hour || 0,
-    minute: values.minute || 0
+    year: beijing.getUTCFullYear(),
+    month: beijing.getUTCMonth() + 1,
+    day: beijing.getUTCDate(),
+    hour: beijing.getUTCHours(),
+    minute: beijing.getUTCMinutes()
   };
 }
 
@@ -75,14 +68,24 @@ function formatBeijingDateWithOffset(now: Date, offsetDays: number): string {
 export function buildCheckoutHourOptions(
   businessHours: string,
   dateValue = getCheckoutDateStart(),
-  now = new Date()
+  now = new Date(),
+  minAdvanceHours = 0
 ): string[] {
   const { startHour, endHour } = parseBusinessHourRange(businessHours);
   const currentTime = getBeijingDateTimeParts(now);
-  const earliestHour =
+  let earliestHour =
     isCheckoutDateToday(dateValue, now)
       ? Math.max(startHour, currentTime.hour + (currentTime.minute > 0 ? 1 : 0))
       : startHour;
+  if (minAdvanceHours > 0 && isCheckoutDateToday(dateValue, now)) {
+    const earliestAllowed = getBeijingDateTimeParts(
+      new Date(now.getTime() + minAdvanceHours * 60 * 60 * 1000)
+    );
+    earliestHour = Math.max(
+      earliestHour,
+      earliestAllowed.hour + (earliestAllowed.minute > 0 ? 1 : 0)
+    );
+  }
   return Array.from({ length: Math.max(0, endHour - earliestHour + 1) }, (_, index) =>
     padDateNumber(earliestHour + index)
   );
@@ -144,10 +147,16 @@ export function getCheckoutDateEnd(now = new Date()): string {
 
 export function buildDefaultExpectTime(
   businessHours = DEFAULT_BUSINESS_HOURS,
-  now = new Date()
+  now = new Date(),
+  minAdvanceHours = 0
 ): string {
-  const dateValue = getCheckoutDateStart(now);
-  const hourOptions = buildCheckoutHourOptions(businessHours, dateValue, now);
+  let dateValue = getCheckoutDateStart(now);
+  let hourOptions = buildCheckoutHourOptions(businessHours, dateValue, now, minAdvanceHours);
+  // 提前量把今天的可预约时段全部挤掉时，默认落到次日营业时段
+  if (!hourOptions.length) {
+    dateValue = formatBeijingDateWithOffset(now, 1);
+    hourOptions = buildCheckoutHourOptions(businessHours, dateValue, now, minAdvanceHours);
+  }
   const hourValue = hourOptions[getDefaultCheckoutHourIndex(hourOptions)] || padDateNumber(DEFAULT_PICKUP_HOUR);
   return `${dateValue} ${hourValue}:${DEFAULT_PICKUP_MINUTE}`;
 }
@@ -168,9 +177,10 @@ export function resolveCheckoutSchedule(
   businessHours: string,
   expectTime: string,
   minuteOptions: string[] = CHECKOUT_MINUTE_OPTIONS,
-  now = new Date()
+  now = new Date(),
+  minAdvanceHours = 0
 ): CheckoutScheduleState {
-  const fallbackExpectTime = buildDefaultExpectTime(businessHours, now);
+  const fallbackExpectTime = buildDefaultExpectTime(businessHours, now, minAdvanceHours);
   const normalizedExpectTime = (expectTime || "").trim() || fallbackExpectTime;
   // 已过当天截单时间时，历史选择值必须抬到最早可预约日期，不能把过期时间原样带进下单。
   const requestedDateValue = parseExpectTime(normalizedExpectTime)?.dateValue || "";
@@ -179,7 +189,12 @@ export function resolveCheckoutSchedule(
     requestedDateValue && requestedDateValue >= earliestDateValue
       ? requestedDateValue
       : earliestDateValue;
-  const hourOptions = buildCheckoutHourOptions(businessHours, dateValue, now);
+  const hourOptions = buildCheckoutHourOptions(
+    businessHours,
+    dateValue,
+    now,
+    minAdvanceHours
+  );
   const hourIndex = resolveCheckoutHourIndex(hourOptions, normalizedExpectTime);
   const minuteIndex = resolveCheckoutMinuteIndex(minuteOptions, normalizedExpectTime);
   return {

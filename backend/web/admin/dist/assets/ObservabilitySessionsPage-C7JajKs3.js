@@ -1,0 +1,1 @@
+import{R as e,b as t,f as n}from"./axios-Df7yhDib.js";import{t as r}from"./ObservabilityWorkbench-DgVxJCUm.js";var i=t({__name:`ObservabilitySessionsPage`,setup(t){return(t,i)=>(e(),n(r,{mode:`workspace`}))}});export{i as default};

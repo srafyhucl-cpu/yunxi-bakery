@@ -15,11 +15,11 @@
         <button class="primary-button yunxi-state__action" bindtap="goLogin">去登录</button>
       </view>
       <block wx:else>
-        <view class="balance-panel glass-panel fade-in">
+        <view class="balance-panel fade-in">
           <text class="balance-label">当前积分</text>
           <text class="balance-value">{{pointsBalance != null ? pointsBalance : '--'}}</text>
         </view>
-        <view wx:if="{{loading}}" class="empty-panel glass-panel">
+        <view wx:if="{{loading}}" class="empty-panel">
           <text class="empty-title">加载中...</text>
         </view>
         <view wx:elif="{{loadFailed}}" class="yunxi-state yunxi-state--page">
@@ -40,10 +40,10 @@
               <text class="ledger-label">{{item.label}}</text>
               <text class="ledger-time">{{item.displayTime}}</text>
             </view>
-            <view class="ledger-amount {{item.amount >= 0 ? 'positive' : 'negative'}}">
-              {{item.amount >= 0 ? '+' : ''}}{{item.amount}}
+            <view class="ledger-side">
+              <text class="ledger-amount {{item.amount >= 0 ? 'positive' : 'negative'}}">{{item.amount >= 0 ? '+' : ''}}{{item.amount}}</text>
+              <text class="ledger-total">余额 {{item.total}}</text>
             </view>
-            <view class="ledger-total">余额 {{item.total}}</view>
           </view>
         </view>
       </block>

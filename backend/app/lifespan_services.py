@@ -13,6 +13,7 @@ from app.service.knowledge_retriever import KnowledgeRetriever
 from app.service.youzan.client import YouzanClient
 from app.service.youzan.event_handler import YouzanEventHandler
 from app.service.youzan.product_reconciler import ProductReconcileService
+from app.service.catalog.product_admin import ProductAdminService
 from app.service.agents.trace_sink import build_local_agent_trace_sink
 from app.repository.privacy_repo import PrivacyRepo
 from app.repository.product_daily_stock_repo import ProductDailyStockRepo
@@ -224,6 +225,9 @@ def init_services(repos: dict[str, Any], vs: Any, bm25: Any = None) -> dict[str,
         knowledge_product_repo=repos["knowledge_product_repo"],
         embedding_searcher=vs,
     )
+    product_admin_service = ProductAdminService(
+        repos["youzan_product_repo"], repos["knowledge_product_repo"]
+    )
 
     chat_service = ChatService(
         session_repo=repos["session_repo"],
@@ -307,6 +311,7 @@ def init_services(repos: dict[str, Any], vs: Any, bm25: Any = None) -> dict[str,
         "youzan_client": youzan_client,
         "youzan_event_handler": youzan_event_handler,
         "reconcile_service": reconcile_service,
+        "product_admin_service": product_admin_service,
         "chat_service": chat_service,
         "storefront_conversation_service": storefront_conversation_service,
         "customization_card_service": customization_card_service,

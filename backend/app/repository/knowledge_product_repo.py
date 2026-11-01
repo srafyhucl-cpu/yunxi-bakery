@@ -281,6 +281,24 @@ class KnowledgeProductRepo(BaseRepository):
             )
             return WriteResult.FAILED
 
+    async def update_product_knowledge_admin(
+        self,
+        youzan_item_id: str,
+        *,
+        title: str,
+        content: str,
+        is_active: bool,
+    ) -> bool:
+        """后台编辑商品时直接同步知识条目，不受同步时间戳比较限制。"""
+        cursor = await self._db.execute(
+            "UPDATE knowledge_base SET title = ?, content = ?, is_active = ?, "
+            "updated_at = datetime('now', '+8 hours') "
+            "WHERE youzan_item_id = ? AND content_type = 'product'",
+            (title, content, 1 if is_active else 0, youzan_item_id),
+        )
+        await self._db.commit()
+        return bool(cursor.rowcount)
+
     async def get_product_vector_revision(self, youzan_item_id: str) -> str | None:
         """读取商品知识当前内容 revision。"""
         rows = await self._db.execute_fetchall(

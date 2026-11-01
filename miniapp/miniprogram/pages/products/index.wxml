@@ -11,22 +11,24 @@
         <text>北京闪送｜运费实算</text>
       </view>
     </view>
-    <view class="products-search">
-      <text class="products-search__icon">⌕</text>
-      <input
-        class="products-search__input"
-        value="{{searchText}}"
-        placeholder="在芸熙烘焙中搜索"
-        placeholder-class="products-search__placeholder"
-        confirm-type="search"
-        bindinput="onSearchInput"
-      />
-      <text
-        wx:if="{{searchText}}"
-        class="products-search__clear"
-        bindtap="clearSearch"
-        aria-label="清空搜索"
-      >×</text>
+    <view class="products-toolbar">
+      <view class="products-search">
+        <text class="products-search__icon">⌕</text>
+        <input
+          class="products-search__input"
+          value="{{searchText}}"
+          placeholder="在芸熙烘焙中搜索"
+          placeholder-class="products-search__placeholder"
+          confirm-type="search"
+          bindinput="onSearchInput"
+        />
+        <text
+          wx:if="{{searchText}}"
+          class="products-search__clear"
+          bindtap="clearSearch"
+          aria-label="清空搜索"
+        >×</text>
+      </view>
     </view>
   </view>
 
@@ -38,10 +40,12 @@
       <button class="primary-button yunxi-state__action" bindtap="retryLoad">重新加载</button>
     </view>
     <view wx:elif="{{loading && !loaded}}" class="products-skeleton">
-      <view wx:for="{{[1, 2, 3, 4, 5, 6]}}" wx:key="*this" class="products-skeleton__card yunxi-card">
+      <view wx:for="{{[1, 2, 3, 4, 5, 6]}}" wx:key="*this" class="products-skeleton__card">
         <view class="products-skeleton__image yunxi-skeleton"></view>
-        <view class="products-skeleton__line yunxi-skeleton"></view>
-        <view class="products-skeleton__line--short yunxi-skeleton"></view>
+        <view class="products-skeleton__body">
+          <view class="products-skeleton__line yunxi-skeleton"></view>
+          <view class="products-skeleton__line--short yunxi-skeleton"></view>
+        </view>
       </view>
     </view>
     <!-- 全局搜索结果列表 -->
@@ -67,7 +71,7 @@
             wx:for="{{globalSearchResults}}"
             wx:key="id"
             wx:for-item="product"
-            class="product-card yunxi-card hover-scale stagger-fade-in {{product.isUnavailable ? 'is-unavailable' : ''}}"
+            class="product-card hover-scale stagger-fade-in {{product.isUnavailable ? 'is-unavailable' : ''}}"
             data-id="{{product.id}}"
             bindtap="openProduct"
           >
@@ -153,10 +157,12 @@
               </view>
             </view>
             <view wx:if="{{catalogLoading && activeProducts.length === 0}}" class="products-skeleton products-skeleton--inline">
-              <view wx:for="{{[1, 2, 3, 4]}}" wx:key="*this" class="products-skeleton__card yunxi-card">
+              <view wx:for="{{[1, 2, 3, 4]}}" wx:key="*this" class="products-skeleton__card">
                 <view class="products-skeleton__image yunxi-skeleton"></view>
-                <view class="products-skeleton__line yunxi-skeleton"></view>
-                <view class="products-skeleton__line--short yunxi-skeleton"></view>
+                <view class="products-skeleton__body">
+                  <view class="products-skeleton__line yunxi-skeleton"></view>
+                  <view class="products-skeleton__line--short yunxi-skeleton"></view>
+                </view>
               </view>
             </view>
             <view class="products-grid products-list">
@@ -164,7 +170,7 @@
                 wx:for="{{activeProducts}}"
                 wx:key="id"
                 wx:for-item="product"
-                class="product-card yunxi-card hover-scale stagger-fade-in {{product.isUnavailable ? 'is-unavailable' : ''}}"
+                class="product-card hover-scale stagger-fade-in {{product.isUnavailable ? 'is-unavailable' : ''}}"
                 style="animation-delay: {{index * 0.02}}s"
                 data-id="{{product.id}}"
                 bindtap="openProduct"

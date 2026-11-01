@@ -1,98 +1,204 @@
 /* ==========================================================================
-   拼团登记页 (Group Registration Page) - 现代自然轻食风格重塑
+   群内登记 —— 编辑式版面（纸色标题区 / 裸字段表单 / 下划线双 tab / 深绿提交）
+   版面规则：
+   1. 整页以暖纸为底，标题区用左侧黄铜竖线起头，像画册的卷首语。
+   2. 表单字段是裸字段：透明底 + 1rpx 底边 + 96rpx 高，标签是 20rpx overline。
+   3. 品牌深林绿只留给提交按钮与选中态，其余一律墨色、纸色与黄铜。
    ========================================================================== */
 
 .group-registration-page {
   display: flex;
   flex-direction: column;
-  gap: 20rpx;
+  gap: 0;
+  padding: 0 0 calc(env(safe-area-inset-bottom) + 48rpx);
+  background: var(--yunxi-page-bg);
 }
+
+/* --------------------------------------------------------------------------
+   标题区：纸底 + 左侧黄铜竖线的编辑式标题
+   -------------------------------------------------------------------------- */
 
 .registration-hero {
   display: flex;
   flex-direction: column;
-  gap: 12rpx;
-  padding: 32rpx 28rpx;
+  gap: 24rpx;
+  padding: 48rpx var(--yunxi-page-gutter) 44rpx;
+  background: transparent;
+  border-bottom: 1rpx solid var(--yunxi-border);
 }
 
+/* 竖线只压在标题块上，说明文字留在竖线之外 */
+.registration-hero__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+  border-left: 2rpx solid var(--yunxi-gold);
+  padding-left: 24rpx;
+}
+
+/* 群名：黄铜 overline */
 .registration-kicker {
-  color: var(--yunxi-brand);
-  font-size: 24rpx;
-  font-weight: 800;
-  letter-spacing: 0.08em;
+  display: block;
+  color: var(--yunxi-gold);
+  font-size: 20rpx;
+  font-weight: 400;
+  line-height: 1.6;
+  letter-spacing: 0.22em;
 }
 
 .registration-title {
+  display: block;
   color: var(--yunxi-text-primary);
-  font-size: 40rpx;
-  font-weight: 900;
-  line-height: 1.25;
+  font-size: 38rpx;
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: 0.02em;
 }
 
 .registration-copy {
   color: var(--yunxi-text-secondary);
   font-size: 26rpx;
-  line-height: 1.55;
+  line-height: 1.7;
 }
 
+/* 错误提示：平面警示条，不做卡片 */
 .registration-error {
-  padding: 18rpx 24rpx;
+  padding: 20rpx var(--yunxi-page-gutter);
   color: var(--yunxi-deal);
-  background: #FDF1EE;
-  border: 1rpx solid rgba(186, 78, 61, 0.2);
-  border-radius: var(--yunxi-radius-md);
+  background: #FBF0ED;
+  border: 0;
+  border-bottom: 1rpx solid rgba(180, 84, 63, 0.18);
+  border-radius: 0;
   font-size: 24rpx;
-  line-height: 1.45;
+  line-height: 1.6;
 }
+
+/* --------------------------------------------------------------------------
+   表单：柔白分区，裸字段（透明底 + 1rpx 底边）
+   -------------------------------------------------------------------------- */
 
 .form {
   display: flex;
   flex-direction: column;
-  gap: 20rpx;
-  padding: 28rpx;
+  gap: 32rpx;
+  padding: 44rpx var(--yunxi-page-gutter) 48rpx;
 }
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+}
+
+/* 字段标签：20rpx 宽字距 overline */
+.form-field__label {
+  color: var(--yunxi-text-muted);
+  font-size: 20rpx;
+  font-weight: 400;
+  line-height: 1.4;
+  letter-spacing: 0.2em;
+}
+
+/* 分组之间的 1rpx 分隔线：负边距让线条铺满整行 */
+.form-divider {
+  margin: 6rpx calc(var(--yunxi-page-gutter) * -1) 2rpx;
+}
+
+/* 裸字段：透明底 + 1rpx 底边，不用描边盒子 */
+input,
+textarea {
+  width: 100%;
+  height: 96rpx;
+  min-height: 96rpx;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-bottom: 1rpx solid var(--yunxi-border-medium);
+  border-radius: 0;
+  font-size: 28rpx;
+  color: var(--yunxi-text-primary);
+  box-sizing: border-box;
+}
+
+textarea {
+  height: 176rpx;
+  min-height: 176rpx;
+  padding: 12rpx 0;
+  line-height: 1.6;
+}
+
+/* 占位文字比正文更轻，避免裸字段看着像没做完 */
+.field-placeholder {
+  color: var(--yunxi-text-subtle);
+  font-size: 26rpx;
+}
+
+/* 数量：与其它字段同规格的裸字段 */
+.quantity-field__input {
+  width: 100%;
+  min-height: 96rpx;
+  padding: 0;
+  text-align: left;
+}
+
+/* --------------------------------------------------------------------------
+   履约方式：下划线双 tab
+   -------------------------------------------------------------------------- */
 
 .fulfillment-tabs,
 .success-actions {
   display: flex;
   align-items: center;
-  gap: 16rpx;
+  gap: 32rpx;
 }
 
-.success-actions button {
-  flex: 1;
-  min-width: 0;
-}
-
-button.fulfillment-tab,
-.fulfillment-tab {
-  flex: 1;
+/* 需要带页面作用域压过 app.wxss 的 button:not([size="mini"]) 重置，否则背景、内边距与触控高度都会被清零。 */
+.group-registration-page button.fulfillment-tab,
+.group-registration-page .fulfillment-tab {
+  flex: 0 0 auto;
   width: auto !important;
+  min-width: 0;
   min-height: 88rpx;
-  border-radius: var(--yunxi-radius-sm);
-  background: #FFFFFF;
-  color: var(--yunxi-text-secondary);
-  border: 1rpx solid var(--yunxi-border);
-  font-size: 28rpx;
-  font-weight: 700;
-  transition: all 0.25s ease;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--yunxi-text-muted);
+  border: 0;
+  border-bottom: 1rpx solid var(--yunxi-border-medium);
+  font-size: 26rpx;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-button.fulfillment-tab.is-active,
-.fulfillment-tab.is-active {
-  background: var(--yunxi-brand);
-  color: #FFFFFF;
-  border-color: var(--yunxi-brand);
-  box-shadow: 0 4rpx 14rpx rgba(61, 51, 45, 0.16);
+/* 选中态：墨色文字 + 品牌色下划线 */
+.group-registration-page button.fulfillment-tab.is-active,
+.group-registration-page .fulfillment-tab.is-active {
+  background: transparent;
+  color: var(--yunxi-text-primary);
+  border-bottom: 2rpx solid var(--yunxi-brand);
+  font-weight: 500;
+  box-shadow: none;
 }
+
+.group-registration-page button.fulfillment-tab:active {
+  opacity: 0.7;
+}
+
+/* --------------------------------------------------------------------------
+   日期与时段：裸字段 picker + 细线
+   -------------------------------------------------------------------------- */
 
 .time-grid {
   flex-wrap: wrap;
   display: flex;
-  gap: 16rpx;
+  gap: 24rpx;
 }
 
 .time-grid picker.time-grid__date {
@@ -104,19 +210,21 @@ button.fulfillment-tab.is-active,
   min-width: 0;
 }
 
-/* 可点击的时间选择器：保留输入框外观并给出下拉指示，避免被当成静态文字 */
+/* 可点击的时间选择器：裸字段 + 下拉指示，避免被当成静态文字 */
 .time-picker {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8rpx;
-  min-height: 88rpx;
-  padding: 0 24rpx;
-  background: var(--yunxi-surface-alt);
-  border: 1rpx solid var(--yunxi-border);
-  border-radius: var(--yunxi-radius-md);
+  min-height: 96rpx;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-bottom: 1rpx solid var(--yunxi-border-medium);
+  border-radius: 0;
   font-size: 26rpx;
   color: var(--yunxi-text-primary);
+  box-sizing: border-box;
 }
 
 .time-picker__value {
@@ -141,69 +249,28 @@ button.fulfillment-tab.is-active,
   color: var(--yunxi-text-secondary);
   font-size: 24rpx;
   min-height: auto;
-  padding: 16rpx 4rpx 0;
-  line-height: 1.5;
+  padding: 4rpx 0 0;
+  line-height: 1.7;
 }
 
 /* 闪送运费由顾客承担，属于必须在下单前知晓的事实，不能只靠客服口头补充 */
 .delivery-fee-hint {
   display: block;
-  padding: 0 4rpx;
+  padding: 0;
   color: var(--yunxi-text-muted);
   font-size: 22rpx;
-  line-height: 1.5;
+  line-height: 1.7;
 }
 
-input,
-textarea {
-  width: 100%;
-  min-height: 88rpx;
-  padding: 0 24rpx;
-  background: var(--yunxi-surface-alt);
-  border: 1rpx solid var(--yunxi-border);
-  border-radius: var(--yunxi-radius-md);
-  font-size: 28rpx;
-  color: var(--yunxi-text-primary);
-}
-
-textarea {
-  height: 180rpx;
-  min-height: 180rpx;
-  padding-top: 24rpx;
-}
-
-.quantity-field {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-  min-height: 88rpx;
-  padding: 0 24rpx;
-  background: var(--yunxi-surface-alt);
-  border: 1rpx solid var(--yunxi-border);
-  border-radius: var(--yunxi-radius-md);
-}
-
-.quantity-field__label {
-  flex: 0 0 auto;
-  color: var(--yunxi-text-secondary);
-  font-size: 26rpx;
-}
-
-.quantity-field__input {
-  flex: 1;
-  min-width: 0;
-  min-height: 88rpx;
-  padding: 0;
-  background: transparent;
-  border: 0;
-  text-align: right;
-}
+/* --------------------------------------------------------------------------
+   提交结果：柔白平面行
+   -------------------------------------------------------------------------- */
 
 .success-panel {
   display: flex;
   flex-direction: column;
   gap: 28rpx;
-  padding: 32rpx;
+  padding: 44rpx var(--yunxi-page-gutter);
 }
 
 .success-heading {
@@ -212,18 +279,20 @@ textarea {
   gap: 20rpx;
 }
 
+/* 完成标记用黄铜细线圆，不占用品牌色 */
 .success-heading__icon {
   display: flex;
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  width: 72rpx;
-  height: 72rpx;
-  color: #ffffff;
-  background: var(--yunxi-brand);
+  width: 56rpx;
+  height: 56rpx;
+  color: var(--yunxi-gold);
+  background: transparent;
+  border: 1rpx solid rgba(154, 119, 79, 0.45);
   border-radius: 50%;
-  font-size: 34rpx;
-  font-weight: 900;
+  font-size: 26rpx;
+  font-weight: 400;
 }
 
 .success-heading__copy {
@@ -231,26 +300,27 @@ textarea {
   flex: 1;
   flex-direction: column;
   min-width: 0;
-  gap: 6rpx;
+  gap: 8rpx;
 }
 
 .success-title {
   color: var(--yunxi-text-primary);
-  font-size: 34rpx;
-  font-weight: 900;
-  line-height: 1.25;
+  font-size: 32rpx;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  line-height: 1.3;
 }
 
 .success-subtitle {
   color: var(--yunxi-text-secondary);
   font-size: 24rpx;
-  line-height: 1.45;
+  line-height: 1.6;
 }
 
 .success-list {
-  padding: 0 24rpx;
-  background: var(--yunxi-surface-alt);
-  border-radius: var(--yunxi-radius-md);
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
 }
 
 .success-row {
@@ -258,10 +328,10 @@ textarea {
   align-items: flex-start;
   justify-content: space-between;
   gap: 24rpx;
-  padding: 20rpx 0;
+  padding: 22rpx 0;
   border-bottom: 1rpx solid var(--yunxi-border);
   font-size: 25rpx;
-  line-height: 1.45;
+  line-height: 1.5;
 }
 
 .success-row:last-child {
@@ -270,13 +340,43 @@ textarea {
 
 .success-row text:first-child {
   flex: 0 0 auto;
-  color: var(--yunxi-text-secondary);
+  color: var(--yunxi-text-muted);
 }
 
 .success-row text:last-child {
   min-width: 0;
   color: var(--yunxi-text-primary);
-  font-weight: 700;
+  font-weight: 500;
   text-align: right;
   overflow-wrap: anywhere;
+}
+
+/* --------------------------------------------------------------------------
+   底部操作区：随内容流，不制造悬浮层
+   -------------------------------------------------------------------------- */
+
+/* 需要带页面作用域压过 app.wxss 的 button:not([size="mini"]) 重置，否则外边距与触控高度都会被清零。 */
+.group-registration-page button.submit-button {
+  width: auto !important;
+  margin: 40rpx var(--yunxi-page-gutter) 0;
+  min-height: 96rpx;
+  height: 96rpx;
+  background: var(--yunxi-brand);
+  color: #F7F4EC;
+  border: 0;
+  border-radius: 2rpx;
+  font-size: 28rpx;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  box-shadow: none;
+}
+
+.success-actions {
+  gap: 24rpx;
+  margin: 40rpx var(--yunxi-page-gutter) 0;
+}
+
+.success-actions button {
+  flex: 1;
+  min-width: 0;
 }

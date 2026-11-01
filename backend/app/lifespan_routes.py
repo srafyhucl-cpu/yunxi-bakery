@@ -167,6 +167,7 @@ def _register_admin_operations_routes(app: FastAPI, services: dict[str, Any]) ->
         create_admin_products_router(
             services["reconcile_service"],
             services["knowledge_sync_service"],
+            services["product_admin_service"],
         )
     )
     app.include_router(create_admin_coupons_router(AdminCouponService()))

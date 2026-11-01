@@ -53,5 +53,10 @@
     "miniprogram-api-typings": "^4.0.0",
     "miniprogram-automator": "^0.12.1",
     "typescript": "^5.0.0"
+  },
+  "overrides": {
+    "follow-redirects": "^1.16.2",
+    "minimist": "^1.2.6",
+    "phin": "^3.7.1"
   }
 }

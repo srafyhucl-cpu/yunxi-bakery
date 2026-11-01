@@ -19,7 +19,7 @@ COPY requirements.txt ./
 RUN --mount=type=cache,target=/root/.cache/pip,sharing=locked \
     pip wheel --wheel-dir /wheels \
         --only-binary=:all: --index-url "${PYTORCH_CPU_INDEX_URL}" \
-        'torch==2.12.0+cpu' && \
+        'torch==2.13.0+cpu' && \
     pip wheel --wheel-dir /wheels \
         --only-binary=:all: --find-links /wheels -r requirements.txt
 

@@ -37,8 +37,40 @@ interface ProductDetailView extends CatalogProduct {
   descriptionBlocks: DescriptionBlock[];
 }
 
+interface VariantView {
+  id: string;
+  name: string;
+  priceFen: number;
+  priceText: string;
+  stock: number;
+  disabled: boolean;
+  selected: boolean;
+}
+
+interface OptionChoiceView {
+  id: string;
+  name: string;
+  priceDeltaFen: number;
+  priceText: string;
+  selected: boolean;
+}
+
+interface OptionGroupView {
+  name: string;
+  required: boolean;
+  multiple: boolean;
+  choices: OptionChoiceView[];
+}
+
 function canPurchaseProduct(product: CatalogProduct | null): boolean {
-  return Boolean(product && isProductPurchasable(product) && product.isActive && product.stock > 0);
+  if (!product || !isProductPurchasable(product) || !product.isActive) {
+    return false;
+  }
+  // 预订商品按 SKU 库存判断：商品级库存是有赞汇总值，不能直接用来卡可售
+  if (product.orderMode === "preorder" && (product.variants || []).length > 0) {
+    return (product.variants || []).some((variant) => variant.stock > 0);
+  }
+  return product.stock > 0;
 }
 
 function getUnavailableText(product: CatalogProduct | null): string {
@@ -55,6 +87,50 @@ function getUnavailableText(product: CatalogProduct | null): string {
     return "暂时售罄";
   }
   return "";
+}
+
+function buildVariantViews(product: CatalogProduct, selectedId: string): VariantView[] {
+  return (product.variants || []).map((variant) => ({
+    id: variant.id,
+    name: variant.name,
+    priceFen: variant.priceFen,
+    priceText: formatFen(variant.priceFen),
+    stock: variant.stock,
+    disabled: variant.stock <= 0,
+    selected: variant.id === selectedId
+  }));
+}
+
+function buildOptionGroupViews(
+  product: CatalogProduct,
+  selectedIds: string[]
+): OptionGroupView[] {
+  return (product.options || []).map((group) => ({
+    name: group.name,
+    required: group.required,
+    multiple: group.multiple,
+    choices: group.choices.map((choice) => ({
+      id: choice.id,
+      name: choice.name,
+      priceDeltaFen: choice.priceDeltaFen,
+      priceText: choice.priceDeltaFen > 0 ? `+${formatFen(choice.priceDeltaFen)}` : "",
+      selected: selectedIds.includes(choice.id)
+    }))
+  }));
+}
+
+function computePriceFen(
+  product: CatalogProduct,
+  variantId: string,
+  choiceIds: string[]
+): number {
+  const variant = (product.variants || []).find((item) => item.id === variantId);
+  const base = variant ? variant.priceFen : product.priceFen;
+  const delta = (product.options || [])
+    .flatMap((group) => group.choices)
+    .filter((choice) => choiceIds.includes(choice.id))
+    .reduce((sum, choice) => sum + choice.priceDeltaFen, 0);
+  return base + delta;
 }
 
 function isJunkSubtitle(subtitle: string, product: CatalogProduct): boolean {
@@ -90,6 +166,17 @@ Page({
     buyingNow: false,
     canPurchase: false,
     isDisplayOnly: false,
+    needsOptions: false,
+    variantProperty: "规格",
+    variantViews: [] as VariantView[],
+    optionGroups: [] as OptionGroupView[],
+    selectedVariantId: "",
+    selectedChoiceIds: [] as string[],
+    greeting: "",
+    hasTableware: false,
+    hasCandle: false,
+    currentPriceFen: 0,
+    currentPriceText: "",
     unavailableText: "商品加载中",
     layoutStyle: getMiniappLayoutMetrics().pageShellStyle,
     navSolid: false
@@ -147,6 +234,14 @@ Page({
       wx.showToast({ title: "商品不存在", icon: "none" });
       return;
     }
+    const variants = product.variants || [];
+    const firstAvailable = variants.find((variant) => variant.stock > 0) || variants[0];
+    const selectedVariantId = firstAvailable ? firstAvailable.id : "";
+    const defaultChoiceIds = (product.options || [])
+      .filter((group) => group.required && !group.multiple)
+      .map((group) => group.choices[0]?.id)
+      .filter((choiceId): choiceId is string => Boolean(choiceId));
+    const currentPriceFen = computePriceFen(product, selectedVariantId, defaultChoiceIds);
     this.setData({
       loading: false,
       loadFailed: false,
@@ -154,10 +249,21 @@ Page({
       isDisplayOnly: !isProductPurchasable(product),
       unavailableText: getUnavailableText(product),
       purchaseQty: 1,
+      needsOptions: product.orderMode === "preorder",
+      variantProperty: variants[0]?.property || "规格",
+      variantViews: buildVariantViews(product, selectedVariantId),
+      optionGroups: buildOptionGroupViews(product, defaultChoiceIds),
+      selectedVariantId,
+      selectedChoiceIds: defaultChoiceIds,
+      greeting: "",
+      hasTableware: false,
+      hasCandle: false,
+      currentPriceFen,
+      currentPriceText: formatFen(currentPriceFen),
       product: {
         ...product,
         imageFailed: false,
-        priceText: formatFen(product.priceFen),
+        priceText: formatFen(currentPriceFen),
         displaySubtitle: getDisplaySubtitle(product),
         displayFulfillment: canPurchaseProduct(product)
           ? getProductPurchaseHint(product)
@@ -203,6 +309,143 @@ Page({
       url: `${ROUTES.productDetail}?id=${productId}`
     });
   },
+  selectVariant(event: WechatMiniprogram.TouchEvent) {
+    const variantId = event.currentTarget.dataset.id as string;
+    const product = this.data.product;
+    if (!product || !variantId) {
+      return;
+    }
+    const variant = (product.variants || []).find((item) => item.id === variantId);
+    if (!variant || variant.stock <= 0) {
+      wx.showToast({ title: "该规格已售罄", icon: "none" });
+      return;
+    }
+    this.setData(
+      {
+        selectedVariantId: variantId,
+        variantViews: buildVariantViews(product, variantId)
+      },
+      () => this.refreshPrice()
+    );
+  },
+  toggleChoice(event: WechatMiniprogram.TouchEvent) {
+    const choiceId = event.currentTarget.dataset.id as string;
+    const groupName = event.currentTarget.dataset.group as string;
+    const product = this.data.product;
+    if (!product || !choiceId) {
+      return;
+    }
+    const group = (product.options || []).find((item) => item.name === groupName);
+    if (!group) {
+      return;
+    }
+    const selected = this.data.selectedChoiceIds.slice();
+    const index = selected.indexOf(choiceId);
+    if (group.multiple) {
+      if (index >= 0) {
+        selected.splice(index, 1);
+      } else {
+        selected.push(choiceId);
+      }
+    } else {
+      // 单选组内互斥；必选项不允许点掉，避免提交时才报错
+      const groupChoiceIds = group.choices.map((choice) => choice.id);
+      const outsideGroup = selected.filter((id) => !groupChoiceIds.includes(id));
+      if (index >= 0 && !group.required) {
+        this.setData(
+          {
+            selectedChoiceIds: outsideGroup,
+            optionGroups: buildOptionGroupViews(product, outsideGroup)
+          },
+          () => this.refreshPrice()
+        );
+        return;
+      }
+      if (index >= 0) {
+        return;
+      }
+      outsideGroup.push(choiceId);
+      selected.length = 0;
+      selected.push(...outsideGroup);
+    }
+    this.setData(
+      {
+        selectedChoiceIds: selected,
+        optionGroups: buildOptionGroupViews(product, selected)
+      },
+      () => this.refreshPrice()
+    );
+  },
+  onGreetingInput(event: WechatMiniprogram.Input) {
+    this.setData({ greeting: event.detail.value });
+  },
+  toggleAccessory(event: WechatMiniprogram.TouchEvent) {
+    const key = event.currentTarget.dataset.key as string;
+    if (key === "tableware") {
+      this.setData({ hasTableware: !this.data.hasTableware });
+    }
+    if (key === "candle") {
+      this.setData({ hasCandle: !this.data.hasCandle });
+    }
+  },
+  refreshPrice() {
+    const product = this.data.product;
+    if (!product) {
+      return;
+    }
+    const priceFen = computePriceFen(
+      product,
+      this.data.selectedVariantId,
+      this.data.selectedChoiceIds
+    );
+    this.setData({
+      currentPriceFen: priceFen,
+      currentPriceText: formatFen(priceFen),
+      "product.priceText": formatFen(priceFen)
+    });
+  },
+  validateSelection(): string {
+    const product = this.data.product;
+    if (!product || product.orderMode !== "preorder") {
+      return "";
+    }
+    if ((product.variants || []).length > 0 && !this.data.selectedVariantId) {
+      return "请选择规格";
+    }
+    for (const group of product.options || []) {
+      if (!group.required) {
+        continue;
+      }
+      const picked = group.choices.some((choice) =>
+        this.data.selectedChoiceIds.includes(choice.id)
+      );
+      if (!picked) {
+        return `请选择${group.name}`;
+      }
+    }
+    return "";
+  },
+  getStockLimit(): number {
+    const product = this.data.product;
+    if (!product) {
+      return 0;
+    }
+    const variant = (product.variants || []).find(
+      (item) => item.id === this.data.selectedVariantId
+    );
+    return variant ? variant.stock : product.stock;
+  },
+  buildOptionText(): string {
+    const product = this.data.product;
+    if (!product) {
+      return "";
+    }
+    const names = (product.options || [])
+      .flatMap((group) => group.choices)
+      .filter((choice) => this.data.selectedChoiceIds.includes(choice.id))
+      .map((choice) => choice.name);
+    return names.join("、");
+  },
   decreaseQty() {
     if (this.data.purchaseQty > 1) {
       this.setData({ purchaseQty: this.data.purchaseQty - 1 });
@@ -216,9 +459,10 @@ Page({
     const currentQuantity = getCartItems()
       .filter((item) => item.productId === product.id)
       .reduce((sum, item) => sum + item.quantity, 0);
-    const remainingQuantity = Math.max(0, product.stock - currentQuantity);
+    const stockLimit = this.getStockLimit();
+    const remainingQuantity = Math.max(0, stockLimit - currentQuantity);
     if (remainingQuantity <= 0 || this.data.purchaseQty >= remainingQuantity) {
-      wx.showToast({ title: "库存仅余 " + product.stock + " 件", icon: "none" });
+      wx.showToast({ title: "库存仅余 " + stockLimit + " 件", icon: "none" });
       return;
     }
     this.setData({ purchaseQty: this.data.purchaseQty + 1 });
@@ -250,22 +494,44 @@ Page({
       }
       return false;
     }
+    const selectionError = this.validateSelection();
+    if (selectionError) {
+      wx.showToast({ title: selectionError, icon: "none" });
+      return false;
+    }
     this.setData({ addingToCart: true });
     try {
+      const stockLimit = this.getStockLimit();
       const currentQuantity = getCartItems()
         .filter((item) => item.productId === product.id)
         .reduce((sum, item) => sum + item.quantity, 0);
-      if (currentQuantity + this.data.purchaseQty > product.stock) {
-        wx.showToast({ title: "库存仅余 " + product.stock + " 件", icon: "none" });
+      if (currentQuantity + this.data.purchaseQty > stockLimit) {
+        wx.showToast({ title: "库存仅余 " + stockLimit + " 件", icon: "none" });
         return false;
       }
+      const selectedVariant = (product.variants || []).find(
+        (variant) => variant.id === this.data.selectedVariantId
+      );
+      const accessories = [
+        this.data.hasTableware ? "餐具" : "",
+        this.data.hasCandle ? "蜡烛" : ""
+      ]
+        .filter(Boolean)
+        .join("、");
       addCartItem({
         productId: product.id,
         title: product.title,
         imageUrl: product.imageUrl,
-        priceFen: product.priceFen,
+        priceFen: this.data.currentPriceFen,
         quantity: this.data.purchaseQty,
-        stock: product.stock
+        stock: stockLimit,
+        skuId: this.data.selectedVariantId,
+        skuName: selectedVariant ? selectedVariant.name : "",
+        optionChoiceIds: this.data.selectedChoiceIds,
+        optionText: this.buildOptionText(),
+        greeting: this.data.greeting.trim(),
+        accessories,
+        orderMode: product.orderMode
       });
       wx.showToast({
         title: "已加入购物车",

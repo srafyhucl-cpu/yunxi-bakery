@@ -15,8 +15,8 @@
         bind:action="refreshSession"
       ></session-notice>
 
-      <!-- 会员资料头部 -->
-      <view class="profile-header">
+      <!-- 会员资料头部：纸色编辑式版面 -->
+      <view class="profile-header flat-section">
         <view class="profile-user-info">
           <!-- 头像边框：有姓名才用首字头像，未登录或无姓名一律用标准人像图标，禁止单字占位 -->
           <view class="profile-avatar-frame">
@@ -26,42 +26,42 @@
           </view>
           <!-- 资料文字 -->
           <view class="profile-meta">
+            <text wx:if="{{sessionView.loggedIn}}" class="profile-level-badge">{{memberProps.levelText}}</text>
             <view class="profile-name-row">
               <text class="profile-name">{{sessionView.loggedIn ? (memberProps.name || '微信用户') : '未登录用户'}}</text>
-              <text wx:if="{{sessionView.loggedIn}}" class="profile-level-badge">{{memberProps.levelText}}</text>
             </view>
             <text class="profile-subtext">{{sessionView.loggedIn ? memberProps.levelText + ' · 微信身份已登录' : '登录后可查看订单和会员资产'}}</text>
           </view>
         </view>
       </view>
 
-      <!-- Asset Metrics Bar (芸熙资产) -->
-      <view wx:if="{{sessionView.loggedIn}}" class="metrics-panel glass-panel fade-in">
-        <view class="metrics-header">
-          <text class="metrics-title">芸熙资产</text>
+      <!-- Asset Metrics Bar (芸熙资产)：纸底对齐数字行，列间 1rpx 竖分隔线 -->
+      <view wx:if="{{sessionView.loggedIn}}" class="metrics-panel flat-section fade-in">
+        <view class="metrics-header flat-section__head">
+          <text class="metrics-title flat-section__title">芸熙资产</text>
         </view>
         <view class="metrics-grid">
           <view class="metric-col" bindtap="openRecharge">
-            <text class="metric-val">{{assetsLoaded ? (assetBalanceFen != null ? balanceText : '--') : '--'}}</text>
             <text class="metric-lbl">账户余额</text>
+            <text class="metric-val">{{assetsLoaded ? (assetBalanceFen != null ? balanceText : '--') : '--'}}</text>
             <text wx:if="{{rechargeReady}}" class="metric-entry">去充值 ›</text>
           </view>
           <view class="metric-col" bindtap="openPoints">
-            <text class="metric-val">{{assetsLoaded ? (assetPoints != null ? assetPoints : '--') : '--'}}</text>
             <text class="metric-lbl">累积积分</text>
+            <text class="metric-val">{{assetsLoaded ? (assetPoints != null ? assetPoints : '--') : '--'}}</text>
             <text class="metric-entry">明细 ›</text>
           </view>
           <view class="metric-col" bindtap="openCoupons">
-            <text class="metric-val">{{assetsLoaded ? (assetCouponCount != null ? assetCouponCount : '--') : '--'}}<text class="metric-unit">张</text></text>
             <text class="metric-lbl">可用优惠券</text>
+            <text class="metric-val">{{assetsLoaded ? (assetCouponCount != null ? assetCouponCount : '--') : '--'}}<text class="metric-unit">张</text></text>
             <text class="metric-entry">查看 ›</text>
           </view>
         </view>
       </view>
 
-      <!-- 金绿色会员卡 -->
+      <!-- 会员卡：整块深林绿品牌色带 -->
       <view wx:if="{{sessionView.loggedIn}}" class="member-card-wrapper fade-in">
-        <view class="luxury-member-card shimmer-sweep">
+        <view class="luxury-member-card">
           <view class="card-logo-row">
             <text class="card-brand">芸熙烘焙</text>
             <text class="card-type">会员卡</text>
@@ -86,8 +86,8 @@
         </view>
       </view>
 
-      <!-- 订单管理面板 -->
-      <view class="panel-card glass-panel fade-in">
+      <!-- 订单管理面板：白底平面分区 + 四栏入口 -->
+      <view class="panel-card flat-section fade-in">
         <view class="panel-card__header">
           <text class="panel-card__title">我的订单</text>
           <text class="panel-card__all" bindtap="openOrders">查看全部订单 ›</text>
@@ -111,8 +111,8 @@
         </view>
       </view>
 
-      <!-- Service Cell List (我的服务) -->
-      <view class="panel-card glass-panel fade-in">
+      <!-- Service Cell List (我的服务)：柔白底细线行 + 1rpx 分隔线 -->
+      <view class="panel-card flat-section flat-section--cream flat-section--last fade-in">
         <view class="panel-card__header">
           <text class="panel-card__title">特色服务</text>
         </view>

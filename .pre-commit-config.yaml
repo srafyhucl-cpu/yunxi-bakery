@@ -13,7 +13,8 @@ repos:
         args: [--baseline, backend/.secrets.baseline]
         # 基线文件自身不参与扫描：其豁免条目中的哈希/密钥字样必然被自身检测器命中，
         # 条目豁免将导致永不收敛（每加一条产生新的高熵发现）。官方机制为扫描层排除。
-        exclude: ^(backend/\.secrets\.baseline|archive/.*)$
+        # 后台前端构建产物同样排除：压缩 JS 里的哈希/常量必然误报，且产物随仓库分发。
+        exclude: ^(backend/\.secrets\.baseline|archive/.*|backend/web/admin/dist/.*)$
         language: system
 
       - id: verify-secrets-baseline

@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { QuestionFilled, Refresh, Search } from "@element-plus/icons-vue";
+import { ElMessage } from "element-plus";
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useRoute } from "vue-router";
 
 import ProductDetailDrawer from "@/features/products/ProductDetailDrawer.vue";
+import ProductEditDrawer from "@/features/products/ProductEditDrawer.vue";
 import { useProductsPage } from "./useProductsPage";
 
 const route = useRoute();
@@ -46,6 +48,28 @@ const inactiveCount = computed(
 const tableWrapper = ref<HTMLElement | null>(null);
 const tableHeight = ref(400);
 let resizeObserver: ResizeObserver | null = null;
+
+const editVisible = ref(false);
+const editItemId = ref("");
+const createVisible = ref(false);
+
+function openEdit(row: { youzanItemId?: string }) {
+  const itemId = String(row.youzanItemId || "").trim();
+  if (!itemId) {
+    ElMessage.warning("该商品缺少有赞商品 ID，无法编辑");
+    return;
+  }
+  editItemId.value = itemId;
+  editVisible.value = true;
+}
+
+function openCreate() {
+  createVisible.value = true;
+}
+
+function handleProductSaved() {
+  void submitSearch();
+}
 
 onMounted(() => {
   if (tableWrapper.value) {
@@ -169,6 +193,9 @@ onUnmounted(() => {
             筛选
           </el-button>
           <el-button data-testid="products-reset-filters" @click="resetFilters">重置</el-button>
+          <el-button type="success" data-testid="products-create" @click="openCreate">
+            新建商品
+          </el-button>
           <el-button
             type="warning"
             :loading="reconciling"
@@ -345,6 +372,12 @@ onUnmounted(() => {
                 </el-tooltip>
                 <el-button link type="primary" @click="openDetail(row)">查看</el-button>
                 <el-button
+                  link
+                  type="primary"
+                  :data-testid="`products-edit-${row.youzanItemId || row.id}`"
+                  @click="openEdit(row)"
+                >编辑</el-button>
+                <el-button
                   :loading="togglingId === row.id"
                   :type="row.isActive ? 'warning' : 'success'"
                   plain
@@ -417,6 +450,19 @@ onUnmounted(() => {
       :toggling-id="togglingId"
       @toggle="toggleProduct"
       @update:visible="($event) => (!$event ? closeDetail() : null)"
+    />
+
+    <ProductEditDrawer
+      v-model:visible="editVisible"
+      :item-id="editItemId"
+      @saved="handleProductSaved"
+    />
+
+    <ProductEditDrawer
+      v-model:visible="createVisible"
+      item-id=""
+      create-mode
+      @saved="handleProductSaved"
     />
   </section>
 </template>

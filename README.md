@@ -19,7 +19,7 @@
 
 ## 快速开始
 
-新同事本地跑通（合成数据 + Mock 打印/支付，含一键初始化与常见问题）：**[本地试点手册](backend/docs/release/local-trial-runbook.md)**
+新同事本地跑通（合成数据 + Mock 打印/支付，含一键初始化与常见问题）：**[本地试点手册](docs/release/local-trial-runbook.md)**
 
 ### 后端开发
 

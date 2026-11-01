@@ -1,11 +1,16 @@
 /* ==========================================================================
-   AI 烘焙顾问/客服 (AI Concierge Page) - 现代自然轻食风格重塑
+   AI 烘焙顾问/客服 —— 纸面对话（柔白气泡 / 深林绿用户气泡 / 极简头像 /
+   细线快捷签 / 裸字段输入栏）
+   版面规则：
+   1. 会话铺在暖纸底上，消息之间只靠留白分层，不用分割线与气泡尾巴。
+   2. 气泡只保留 2rpx 圆角；助手气泡是纸白，用户气泡是深林绿配奶油字。
+   3. 品牌深林绿只用于用户气泡与发送按钮，其余一律墨色、纸色与黄铜。
    ========================================================================== */
 
 .chat-page {
   background: var(--yunxi-page-bg);
-  /* 底部常驻区高度：客服入口行 + 提示 + 快捷问题 + 输入框 */
-  --chat-bottom-bar-height: 348rpx;
+  /* 底部常驻区高度：客服入口行 + 提示 + 快捷签 + 输入栏 */
+  --chat-bottom-bar-height: 424rpx;
 }
 
 .message-list {
@@ -21,17 +26,17 @@
 .message-body {
   display: flex;
   flex-direction: column;
-  padding: 28rpx 28rpx 240rpx;
+  padding: 40rpx 32rpx 48rpx;
   box-sizing: border-box;
 }
 
-/* 登录提示空态 */
+/* 登录提示空态：整页居中，不做卡片 */
 .empty-login {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 700rpx;
+  min-height: 58vh;
   color: var(--yunxi-text-secondary);
   gap: 16rpx;
   padding: 40rpx;
@@ -41,38 +46,42 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 140rpx;
-  height: 140rpx;
+  width: 112rpx;
+  height: 112rpx;
+  background-color: transparent;
   background-position: center;
   background-repeat: no-repeat;
-  background-size: 64rpx 64rpx;
-  background-color: #FFFFFF;
-  border-radius: var(--yunxi-radius-lg);
-  box-shadow: var(--yunxi-card-shadow);
-  border: 1rpx solid var(--yunxi-border);
-  margin-bottom: 20rpx;
+  background-size: 56rpx 56rpx;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  margin-bottom: 24rpx;
 }
 
 .empty-login__icon--support {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233D332D' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231F2822' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'/%3E%3C/svg%3E");
 }
 
 .empty-login__title {
   color: var(--yunxi-text-primary);
   font-size: 32rpx;
-  font-weight: 800;
-  letter-spacing: 0.02em;
+  font-weight: 500;
+  letter-spacing: 0.06em;
 }
 
-.empty-login__action {
+/* 登录引导是本页唯一的主 CTA */
+.chat-page button.empty-login__action {
   min-width: 240rpx;
-  margin-top: 24rpx;
+  margin-top: 28rpx;
+  background: var(--yunxi-brand);
+  color: #F7F4EC;
+  border-radius: 2rpx;
 }
 
-/* 消息行 */
+/* 消息行：靠留白分层，不用分割线 */
 .message-row {
   display: flex;
-  margin-bottom: 32rpx;
+  margin-bottom: 40rpx;
   align-items: flex-start;
   width: 100%;
   animation: fadeIn 0.25s ease-out;
@@ -87,57 +96,57 @@
   justify-content: flex-end;
 }
 
+/* 极简头像：52rpx 细线圆，无底色块 */
 .message-avatar {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 76rpx;
-  height: 76rpx;
+  width: 52rpx;
+  height: 52rpx;
+  box-sizing: border-box;
+  border: 1rpx solid var(--yunxi-border-medium);
   border-radius: 50%;
-  font-size: 26rpx;
-  font-weight: 700;
+  background: transparent;
+  color: var(--yunxi-text-secondary);
+  font-size: 20rpx;
+  font-weight: 400;
+  line-height: 1;
   flex-shrink: 0;
-  box-shadow: 0 4rpx 12rpx rgba(35, 50, 42, 0.05);
+  box-shadow: none;
 }
 
 .assistant-avatar {
-  background: #FFFFFF;
-  border: 1rpx solid var(--yunxi-border);
-  font-size: 22rpx;
-  letter-spacing: 0;
-  margin-right: 18rpx;
+  margin-right: 20rpx;
 }
 
 .user-avatar {
-  background: var(--yunxi-brand-soft);
-  color: var(--yunxi-brand);
-  border: 1rpx solid var(--yunxi-border);
-  margin-left: 18rpx;
+  margin-left: 20rpx;
 }
 
-/* 消息气泡 */
+/* 消息气泡是内容单元：2rpx 圆角、无阴影、无尾巴 */
 .message-bubble {
-  max-width: 70%;
-  padding: 22rpx 28rpx;
+  max-width: 72%;
+  padding: 24rpx 28rpx;
   font-size: 28rpx;
-  line-height: 1.6;
+  line-height: 1.7;
   overflow-wrap: break-word;
   word-break: break-all;
 }
 
 .message-bubble.assistant {
-  border-radius: 8rpx 24rpx 24rpx 24rpx;
-  background: #FFFFFF;
+  border-radius: 2rpx;
+  background: var(--yunxi-surface);
   color: var(--yunxi-text-primary);
   border: 1rpx solid var(--yunxi-border);
-  box-shadow: var(--yunxi-card-shadow);
+  box-shadow: none;
 }
 
 .message-bubble.user {
-  border-radius: 24rpx 8rpx 24rpx 24rpx;
+  border-radius: 2rpx;
   background: var(--yunxi-brand);
-  color: #FFFFFF;
-  box-shadow: 0 8rpx 20rpx rgba(61, 51, 45, 0.16);
+  color: #F7F4EC;
+  border: 0;
+  box-shadow: none;
 }
 
 .message-content {
@@ -146,15 +155,16 @@
 
 .message-time {
   display: block;
-  margin-top: 8rpx;
+  margin-top: 10rpx;
   font-size: 20rpx;
-  opacity: 0.65;
+  letter-spacing: 0.04em;
+  opacity: 0.6;
   line-height: 1;
 }
 
 .message-bubble.user .message-time {
   text-align: right;
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(247, 244, 236, 0.68);
 }
 
 .message-bubble.assistant .message-time {
@@ -169,82 +179,90 @@
   text-align: center;
 }
 
+/* 错误提示：平面警示条，不做卡片 */
 .error-text {
   margin-bottom: 24rpx;
   padding: 18rpx 24rpx;
-  color: #BA4E3D;
+  color: var(--yunxi-deal);
   font-size: 24rpx;
-  line-height: 1.5;
-  background: #FDF1EE;
-  border: 1rpx solid rgba(186, 78, 61, 0.15);
-  border-radius: var(--yunxi-radius-md);
-  text-align: center;
+  line-height: 1.6;
+  background: #FBF0ED;
+  border: 0;
+  border-left: 4rpx solid var(--yunxi-deal);
+  border-radius: 0;
+  text-align: left;
 }
 
-/* 底部常驻提问与输入区 */
+/* --------------------------------------------------------------------------
+   底部常驻提问与输入区：固定底栏，允许阴影
+   -------------------------------------------------------------------------- */
+
+/* 底部输入栏复用 app.wxss 的 .fixed-bar 规则（柔白底 + 1rpx 顶线 + 浮层阴影），
+   只把落点抬到自定义 TabBar 之上；!important 防止与全局 .fixed-bar 的 bottom 冲突。 */
 .chat-bottom-bar {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: var(--yunxi-tabbar-occupied-height);
-  background: rgba(255, 255, 255, 0.96);
+  bottom: var(--yunxi-tabbar-occupied-height) !important;
   z-index: 100;
+  background: var(--yunxi-surface);
   border-top: 1rpx solid var(--yunxi-border);
-  box-shadow: 0 -6rpx 24rpx rgba(35, 50, 42, 0.03);
 }
 
 .quick-questions-scroll {
   width: 100%;
-  height: 84rpx;
+  height: 108rpx;
   background: transparent;
   white-space: nowrap;
 }
 
 .quick-questions-wrapper {
   display: inline-flex;
-  padding: 14rpx 28rpx 0;
-  gap: 12rpx;
+  padding: 10rpx 32rpx 0;
+  gap: 14rpx;
 }
 
+/* 快捷问题：1rpx 细线小方签，不做灰色药丸 */
 .quick-question-pill {
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 88rpx;
   box-sizing: border-box;
-  padding: 10rpx 22rpx;
-  color: var(--yunxi-brand);
+  padding: 0 20rpx;
+  color: var(--yunxi-text-secondary);
   font-size: 24rpx;
-  font-weight: 700;
+  font-weight: 400;
+  letter-spacing: 0.06em;
   white-space: nowrap;
-  background: var(--yunxi-surface-alt);
-  border: 1rpx solid var(--yunxi-border);
-  border-radius: var(--yunxi-radius-sm);
-  transition: all 0.2s ease;
+  background: transparent;
+  border: 1rpx solid var(--yunxi-border-medium);
+  border-radius: 2rpx;
+  transition: opacity 0.15s ease;
 }
 
 .quick-question-pill:active {
-  background: var(--yunxi-brand-soft);
-  transform: scale(0.96);
+  opacity: 0.62;
 }
 
-/* 定制需求卡入口：与快捷问题同规格，只用底色区分“开抽屉”而不是“发消息” */
+/* 定制需求卡入口：黄铜细线签，区别于直接发问的快捷问题 */
 .quick-question-pill--card {
-  color: var(--yunxi-brand);
-  background: var(--yunxi-brand-soft);
-  border-color: var(--yunxi-border-medium);
-  font-weight: 800;
+  color: var(--yunxi-gold);
+  background: transparent;
+  border-color: rgba(154, 119, 79, 0.45);
+  font-weight: 400;
 }
 
-/* 客服入口行：平台客服队列（后台工单）与微信原生客服 */
+/* 客服入口行：两个次级动作都用细线，主色留给发送按钮 */
 .chat-service-row {
   display: flex;
-  gap: 16rpx;
-  padding: 16rpx 28rpx 0;
+  gap: 24rpx;
+  padding: 20rpx 32rpx 0;
 }
 
-button.chat-service-btn,
-.chat-service-btn {
+/* 需要带页面作用域压过 app.wxss 的 button:not([size="mini"]) 重置，否则背景与触控高度都会被清零。 */
+.chat-page button.chat-service-btn,
+.chat-page .chat-service-btn {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -255,55 +273,60 @@ button.chat-service-btn,
   padding: 0 16rpx;
   margin: 0;
   box-sizing: border-box;
-  font-size: 26rpx;
-  font-weight: 700;
+  font-size: 24rpx;
+  font-weight: 400;
+  letter-spacing: 0.06em;
   line-height: 1.2;
   text-align: center;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  border-radius: var(--yunxi-radius-sm);
+  border-radius: 2rpx;
 }
 
-button.chat-service-btn--queue {
-  color: var(--yunxi-brand);
-  background: #ffffff;
-  border: 1rpx solid var(--yunxi-border-medium);
+.chat-page button.chat-service-btn--queue {
+  color: var(--yunxi-text-primary);
+  background: transparent;
+  border: 0;
+  border-bottom: 1rpx solid var(--yunxi-border-medium);
+  border-radius: 0;
 }
 
-button.chat-service-btn--wechat {
-  color: #ffffff;
-  background: var(--yunxi-brand);
-  border: 1rpx solid var(--yunxi-brand);
-  box-shadow: 0 6rpx 14rpx rgba(61, 51, 45, 0.16);
+/* 微信原生客服同为次级入口，用同一种下划线语言 */
+.chat-page button.chat-service-btn--wechat {
+  color: var(--yunxi-text-secondary);
+  background: transparent;
+  border: 0;
+  border-bottom: 1rpx solid var(--yunxi-border-medium);
+  border-radius: 0;
 }
 
-.chat-service-btn:active {
-  transform: scale(0.97);
-  opacity: 0.92;
+.chat-page button.chat-service-btn:active {
+  opacity: 0.7;
 }
 
-.chat-service-btn[disabled] {
+.chat-page button.chat-service-btn[disabled] {
   /* 微信原生 disabled 样式带 !important，必须显式提升优先级。 */
-  color: var(--yunxi-text-secondary) !important;
-  background: var(--yunxi-surface-alt) !important;
-  border: 1rpx solid var(--yunxi-border-medium) !important;
+  color: var(--yunxi-text-muted) !important;
+  background: transparent !important;
+  border-color: var(--yunxi-border) !important;
   box-shadow: none;
 }
 
 .chat-service-hint {
   display: block;
-  padding: 10rpx 28rpx 0;
-  font-size: 22rpx;
-  line-height: 1.4;
+  padding: 12rpx 32rpx 0;
+  font-size: 20rpx;
+  line-height: 1.5;
+  letter-spacing: 0.04em;
   color: var(--yunxi-text-muted);
 }
 
-/* 输入框与发送 */
+/* 输入区：裸字段，只有底边；发送按钮是本页主 CTA */
 .composer {
   display: flex;
-  gap: 16rpx;
-  padding: 16rpx 28rpx 20rpx;
+  gap: 24rpx;
+  padding: 20rpx 32rpx 24rpx;
   background: transparent;
   align-items: center;
 }
@@ -311,62 +334,69 @@ button.chat-service-btn--wechat {
 .composer input {
   flex: 1;
   min-width: 0;
-  height: 76rpx;
-  padding: 0 28rpx;
-  background: var(--yunxi-surface-alt);
-  border-radius: var(--yunxi-radius-md);
-  font-size: 26rpx;
+  height: 96rpx;
+  min-height: 96rpx;
+  padding: 0 4rpx;
+  background: transparent;
+  border: 0;
+  border-bottom: 1rpx solid var(--yunxi-border-medium);
+  border-radius: 0;
+  font-size: 28rpx;
   color: var(--yunxi-text-primary);
-  border: 1rpx solid var(--yunxi-border);
 }
 
 .composer-placeholder {
   color: var(--yunxi-text-subtle);
 }
 
-.send-btn {
+/* 需要带页面作用域压过 app.wxss 的 button:not([size="mini"]) 重置，否则背景与字号都会被清零。 */
+.chat-page button.send-btn {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
   flex-shrink: 0 !important;
-  width: 136rpx !important;
-  min-width: 136rpx !important;
-  height: 88rpx !important;
-  min-height: 88rpx !important;
+  width: 144rpx !important;
+  min-width: 144rpx !important;
+  height: 96rpx !important;
+  min-height: 96rpx !important;
   padding: 0 !important;
   box-sizing: border-box !important;
   font-size: 26rpx;
-  font-weight: 700;
-  background: var(--yunxi-surface-alt);
-  color: var(--yunxi-text-secondary);
-  border-radius: var(--yunxi-radius-full);
-  transition: all 0.25s cubic-bezier(0.25, 1, 0.5, 1);
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  background: transparent;
+  color: var(--yunxi-text-muted);
+  border: 1rpx solid var(--yunxi-border);
+  border-radius: 2rpx;
+  transition: opacity 0.15s ease;
   margin: 0;
   line-height: 1;
 }
 
-.send-btn[disabled] {
-  background: var(--yunxi-surface-alt) !important;
+.chat-page button.send-btn[disabled] {
+  background: var(--yunxi-surface-cream) !important;
   color: var(--yunxi-text-secondary) !important;
-  border: 1rpx solid var(--yunxi-border-medium);
+  border-color: transparent;
 }
 
-.send-btn.is-active {
+.chat-page button.send-btn.is-active {
   background: var(--yunxi-brand);
-  box-shadow: 0 6rpx 16rpx rgba(61, 51, 45, 0.18);
+  color: #F7F4EC;
+  border-color: var(--yunxi-brand);
+  box-shadow: none;
 }
 
-.send-btn:active:not([disabled]) {
-  transform: scale(0.96);
+.chat-page button.send-btn:active:not([disabled]) {
+  opacity: 0.78;
 }
 
 /* 动态思考中打字气泡 */
 .typing-bubble {
-  border-radius: 8rpx 24rpx 24rpx 24rpx;
-  background: #FFFFFF;
+  border-radius: 2rpx;
+  background: var(--yunxi-surface);
   border: 1rpx solid var(--yunxi-border);
-  box-shadow: var(--yunxi-card-shadow);
-  padding: 24rpx 36rpx;
+  box-shadow: none;
+  padding: 28rpx 32rpx;
   display: inline-flex;
   align-items: center;
 }
@@ -414,6 +444,7 @@ button.chat-service-btn--wechat {
 /* ==========================================================================
    定制需求卡抽屉
    遮罩与面板是同级节点：点遮罩关闭，点面板不会冒泡到遮罩。
+   抽屉是浮层，允许阴影；抽屉内部表单仍是裸字段平面控件。
    ========================================================================== */
 
 .customization-mask {
@@ -425,11 +456,11 @@ button.chat-service-btn--wechat {
   width: 100%;
   height: 100%;
   z-index: 1000;
-  background: rgba(43, 35, 31, 0.45);
+  background: rgba(31, 40, 34, 0.45);
 }
 
 .customization-mask:active {
-  background: rgba(43, 35, 31, 0.55);
+  background: rgba(31, 40, 34, 0.55);
 }
 
 .customization-panel {
@@ -441,9 +472,9 @@ button.chat-service-btn--wechat {
   display: flex;
   flex-direction: column;
   max-height: 86vh;
-  background: #ffffff;
-  border-radius: 28rpx 28rpx 0 0;
-  box-shadow: 0 -12rpx 32rpx rgba(43, 35, 31, 0.18);
+  background: var(--yunxi-surface);
+  border-radius: 6rpx 6rpx 0 0;
+  box-shadow: 0 -12rpx 32rpx rgba(31, 40, 34, 0.16);
 }
 
 .customization-panel__head {
@@ -451,7 +482,7 @@ button.chat-service-btn--wechat {
   align-items: flex-start;
   justify-content: space-between;
   gap: 16rpx;
-  padding: 28rpx 28rpx 18rpx;
+  padding: 32rpx 32rpx 20rpx;
   border-bottom: 1rpx solid var(--yunxi-border);
 }
 
@@ -465,16 +496,18 @@ button.chat-service-btn--wechat {
 
 .customization-panel__title {
   font-size: 32rpx;
-  font-weight: 800;
+  font-weight: 500;
+  letter-spacing: 0.04em;
   color: var(--yunxi-text-primary);
 }
 
 .customization-panel__desc {
   font-size: 22rpx;
-  line-height: 1.5;
+  line-height: 1.6;
   color: var(--yunxi-text-muted);
 }
 
+/* 关闭按钮只保留字形，触控区仍为 88rpx */
 .customization-panel__close {
   display: flex;
   align-items: center;
@@ -482,55 +515,59 @@ button.chat-service-btn--wechat {
   flex-shrink: 0;
   width: 88rpx;
   height: 88rpx;
-  font-size: 34rpx;
+  font-size: 30rpx;
   line-height: 1;
   color: var(--yunxi-text-secondary);
-  background: var(--yunxi-surface-alt);
-  border-radius: 50%;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
 }
 
 .customization-panel__close:active {
-  background: var(--yunxi-brand-soft);
-  transform: scale(0.94);
+  opacity: 0.6;
 }
 
 .customization-panel__body {
   flex: 1;
   min-height: 0;
   max-height: 56vh;
-  padding: 20rpx 28rpx 8rpx;
+  padding: 24rpx 32rpx 8rpx;
   box-sizing: border-box;
 }
 
 .customization-field {
-  margin-bottom: 24rpx;
+  margin-bottom: 32rpx;
 }
 
+/* 抽屉内表单同样遵循“标签常驻控件上方”，标签是 overline 小字 */
 .customization-field__label {
   display: block;
   margin-bottom: 12rpx;
-  font-size: 24rpx;
-  font-weight: 700;
-  color: var(--yunxi-text-secondary);
+  font-size: 20rpx;
+  font-weight: 400;
+  letter-spacing: 0.2em;
+  color: var(--yunxi-text-muted);
 }
 
 .customization-field__hint {
   display: block;
-  margin-top: 10rpx;
+  margin-top: 12rpx;
   font-size: 22rpx;
-  line-height: 1.5;
+  line-height: 1.6;
   color: var(--yunxi-text-muted);
 }
 
+/* 裸字段：透明底 + 1rpx 底边 */
 .customization-picker {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 88rpx;
-  padding: 0 24rpx;
-  background: var(--yunxi-surface-alt);
-  border: 1rpx solid var(--yunxi-border);
-  border-radius: var(--yunxi-radius-md);
+  min-height: 96rpx;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-bottom: 1rpx solid var(--yunxi-border-medium);
+  border-radius: 0;
 }
 
 .customization-picker--half {
@@ -558,7 +595,7 @@ button.chat-service-btn--wechat {
 
 .customization-time {
   display: flex;
-  gap: 16rpx;
+  gap: 24rpx;
 }
 
 .customization-time__item {
@@ -569,53 +606,59 @@ button.chat-service-btn--wechat {
 .customization-input {
   display: block;
   width: 100%;
-  height: 88rpx;
-  margin-top: 12rpx;
-  padding: 0 24rpx;
+  height: 96rpx;
+  margin-top: 16rpx;
+  padding: 0;
   font-size: 26rpx;
   color: var(--yunxi-text-primary);
-  background: var(--yunxi-surface-alt);
-  border: 1rpx solid var(--yunxi-border);
-  border-radius: var(--yunxi-radius-md);
+  background: transparent;
+  border: 0;
+  border-bottom: 1rpx solid var(--yunxi-border-medium);
+  border-radius: 0;
 }
 
 .customization-textarea {
   display: block;
   width: 100%;
-  height: 168rpx;
-  padding: 20rpx 24rpx;
+  height: 176rpx;
+  padding: 16rpx 0;
   font-size: 26rpx;
-  line-height: 1.5;
+  line-height: 1.6;
   color: var(--yunxi-text-primary);
-  background: var(--yunxi-surface-alt);
-  border: 1rpx solid var(--yunxi-border);
-  border-radius: var(--yunxi-radius-md);
+  background: transparent;
+  border: 0;
+  border-bottom: 1rpx solid var(--yunxi-border-medium);
+  border-radius: 0;
 }
 
+/* 错误提示：平面警示条 */
 .customization-error {
   margin-bottom: 20rpx;
-  padding: 16rpx 22rpx;
+  padding: 16rpx 20rpx;
   font-size: 24rpx;
   line-height: 1.5;
-  color: #BA4E3D;
-  background: #FDF1EE;
-  border: 1rpx solid rgba(186, 78, 61, 0.15);
-  border-radius: var(--yunxi-radius-md);
+  color: var(--yunxi-deal);
+  background: #FBF0ED;
+  border: 0;
+  border-left: 4rpx solid var(--yunxi-deal);
+  border-radius: 0;
 }
 
+/* 生成结果：奶油底内容单元，内部不再套第二层卡片 */
 .customization-result {
-  margin: 8rpx 0 24rpx;
-  padding: 24rpx;
-  background: var(--yunxi-brand-soft);
+  margin: 8rpx 0 28rpx;
+  padding: 28rpx;
+  background: var(--yunxi-surface-cream);
   border: 1rpx solid var(--yunxi-border);
-  border-radius: var(--yunxi-radius-md);
+  border-radius: 2rpx;
 }
 
 .customization-result__title {
   display: block;
   margin-bottom: 12rpx;
   font-size: 28rpx;
-  font-weight: 800;
+  font-weight: 500;
+  letter-spacing: 0.04em;
   color: var(--yunxi-text-primary);
 }
 
@@ -624,7 +667,7 @@ button.chat-service-btn--wechat {
   align-items: flex-start;
   justify-content: space-between;
   gap: 16rpx;
-  padding: 10rpx 0;
+  padding: 12rpx 0;
   border-bottom: 1rpx dashed var(--yunxi-border);
 }
 
@@ -646,20 +689,20 @@ button.chat-service-btn--wechat {
 .customization-result__summary {
   display: block;
   margin-top: 16rpx;
-  padding: 16rpx;
+  padding: 0;
   font-size: 22rpx;
-  line-height: 1.6;
+  line-height: 1.7;
   color: var(--yunxi-text-secondary);
-  background: #ffffff;
-  border: 1rpx solid var(--yunxi-border);
-  border-radius: var(--yunxi-radius-sm);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
   white-space: pre-wrap;
 }
 
 .customization-result__actions {
   display: flex;
   gap: 16rpx;
-  margin-top: 20rpx;
+  margin-top: 24rpx;
 }
 
 .customization-result__btn {
@@ -670,17 +713,17 @@ button.chat-service-btn--wechat {
 
 .customization-result__hint {
   display: block;
-  margin-top: 14rpx;
+  margin-top: 16rpx;
   font-size: 22rpx;
-  line-height: 1.5;
+  line-height: 1.6;
   color: var(--yunxi-text-muted);
 }
 
 .customization-panel__footer {
   display: flex;
   gap: 16rpx;
-  padding: 16rpx 28rpx calc(env(safe-area-inset-bottom) + 20rpx);
-  background: #ffffff;
+  padding: 20rpx 32rpx calc(env(safe-area-inset-bottom) + 20rpx);
+  background: var(--yunxi-surface);
   border-top: 1rpx solid var(--yunxi-border);
 }
 

@@ -38,6 +38,19 @@ interface CartItemView extends CartItem {
   imageFailed: boolean;
   stock?: number;
   stockText: string;
+  optionLine: string;
+}
+
+/** 购物车行副标题：规格、夹心甜度、祝福语与配件，避免两行同款看起来一样。 */
+function buildOptionLine(item: CartItem): string {
+  const parts = [item.skuName || "", item.optionText || ""].filter(Boolean);
+  if (item.greeting) {
+    parts.push(`祝福：${item.greeting}`);
+  }
+  if (item.accessories) {
+    parts.push(item.accessories);
+  }
+  return parts.join(" · ");
 }
 
 const RECOMMENDED_PRODUCT_LIMIT = 4;
@@ -62,6 +75,17 @@ function toRecommendedProductView(product: CatalogProduct): RecommendedProductVi
     stock: product.stock,
     isActive: product.isActive
   };
+}
+
+/** 定位购物车存储行：优先 lineKey，历史数据回退 productId。 */
+function findCartItemIndex(items: CartItem[], target: CartItem): number {
+  if (target.lineKey) {
+    const byKey = items.findIndex((item) => item.lineKey === target.lineKey);
+    if (byKey >= 0) {
+      return byKey;
+    }
+  }
+  return items.findIndex((item) => item.productId === target.productId);
 }
 
 function getCartStockText(item: CartItem): string {
@@ -112,9 +136,8 @@ Page({
   },
   onCartImageError(event: WechatMiniprogram.TouchEvent) {
     // 购物车行图加载失败：切换占位，保持固定宽高
-    const productId = event.currentTarget.dataset.id as string;
-    const index = this.data.items.findIndex((item) => item.productId === productId);
-    if (productId && index !== -1 && !this.data.items[index].imageFailed) {
+    const index = Number(event.currentTarget.dataset.index);
+    if (Number.isInteger(index) && index >= 0 && this.data.items[index] && !this.data.items[index].imageFailed) {
       this.setData({ [`items[${index}].imageFailed`]: true });
     }
   },
@@ -132,7 +155,8 @@ Page({
       priceText: formatFen(item.priceFen),
       imageClass: item.imageUrl ? "" : getBakeryPattern(item.productId),
       imageFailed: false,
-      stockText: getCartStockText(item)
+      stockText: getCartStockText(item),
+      optionLine: buildOptionLine(item)
     }));
     const totalFen = items.reduce((sum, item) => sum + item.priceFen * item.quantity, 0);
     this.setData({
@@ -142,10 +166,13 @@ Page({
     });
   },
   decreaseQty(event: WechatMiniprogram.TouchEvent) {
-    const productId = event.currentTarget.dataset.id as string;
+    const index = Number(event.currentTarget.dataset.index);
+    const visibleItem = this.data.items[index];
+    if (!visibleItem) return;
     const items = getCartItems();
-    const existingItem = items.find((item) => item.productId === productId);
-    if (!existingItem) return;
+    const itemIndex = findCartItemIndex(items, visibleItem);
+    if (itemIndex < 0) return;
+    const existingItem = items[itemIndex];
 
     if (existingItem.quantity > 1) {
       existingItem.quantity -= 1;
@@ -158,7 +185,11 @@ Page({
         confirmColor: "#3D332D",
         success: (res) => {
           if (res.confirm) {
-            const updatedItems = items.filter((item) => item.productId !== productId);
+            const updatedItems = getCartItems();
+            const removeIndex = findCartItemIndex(updatedItems, existingItem);
+            if (removeIndex >= 0) {
+              updatedItems.splice(removeIndex, 1);
+            }
             saveCartItems(updatedItems);
             this.refreshCartData();
           }
@@ -167,12 +198,14 @@ Page({
     }
   },
   increaseQty(event: WechatMiniprogram.TouchEvent) {
-    const productId = event.currentTarget.dataset.id as string;
+    const index = Number(event.currentTarget.dataset.index);
+    const visibleItem = this.data.items[index];
+    if (!visibleItem) return;
     const items = getCartItems();
-    const existingItem = items.find((item) => item.productId === productId);
-    if (!existingItem) return;
-    const visibleItem = this.data.items.find((item) => item.productId === productId);
-    if (visibleItem?.stock && existingItem.quantity >= visibleItem.stock) {
+    const itemIndex = findCartItemIndex(items, visibleItem);
+    if (itemIndex < 0) return;
+    const existingItem = items[itemIndex];
+    if (typeof visibleItem.stock === "number" && existingItem.quantity >= visibleItem.stock) {
       wx.showToast({ title: "库存仅余 " + visibleItem.stock + " 件", icon: "none" });
       return;
     }

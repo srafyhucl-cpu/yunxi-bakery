@@ -21,6 +21,10 @@ class FakeKnowledgeSyncService:
         return {"synced": 2, "failed": 0}
 
 
+class FakeProductAdminService:
+    """对账用例不涉及商品编辑，占位即可。"""
+
+
 def test_admin_products_reconcile_syncs_vectors_and_merges_result(
     monkeypatch,
 ) -> None:
@@ -30,6 +34,7 @@ def test_admin_products_reconcile_syncs_vectors_and_merges_result(
         create_admin_products_router(
             FakeReconcileService(),  # type: ignore[arg-type]
             FakeKnowledgeSyncService(),  # type: ignore[arg-type]
+            FakeProductAdminService(),  # type: ignore[arg-type]
         )
     )
     client = TestClient(app)

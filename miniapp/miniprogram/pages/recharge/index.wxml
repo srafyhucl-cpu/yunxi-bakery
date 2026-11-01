@@ -15,17 +15,17 @@
         <button class="primary-button yunxi-state__action" bindtap="goLogin">去登录</button>
       </view>
       <block wx:elif="{{!ready}}">
-        <view class="empty-panel glass-panel">
+        <view class="empty-panel">
           <text class="empty-title">充值功能即将上线</text>
           <text class="empty-subtitle">微信支付接入后开放</text>
         </view>
       </block>
       <block wx:else>
-        <view class="balance-panel glass-panel fade-in">
+        <view class="balance-panel fade-in">
           <text class="balance-label">当前余额</text>
           <text class="balance-value">{{balanceFen != null ? balanceText : '--'}}</text>
         </view>
-        <view class="tier-panel glass-panel">
+        <view class="tier-panel">
           <view class="section-title">选择充值金额</view>
           <view class="tier-grid">
             <view
@@ -35,6 +35,7 @@
               data-fen="{{item.amountFen}}"
               bindtap="selectTier"
             >
+              <text wx:if="{{selectedTierFen === item.amountFen && !customFen}}" class="tier-selected">已选</text>
               <text class="tier-amount">{{item.amountFen / 100}}元</text>
               <text wx:if="{{showBonus && item.bonusFen > 0}}" class="tier-bonus">送{{item.bonusFen / 100}}元</text>
             </view>
@@ -58,7 +59,7 @@
           </button>
           <text wx:if="{{showBonus}}" class="bonus-note">充值赠送以活动规则为准，实际到账金额以支付确认页为准</text>
         </view>
-        <view class="records-panel glass-panel">
+        <view class="records-panel">
           <view class="section-title">充值记录</view>
           <view wx:if="{{records.length === 0}}" class="yunxi-state yunxi-state--section records-empty">
             <text class="yunxi-state__title">暂无充值记录</text>

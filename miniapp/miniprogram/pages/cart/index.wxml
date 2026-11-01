@@ -10,61 +10,73 @@
         <button class="primary-button yunxi-state__action" bindtap="goShopping">去选购</button>
       </view>
       
-      <view wx:else class="cart-list">
-        <view wx:for="{{items}}" wx:key="productId" class="cart-item yunxi-card hover-scale stagger-fade-in" style="animation-delay: {{index * 0.05}}s">
-          <view class="cart-set">
-            <view class="cart-check">✓</view>
-            <view class="cart-image" data-id="{{item.productId}}" bindtap="openProduct">
-              <image wx:if="{{item.imageUrl && !item.imageFailed}}" class="cart-cover" src="{{item.imageUrl}}" mode="aspectFill" data-id="{{item.productId}}" binderror="onCartImageError" />
-              <view wx:else class="yunxi-image-fallback">
-                <text class="yunxi-image-fallback__mark">芸</text>
+      <view wx:else class="cart-section">
+        <view class="cart-section__head">
+          <text class="cart-section__title">已选商品</text>
+          <text class="cart-section__meta">共 {{items.length}} 件</text>
+        </view>
+        <view class="cart-list">
+          <view wx:for="{{items}}" wx:key="lineKey" class="cart-item hover-scale stagger-fade-in" style="animation-delay: {{index * 0.05}}s">
+            <view class="cart-set">
+              <view class="cart-check">✓</view>
+              <view class="cart-image" data-id="{{item.productId}}" bindtap="openProduct">
+                <image wx:if="{{item.imageUrl && !item.imageFailed}}" class="cart-cover" src="{{item.imageUrl}}" mode="aspectFill" data-index="{{index}}" binderror="onCartImageError" />
+                <view wx:else class="yunxi-image-fallback">
+                  <text class="yunxi-image-fallback__mark">芸</text>
+                </view>
               </view>
             </view>
-          </view>
-          <view class="cart-info">
-            <text class="cart-title" data-id="{{item.productId}}" bindtap="openProduct">{{item.title}}</text>
-            <view class="cart-info__footer">
-              <view class="cart-price-group">
-                <text class="cart-price yunxi-price">{{item.priceText}}</text>
-                <text wx:if="{{item.stockText}}" class="tag">{{item.stockText}}</text>
-              </view>
-              <view class="cart-stepper">
-                <view class="stepper-btn stepper-btn--minus" data-id="{{item.productId}}" bindtap="decreaseQty">
-                  -
+            <view class="cart-info">
+              <text class="cart-title" data-id="{{item.productId}}" bindtap="openProduct">{{item.title}}</text>
+              <text wx:if="{{item.optionLine}}" class="cart-option">{{item.optionLine}}</text>
+              <text wx:if="{{item.stockText}}" class="tag">{{item.stockText}}</text>
+              <view class="cart-info__footer">
+                <view class="cart-price-group">
+                  <text class="cart-price yunxi-price">{{item.priceText}}</text>
                 </view>
-                <text class="stepper-val">{{item.quantity}}</text>
-                <view class="stepper-btn stepper-btn--plus" data-id="{{item.productId}}" bindtap="increaseQty">+</view>
+                <view class="cart-stepper">
+                  <view class="stepper-btn stepper-btn--minus" data-index="{{index}}" bindtap="decreaseQty">
+                    -
+                  </view>
+                  <text class="stepper-val">{{item.quantity}}</text>
+                  <view class="stepper-btn stepper-btn--plus" data-index="{{index}}" bindtap="increaseQty">+</view>
+                </view>
               </view>
             </view>
           </view>
         </view>
       </view>
 
-      <view class="bakery-section-heading">推荐商品</view>
-      <view class="recommend-grid">
-        <view
-          wx:for="{{recommendedProducts}}"
-          wx:key="id"
-          class="recommend-card yunxi-card hover-scale stagger-fade-in"
-          style="animation-delay: {{(index + items.length) * 0.05}}s"
-          data-id="{{item.id}}"
-          bindtap="openProduct"
-        >
-          <view class="recommend-image">
-            <image wx:if="{{item.imageUrl && !item.imageFailed}}" class="cart-cover" src="{{item.imageUrl}}" mode="aspectFill" data-id="{{item.id}}" binderror="onRecommendImageError" />
-            <view wx:else class="yunxi-image-fallback">
-              <text class="yunxi-image-fallback__mark">芸</text>
+      <view class="cart-recommend">
+        <view class="cart-recommend__head">
+          <text class="cart-recommend__title">推荐商品</text>
+          <text class="cart-recommend__hint">凑单更划算</text>
+        </view>
+        <view class="recommend-grid">
+          <view
+            wx:for="{{recommendedProducts}}"
+            wx:key="id"
+            class="recommend-card hover-scale stagger-fade-in"
+            style="animation-delay: {{(index + items.length) * 0.05}}s"
+            data-id="{{item.id}}"
+            bindtap="openProduct"
+          >
+            <view class="recommend-image">
+              <image wx:if="{{item.imageUrl && !item.imageFailed}}" class="cart-cover" src="{{item.imageUrl}}" mode="aspectFill" data-id="{{item.id}}" binderror="onRecommendImageError" />
+              <view wx:else class="yunxi-image-fallback">
+                <text class="yunxi-image-fallback__mark">芸</text>
+              </view>
             </view>
-          </view>
-          <text class="recommend-name">{{item.title}}</text>
-          <text class="recommend-hint">{{item.hintText}}</text>
-          <view class="recommend-bottom">
-            <text class="cart-price yunxi-price{{item.isDisplayOnly ? ' is-display-only' : ''}}">{{item.priceText}}</text>
-            <view
-              class="recommend-action {{item.isUnavailable ? 'is-muted' : ''}}"
-              data-id="{{item.id}}"
-              catchtap="addRecommendedProduct"
-            >{{item.actionText}}</view>
+            <text class="recommend-name">{{item.title}}</text>
+            <text class="recommend-hint">{{item.hintText}}</text>
+            <view class="recommend-bottom">
+              <text class="cart-price yunxi-price{{item.isDisplayOnly ? ' is-display-only' : ''}}">{{item.priceText}}</text>
+              <view
+                class="recommend-action {{item.isUnavailable ? 'is-muted' : ''}}"
+                data-id="{{item.id}}"
+                catchtap="addRecommendedProduct"
+              >{{item.actionText}}</view>
+            </view>
           </view>
         </view>
       </view>
