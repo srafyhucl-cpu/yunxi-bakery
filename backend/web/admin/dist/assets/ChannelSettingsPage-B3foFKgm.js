@@ -1,1 +1,0 @@
-import{S as e}from"./SettingsStatusPanel-C-cE2VT0.js";import{q as t,k as n,G as a}from"./index-BprwxzqU.js";import"./settings-CBajQ_rU.js";const _=t({__name:"ChannelSettingsPage",setup(o){return(r,s)=>(a(),n(e,{panel:"channel"}))}});export{_ as default};

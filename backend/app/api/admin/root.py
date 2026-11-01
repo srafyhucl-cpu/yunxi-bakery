@@ -10,7 +10,8 @@
 import hmac
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Header, HTTPException, Request
-from jose import JWTError, jwt
+import jwt
+from jwt import InvalidTokenError as JWTError
 
 from app.config import settings
 from app.middleware.edge_protection import extract_client_ip

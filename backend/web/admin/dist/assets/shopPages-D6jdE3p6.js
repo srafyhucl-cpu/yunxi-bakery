@@ -1,1 +1,0 @@
-import{w as e}from"./index-BprwxzqU.js";const p={async getPage(s){return(await e.get(`/shop-config/pages/${s}`)).data.data},async saveDraft(s,a){return(await e.put(`/shop-config/pages/${s}/draft`,a)).data.data},async publish(s){return(await e.post(`/shop-config/pages/${s}/publish`)).data.data}};export{p as s};

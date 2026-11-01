@@ -1,0 +1,1 @@
+import{R as e,b as t,f as n}from"./axios-Df7yhDib.js";import{t as r}from"./SettingsStatusPanel-DCSuxeOJ.js";var i=t({__name:`ChannelSettingsPage`,setup(t){return(t,i)=>(e(),n(r,{panel:`channel`}))}});export{i as default};

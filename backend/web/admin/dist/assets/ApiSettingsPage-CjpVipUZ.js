@@ -1,1 +1,0 @@
-import{S as e}from"./SettingsStatusPanel-C-cE2VT0.js";import{q as t,k as a,G as n}from"./index-BprwxzqU.js";import"./settings-CBajQ_rU.js";const m=t({__name:"ApiSettingsPage",setup(o){return(p,r)=>(n(),a(e,{panel:"api"}))}});export{m as default};

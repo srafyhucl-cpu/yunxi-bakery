@@ -1,1 +1,0 @@
-import{O as e}from"./ObservabilityWorkbench-B0qoO8Dq.js";import{q as o,k as r,G as s}from"./index-BprwxzqU.js";import"./observability-DOzEbx-B.js";const m=o({__name:"ObservabilitySessionsPage",setup(a){return(t,n)=>(s(),r(e,{mode:"workspace"}))}});export{m as default};
