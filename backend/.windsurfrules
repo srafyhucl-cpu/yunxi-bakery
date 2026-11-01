@@ -248,8 +248,6 @@ PRAGMA foreign_keys = ON;
 
 ```
 AppError（基类）
-├── AuthError        # 认证/签名错误
-├── NotFoundError    # 资源不存在
 ├── LLMError         # DeepSeek API 错误 → 兜底回复，不向上抛
 ├── APIError         # 有赞/企微外部 API 错误
 └── ConfigError      # 配置错误

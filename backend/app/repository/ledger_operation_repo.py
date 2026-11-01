@@ -63,16 +63,6 @@ class LedgerOperationRepo(BaseRepository):
         )
         return rows[0] if rows else None
 
-    async def list_by_subject(self, subject_id: str) -> list[dict]:
-        """读取某主体的全部结算事实（按发生时间升序）。"""
-        return await self._db.execute_fetchall(
-            "SELECT id, operation_type, subject_type, subject_id, mobile, "
-            "member_balance_id, amount, unique_id, biz_type, biz_id, "
-            "occurred_at, created_at FROM ledger_operation "
-            "WHERE subject_type = 'order' AND subject_id = ? ORDER BY id ASC",
-            (subject_id,),
-        )
-
 
 __all__ = [
     "LedgerOperationRepo",

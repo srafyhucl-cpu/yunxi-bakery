@@ -134,53 +134,6 @@ class WeComClient(KfClientMixin):
             )
         return response_data
 
-    async def send_markdown(
-        self,
-        user_id: str,
-        content: str,
-        agent_id: str | None = None,
-    ) -> dict:
-        """发送 Markdown 消息（自动适配内部/外部）。"""
-        token = await self.get_token()
-        agentid = int(agent_id or settings.WECOM_AGENT_ID)
-
-        resp = await self._client.post(
-            f"{WECOM_API_BASE}/message/send",
-            params={"access_token": token},
-            json={
-                "touser": user_id,
-                "msgtype": "markdown",
-                "agentid": agentid,
-                "markdown": {"content": content},
-            },
-        )
-        response_data = resp.json()
-
-        if response_data.get("errcode") != 0 and response_data.get("errcode") in (
-            60001,
-            60002,
-            60004,
-            60005,
-            60006,
-            81003,
-            81006,
-        ):
-            resp = await self._client.post(
-                f"{WECOM_API_BASE}/externalcontact/message/send",
-                params={"access_token": token},
-                json={
-                    "to_user": user_id,
-                    "msgtype": "markdown",
-                    "agent_id": agentid,
-                    "markdown": {"content": content},
-                },
-            )
-            response_data = resp.json()
-
-        if response_data.get("errcode") != 0:
-            logger.error("Markdown 发送失败 err=%s", response_data.get("errmsg"))
-        return response_data
-
     async def send_news(
         self,
         user_id: str,

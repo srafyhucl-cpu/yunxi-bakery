@@ -33,7 +33,6 @@ CAS_RETRY_LIMIT = 3
 
 # 退款回调结构化确认语义（P0-2），不再靠字典 rejected 字符串判断。
 OUTCOME_ACKNOWLEDGED = "acknowledged"
-OUTCOME_RETRYABLE = "retryable"
 OUTCOME_REJECTED_RECORDED = "rejected_recorded"
 OUTCOME_DUPLICATE = "duplicate"
 

@@ -12,18 +12,6 @@ class AppError(Exception):
     status_code: int = 400
 
 
-class AuthError(AppError):
-    """认证失败：签名校验、Token 过期等。"""
-
-    status_code: int = 403
-
-
-class NotFoundError(AppError):
-    """资源不存在：会话、消息、用户等查找不到。"""
-
-    status_code: int = 404
-
-
 class LLMError(AppError):
     """DeepSeek API 调用失败：网络超时、频率限制等。"""
 

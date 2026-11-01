@@ -33,17 +33,6 @@ def knowledge_entry_to_document(
     )
 
 
-def knowledge_entries_to_documents(
-    entries: list[KnowledgeEntry],
-    extra_metadata: dict[str, Any] | None = None,
-) -> list[Any]:
-    """批量转换知识条目。"""
-    return [
-        knowledge_entry_to_document(entry, extra_metadata=extra_metadata)
-        for entry in entries
-    ]
-
-
 def document_to_knowledge_entry(document: Any) -> KnowledgeEntry:
     """把 LangChain Document 还原为现有知识上下文模型。"""
     metadata = dict(getattr(document, "metadata", {}) or {})

@@ -29,8 +29,6 @@ from app.api.integrations.webhook_helpers import (
 logger = setup_logger()
 _dispatchers: set[YouzanWebhookDispatcher] = set()
 
-PAYLOAD_PREVIEW_LIMIT = 300
-
 
 def create_webhook_router(chat_service: ChatService) -> APIRouter:
     """工厂函数：注入 ChatService 依赖后返回路由实例。"""

@@ -22,9 +22,6 @@ from app.service.youzan.webhook_payload import parse_item_id
 
 logger = setup_logger()
 
-# 预留废弃事件集合（目前为空，ITEM_INFO 已恢复，真实推送 msg 大概率含 item_id）
-_DEPRECATED_EVENT_TYPES: frozenset[str] = frozenset()
-
 # 有赞新式库存/销量变更事件：item_id 直接在 payload 顶层，无 msg 字段
 _SKU_STOCK_UPDATE_EVENT = "youzan_item_skustockorsoldnumupdated"
 
@@ -80,13 +77,6 @@ class YouzanEventHandler:
             updated_at_str: 事件时间字符串（格式 %Y-%m-%d %H:%M:%S）
             msg_id: 消息去重 ID
         """
-        if event_type in _DEPRECATED_EVENT_TYPES:
-            logger.info(
-                "有赞已废弃事件，跳过处理: type=%s msg_id=%s", event_type, msg_id
-            )
-            await self._mark_skipped(audit_id, "deprecated_event", event_type)
-            return
-
         raw_msg = payload.get("msg")
         if isinstance(raw_msg, dict):
             msg_obj = raw_msg

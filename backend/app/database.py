@@ -80,15 +80,6 @@ async def close_db(conn: aiosqlite.Connection) -> None:
     logger.info("Database connection closed")
 
 
-@asynccontextmanager
-async def get_connection(db_path: str) -> AsyncGenerator[DatabaseHandle, None]:
-    conn = await init_db(db_path)
-    try:
-        yield DatabaseHandle(conn)
-    finally:
-        await close_db(conn)
-
-
 # Context-Local 数据库连接上下文变量
 db_conn_var: ContextVar[DatabaseHandle] = ContextVar("db_connection")
 
@@ -119,9 +110,3 @@ async def db_session_scope(
     finally:
         db_conn_var.reset(token)
         await conn.close()
-
-
-async def get_db_session() -> AsyncGenerator[DatabaseHandle, None]:
-    """FastAPI 依赖注入项，为单个 HTTP 请求获取并隔离数据库连接。"""
-    async with db_session_scope() as conn:
-        yield conn

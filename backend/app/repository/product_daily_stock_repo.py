@@ -58,21 +58,6 @@ class ProductDailyStockRepo(BaseRepository):
         )
         return [dict(row) for row in rows]
 
-    async def list_with_products(self, stock_date: str) -> list[dict]:
-        """联表读取每日库存与商品展示字段，供后台页面使用。"""
-        rows = await self._db.execute_fetchall(
-            "SELECT pds.stock_date, pds.product_id, pds.total_qty, "
-            "pds.reserved_qty, pds.updated_by, pds.created_at, pds.updated_at, "
-            "yp.item_id, yp.title, yp.price_fen, yp.is_active, yp.stock "
-            "FROM product_daily_stock pds "
-            "LEFT JOIN youzan_products yp "
-            "ON yp.item_id = CAST(pds.product_id AS INTEGER) "
-            "WHERE pds.stock_date = ? "
-            "ORDER BY pds.product_id ASC",
-            (stock_date,),
-        )
-        return [dict(row) for row in rows]
-
     async def upsert_total(
         self,
         stock_date: str,

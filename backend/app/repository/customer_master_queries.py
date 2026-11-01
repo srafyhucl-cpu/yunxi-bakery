@@ -123,23 +123,6 @@ class CustomerMasterQueryMixin:
         )
         return CustomerIdentityLink(**dict(rows[0])) if rows else None
 
-    async def get_latest_identity_by_customer_and_type(
-        self,
-        customer_id: str,
-        identity_type: str,
-    ) -> CustomerIdentityLink | None:
-        """按客户和身份类型读取最新一条身份链接。"""
-        rows = await self._db.execute_fetchall(
-            "SELECT id, tenant_id, customer_id, identity_type, identity_value, "
-            "identity_value_normalized, source_system, source_record_id, source_label, "
-            "link_status, verification_status, confidence_score, first_seen_at, "
-            "last_seen_at, created_at, updated_at "
-            "FROM customer_identity_links WHERE customer_id = ? AND identity_type = ? "
-            "ORDER BY created_at DESC LIMIT 1",
-            (customer_id, identity_type),
-        )
-        return CustomerIdentityLink(**dict(rows[0])) if rows else None
-
     async def get_source_snapshot(
         self,
         snapshot_id: str,

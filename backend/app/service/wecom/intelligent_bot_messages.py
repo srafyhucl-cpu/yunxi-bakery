@@ -7,7 +7,6 @@ from typing import Any
 
 MSGTYPE_TEXT = "text"
 MSGTYPE_STREAM = "stream"
-MSGTYPE_EVENT = "event"
 MSGTYPE_MIXED = "mixed"
 MSGTYPE_VOICE = "voice"
 MENTION_PREFIX_PATTERN = re.compile(r"@\S+\s*")
@@ -29,14 +28,6 @@ def is_message_callback(message: dict[str, Any]) -> bool:
     """判断是否为可回复的用户消息回调。"""
     msgtype = str(message.get("msgtype") or "")
     return msgtype in {MSGTYPE_TEXT, MSGTYPE_MIXED, MSGTYPE_VOICE}
-
-
-def build_text_reply(content: str) -> dict[str, Any]:
-    """构造智能机器人被动文本回复明文。"""
-    return {
-        "msgtype": MSGTYPE_TEXT,
-        "text": {"content": content},
-    }
 
 
 def build_stream_reply(

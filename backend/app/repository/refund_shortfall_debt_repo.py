@@ -52,14 +52,5 @@ class RefundShortfallDebtRepo(BaseRepository):
         )
         return rows[0] if rows else None
 
-    async def list_open_by_order(self, order_id: str) -> list[dict]:
-        """读取某订单未结清的欠账。"""
-        return await self._db.execute_fetchall(
-            "SELECT id, order_id, mobile, member_balance_id, operation_key, amount, "
-            "status, note, created_at, updated_at FROM refund_shortfall_debt "
-            "WHERE order_id = ? AND status = 'open' ORDER BY id ASC",
-            (order_id,),
-        )
-
 
 __all__ = ["RefundShortfallDebtRepo"]

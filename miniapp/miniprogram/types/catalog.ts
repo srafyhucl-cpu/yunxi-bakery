@@ -1,9 +1,3 @@
-export interface CatalogCategory {
-  id: string;
-  title: string;
-  iconText: string;
-}
-
 /** 商品规格：来自有赞 SKU，尺寸决定价格，其余规格只选具体型号。 */
 export interface CatalogVariant {
   id: string;

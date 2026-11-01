@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { ElMessage } from "element-plus";
-import { ChatLineRound, CopyDocument, Plus, Refresh, Search } from "@element-plus/icons-vue";
+import { CopyDocument, Plus, Refresh, Search } from "@element-plus/icons-vue";
 
 import { customerGroupsService } from "@/services/customerGroups";
 import type {

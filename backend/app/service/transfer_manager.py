@@ -11,7 +11,6 @@ from app.repository.transfer_repo import TransferRepo
 
 logger = setup_logger()
 
-TRANSFER_TIMEOUT_MINUTES = 30
 NOTIFY_HTTP_TIMEOUT_SECONDS = 10.0
 UNKNOWN_CUSTOMER_NAME = "微信客户（暂未取到昵称）"
 
