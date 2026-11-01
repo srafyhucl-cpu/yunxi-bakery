@@ -1,11 +1,4 @@
-import type { CatalogCategory, CatalogProduct } from "../types/catalog";
-
-export const CATALOG_CATEGORIES: CatalogCategory[] = [
-  { id: "birthday-cake", title: "生日蛋糕", iconText: "蛋糕" },
-  { id: "dessert-bread", title: "甜品&面包", iconText: "面包" },
-  { id: "cookies", title: "饼干&糕点", iconText: "饼干" },
-  { id: "tea-food", title: "茶饮堂食甜品", iconText: "茶饮" }
-];
+import type { CatalogProduct } from "../types/catalog";
 
 export const CATALOG_PRODUCTS: CatalogProduct[] = [
   {

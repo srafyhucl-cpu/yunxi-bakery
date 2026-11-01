@@ -47,7 +47,6 @@ class Settings(BaseSettings):
     # ── 服务配置 ──
     SERVER_HOST: str = "127.0.0.1"
     SERVER_PORT: int = 7001
-    LOG_LEVEL: str = "info"
 
     # ── 数据库 ──
     DB_PATH: str = "data/bot.db"
@@ -80,8 +79,6 @@ class Settings(BaseSettings):
     DEEPSEEK_API_KEY: str = ""
     DEEPSEEK_BASE_URL: str = "https://api.deepseek.com/v1"
     DEEPSEEK_MODEL: str = "deepseek-chat"
-    # 视觉识别模型（已废弃，保留字段兼容）
-    DEEPSEEK_VISION_MODEL: str = ""
     DEEPSEEK_TIMEOUT_SECONDS: float = 15.0
 
     # ── 小米 MiMo 大模型（主力 LLM） ──

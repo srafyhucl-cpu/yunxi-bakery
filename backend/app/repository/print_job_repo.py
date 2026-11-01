@@ -198,14 +198,5 @@ class PrintJobRepo(BaseRepository):
             updated_at=updated_at,
         )
 
-    async def mark_cancelled(self, job_id: str, updated_at: str = "") -> bool:
-        """取消作业，保留原记录。"""
-        cursor = await self._db.execute(
-            "UPDATE order_print_jobs SET status = 'CANCELLED', updated_at = ? "
-            "WHERE id = ? AND status IN ('PENDING', 'FAILED', 'CLAIMED')",
-            (updated_at or now_str(), job_id),
-        )
-        return cursor.rowcount == 1
-
 
 __all__ = ["PrintJobRepo"]

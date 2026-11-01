@@ -105,35 +105,6 @@ class YouzanProductRepo(BaseRepository):
         )
         return dict(rows[0]) if rows else None
 
-    async def list_current_products(
-        self,
-        *,
-        keyword: str = "",
-        is_active: str = "",
-        limit: int = 50,
-        offset: int = 0,
-    ) -> list[dict]:
-        """分页获取当前商品宽表内容。"""
-        clauses = ["1 = 1"]
-        params: list[object] = []
-        if keyword:
-            like = f"%{keyword}%"
-            clauses.append("(title LIKE ? OR alias LIKE ? OR tags LIKE ?)")
-            params.extend([like, like, like])
-        if is_active in {"0", "1"}:
-            clauses.append("is_active = ?")
-            params.append(int(is_active))
-        rows = await self._db.execute_fetchall(
-            "SELECT item_id, title, alias, price_fen, stock, image, is_active, "
-            "skus_json, item_props_json, desc, tags, tag_ids_json, "
-            "classification_ids_json, group_ids_json, second_group_ids_json, leaf_category_ids_json "
-            "FROM youzan_products "
-            f"WHERE {' AND '.join(clauses)} "
-            "ORDER BY updated_at DESC, item_id DESC LIMIT ? OFFSET ?",
-            (*params, limit, offset),
-        )
-        return [dict(row) for row in rows]
-
     async def list_public_categories(self) -> list[dict]:
         """返回公开商品分组并附带真实在售商品命中数。
 
@@ -186,25 +157,6 @@ class YouzanProductRepo(BaseRepository):
             (tag_id,),
         )
         return dict(rows[0]) if rows else None
-
-    async def list_products_by_category_tag(
-        self,
-        tag_id: str,
-        *,
-        limit: int = 50,
-    ) -> list[dict]:
-        """按有赞 tag id 精确查询在售商品宽表。"""
-        like = f'%"{tag_id}"%'
-        rows = await self._db.execute_fetchall(
-            "SELECT item_id, title, alias, price_fen, stock, image, is_active, "
-            "skus_json, item_props_json, desc, tags, tag_ids_json, "
-            "classification_ids_json, group_ids_json, second_group_ids_json, leaf_category_ids_json "
-            "FROM youzan_products "
-            "WHERE is_active = 1 AND tag_ids_json LIKE ? "
-            "ORDER BY updated_at DESC, item_id DESC LIMIT ?",
-            (like, limit),
-        )
-        return [dict(row) for row in rows]
 
     async def list_products_by_category_key(
         self,
@@ -275,26 +227,6 @@ class YouzanProductRepo(BaseRepository):
             if category_key.startswith(prefix):
                 return column, category_key.replace(prefix, "", 1)
         return "tag_ids_json", category_key
-
-    async def count_current_products(
-        self, *, keyword: str = "", is_active: str = ""
-    ) -> int:
-        """返回当前商品宽表筛选后的总数。"""
-        clauses = ["1 = 1"]
-        params: list[object] = []
-        if keyword:
-            like = f"%{keyword}%"
-            clauses.append("(title LIKE ? OR alias LIKE ? OR tags LIKE ?)")
-            params.extend([like, like, like])
-        if is_active in {"0", "1"}:
-            clauses.append("is_active = ?")
-            params.append(int(is_active))
-        where_sql = " AND ".join(clauses)
-        rows = await self._db.execute_fetchall(
-            "SELECT COUNT(*) AS c FROM youzan_products WHERE " + where_sql,
-            tuple(params),
-        )
-        return int(rows[0]["c"]) if rows else 0
 
     async def upsert_product(
         self,
@@ -451,20 +383,6 @@ class YouzanProductRepo(BaseRepository):
             }
             for row in rows
         }
-
-    async def bulk_update_sold_num(self, sold_num_map: dict[int, int]) -> int:
-        """批量更新在售商品销量，返回实际更新行数。"""
-        if not sold_num_map:
-            return 0
-        count = 0
-        for item_id, sold_num in sold_num_map.items():
-            cursor = await self._db.execute(
-                "UPDATE youzan_products SET sold_num = ? WHERE item_id = ?",
-                (sold_num, item_id),
-            )
-            count += cursor.rowcount
-        await self._db.commit()
-        return count
 
     async def bulk_update_sold_and_no(
         self, update_map: dict[int, tuple[int, str]]

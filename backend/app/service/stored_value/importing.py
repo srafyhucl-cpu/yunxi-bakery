@@ -14,7 +14,6 @@ import hashlib
 import io
 import re
 from collections import Counter
-from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
@@ -57,7 +56,6 @@ ROW_STATUS_VALID = "valid"
 ROW_STATUS_INVALID = "invalid"
 ROW_STATUS_CONFLICT = "conflict"
 ROW_STATUS_APPLIED = "applied"
-ROW_STATUS_ROLLED_BACK = "rolled_back"
 
 # 可复用批次状态：created / validated 可复用；applied 直接返回（幂等，不重复入账）；
 # failed / rolled_back 必须新建批次，避免一次批次记录被 applied->rolled_back->applied
@@ -109,21 +107,6 @@ REQUIRED_FIELDS = ("mobile", "principal_fen")
 
 class StoredValueImportError(Exception):
     """导入流程可预期的拒绝：校验失败、入账或回滚被拒。"""
-
-
-@dataclass(frozen=True)
-class StoredValueImportRow:
-    """CSV 中的一行储值余额输入（金额单位为「分」，整数）。"""
-
-    row_no: int
-    mobile: str
-    display_name: str = ""
-    principal_fen: int = 0
-    bonus_fen: int = 0
-    reported_total_fen: int | None = None
-    yz_open_id: str = ""
-    card_no: str = ""
-    card_alias: str = ""
 
 
 class StoredValueImportService:

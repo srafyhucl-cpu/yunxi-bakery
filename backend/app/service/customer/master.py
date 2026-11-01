@@ -25,13 +25,6 @@ class CustomerMasterService:
         customer = await self._customer_master_repo.create_master(payload)
         return self._serialize_customer(customer)
 
-    async def get_customer(self, customer_id: str) -> dict[str, Any]:
-        """读取客户主档。"""
-        customer = await self._customer_master_repo.get_master(customer_id)
-        if customer is None:
-            raise ValueError("客户不存在")
-        return self._serialize_customer(customer)
-
     async def attach_identity(
         self,
         payload: CustomerIdentityLinkCreate,

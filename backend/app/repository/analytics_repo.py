@@ -71,14 +71,3 @@ class AnalyticsRepo(BaseRepository):
             (buyer_id, ref_id, lookback_hours),
         )
         return rows[0]["session_id"] if rows else None
-
-    async def rotate_analytics_logs(self, days_to_keep: int = 90) -> None:
-        """自动滚动清理超出保留天数的历史分析日志，保障 SQLite 磁盘容量不爆满。"""
-        await self._db.execute(
-            'DELETE FROM analytics_events WHERE datetime(created_at) < datetime("now", "-" || ? || " days")',
-            (days_to_keep,),
-        )
-        await self._db.commit()
-        # 提示系统进行磁盘碎片重整，物理收缩文件大小
-        await self._db.execute("PRAGMA incremental_vacuum(100)")
-        await self._db.commit()

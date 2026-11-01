@@ -168,24 +168,6 @@ class OrderRepo(BaseRepository):
             return None
         return await self.get_order(order_id)
 
-    async def update_payment_to_partial_if_unpaid_active(
-        self,
-        order_id: str,
-        payment: str,
-        updated_at: str,
-    ) -> Order | None:
-        """原子把未支付订单写入组合支付中间态（余额部分已扣）。"""
-        cursor = await self._db.execute(
-            "UPDATE orders SET payment = ?, updated_at = ? "
-            "WHERE id = ? AND status != 'cancelled' AND "
-            + PAYMENT_STATUS_SQL
-            + " = 'unpaid'",
-            (payment, updated_at, order_id),
-        )
-        if cursor.rowcount != 1:
-            return None
-        return await self.get_order(order_id)
-
     async def update_payment_to_partial_if_unpaid_or_partial_active(
         self,
         order_id: str,

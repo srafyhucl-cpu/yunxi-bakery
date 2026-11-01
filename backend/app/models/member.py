@@ -30,22 +30,6 @@ class CouponStatus:
 
 
 @dataclass
-class MemberBalanceState:
-    """会员余额与卡片状态快照（按 mobile 唯一）。"""
-
-    customer_id: str = ""
-    mobile: str = ""
-    yz_open_id: str = ""
-    display_name: str = ""
-    is_member: int = 0
-    card_alias: str = ""
-    card_no: str = ""
-    card_status: str = ""
-    points: int = 0
-    stored_value_fen: int = 0
-
-
-@dataclass
 class PointsLedgerEntry:
     """一条积分变动流水。"""
 

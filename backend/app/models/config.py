@@ -4,8 +4,6 @@
 管理可由后台动态调整的运营参数（如主推款列表等）。
 """
 
-from dataclasses import dataclass
-
 FEATURED_PRODUCTS_KEY = "featured_products"
 SHOP_OPERATIONS_KEY = "shop_operations"
 SHOP_PAGE_DRAFT_PREFIX = "shop_page_draft:"
@@ -30,12 +28,3 @@ DEFAULT_SHOP_OPERATIONS = {
     "afterSalesPolicyTitle": "售后说明",
     "afterSalesPolicyContent": "蛋糕属于即时制作食品，请在约定时间取货或收货。若出现配送破损、商品错漏或质量问题，请保留照片和订单信息并第一时间联系客服，我们会按实际情况协助补救、重做或退款。",
 }
-
-
-@dataclass
-class ShopConfig:
-    """一条店铺配置记录。"""
-
-    key: str
-    value: str
-    updated_at: str = ""

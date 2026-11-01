@@ -1,17 +1,11 @@
 """
 有赞 Webhook 工具函数集。
 
-包含签名验证、消息解析、item_id 多级降级提取等通用逻辑。
+包含签名验证等通用逻辑。
 """
 
 import hashlib
 import hmac
-import json
-
-from app.exceptions import AuthError
-from app.logger import setup_logger
-
-logger = setup_logger()
 
 
 def verify_signature(
@@ -24,12 +18,3 @@ def verify_signature(
         ).encode()
     ).hexdigest()
     return hmac.compare_digest(expected, signature_header)
-
-
-def parse_webhook_payload(body: bytes) -> dict:
-    """解析 webhook JSON 负载，解析失败抛出 AuthError。"""
-    try:
-        return json.loads(body)
-    except json.JSONDecodeError as exc:
-        logger.error("Invalid Youzan webhook payload: %s", exc)
-        raise AuthError("Invalid JSON payload") from exc

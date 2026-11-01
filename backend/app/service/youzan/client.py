@@ -368,17 +368,6 @@ class YouzanClient:
         logger.info("有赞商品分组拉取完成，共 %d 个", len(tags))
         return tags
 
-    async def list_onsale_item_ids(self) -> set[int]:
-        """分页拉取有赞店铺所有在售商品的 item_id 集合。"""
-        items = await self.list_onsale_items()
-        item_ids: set[int] = set()
-        for item in items:
-            try:
-                item_ids.add(int(item["item_id"]))
-            except (KeyError, ValueError, TypeError):
-                continue
-        return item_ids
-
     async def search_item_base(self, item_ids: list[int]) -> list[dict]:
         """批量查询有赞商品基础信息，补齐商品分类与分组 ID。"""
         if settings.YOUZAN_MOCK_MODE:

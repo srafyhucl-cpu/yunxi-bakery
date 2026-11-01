@@ -1,7 +1,5 @@
 """管理后台业务服务层。"""
 
-import json
-
 from app.models.content_change_history import (
     ChangeAction,
     ChangeEntityType,
@@ -11,7 +9,6 @@ from app.models.config import FEATURED_PRODUCTS_KEY
 from app.models.knowledge import KnowledgeEntry
 from app.models.message import Message
 from app.models.session import Session, SessionStatus
-from app.models.transfer import HumanTransfer
 from app.config import settings
 from app.repository.config_repo import ConfigRepo
 from app.repository.content_change_history_repo import ContentChangeHistoryRepo
@@ -56,9 +53,6 @@ class AdminService:
         self._shop_operations_service = ShopOperationsService(config_repo)
 
     # ── 会话与转人工 ──
-    async def get_pending_transfers(self) -> list[HumanTransfer]:
-        return await self._transfer_repo.get_pending()
-
     async def get_all_active_sessions(self) -> list[Session]:
         return await self._session_repo.get_all_active()
 
@@ -105,31 +99,7 @@ class AdminService:
     async def update_extra(self, session_id: str, extra_info: str) -> None:
         await self._session_repo.update_extra(session_id, extra_info)
 
-    async def name_session(self, session_id: str, name: str) -> bool:
-        session = await self._session_repo.get(session_id)
-        if not session:
-            return False
-        extra = json.loads(session.extra_info or "{}")
-        extra["name"] = name
-        await self._session_repo.update_extra(
-            session_id, json.dumps(extra, ensure_ascii=False)
-        )
-        return True
-
-    async def discard_session(self, session_id: str) -> bool:
-        session = await self._session_repo.get(session_id)
-        if not session:
-            return False
-        await self._session_repo.update_status(session_id, "closed")
-        return True
-
-    async def activate_session(self, session_id: str) -> None:
-        await self._session_repo.update_status(session_id, "active")
-
     # ── 知识库与商品管理 ──
-    async def count_knowledge(self) -> int:
-        return await self._knowledge_repo.count_all()
-
     async def get_prices_and_stocks(self, youzan_ids: list[str]) -> dict[str, dict]:
         """批量获取商品单价和库存，委托有赞商品仓库查询。"""
         if self._youzan_product_repo is None:

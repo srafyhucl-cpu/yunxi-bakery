@@ -99,25 +99,3 @@ class RechargeRepo(BaseRepository):
         if cursor.rowcount != 1:
             return None
         return await self.get(recharge_id)
-
-    async def expire_if_unpaid(
-        self,
-        recharge_id: str,
-        *,
-        expired_at: str,
-    ) -> RechargeOrder | None:
-        """原子关闭超时未支付充值单。"""
-        cursor = await self._db.execute(
-            "UPDATE stored_value_recharge SET status = ?, expired_at = ?, "
-            "updated_at = ? WHERE id = ? AND status = ?",
-            (
-                RechargeStatus.EXPIRED,
-                expired_at,
-                now_str(),
-                recharge_id,
-                RechargeStatus.UNPAID,
-            ),
-        )
-        if cursor.rowcount != 1:
-            return None
-        return await self.get(recharge_id)
